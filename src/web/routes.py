@@ -427,3 +427,20 @@ async def _process_demo_incident(
     )
     
     await incident_store.complete_incident(incident_id, card)
+
+
+@router.get("/demo", response_class=HTMLResponse)
+async def demo_page(request: Request):
+    """Interactive demo page for showcasing Incident Copilot."""
+    from ..demo.scenarios import list_scenarios
+    
+    scenarios = list_scenarios()
+    
+    return templates.TemplateResponse(
+        "demo.html",
+        {
+            "request": request,
+            "scenarios": scenarios,
+            "page_title": "Demo Mode",
+        },
+    )
