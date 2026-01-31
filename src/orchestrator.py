@@ -8,8 +8,9 @@ import structlog
 
 from .ai import LogSummarizer
 from .config import Settings
-from .integrations import DatadogAdapter, GitHubAdapter, SlackAdapter
-from .models import ContextCard, PagerDutyIncident
+from .integrations import CloudWatchAdapter, DatadogAdapter, GitHubAdapter, SlackAdapter
+from .models import ContextCard, PagerDutyIncident, RunbookLink
+from .runbooks import RunbookLinker
 
 logger = structlog.get_logger()
 
@@ -28,9 +29,21 @@ class ContextOrchestrator:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.github = GitHubAdapter(settings)
-        self.datadog = DatadogAdapter(settings)
         self.slack = SlackAdapter(settings)
         self.summarizer = LogSummarizer(settings)
+        self.runbook_linker = RunbookLinker()
+
+        # Initialize log provider based on configuration
+        self.log_provider = settings.log_provider.lower()
+        if self.log_provider == "cloudwatch":
+            self.log_adapter = CloudWatchAdapter(settings)
+            logger.info("log_provider_initialized", provider="cloudwatch")
+        else:
+            self.log_adapter = DatadogAdapter(settings)
+            logger.info("log_provider_initialized", provider="datadog")
+
+        # Keep datadog reference for backward compatibility
+        self.datadog = self.log_adapter if self.log_provider == "datadog" else DatadogAdapter(settings)
 
     async def process_incident(
         self, incident: PagerDutyIncident, slack_channel: str | None = None
@@ -54,7 +67,7 @@ class ContextOrchestrator:
             self._fetch_github_context(incident.service_name)
         )
         datadog_task = asyncio.create_task(
-            self._fetch_datadog_context(incident.service_name)
+            self._fetch_log_context(incident.service_name)
         )
 
         # Wait for both with timeout
@@ -71,8 +84,9 @@ class ContextOrchestrator:
                 github_ctx = None
 
             if isinstance(datadog_ctx, Exception):
-                logger.error("datadog_fetch_error", error=str(datadog_ctx))
-                errors.append(f"Datadog: {str(datadog_ctx)}")
+                provider_name = "CloudWatch" if self.log_provider == "cloudwatch" else "Datadog"
+                logger.error("log_fetch_error", provider=self.log_provider, error=str(datadog_ctx))
+                errors.append(f"{provider_name}: {str(datadog_ctx)}")
                 datadog_ctx = None
 
         except asyncio.TimeoutError:
@@ -99,6 +113,33 @@ class ContextOrchestrator:
                 logger.error("ai_summarization_error", error=str(e))
                 errors.append(f"AI: {str(e)}")
 
+        # Link relevant runbooks
+        runbook_links = []
+        try:
+            matches = self.runbook_linker.find_relevant_runbooks(
+                query=f"{incident.title} {incident.description or ''}",
+                service_name=incident.service_name,
+                top_k=3,
+            )
+            runbook_links = [
+                RunbookLink(
+                    title=m.title,
+                    url=m.url,
+                    source=f"{m.source_type.value}:{m.source_name}",
+                    relevance_score=m.relevance_score,
+                    matched_terms=m.matched_terms,
+                )
+                for m in matches
+            ]
+            logger.info(
+                "runbooks_linked",
+                incident_id=incident.incident_id,
+                runbook_count=len(runbook_links),
+            )
+        except Exception as e:
+            logger.error("runbook_linking_error", error=str(e))
+            errors.append(f"Runbooks: {str(e)}")
+
         # Assemble context card
         elapsed_ms = int((time.monotonic() - start_time) * 1000)
 
@@ -113,6 +154,7 @@ class ContextOrchestrator:
             datadog=datadog_ctx,
             ai_summary=ai_summary,
             similar_incidents=[],  # TODO: implement similarity search
+            runbooks=runbook_links,
             owners=github_ctx.codeowners if github_ctx else incident.assigned_to,
             assembled_at=datetime.utcnow(),
             assembly_time_ms=elapsed_ms,
@@ -142,10 +184,19 @@ class ContextOrchestrator:
             logger.error("github_context_failed", service=service_name, error=str(e))
             return None
 
-    async def _fetch_datadog_context(self, service_name: str):
-        """Fetch Datadog context with error handling."""
+    async def _fetch_log_context(self, service_name: str):
+        """Fetch log context from configured provider (Datadog or CloudWatch)."""
         try:
-            return await self.datadog.get_context(service_name)
+            return await self.log_adapter.get_context(service_name)
         except Exception as e:
-            logger.error("datadog_context_failed", service=service_name, error=str(e))
+            logger.error(
+                "log_context_failed",
+                service=service_name,
+                provider=self.log_provider,
+                error=str(e),
+            )
             return None
+
+    async def _fetch_datadog_context(self, service_name: str):
+        """Fetch Datadog context with error handling. Deprecated: use _fetch_log_context."""
+        return await self._fetch_log_context(service_name)
