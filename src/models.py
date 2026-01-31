@@ -140,6 +140,19 @@ class PastIncident(BaseModel):
     similarity_score: float | None = None
 
 
+# --- Runbook Models ---
+
+
+class RunbookLink(BaseModel):
+    """A runbook linked to an incident."""
+
+    title: str
+    url: str
+    source: str
+    relevance_score: float = Field(ge=0.0, le=1.0)
+    matched_terms: list[str] = Field(default_factory=list)
+
+
 # --- Context Card ---
 
 
@@ -166,9 +179,12 @@ class ContextCard(BaseModel):
     # Similar past incidents
     similar_incidents: list[PastIncident] = Field(default_factory=list)
 
+    # Linked runbooks
+    runbooks: list[RunbookLink] = Field(default_factory=list)
+
     # Service info
     owners: list[str] = Field(default_factory=list)
-    runbook_url: str | None = None
+    runbook_url: str | None = None  # Deprecated: use runbooks list
     dashboard_url: str | None = None
 
     # Metadata
