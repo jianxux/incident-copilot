@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }} | Incident Copilot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse-dot {
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+        @keyframes slide-in {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .animate-slide-in {
+            animation: slide-in 0.3s ease-out;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'incident': {
+                            'critical': '#dc2626',
+                            'high': '#f97316',
+                            'medium': '#eab308',
+                            'low': '#3b82f6',
+                            'info': '#6b7280',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="h-full bg-slate-900 text-gray-100">
+    <div class="min-h-full">
+        <!-- Navigation -->
+        <nav class="gradient-bg border-b border-slate-700">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="flex h-16 items-center justify-between">
+                    <div class="flex items-center">
+                        <a href="/dashboard" class="flex items-center space-x-3">
+                            <div class="bg-gradient-to-r from-blue-500 to-cyan-400 p-2 rounded-lg">
+                                <i class="fas fa-shield-halved text-white text-xl"></i>
+                            </div>
+                            <span class="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+                                Incident Copilot
+                            </span>
+                        </a>
+                        <div class="ml-10 flex items-baseline space-x-4">
+                            <a href="/dashboard" class="{% if page_title == 'Dashboard' %}bg-slate-700 text-white{% else %}text-gray-300 hover:bg-slate-700 hover:text-white{% endif %} rounded-md px-3 py-2 text-sm font-medium transition">
+                                <i class="fas fa-chart-line mr-2"></i>Dashboard
+                            </a>
+                            <a href="/dashboard/config" class="{% if page_title == 'Configuration' %}bg-slate-700 text-white{% else %}text-gray-300 hover:bg-slate-700 hover:text-white{% endif %} rounded-md px-3 py-2 text-sm font-medium transition">
+                                <i class="fas fa-cog mr-2"></i>Configuration
+                            </a>
+                            <a href="/dashboard/demo" class="{% if page_title == 'Demo Mode' %}bg-gradient-to-r from-purple-600 to-pink-500 text-white{% else %}bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 hover:from-purple-500/40 hover:to-pink-500/40{% endif %} rounded-md px-3 py-2 text-sm font-medium transition">
+                                <i class="fas fa-play-circle mr-2"></i>Demo
+                            </a>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div id="connection-status" class="flex items-center space-x-2 text-sm">
+                            <span class="w-2 h-2 rounded-full bg-gray-500" id="status-dot"></span>
+                            <span id="status-text" class="text-gray-400">Connecting...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="py-6">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="border-t border-slate-700 mt-auto">
+            <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+                <p class="text-center text-sm text-gray-500">
+                    Incident Copilot v0.1.0 • Built for on-call engineers
+                </p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+
+    <script src="/dashboard/static/app.js"></script>
+</body>
+</html>

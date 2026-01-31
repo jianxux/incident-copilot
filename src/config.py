@@ -28,6 +28,21 @@ class Settings(BaseSettings):
     datadog_app_key: str = Field(default="", description="Datadog application key")
     datadog_site: str = Field(default="datadoghq.com", description="Datadog site")
 
+    # AWS CloudWatch
+    aws_region: str = Field(default="", description="AWS region for CloudWatch")
+    aws_access_key_id: str = Field(default="", description="AWS access key ID (optional, uses boto3 defaults)")
+    aws_secret_access_key: str = Field(default="", description="AWS secret access key (optional)")
+    cloudwatch_log_group_map: dict[str, str] = Field(
+        default_factory=dict,
+        description="Service to CloudWatch Log Group mapping (e.g., payments-api=/aws/lambda/payments)"
+    )
+
+    # Log Provider
+    log_provider: str = Field(
+        default="datadog",
+        description="Log provider to use: 'datadog' or 'cloudwatch'"
+    )
+
     # Slack
     slack_bot_token: str = Field(default="", description="Slack bot OAuth token")
     slack_default_channel: str = Field(default="#incidents", description="Default Slack channel")

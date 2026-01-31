@@ -1,11 +1,15 @@
 """Main FastAPI application for Incident Copilot."""
 
+from pathlib import Path
+
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from .api import webhooks_router
+from .api import demo_router, runbooks_router, webhooks_router
 from .config import get_settings
+from .web import web_router
 
 # Configure structured logging
 structlog.configure(
@@ -51,6 +55,13 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(webhooks_router)
+    app.include_router(runbooks_router)
+    app.include_router(demo_router)
+    app.include_router(web_router)
+
+    # Mount static files for web dashboard
+    static_dir = Path(__file__).parent / "web" / "static"
+    app.mount("/dashboard/static", StaticFiles(directory=str(static_dir)), name="static")
 
     @app.on_event("startup")
     async def startup():
