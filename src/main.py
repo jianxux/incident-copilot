@@ -11,7 +11,7 @@ from .api import analytics_router, demo_router, runbooks_router, webhooks_router
 from .auth.routes import router as auth_router
 from .billing.routes import router as billing_router
 from .config import get_settings
-from .web import web_router
+from .web import landing_router, web_router
 
 # Configure structured logging
 structlog.configure(
@@ -62,6 +62,7 @@ def create_app() -> FastAPI:
     app.include_router(runbooks_router)
     app.include_router(demo_router)
     app.include_router(analytics_router)
+    app.include_router(landing_router)
     app.include_router(web_router)
 
     # Mount static files for web dashboard
