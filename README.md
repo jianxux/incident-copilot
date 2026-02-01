@@ -144,6 +144,10 @@ All configuration via environment variables:
 | `CLOUDWATCH_LOG_GROUP_MAP` | JSON mapping of service to log groups |
 | `SLACK_BOT_TOKEN` | Slack bot OAuth token |
 | `ANTHROPIC_API_KEY` | Anthropic API key for Claude |
+| `JIRA_BASE_URL` | Jira Cloud URL (e.g., https://yourcompany.atlassian.net) |
+| `JIRA_EMAIL` | Jira user email for API authentication |
+| `JIRA_API_TOKEN` | Jira API token |
+| `JIRA_DEFAULT_PROJECT` | Default Jira project key for incidents |
 
 ## AWS CloudWatch Integration
 
