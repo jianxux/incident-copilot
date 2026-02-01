@@ -7,7 +7,7 @@ Commands for validating configuration, testing integrations, and managing the se
 import asyncio
 import sys
 from enum import Enum
-from typing import Callable
+from collections.abc import Callable
 
 import typer
 from rich import print as rprint
