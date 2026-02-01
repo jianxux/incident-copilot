@@ -5,8 +5,7 @@ from typing import Callable, Optional
 
 import structlog
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import (APIKeyHeader, HTTPAuthorizationCredentials,
-                              HTTPBearer)
+from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 
 from .models import Session, Tenant, User, UserRole
 from .service import auth_service

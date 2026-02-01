@@ -14,8 +14,16 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 from ..config import get_settings
-from ..models import (AILogSummary, ContextCard, DatadogContext, Deployment,
-                      GitHubContext, LogSummary, MetricSnapshot, Severity)
+from ..models import (
+    AILogSummary,
+    ContextCard,
+    DatadogContext,
+    Deployment,
+    GitHubContext,
+    LogSummary,
+    MetricSnapshot,
+    Severity,
+)
 from .store import incident_store
 
 logger = structlog.get_logger()

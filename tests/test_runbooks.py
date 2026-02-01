@@ -4,8 +4,7 @@ import pytest
 
 from src.runbooks import RunbookLinker
 from src.runbooks.indexer import RunbookIndexer
-from src.runbooks.models import (Runbook, RunbookIndex, RunbookSource,
-                                 RunbookSourceType)
+from src.runbooks.models import Runbook, RunbookIndex, RunbookSource, RunbookSourceType
 
 
 class TestRunbookIndexer:

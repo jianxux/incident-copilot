@@ -8,8 +8,7 @@ import structlog
 
 from .ai import LogSummarizer
 from .config import Settings
-from .integrations import (CloudWatchAdapter, DatadogAdapter, GitHubAdapter,
-                           SlackAdapter)
+from .integrations import CloudWatchAdapter, DatadogAdapter, GitHubAdapter, SlackAdapter
 from .models import ContextCard, PagerDutyIncident, RunbookLink
 from .runbooks import RunbookLinker
 

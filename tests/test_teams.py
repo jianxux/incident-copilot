@@ -8,9 +8,17 @@ import pytest
 
 from src.config import Settings
 from src.integrations.teams import TeamsAdapter
-from src.models import (AILogSummary, ContextCard, DatadogContext, Deployment,
-                        GitHubContext, LogSummary, PastIncident, RunbookLink,
-                        Severity)
+from src.models import (
+    AILogSummary,
+    ContextCard,
+    DatadogContext,
+    Deployment,
+    GitHubContext,
+    LogSummary,
+    PastIncident,
+    RunbookLink,
+    Severity,
+)
 
 
 @pytest.fixture

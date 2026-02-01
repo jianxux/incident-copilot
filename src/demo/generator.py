@@ -7,9 +7,18 @@ from typing import Any, AsyncIterator
 
 import structlog
 
-from ..models import (AILogSummary, ContextCard, DatadogContext, Deployment,
-                      GitHubContext, LogSummary, MetricSnapshot, PastIncident,
-                      RunbookLink, Severity)
+from ..models import (
+    AILogSummary,
+    ContextCard,
+    DatadogContext,
+    Deployment,
+    GitHubContext,
+    LogSummary,
+    MetricSnapshot,
+    PastIncident,
+    RunbookLink,
+    Severity,
+)
 from .scenarios import DEMO_SCENARIOS, get_scenario
 
 logger = structlog.get_logger()
