@@ -7,7 +7,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .api import demo_router, runbooks_router, webhooks_router
+from .api import analytics_router, demo_router, runbooks_router, webhooks_router
+from .auth.routes import router as auth_router
+from .billing.routes import router as billing_router
 from .config import get_settings
 from .web import web_router
 
@@ -54,9 +56,12 @@ def create_app() -> FastAPI:
     )
 
     # Include routers
+    app.include_router(auth_router)
+    app.include_router(billing_router)
     app.include_router(webhooks_router)
     app.include_router(runbooks_router)
     app.include_router(demo_router)
+    app.include_router(analytics_router)
     app.include_router(web_router)
 
     # Mount static files for web dashboard

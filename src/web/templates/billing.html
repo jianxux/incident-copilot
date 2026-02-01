@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Billing | Incident Copilot{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto py-12 px-4">
+    <h1 class="text-3xl font-bold mb-8">Billing & Subscription</h1>
+
+    <!-- Current Plan -->
+    <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6 mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-400">Current Plan</h2>
+                <p class="text-3xl font-bold mt-1" id="current-plan">Free</p>
+            </div>
+            <div class="text-right">
+                <p class="text-gray-400">Monthly usage</p>
+                <p class="text-2xl font-bold">
+                    <span id="usage-count">0</span> / <span id="usage-limit">50</span> incidents
+                </p>
+            </div>
+        </div>
+        <div class="mt-4 h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div id="usage-bar" class="h-full bg-gradient-to-r from-blue-600 to-cyan-500" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <!-- Pricing Plans -->
+    <h2 class="text-xl font-bold mb-6">Choose your plan</h2>
+    
+    <div class="grid md:grid-cols-3 gap-6 mb-8">
+        <!-- Free -->
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6 relative">
+            <h3 class="text-xl font-bold">Free</h3>
+            <div class="mt-4">
+                <span class="text-4xl font-bold">$0</span>
+                <span class="text-gray-400">/month</span>
+            </div>
+            <ul class="mt-6 space-y-3 text-gray-400">
+                <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> 50 incidents/month</li>
+                <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> 3 team members</li>
+                <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> Basic context cards</li>
+                <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> Slack notifications</li>
+            </ul>
+            <button disabled class="w-full mt-6 py-3 bg-slate-800 text-gray-400 rounded-lg">
+                Current Plan
+            </button>
+        </div>
+
+        <!-- Starter -->
+        <div class="bg-slate-900 rounded-2xl border-2 border-blue-500 p-6 relative">
+            <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-blue-500 text-white text-xs font-bold rounded-full">
+                POPULAR
+            </div>
+            <h3 class="text-xl font-bold">Starter</h3>
+            <div class="mt-4">
+                <span class="text-4xl font-bold">$49</span>
+                <span class="text-gray-400">/month</span>
+            </div>
+            <ul class="mt-6 space-y-3 text-gray-400">
+                <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> 500 incidents/month</li>
+                <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> 10 team members</li>
+                <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> AI log summaries</li>
+                <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> Past incident search</li>
+                <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> Email support</li>
+            </ul>
+            <button onclick="upgrade('starter')" class="w-full mt-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg font-semibold hover:from-blue-500 hover:to-cyan-400 transition-all">
+                Upgrade to Starter
+            </button>
+        </div>
+
+        <!-- Pro -->
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+            <h3 class="text-xl font-bold">Pro</h3>
+            <div class="mt-4">
+                <span class="text-4xl font-bold">$149</span>
+                <span class="text-gray-400">/month</span>
+            </div>
+            <ul class="mt-6 space-y-3 text-gray-400">
+                <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> 2,000 incidents/month</li>
+                <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> 50 team members</li>
+                <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> Runbook automation</li>
+                <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> Advanced analytics</li>
+                <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> SSO/SAML</li>
+                <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> Priority support</li>
+            </ul>
+            <button onclick="upgrade('pro')" class="w-full mt-6 py-3 bg-slate-700 text-white rounded-lg font-semibold hover:bg-slate-600 transition-all">
+                Upgrade to Pro
+            </button>
+        </div>
+    </div>
+
+    <!-- Enterprise CTA -->
+    <div class="bg-gradient-to-r from-purple-900/50 to-indigo-900/50 rounded-2xl border border-purple-500/30 p-8 text-center">
+        <h3 class="text-2xl font-bold mb-2">Need more?</h3>
+        <p class="text-gray-300 mb-4">Enterprise plans include unlimited incidents, custom integrations, and dedicated support.</p>
+        <a href="mailto:sales@incidentcopilot.dev" class="inline-flex items-center px-6 py-3 bg-white text-purple-900 rounded-lg font-semibold hover:bg-gray-100 transition-all">
+            <i class="fas fa-envelope mr-2"></i> Contact Sales
+        </a>
+    </div>
+
+    <!-- Manage Subscription -->
+    <div class="mt-8" id="manage-subscription" style="display: none;">
+        <h2 class="text-xl font-bold mb-4">Manage Subscription</h2>
+        <button onclick="openPortal()" class="px-6 py-3 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-all">
+            <i class="fas fa-external-link-alt mr-2"></i> Open Billing Portal
+        </button>
+    </div>
+</div>
+
+<script>
+const token = localStorage.getItem('access_token');
+
+async function loadCurrentPlan() {
+    if (!token) return;
+    
+    try {
+        const response = await fetch('/api/billing/current', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        
+        document.getElementById('current-plan').textContent = data.plan_info.name;
+        document.getElementById('usage-count').textContent = data.usage.incidents_this_month;
+        document.getElementById('usage-limit').textContent = data.usage.max_incidents;
+        
+        const percentage = (data.usage.incidents_this_month / data.usage.max_incidents) * 100;
+        document.getElementById('usage-bar').style.width = `${Math.min(percentage, 100)}%`;
+        
+        if (data.has_subscription) {
+            document.getElementById('manage-subscription').style.display = 'block';
+        }
+    } catch (err) {
+        console.error('Failed to load billing info:', err);
+    }
+}
+
+async function upgrade(plan) {
+    if (!token) {
+        window.location.href = '/login';
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/billing/checkout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ plan }),
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.checkout_url) {
+            window.location.href = data.checkout_url;
+        } else {
+            alert(data.detail || 'Failed to create checkout session');
+        }
+    } catch (err) {
+        alert('An error occurred. Please try again.');
+    }
+}
+
+async function openPortal() {
+    try {
+        const response = await fetch('/api/billing/portal', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.portal_url) {
+            window.location.href = data.portal_url;
+        } else {
+            alert(data.detail || 'Failed to open billing portal');
+        }
+    } catch (err) {
+        alert('An error occurred. Please try again.');
+    }
+}
+
+loadCurrentPlan();
+</script>
+{% endblock %}
