@@ -8,17 +8,9 @@ import pytest
 
 from src.config import Settings
 from src.integrations.teams import TeamsAdapter
-from src.models import (
-    AILogSummary,
-    ContextCard,
-    DatadogContext,
-    Deployment,
-    GitHubContext,
-    LogSummary,
-    PastIncident,
-    RunbookLink,
-    Severity,
-)
+from src.models import (AILogSummary, ContextCard, DatadogContext, Deployment,
+                        GitHubContext, LogSummary, PastIncident, RunbookLink,
+                        Severity)
 
 
 @pytest.fixture
@@ -102,14 +94,14 @@ class TestTeamsAdapterCardFormatting:
     def test_build_adaptive_card_structure(self, teams_adapter, sample_context_card):
         """Test that the adaptive card has correct structure."""
         card = teams_adapter._build_adaptive_card(sample_context_card)
-        
+
         assert card["type"] == "message"
         assert "attachments" in card
         assert len(card["attachments"]) == 1
-        
+
         attachment = card["attachments"][0]
         assert attachment["contentType"] == "application/vnd.microsoft.card.adaptive"
-        
+
         content = attachment["content"]
         assert content["type"] == "AdaptiveCard"
         assert content["version"] == "1.4"
@@ -120,7 +112,7 @@ class TestTeamsAdapterCardFormatting:
         """Test that header contains correct severity emoji."""
         card = teams_adapter._build_adaptive_card(sample_context_card)
         content = card["attachments"][0]["content"]
-        
+
         # First element should be the header
         header = content["body"][0]
         assert header["type"] == "TextBlock"
@@ -147,7 +139,7 @@ class TestTeamsAdapterCardFormatting:
             result = teams_adapter._build_adaptive_card(card)
             content = result["attachments"][0]["content"]
             header = content["body"][0]
-            
+
             assert header["color"] == expected_color
             assert expected_emoji in header["text"]
 
@@ -155,31 +147,35 @@ class TestTeamsAdapterCardFormatting:
         """Test that deployments are included in the card."""
         card = teams_adapter._build_adaptive_card(sample_context_card)
         content = card["attachments"][0]["content"]
-        
+
         # Find deployment section
         deployment_found = False
         for element in content["body"]:
-            if element.get("type") == "TextBlock" and "Recent Deployments" in element.get("text", ""):
+            if element.get(
+                "type"
+            ) == "TextBlock" and "Recent Deployments" in element.get("text", ""):
                 deployment_found = True
                 assert "abc1234" in element["text"]
                 assert "sarah" in element["text"]
                 break
-        
+
         assert deployment_found, "Deployments section not found"
 
     def test_ai_summary_section(self, teams_adapter, sample_context_card):
         """Test that AI summary is included in the card."""
         card = teams_adapter._build_adaptive_card(sample_context_card)
         content = card["attachments"][0]["content"]
-        
+
         # Find AI summary section
         ai_found = False
         for element in content["body"]:
-            if element.get("type") == "TextBlock" and "AI Analysis" in element.get("text", ""):
+            if element.get("type") == "TextBlock" and "AI Analysis" in element.get(
+                "text", ""
+            ):
                 ai_found = True
                 assert "ConnectionTimeout" in element["text"]
                 break
-        
+
         assert ai_found, "AI summary section not found"
 
     def test_log_summary_fallback(self, teams_adapter):
@@ -202,19 +198,21 @@ class TestTeamsAdapterCardFormatting:
                 ],
             ),
         )
-        
+
         result = teams_adapter._build_adaptive_card(card)
         content = result["attachments"][0]["content"]
-        
+
         # Find log summary section
         log_found = False
         for element in content["body"]:
-            if element.get("type") == "TextBlock" and "Error Patterns" in element.get("text", ""):
+            if element.get("type") == "TextBlock" and "Error Patterns" in element.get(
+                "text", ""
+            ):
                 log_found = True
                 assert "NullPointerException" in element["text"]
                 assert "(42x)" in element["text"]
                 break
-        
+
         assert log_found, "Log summary section not found"
 
     def test_action_buttons(self, teams_adapter, sample_context_card):
@@ -222,15 +220,15 @@ class TestTeamsAdapterCardFormatting:
         card = teams_adapter._build_adaptive_card(sample_context_card)
         content = card["attachments"][0]["content"]
         actions = content["actions"]
-        
+
         # Should have 3 actions: PagerDuty, Runbook, Dashboard
         assert len(actions) == 3
-        
+
         action_titles = [a["title"] for a in actions]
         assert "View in PagerDuty" in action_titles
         assert "📖 View Runbook" in action_titles
         assert "📊 Open Dashboard" in action_titles
-        
+
         # Verify URLs
         for action in actions:
             assert action["type"] == "Action.OpenUrl"
@@ -240,7 +238,7 @@ class TestTeamsAdapterCardFormatting:
         """Test card generation with minimal data."""
         card = teams_adapter._build_adaptive_card(minimal_context_card)
         content = card["attachments"][0]["content"]
-        
+
         # Should still have basic structure
         assert len(content["body"]) >= 2  # At least header and severity info
         assert content["actions"] == []  # No actions without URLs
@@ -263,19 +261,21 @@ class TestTeamsAdapterCardFormatting:
                 ),
             ],
         )
-        
+
         result = teams_adapter._build_adaptive_card(card)
         content = result["attachments"][0]["content"]
-        
+
         # Find similar incidents section
         incidents_found = False
         for element in content["body"]:
-            if element.get("type") == "TextBlock" and "Similar Past Incidents" in element.get("text", ""):
+            if element.get(
+                "type"
+            ) == "TextBlock" and "Similar Past Incidents" in element.get("text", ""):
                 incidents_found = True
                 assert "Previous payment failure" in element["text"]
                 assert "Increased connection pool" in element["text"]
                 break
-        
+
         assert incidents_found, "Similar incidents section not found"
 
     def test_runbooks_list_fallback(self, teams_adapter):
@@ -297,11 +297,11 @@ class TestTeamsAdapterCardFormatting:
                 ),
             ],
         )
-        
+
         result = teams_adapter._build_adaptive_card(card)
         content = result["attachments"][0]["content"]
         actions = content["actions"]
-        
+
         # Should have 2 actions: PagerDuty, Runbook (from list)
         assert len(actions) == 2
         runbook_action = next((a for a in actions if "Runbook" in a["title"]), None)
@@ -318,34 +318,36 @@ class TestTeamsAdapterWebhook:
         with patch("src.integrations.teams.httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            
+
             mock_response = AsyncMock()
             mock_response.raise_for_status = lambda: None
             mock_client.post.return_value = mock_response
-            
+
             result = await teams_adapter.send_context_card(sample_context_card)
-            
+
             assert result is True
             mock_client.post.assert_called_once()
             call_args = mock_client.post.call_args
             assert call_args[1]["headers"]["Content-Type"] == "application/json"
 
     @pytest.mark.asyncio
-    async def test_send_context_card_http_error(self, teams_adapter, sample_context_card):
+    async def test_send_context_card_http_error(
+        self, teams_adapter, sample_context_card
+    ):
         """Test handling of HTTP errors."""
         with patch("src.integrations.teams.httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            
+
             mock_response = AsyncMock()
             mock_response.status_code = 400
             mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
                 "Bad Request", request=AsyncMock(), response=mock_response
             )
             mock_client.post.return_value = mock_response
-            
+
             result = await teams_adapter.send_context_card(sample_context_card)
-            
+
             assert result is False
 
     @pytest.mark.asyncio
@@ -353,26 +355,30 @@ class TestTeamsAdapterWebhook:
         """Test that sending fails gracefully without webhook URL."""
         settings = Settings(teams_webhook_url="")
         adapter = TeamsAdapter(settings)
-        
+
         result = await adapter.send_context_card(sample_context_card)
-        
+
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_send_with_custom_webhook_url(self, teams_adapter, sample_context_card):
+    async def test_send_with_custom_webhook_url(
+        self, teams_adapter, sample_context_card
+    ):
         """Test sending to a custom webhook URL."""
         custom_url = "https://outlook.office.com/webhook/custom-url"
-        
+
         with patch("src.integrations.teams.httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            
+
             mock_response = AsyncMock()
             mock_response.raise_for_status = lambda: None
             mock_client.post.return_value = mock_response
-            
-            result = await teams_adapter.send_context_card(sample_context_card, webhook_url=custom_url)
-            
+
+            result = await teams_adapter.send_context_card(
+                sample_context_card, webhook_url=custom_url
+            )
+
             assert result is True
             call_args = mock_client.post.call_args
             assert call_args[0][0] == custom_url
@@ -383,10 +389,12 @@ class TestTeamsAdapterWebhook:
         with patch("src.integrations.teams.httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            mock_client.post.side_effect = httpx.TimeoutException("Connection timed out")
-            
+            mock_client.post.side_effect = httpx.TimeoutException(
+                "Connection timed out"
+            )
+
             result = await teams_adapter.send_context_card(sample_context_card)
-            
+
             assert result is False
 
 
@@ -403,11 +411,11 @@ class TestTeamsAdapterEdgeCases:
             service_name="test-service",
             triggered_at=datetime.now(),
         )
-        
+
         result = teams_adapter._build_adaptive_card(card)
         content = result["attachments"][0]["content"]
         header = content["body"][0]
-        
+
         # Title should be truncated to 100 chars
         assert len(header["text"]) < 200
 
@@ -425,13 +433,15 @@ class TestTeamsAdapterEdgeCases:
                 explanation=long_explanation,
             ),
         )
-        
+
         result = teams_adapter._build_adaptive_card(card)
         content = result["attachments"][0]["content"]
-        
+
         # Find AI section and verify truncation
         for element in content["body"]:
-            if element.get("type") == "TextBlock" and "AI Analysis" in element.get("text", ""):
+            if element.get("type") == "TextBlock" and "AI Analysis" in element.get(
+                "text", ""
+            ):
                 assert "..." in element["text"]
                 assert len(element["text"]) < 500
                 break
@@ -440,11 +450,14 @@ class TestTeamsAdapterEdgeCases:
         """Test handling of empty owners list."""
         card = teams_adapter._build_adaptive_card(minimal_context_card)
         content = card["attachments"][0]["content"]
-        
+
         # Should not have owners section
         for element in content["body"]:
             if element.get("type") == "TextBlock":
-                assert "Owners:" not in element.get("text", "") or minimal_context_card.owners
+                assert (
+                    "Owners:" not in element.get("text", "")
+                    or minimal_context_card.owners
+                )
 
     def test_unicode_handling(self, teams_adapter):
         """Test that unicode characters are handled correctly."""
@@ -455,10 +468,10 @@ class TestTeamsAdapterEdgeCases:
             service_name="test-service",
             triggered_at=datetime.now(),
         )
-        
+
         result = teams_adapter._build_adaptive_card(card)
         content = result["attachments"][0]["content"]
         header = content["body"][0]
-        
+
         assert "🔥" in header["text"]
         assert "très" in header["text"]

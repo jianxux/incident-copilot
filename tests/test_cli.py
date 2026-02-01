@@ -1,11 +1,11 @@
 """Tests for the CLI tools."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from typer.testing import CliRunner
-from unittest.mock import patch, AsyncMock
 
-from src.cli.main import app, check_config, CheckStatus
-
+from src.cli.main import CheckStatus, app, check_config
 
 runner = CliRunner()
 
@@ -60,7 +60,7 @@ class TestValidateCommand:
         mock_settings.return_value = MockSettings(
             github_token=None,  # Missing required
         )
-        
+
         result = runner.invoke(app, ["validate"])
         assert result.exit_code == 1
         assert "missing" in result.output.lower() or "error" in result.output.lower()
@@ -69,7 +69,7 @@ class TestValidateCommand:
     def test_validate_all_configured(self, mock_settings):
         """Test validate passes with all config present."""
         mock_settings.return_value = MockSettings()
-        
+
         result = runner.invoke(app, ["validate"])
         # May have warnings but should not error
         assert "passed" in result.output.lower() or result.exit_code == 0
@@ -94,8 +94,11 @@ class TestTestIntegration:
     def test_github_integration_success(self, mock_settings, mock_test):
         """Test successful GitHub integration test."""
         mock_settings.return_value = MockSettings()
-        mock_test.return_value = {"success": True, "details": {"Authenticated as": "testuser"}}
-        
+        mock_test.return_value = {
+            "success": True,
+            "details": {"Authenticated as": "testuser"},
+        }
+
         result = runner.invoke(app, ["test-integration", "github"])
         assert result.exit_code == 0
         assert "working" in result.output.lower()
@@ -106,7 +109,7 @@ class TestTestIntegration:
         """Test failed GitHub integration test."""
         mock_settings.return_value = MockSettings()
         mock_test.return_value = {"success": False, "error": "Invalid token"}
-        
+
         result = runner.invoke(app, ["test-integration", "github"])
         assert result.exit_code == 1
         assert "failed" in result.output.lower()
@@ -119,7 +122,7 @@ class TestTestIntegration:
 
 class MockSettings:
     """Mock settings object for testing."""
-    
+
     def __init__(
         self,
         pagerduty_api_key: str = "test-pd-key",

@@ -10,7 +10,7 @@ import pytest
 
 from src.config import Settings
 from src.models import PastIncident
-from src.similarity.embeddings import EmbeddingGenerator, EMBEDDING_DIMENSION
+from src.similarity.embeddings import EMBEDDING_DIMENSION, EmbeddingGenerator
 from src.similarity.search import SimilaritySearch, cosine_similarity
 from src.similarity.store import IncidentStore
 
@@ -61,10 +61,10 @@ class TestIncidentStore:
     def test_store_and_retrieve(self, temp_db):
         """Test storing and retrieving an incident."""
         store = IncidentStore(temp_db)
-        
+
         embedding = [0.1] * EMBEDDING_DIMENSION
         occurred = datetime(2024, 1, 15, 10, 0, 0)
-        
+
         store.store_incident(
             incident_id="INC-001",
             title="Database connection timeout",
@@ -73,9 +73,9 @@ class TestIncidentStore:
             embedding=embedding,
             description="Connection pool exhausted",
         )
-        
+
         incident = store.get_incident("INC-001")
-        
+
         assert incident is not None
         assert incident.incident_id == "INC-001"
         assert incident.title == "Database connection timeout"
@@ -85,7 +85,7 @@ class TestIncidentStore:
     def test_update_resolution(self, temp_db):
         """Test updating resolution notes."""
         store = IncidentStore(temp_db)
-        
+
         store.store_incident(
             incident_id="INC-002",
             title="Service outage",
@@ -93,15 +93,15 @@ class TestIncidentStore:
             occurred_at=datetime.utcnow(),
             embedding=[0.1] * EMBEDDING_DIMENSION,
         )
-        
+
         updated = store.update_resolution(
             incident_id="INC-002",
             resolution="Restarted service and increased memory",
             root_cause="Memory leak in session handler",
         )
-        
+
         assert updated is True
-        
+
         incident = store.get_incident("INC-002")
         assert incident.resolution == "Restarted service and increased memory"
         assert incident.root_cause == "Memory leak in session handler"
@@ -109,7 +109,7 @@ class TestIncidentStore:
     def test_get_all_with_embeddings(self, temp_db):
         """Test retrieving all incidents with embeddings."""
         store = IncidentStore(temp_db)
-        
+
         # Store multiple incidents
         for i in range(3):
             store.store_incident(
@@ -119,9 +119,9 @@ class TestIncidentStore:
                 occurred_at=datetime.utcnow(),
                 embedding=[float(i)] * EMBEDDING_DIMENSION,
             )
-        
+
         results = store.get_all_with_embeddings()
-        
+
         assert len(results) == 3
         for incident, embedding in results:
             assert isinstance(incident, PastIncident)
@@ -131,9 +131,9 @@ class TestIncidentStore:
     def test_count_incidents(self, temp_db):
         """Test counting incidents."""
         store = IncidentStore(temp_db)
-        
+
         assert store.count_incidents() == 0
-        
+
         store.store_incident(
             incident_id="INC-001",
             title="Test incident",
@@ -141,13 +141,13 @@ class TestIncidentStore:
             occurred_at=datetime.utcnow(),
             embedding=[0.1] * EMBEDDING_DIMENSION,
         )
-        
+
         assert store.count_incidents() == 1
 
     def test_get_recent_incidents(self, temp_db):
         """Test getting recent incidents with filters."""
         store = IncidentStore(temp_db)
-        
+
         # Store incidents for different services
         for service in ["api", "api", "worker"]:
             store.store_incident(
@@ -157,10 +157,10 @@ class TestIncidentStore:
                 occurred_at=datetime.utcnow(),
                 embedding=[0.1] * EMBEDDING_DIMENSION,
             )
-        
+
         all_incidents = store.get_recent_incidents(limit=10)
         assert len(all_incidents) == 3
-        
+
         api_incidents = store.get_recent_incidents(limit=10, service="api")
         assert len(api_incidents) == 2
 
@@ -171,14 +171,14 @@ class TestEmbeddingGenerator:
     def test_prepare_incident_text(self, settings):
         """Test text preparation for embedding."""
         generator = EmbeddingGenerator(settings)
-        
+
         text = generator._prepare_incident_text(
             title="Database timeout",
             service_name="payments-api",
             description="Connection pool exhausted",
             error_logs=["Error: timeout after 30s", "Connection refused"],
         )
-        
+
         assert "Service: payments-api" in text
         assert "Title: Database timeout" in text
         assert "Description: Connection pool exhausted" in text
@@ -187,14 +187,14 @@ class TestEmbeddingGenerator:
     def test_text_truncation(self, settings):
         """Test that long text is truncated."""
         generator = EmbeddingGenerator(settings)
-        
+
         long_logs = ["x" * 1000 for _ in range(20)]
         text = generator._prepare_incident_text(
             title="Test",
             service_name="test",
             error_logs=long_logs,
         )
-        
+
         # Should be truncated to ~8000 chars
         assert len(text) <= 8010
 
@@ -203,12 +203,12 @@ class TestEmbeddingGenerator:
         """Test graceful handling when no API key is set."""
         settings = Settings(openai_api_key="")
         generator = EmbeddingGenerator(settings)
-        
+
         embedding = await generator.generate_embedding(
             title="Test incident",
             service_name="test-service",
         )
-        
+
         # Should return zero vector when no API key
         assert len(embedding) == EMBEDDING_DIMENSION
         assert all(v == 0.0 for v in embedding)
@@ -222,22 +222,24 @@ class TestSimilaritySearch:
         """Test search when no past incidents exist."""
         store = IncidentStore(temp_db)
         search = SimilaritySearch(settings, store=store)
-        
-        with patch.object(search.embedder, 'generate_embedding', new_callable=AsyncMock) as mock_embed:
+
+        with patch.object(
+            search.embedder, "generate_embedding", new_callable=AsyncMock
+        ) as mock_embed:
             mock_embed.return_value = [0.1] * EMBEDDING_DIMENSION
-            
+
             results = await search.find_similar(
                 title="New incident",
                 service_name="test-service",
             )
-        
+
         assert results == []
 
     @pytest.mark.asyncio
     async def test_find_similar_basic(self, temp_db, settings):
         """Test finding similar incidents."""
         store = IncidentStore(temp_db)
-        
+
         # Store some incidents with distinct embeddings
         # Incident 1: all 0.1
         store.store_incident(
@@ -248,7 +250,7 @@ class TestSimilaritySearch:
             embedding=[0.1] * EMBEDDING_DIMENSION,
             resolution="Increased connection pool",
         )
-        
+
         # Incident 2: all 0.9 (very different)
         store.store_incident(
             incident_id="INC-002",
@@ -257,20 +259,22 @@ class TestSimilaritySearch:
             occurred_at=datetime.utcnow(),
             embedding=[0.9] * EMBEDDING_DIMENSION,
         )
-        
+
         search = SimilaritySearch(settings, store=store)
-        
-        with patch.object(search.embedder, 'generate_embedding', new_callable=AsyncMock) as mock_embed:
+
+        with patch.object(
+            search.embedder, "generate_embedding", new_callable=AsyncMock
+        ) as mock_embed:
             # Query embedding similar to INC-001
             mock_embed.return_value = [0.1] * EMBEDDING_DIMENSION
-            
+
             results = await search.find_similar(
                 title="Another DB issue",
                 service_name="db-service",
                 top_n=3,
                 min_similarity=0.5,
             )
-        
+
         assert len(results) >= 1
         # The most similar should be INC-001
         assert results[0].incident_id == "INC-001"
@@ -281,7 +285,7 @@ class TestSimilaritySearch:
     async def test_exclude_self(self, temp_db, settings):
         """Test that an incident doesn't match itself."""
         store = IncidentStore(temp_db)
-        
+
         store.store_incident(
             incident_id="INC-001",
             title="Test incident",
@@ -289,18 +293,20 @@ class TestSimilaritySearch:
             occurred_at=datetime.utcnow(),
             embedding=[0.1] * EMBEDDING_DIMENSION,
         )
-        
+
         search = SimilaritySearch(settings, store=store)
-        
-        with patch.object(search.embedder, 'generate_embedding', new_callable=AsyncMock) as mock_embed:
+
+        with patch.object(
+            search.embedder, "generate_embedding", new_callable=AsyncMock
+        ) as mock_embed:
             mock_embed.return_value = [0.1] * EMBEDDING_DIMENSION
-            
+
             results = await search.find_similar(
                 title="Test incident",
                 service_name="test",
                 exclude_incident_id="INC-001",
             )
-        
+
         # Should not find itself
         assert all(r.incident_id != "INC-001" for r in results)
 
@@ -308,7 +314,7 @@ class TestSimilaritySearch:
     async def test_store_and_search(self, temp_db, settings):
         """Test combined store and search operation."""
         store = IncidentStore(temp_db)
-        
+
         # Pre-populate with an incident
         store.store_incident(
             incident_id="INC-OLD",
@@ -318,23 +324,25 @@ class TestSimilaritySearch:
             embedding=[0.1] * EMBEDDING_DIMENSION,
             resolution="Fixed by restart",
         )
-        
+
         search = SimilaritySearch(settings, store=store)
-        
-        with patch.object(search.embedder, 'generate_embedding', new_callable=AsyncMock) as mock_embed:
+
+        with patch.object(
+            search.embedder, "generate_embedding", new_callable=AsyncMock
+        ) as mock_embed:
             mock_embed.return_value = [0.1] * EMBEDDING_DIMENSION
-            
+
             results = await search.store_and_search(
                 incident_id="INC-NEW",
                 title="New incident",
                 service_name="test",
                 occurred_at=datetime.utcnow(),
             )
-        
+
         # Should find the old incident
         assert len(results) >= 1
         assert results[0].incident_id == "INC-OLD"
-        
+
         # New incident should also be stored
         new_incident = store.get_incident("INC-NEW")
         assert new_incident is not None

@@ -1,13 +1,13 @@
 """Authentication and multi-tenant support for Incident Copilot."""
 
-from .models import Tenant, User, APIKey, Session
+from .middleware import AuthMiddleware, get_current_user, require_auth
+from .models import APIKey, Session, Tenant, User
+from .oauth import GitHubOAuth, GoogleOAuth, OAuthProvider
 from .service import AuthService
-from .middleware import AuthMiddleware, require_auth, get_current_user
-from .oauth import OAuthProvider, GitHubOAuth, GoogleOAuth
 
 __all__ = [
     "Tenant",
-    "User", 
+    "User",
     "APIKey",
     "Session",
     "AuthService",

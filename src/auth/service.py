@@ -7,37 +7,30 @@ from typing import Optional
 
 import structlog
 
-from .models import (
-    APIKey,
-    PLAN_LIMITS,
-    PlanTier,
-    Session,
-    Tenant,
-    User,
-    UserRole,
-)
+from .models import (PLAN_LIMITS, APIKey, PlanTier, Session, Tenant, User,
+                     UserRole)
 
 logger = structlog.get_logger()
 
 
 class AuthService:
     """Service for authentication and tenant management."""
-    
+
     def __init__(self):
         # In-memory stores (replace with database in production)
         self._tenants: dict[str, Tenant] = {}
         self._users: dict[str, User] = {}
         self._sessions: dict[str, Session] = {}
         self._api_keys: dict[str, APIKey] = {}
-        
+
         # Indexes for lookups
         self._user_by_email: dict[str, str] = {}  # email -> user_id
         self._tenant_by_slug: dict[str, str] = {}  # slug -> tenant_id
         self._session_by_token: dict[str, str] = {}  # access_token -> session_id
         self._api_key_by_hash: dict[str, str] = {}  # key_hash -> api_key_id
-    
+
     # --- Tenant Management ---
-    
+
     async def create_tenant(
         self,
         name: str,
@@ -47,7 +40,7 @@ class AuthService:
         """Create a new tenant."""
         if slug in self._tenant_by_slug:
             raise ValueError(f"Tenant with slug '{slug}' already exists")
-        
+
         limits = PLAN_LIMITS[plan]
         tenant = Tenant(
             name=name,
@@ -57,40 +50,40 @@ class AuthService:
             max_users=limits["max_users"],
             max_integrations=limits["max_integrations"],
         )
-        
+
         self._tenants[tenant.id] = tenant
         self._tenant_by_slug[slug] = tenant.id
-        
+
         logger.info("tenant_created", tenant_id=tenant.id, name=name, plan=plan)
         return tenant
-    
+
     async def get_tenant(self, tenant_id: str) -> Optional[Tenant]:
         """Get a tenant by ID."""
         return self._tenants.get(tenant_id)
-    
+
     async def get_tenant_by_slug(self, slug: str) -> Optional[Tenant]:
         """Get a tenant by slug."""
         tenant_id = self._tenant_by_slug.get(slug)
         if tenant_id:
             return self._tenants.get(tenant_id)
         return None
-    
+
     async def update_tenant_plan(self, tenant_id: str, plan: PlanTier) -> Tenant:
         """Update a tenant's plan."""
         tenant = await self.get_tenant(tenant_id)
         if not tenant:
             raise ValueError(f"Tenant {tenant_id} not found")
-        
+
         limits = PLAN_LIMITS[plan]
         tenant.plan = plan
         tenant.max_incidents_per_month = limits["max_incidents_per_month"]
         tenant.max_users = limits["max_users"]
         tenant.max_integrations = limits["max_integrations"]
         tenant.updated_at = datetime.utcnow()
-        
+
         logger.info("tenant_plan_updated", tenant_id=tenant_id, new_plan=plan)
         return tenant
-    
+
     async def update_tenant_integrations(
         self,
         tenant_id: str,
@@ -100,23 +93,23 @@ class AuthService:
         tenant = await self.get_tenant(tenant_id)
         if not tenant:
             raise ValueError(f"Tenant {tenant_id} not found")
-        
+
         tenant.integrations.update(integrations)
         tenant.updated_at = datetime.utcnow()
-        
+
         logger.info(
             "tenant_integrations_updated",
             tenant_id=tenant_id,
             integrations=list(integrations.keys()),
         )
         return tenant
-    
+
     async def increment_tenant_usage(self, tenant_id: str) -> bool:
         """Increment incident count for a tenant. Returns False if limit reached."""
         tenant = await self.get_tenant(tenant_id)
         if not tenant:
             return False
-        
+
         if not tenant.can_create_incident():
             logger.warning(
                 "tenant_usage_limit_reached",
@@ -125,13 +118,13 @@ class AuthService:
                 limit=tenant.max_incidents_per_month,
             )
             return False
-        
+
         tenant.incidents_this_month += 1
         tenant.updated_at = datetime.utcnow()
         return True
-    
+
     # --- User Management ---
-    
+
     async def create_user(
         self,
         email: str,
@@ -145,20 +138,22 @@ class AuthService:
         """Create a new user."""
         if email in self._user_by_email:
             raise ValueError(f"User with email '{email}' already exists")
-        
+
         tenant = await self.get_tenant(tenant_id)
         if not tenant:
             raise ValueError(f"Tenant {tenant_id} not found")
-        
+
         # Check user limit
         tenant_users = [u for u in self._users.values() if u.tenant_id == tenant_id]
         if tenant.max_users > 0 and len(tenant_users) >= tenant.max_users:
-            raise ValueError(f"Tenant has reached maximum user limit ({tenant.max_users})")
-        
+            raise ValueError(
+                f"Tenant has reached maximum user limit ({tenant.max_users})"
+            )
+
         password_hash = None
         if password:
             password_hash = hashlib.sha256(password.encode()).hexdigest()
-        
+
         user = User(
             email=email,
             name=name,
@@ -169,24 +164,24 @@ class AuthService:
             password_hash=password_hash,
             email_verified=bool(oauth_provider),  # OAuth users are pre-verified
         )
-        
+
         self._users[user.id] = user
         self._user_by_email[email] = user.id
-        
+
         logger.info("user_created", user_id=user.id, email=email, tenant_id=tenant_id)
         return user
-    
+
     async def get_user(self, user_id: str) -> Optional[User]:
         """Get a user by ID."""
         return self._users.get(user_id)
-    
+
     async def get_user_by_email(self, email: str) -> Optional[User]:
         """Get a user by email."""
         user_id = self._user_by_email.get(email)
         if user_id:
             return self._users.get(user_id)
         return None
-    
+
     async def get_or_create_oauth_user(
         self,
         email: str,
@@ -197,7 +192,7 @@ class AuthService:
     ) -> tuple[User, Tenant, bool]:
         """Get or create a user from OAuth login. Returns (user, tenant, is_new)."""
         existing = await self.get_user_by_email(email)
-        
+
         if existing:
             # Update OAuth info if needed
             existing.oauth_provider = oauth_provider
@@ -205,10 +200,10 @@ class AuthService:
             if avatar_url:
                 existing.avatar_url = avatar_url
             existing.last_login = datetime.utcnow()
-            
+
             tenant = await self.get_tenant(existing.tenant_id)
             return existing, tenant, False
-        
+
         # Create new tenant and user
         slug = email.split("@")[0].lower().replace(".", "-")
         # Make slug unique
@@ -217,12 +212,12 @@ class AuthService:
         while slug in self._tenant_by_slug:
             slug = f"{base_slug}-{counter}"
             counter += 1
-        
+
         tenant = await self.create_tenant(
             name=f"{name}'s Team",
             slug=slug,
         )
-        
+
         user = await self.create_user(
             email=email,
             name=name,
@@ -233,24 +228,24 @@ class AuthService:
         )
         user.avatar_url = avatar_url
         user.last_login = datetime.utcnow()
-        
+
         return user, tenant, True
-    
+
     async def verify_password(self, email: str, password: str) -> Optional[User]:
         """Verify password and return user if valid."""
         user = await self.get_user_by_email(email)
         if not user or not user.password_hash:
             return None
-        
+
         password_hash = hashlib.sha256(password.encode()).hexdigest()
         if password_hash != user.password_hash:
             return None
-        
+
         user.last_login = datetime.utcnow()
         return user
-    
+
     # --- Session Management ---
-    
+
     async def create_session(
         self,
         user_id: str,
@@ -261,20 +256,20 @@ class AuthService:
         user = await self.get_user(user_id)
         if not user:
             raise ValueError(f"User {user_id} not found")
-        
+
         session = Session(
             user_id=user_id,
             tenant_id=user.tenant_id,
             user_agent=user_agent,
             ip_address=ip_address,
         )
-        
+
         self._sessions[session.id] = session
         self._session_by_token[session.access_token] = session.id
-        
+
         logger.info("session_created", session_id=session.id, user_id=user_id)
         return session
-    
+
     async def get_session_by_token(self, access_token: str) -> Optional[Session]:
         """Get a session by access token."""
         session_id = self._session_by_token.get(access_token)
@@ -283,25 +278,25 @@ class AuthService:
             if session and not session.is_expired():
                 return session
         return None
-    
+
     async def refresh_session(self, refresh_token: str) -> Optional[Session]:
         """Refresh a session using refresh token."""
         for session in self._sessions.values():
             if session.refresh_token == refresh_token:
                 if session.is_refresh_expired():
                     return None
-                
+
                 # Remove old token mapping
                 self._session_by_token.pop(session.access_token, None)
-                
+
                 # Refresh
                 session.refresh()
                 self._session_by_token[session.access_token] = session.id
-                
+
                 logger.info("session_refreshed", session_id=session.id)
                 return session
         return None
-    
+
     async def invalidate_session(self, session_id: str) -> None:
         """Invalidate a session."""
         session = self._sessions.get(session_id)
@@ -309,9 +304,9 @@ class AuthService:
             self._session_by_token.pop(session.access_token, None)
             del self._sessions[session_id]
             logger.info("session_invalidated", session_id=session_id)
-    
+
     # --- API Key Management ---
-    
+
     async def create_api_key(
         self,
         tenant_id: str,
@@ -326,10 +321,10 @@ class AuthService:
             name=name,
             scopes=scopes,
         )
-        
+
         self._api_keys[api_key.id] = api_key
         self._api_key_by_hash[api_key.key_hash] = api_key.id
-        
+
         logger.info(
             "api_key_created",
             api_key_id=api_key.id,
@@ -337,29 +332,29 @@ class AuthService:
             name=name,
         )
         return api_key, raw_key
-    
+
     async def verify_api_key(self, raw_key: str) -> Optional[tuple[APIKey, Tenant]]:
         """Verify an API key and return the key and tenant if valid."""
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
         api_key_id = self._api_key_by_hash.get(key_hash)
-        
+
         if not api_key_id:
             return None
-        
+
         api_key = self._api_keys.get(api_key_id)
         if not api_key or not api_key.is_active:
             return None
-        
+
         if api_key.expires_at and datetime.utcnow() > api_key.expires_at:
             return None
-        
+
         tenant = await self.get_tenant(api_key.tenant_id)
         if not tenant:
             return None
-        
+
         api_key.last_used = datetime.utcnow()
         return api_key, tenant
-    
+
     async def revoke_api_key(self, api_key_id: str) -> None:
         """Revoke an API key."""
         api_key = self._api_keys.get(api_key_id)

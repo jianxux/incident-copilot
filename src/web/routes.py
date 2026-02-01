@@ -5,25 +5,17 @@ import json
 import random
 import uuid
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional
 
 import structlog
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
-from pathlib import Path
 
 from ..config import get_settings
-from ..models import (
-    Severity,
-    ContextCard,
-    GitHubContext,
-    Deployment,
-    DatadogContext,
-    MetricSnapshot,
-    LogSummary,
-    AILogSummary,
-)
+from ..models import (AILogSummary, ContextCard, DatadogContext, Deployment,
+                      GitHubContext, LogSummary, MetricSnapshot, Severity)
 from .store import incident_store
 
 logger = structlog.get_logger()
@@ -88,6 +80,7 @@ templates.env.filters["mask_secret"] = mask_secret
 # Landing Page Routes
 # ============================================================================
 
+
 @landing_router.get("/", response_class=HTMLResponse)
 async def landing_page(request: Request):
     """Marketing landing page for Incident Copilot."""
@@ -107,11 +100,12 @@ async def health_check():
 # Auth Pages (login, signup, etc.)
 # ============================================================================
 
+
 @landing_router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: Optional[str] = None):
     """Login page."""
     from ..auth.oauth import get_available_providers
-    
+
     error_messages = {
         "oauth_denied": "You cancelled the login process.",
         "oauth_invalid": "Invalid OAuth response. Please try again.",
@@ -120,7 +114,7 @@ async def login_page(request: Request, error: Optional[str] = None):
         "oauth_token_failed": "Failed to authenticate. Please try again.",
         "oauth_user_failed": "Failed to get user info. Please try again.",
     }
-    
+
     return templates.TemplateResponse(
         "login.html",
         {
@@ -135,7 +129,7 @@ async def login_page(request: Request, error: Optional[str] = None):
 async def signup_page(request: Request):
     """Signup page."""
     from ..auth.oauth import get_available_providers
-    
+
     return templates.TemplateResponse(
         "signup.html",
         {
@@ -149,12 +143,13 @@ async def signup_page(request: Request):
 # Dashboard Routes
 # ============================================================================
 
+
 @router.get("/", response_class=HTMLResponse)
 async def dashboard_home(request: Request):
     """Main dashboard page showing all incidents."""
     incidents = await incident_store.get_all_incidents()
     stats = await incident_store.get_stats()
-    
+
     return templates.TemplateResponse(
         "dashboard.html",
         {
@@ -170,10 +165,10 @@ async def dashboard_home(request: Request):
 async def onboarding_page(request: Request):
     """Onboarding page for new users to configure integrations."""
     settings = get_settings()
-    
+
     # Generate webhook URL for the tenant
     webhook_url = f"{settings.app_url}/webhooks/pagerduty"
-    
+
     return templates.TemplateResponse(
         "onboarding.html",
         {
@@ -213,7 +208,7 @@ async def billing_success_page(request: Request):
 async def incident_detail(request: Request, incident_id: str):
     """Incident detail page showing full context card."""
     incident = await incident_store.get_incident(incident_id)
-    
+
     if not incident:
         return templates.TemplateResponse(
             "error.html",
@@ -224,7 +219,7 @@ async def incident_detail(request: Request, incident_id: str):
             },
             status_code=404,
         )
-    
+
     return templates.TemplateResponse(
         "incident_detail.html",
         {
@@ -240,7 +235,7 @@ async def incident_detail(request: Request, incident_id: str):
 async def config_page(request: Request):
     """Configuration page showing API key status."""
     settings = get_settings()
-    
+
     config_items = [
         {
             "name": "PagerDuty API Key",
@@ -313,7 +308,7 @@ async def config_page(request: Request):
             "show_full": True,
         },
     ]
-    
+
     return templates.TemplateResponse(
         "config.html",
         {
@@ -327,18 +322,18 @@ async def config_page(request: Request):
 @router.get("/events")
 async def sse_events(request: Request):
     """Server-Sent Events endpoint for real-time updates."""
-    
+
     async def event_generator():
         queue = await incident_store.subscribe()
         try:
             # Send initial connection message
             yield f"data: {json.dumps({'type': 'connected'})}\n\n"
-            
+
             while True:
                 # Check if client disconnected
                 if await request.is_disconnected():
                     break
-                
+
                 try:
                     # Wait for events with timeout
                     event = await asyncio.wait_for(queue.get(), timeout=30.0)
@@ -348,7 +343,7 @@ async def sse_events(request: Request):
                     yield f": keepalive\n\n"
         finally:
             await incident_store.unsubscribe(queue)
-    
+
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
@@ -387,7 +382,13 @@ async def api_stats():
 
 
 # Demo data generation
-DEMO_SERVICES = ["payments-api", "user-service", "notification-service", "checkout-api", "inventory-service"]
+DEMO_SERVICES = [
+    "payments-api",
+    "user-service",
+    "notification-service",
+    "checkout-api",
+    "inventory-service",
+]
 DEMO_TITLES = [
     "High error rate detected",
     "Latency spike in production",
@@ -408,7 +409,7 @@ async def create_demo_incident():
     severity = random.choice(list(Severity))
     title = f"{random.choice(DEMO_TITLES)} in {service}"
     triggered_at = datetime.utcnow()
-    
+
     # Add incident in processing state
     await incident_store.add_incident(
         incident_id=incident_id,
@@ -417,10 +418,12 @@ async def create_demo_incident():
         severity=severity,
         triggered_at=triggered_at,
     )
-    
+
     # Simulate async processing
-    asyncio.create_task(_process_demo_incident(incident_id, service, severity, title, triggered_at))
-    
+    asyncio.create_task(
+        _process_demo_incident(incident_id, service, severity, title, triggered_at)
+    )
+
     return {"incident_id": incident_id, "status": "processing"}
 
 
@@ -434,7 +437,7 @@ async def _process_demo_incident(
     """Simulate incident processing with demo data."""
     # Simulate processing time
     await asyncio.sleep(random.uniform(1.5, 3.5))
-    
+
     # Randomly fail some incidents for realism
     if random.random() < 0.1:  # 10% failure rate
         await incident_store.fail_incident(
@@ -442,23 +445,25 @@ async def _process_demo_incident(
             "Simulated failure: Could not fetch context from external services",
         )
         return
-    
+
     # Generate demo context card
     now = datetime.utcnow()
-    
+
     # Demo deployments
     deploys = [
         Deployment(
             sha=f"{random.randint(0, 0xFFFFFFFF):08x}" * 5,
             short_sha=f"{random.randint(0, 0xFFFFFF):06x}",
             author=random.choice(["alice", "bob", "charlie", "diana"]),
-            message=random.choice([
-                "Fix connection pooling issue",
-                "Update dependencies",
-                "Add retry logic for external calls",
-                "Optimize database queries",
-                "Enable feature flag for new flow",
-            ]),
+            message=random.choice(
+                [
+                    "Fix connection pooling issue",
+                    "Update dependencies",
+                    "Add retry logic for external calls",
+                    "Optimize database queries",
+                    "Enable feature flag for new flow",
+                ]
+            ),
             timestamp=now - timedelta(hours=random.randint(1, 48)),
             files_changed=[f"src/{service.replace('-', '/')}/main.py"],
             additions=random.randint(10, 200),
@@ -466,13 +471,13 @@ async def _process_demo_incident(
         )
         for _ in range(random.randint(2, 5))
     ]
-    
+
     github_ctx = GitHubContext(
         repo=f"mycompany/{service}",
         recent_deploys=deploys,
         codeowners=["@platform-team", "@oncall"],
     )
-    
+
     # Demo Datadog context
     datadog_ctx = DatadogContext(
         service=service,
@@ -498,7 +503,7 @@ async def _process_demo_incident(
             request_count=random.randint(10000, 100000),
         ),
     )
-    
+
     # Demo AI summary
     ai_summary = AILogSummary(
         top_issues=[
@@ -507,8 +512,8 @@ async def _process_demo_incident(
             "Memory pressure detected on primary database node",
         ],
         explanation="The service is experiencing elevated error rates primarily due to database connectivity issues. "
-                   "Connection pool exhaustion appears to be the root cause, possibly triggered by a recent deployment "
-                   "that increased query volume or changed connection handling.",
+        "Connection pool exhaustion appears to be the root cause, possibly triggered by a recent deployment "
+        "that increased query volume or changed connection handling.",
         likely_cause="Database connection pool exhaustion following increased traffic after deployment",
         suggested_actions=[
             "Check database connection pool settings and increase if needed",
@@ -517,7 +522,7 @@ async def _process_demo_incident(
             "Scale database resources if connection limits are being hit",
         ],
     )
-    
+
     # Create context card
     card = ContextCard(
         incident_id=incident_id,
@@ -537,7 +542,7 @@ async def _process_demo_incident(
         assembly_time_ms=random.randint(800, 2500),
         errors=[],
     )
-    
+
     await incident_store.complete_incident(incident_id, card)
 
 
@@ -545,9 +550,9 @@ async def _process_demo_incident(
 async def demo_page(request: Request):
     """Interactive demo page for showcasing Incident Copilot."""
     from ..demo.scenarios import list_scenarios
-    
+
     scenarios = list_scenarios()
-    
+
     return templates.TemplateResponse(
         "demo.html",
         {

@@ -15,17 +15,17 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     """Calculate cosine similarity between two vectors."""
     norm_a = np.linalg.norm(a)
     norm_b = np.linalg.norm(b)
-    
+
     if norm_a == 0 or norm_b == 0:
         return 0.0
-    
+
     return float(np.dot(a, b) / (norm_a * norm_b))
 
 
 class SimilaritySearch:
     """
     Search for similar past incidents using vector embeddings.
-    
+
     Uses cosine similarity to find the most similar incidents based on
     their embedded representations of title, service, and error logs.
     """
@@ -52,7 +52,7 @@ class SimilaritySearch:
     ) -> list[PastIncident]:
         """
         Find the most similar past incidents.
-        
+
         Args:
             title: Current incident title
             service_name: Current service name
@@ -61,14 +61,14 @@ class SimilaritySearch:
             top_n: Maximum number of similar incidents to return
             min_similarity: Minimum similarity score (0-1) to include
             exclude_incident_id: Incident ID to exclude from results (e.g., self)
-            
+
         Returns:
             List of PastIncident objects with similarity_score set,
             ordered by similarity (highest first).
         """
         # Get all stored incidents with embeddings
         stored_incidents = self.store.get_all_with_embeddings()
-        
+
         if not stored_incidents:
             logger.info("no_past_incidents_found")
             return []
@@ -88,16 +88,18 @@ class SimilaritySearch:
 
         # Calculate similarity scores
         scored_incidents: list[tuple[PastIncident, float]] = []
-        
+
         for incident, embedding in stored_incidents:
             # Skip the current incident if specified
             if exclude_incident_id and incident.incident_id == exclude_incident_id:
                 continue
-                
+
             similarity = cosine_similarity(query_vector, embedding)
-            
+
             if similarity >= min_similarity:
-                incident.similarity_score = round(similarity * 100, 1)  # Convert to percentage
+                incident.similarity_score = round(
+                    similarity * 100, 1
+                )  # Convert to percentage
                 scored_incidents.append((incident, similarity))
 
         # Sort by similarity (highest first) and take top N
@@ -121,17 +123,17 @@ class SimilaritySearch:
     ) -> list[PastIncident]:
         """
         Find similar incidents to a stored incident by its ID.
-        
+
         Args:
             incident_id: ID of the incident to find similar ones for
             top_n: Maximum number of similar incidents to return
             min_similarity: Minimum similarity score to include
-            
+
         Returns:
             List of similar PastIncident objects, or empty list if not found.
         """
         incident = self.store.get_incident(incident_id)
-        
+
         if not incident:
             logger.warning("incident_not_found", incident_id=incident_id)
             return []
@@ -157,11 +159,11 @@ class SimilaritySearch:
     ) -> list[PastIncident]:
         """
         Store a new incident and find similar past ones.
-        
+
         This is the main entry point for processing new incidents.
         It generates the embedding, stores the incident, and returns
         similar past incidents.
-        
+
         Args:
             incident_id: Unique incident identifier
             title: Incident title
@@ -170,7 +172,7 @@ class SimilaritySearch:
             description: Optional description
             error_logs: Optional error log messages
             top_n: Number of similar incidents to return
-            
+
         Returns:
             List of similar past incidents.
         """
@@ -192,7 +194,7 @@ class SimilaritySearch:
                 description=description,
                 error_logs=error_logs,
             )
-            
+
             self.store.store_incident(
                 incident_id=incident_id,
                 title=title,

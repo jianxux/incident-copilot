@@ -15,7 +15,7 @@ logger = structlog.get_logger()
 
 class OAuthUser:
     """User info from OAuth provider."""
-    
+
     def __init__(
         self,
         provider: str,
@@ -33,28 +33,28 @@ class OAuthUser:
 
 class OAuthProvider(ABC):
     """Abstract base class for OAuth providers."""
-    
+
     @property
     @abstractmethod
     def name(self) -> str:
         """Provider name (e.g., 'github', 'google')."""
         pass
-    
+
     @abstractmethod
     def get_authorization_url(self, state: str, redirect_uri: str) -> str:
         """Get the URL to redirect users to for authorization."""
         pass
-    
+
     @abstractmethod
     async def exchange_code(self, code: str, redirect_uri: str) -> Optional[str]:
         """Exchange authorization code for access token."""
         pass
-    
+
     @abstractmethod
     async def get_user_info(self, access_token: str) -> Optional[OAuthUser]:
         """Get user info using access token."""
         pass
-    
+
     @classmethod
     def generate_state(cls) -> str:
         """Generate a random state parameter for OAuth."""
@@ -63,25 +63,25 @@ class OAuthProvider(ABC):
 
 class GitHubOAuth(OAuthProvider):
     """GitHub OAuth provider."""
-    
+
     AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
     TOKEN_URL = "https://github.com/login/oauth/access_token"
     USER_URL = "https://api.github.com/user"
     EMAILS_URL = "https://api.github.com/user/emails"
-    
+
     def __init__(self, client_id: str = None, client_secret: str = None):
         settings = get_settings()
         self.client_id = client_id or settings.github_oauth_client_id
         self.client_secret = client_secret or settings.github_oauth_client_secret
-    
+
     @property
     def name(self) -> str:
         return "github"
-    
+
     @property
     def is_configured(self) -> bool:
         return bool(self.client_id and self.client_secret)
-    
+
     def get_authorization_url(self, state: str, redirect_uri: str) -> str:
         params = {
             "client_id": self.client_id,
@@ -90,7 +90,7 @@ class GitHubOAuth(OAuthProvider):
             "state": state,
         }
         return f"{self.AUTHORIZE_URL}?{urlencode(params)}"
-    
+
     async def exchange_code(self, code: str, redirect_uri: str) -> Optional[str]:
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -103,7 +103,7 @@ class GitHubOAuth(OAuthProvider):
                 },
                 headers={"Accept": "application/json"},
             )
-            
+
             if response.status_code != 200:
                 logger.error(
                     "github_oauth_token_error",
@@ -111,16 +111,16 @@ class GitHubOAuth(OAuthProvider):
                     body=response.text,
                 )
                 return None
-            
+
             data = response.json()
             return data.get("access_token")
-    
+
     async def get_user_info(self, access_token: str) -> Optional[OAuthUser]:
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Accept": "application/json",
         }
-        
+
         async with httpx.AsyncClient() as client:
             # Get user profile
             user_response = await client.get(self.USER_URL, headers=headers)
@@ -130,9 +130,9 @@ class GitHubOAuth(OAuthProvider):
                     status=user_response.status_code,
                 )
                 return None
-            
+
             user_data = user_response.json()
-            
+
             # Get primary email if not public
             email = user_data.get("email")
             if not email:
@@ -141,15 +141,15 @@ class GitHubOAuth(OAuthProvider):
                     emails = emails_response.json()
                     primary = next(
                         (e for e in emails if e.get("primary") and e.get("verified")),
-                        None
+                        None,
                     )
                     if primary:
                         email = primary["email"]
-            
+
             if not email:
                 logger.error("github_oauth_no_email")
                 return None
-            
+
             return OAuthUser(
                 provider="github",
                 id=str(user_data["id"]),
@@ -161,24 +161,24 @@ class GitHubOAuth(OAuthProvider):
 
 class GoogleOAuth(OAuthProvider):
     """Google OAuth provider."""
-    
+
     AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
     TOKEN_URL = "https://oauth2.googleapis.com/token"
     USER_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
-    
+
     def __init__(self, client_id: str = None, client_secret: str = None):
         settings = get_settings()
         self.client_id = client_id or settings.google_oauth_client_id
         self.client_secret = client_secret or settings.google_oauth_client_secret
-    
+
     @property
     def name(self) -> str:
         return "google"
-    
+
     @property
     def is_configured(self) -> bool:
         return bool(self.client_id and self.client_secret)
-    
+
     def get_authorization_url(self, state: str, redirect_uri: str) -> str:
         params = {
             "client_id": self.client_id,
@@ -190,7 +190,7 @@ class GoogleOAuth(OAuthProvider):
             "prompt": "consent",
         }
         return f"{self.AUTHORIZE_URL}?{urlencode(params)}"
-    
+
     async def exchange_code(self, code: str, redirect_uri: str) -> Optional[str]:
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -203,7 +203,7 @@ class GoogleOAuth(OAuthProvider):
                     "grant_type": "authorization_code",
                 },
             )
-            
+
             if response.status_code != 200:
                 logger.error(
                     "google_oauth_token_error",
@@ -211,30 +211,30 @@ class GoogleOAuth(OAuthProvider):
                     body=response.text,
                 )
                 return None
-            
+
             data = response.json()
             return data.get("access_token")
-    
+
     async def get_user_info(self, access_token: str) -> Optional[OAuthUser]:
         headers = {"Authorization": f"Bearer {access_token}"}
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.get(self.USER_URL, headers=headers)
-            
+
             if response.status_code != 200:
                 logger.error(
                     "google_oauth_user_error",
                     status=response.status_code,
                 )
                 return None
-            
+
             data = response.json()
-            
+
             email = data.get("email")
             if not email:
                 logger.error("google_oauth_no_email")
                 return None
-            
+
             return OAuthUser(
                 provider="google",
                 id=data["id"],
@@ -255,7 +255,7 @@ def get_oauth_provider(name: str) -> Optional[OAuthProvider]:
             _providers[name] = GitHubOAuth()
         elif name == "google":
             _providers[name] = GoogleOAuth()
-    
+
     provider = _providers.get(name)
     if provider and provider.is_configured:
         return provider
@@ -265,13 +265,13 @@ def get_oauth_provider(name: str) -> Optional[OAuthProvider]:
 def get_available_providers() -> list[str]:
     """Get list of configured OAuth providers."""
     providers = []
-    
+
     github = GitHubOAuth()
     if github.is_configured:
         providers.append("github")
-    
+
     google = GoogleOAuth()
     if google.is_configured:
         providers.append("google")
-    
+
     return providers

@@ -10,7 +10,7 @@ from .models import IncidentMetrics
 class AnalyticsStore:
     """
     Thread-safe in-memory store for incident metrics.
-    
+
     Designed to be replaced with a database backend later.
     """
 
@@ -29,7 +29,7 @@ class AnalyticsStore:
     ) -> IncidentMetrics:
         """
         Record an incident lifecycle event.
-        
+
         Event types: triggered, acknowledged, resolved, context_card_delivered
         """
         async with self._lock:
@@ -40,7 +40,7 @@ class AnalyticsStore:
                     service_name = "unknown"
                 if severity is None:
                     severity = "medium"
-                    
+
                 metrics = IncidentMetrics(
                     incident_id=incident_id,
                     triggered_at=timestamp,

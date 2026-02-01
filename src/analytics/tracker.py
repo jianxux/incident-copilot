@@ -15,7 +15,7 @@ logger = structlog.get_logger()
 class AnalyticsTracker:
     """
     Track and calculate incident analytics.
-    
+
     Provides methods for recording events and computing MTTR statistics.
     """
 
@@ -93,14 +93,14 @@ class AnalyticsTracker:
     ) -> MTTRStats:
         """
         Calculate MTTR statistics for a time period.
-        
+
         Args:
             start: Period start datetime
-            end: Period end datetime  
+            end: Period end datetime
             period_label: Human-readable period label (e.g., "7d", "Last Week")
             service_name: Optional filter by service
             severity: Optional filter by severity
-            
+
         Returns:
             MTTRStats with calculated metrics
         """
@@ -159,7 +159,7 @@ class AnalyticsTracker:
     ) -> PeriodComparison:
         """
         Compare MTTR statistics between two time periods.
-        
+
         Args:
             current_start: Current period start
             current_end: Current period end
@@ -167,7 +167,7 @@ class AnalyticsTracker:
             previous_end: Previous period end
             service_name: Optional filter by service
             severity: Optional filter by severity
-            
+
         Returns:
             PeriodComparison with both periods and trend analysis
         """
