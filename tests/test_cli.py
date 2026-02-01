@@ -1,8 +1,7 @@
 """Tests for the CLI tools."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
-import pytest
 from typer.testing import CliRunner
 
 from src.cli.main import CheckStatus, app, check_config

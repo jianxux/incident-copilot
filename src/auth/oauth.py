@@ -2,7 +2,6 @@
 
 import secrets
 from abc import ABC, abstractmethod
-from typing import Optional
 from urllib.parse import urlencode
 
 import httpx
@@ -22,7 +21,7 @@ class OAuthUser:
         id: str,
         email: str,
         name: str,
-        avatar_url: Optional[str] = None,
+        avatar_url: str | None = None,
     ):
         self.provider = provider
         self.id = id
@@ -46,12 +45,12 @@ class OAuthProvider(ABC):
         pass
 
     @abstractmethod
-    async def exchange_code(self, code: str, redirect_uri: str) -> Optional[str]:
+    async def exchange_code(self, code: str, redirect_uri: str) -> str | None:
         """Exchange authorization code for access token."""
         pass
 
     @abstractmethod
-    async def get_user_info(self, access_token: str) -> Optional[OAuthUser]:
+    async def get_user_info(self, access_token: str) -> OAuthUser | None:
         """Get user info using access token."""
         pass
 
@@ -91,7 +90,7 @@ class GitHubOAuth(OAuthProvider):
         }
         return f"{self.AUTHORIZE_URL}?{urlencode(params)}"
 
-    async def exchange_code(self, code: str, redirect_uri: str) -> Optional[str]:
+    async def exchange_code(self, code: str, redirect_uri: str) -> str | None:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 self.TOKEN_URL,
@@ -115,7 +114,7 @@ class GitHubOAuth(OAuthProvider):
             data = response.json()
             return data.get("access_token")
 
-    async def get_user_info(self, access_token: str) -> Optional[OAuthUser]:
+    async def get_user_info(self, access_token: str) -> OAuthUser | None:
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Accept": "application/json",
@@ -191,7 +190,7 @@ class GoogleOAuth(OAuthProvider):
         }
         return f"{self.AUTHORIZE_URL}?{urlencode(params)}"
 
-    async def exchange_code(self, code: str, redirect_uri: str) -> Optional[str]:
+    async def exchange_code(self, code: str, redirect_uri: str) -> str | None:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 self.TOKEN_URL,
@@ -215,7 +214,7 @@ class GoogleOAuth(OAuthProvider):
             data = response.json()
             return data.get("access_token")
 
-    async def get_user_info(self, access_token: str) -> Optional[OAuthUser]:
+    async def get_user_info(self, access_token: str) -> OAuthUser | None:
         headers = {"Authorization": f"Bearer {access_token}"}
 
         async with httpx.AsyncClient() as client:
@@ -248,7 +247,7 @@ class GoogleOAuth(OAuthProvider):
 _providers: dict[str, OAuthProvider] = {}
 
 
-def get_oauth_provider(name: str) -> Optional[OAuthProvider]:
+def get_oauth_provider(name: str) -> OAuthProvider | None:
     """Get an OAuth provider by name."""
     if name not in _providers:
         if name == "github":

@@ -1,9 +1,7 @@
 """Authentication service for user and session management."""
 
 import hashlib
-import secrets
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime
 
 import structlog
 
@@ -56,11 +54,11 @@ class AuthService:
         logger.info("tenant_created", tenant_id=tenant.id, name=name, plan=plan)
         return tenant
 
-    async def get_tenant(self, tenant_id: str) -> Optional[Tenant]:
+    async def get_tenant(self, tenant_id: str) -> Tenant | None:
         """Get a tenant by ID."""
         return self._tenants.get(tenant_id)
 
-    async def get_tenant_by_slug(self, slug: str) -> Optional[Tenant]:
+    async def get_tenant_by_slug(self, slug: str) -> Tenant | None:
         """Get a tenant by slug."""
         tenant_id = self._tenant_by_slug.get(slug)
         if tenant_id:
@@ -130,9 +128,9 @@ class AuthService:
         name: str,
         tenant_id: str,
         role: UserRole = UserRole.MEMBER,
-        oauth_provider: Optional[str] = None,
-        oauth_id: Optional[str] = None,
-        password: Optional[str] = None,
+        oauth_provider: str | None = None,
+        oauth_id: str | None = None,
+        password: str | None = None,
     ) -> User:
         """Create a new user."""
         if email in self._user_by_email:
@@ -170,11 +168,11 @@ class AuthService:
         logger.info("user_created", user_id=user.id, email=email, tenant_id=tenant_id)
         return user
 
-    async def get_user(self, user_id: str) -> Optional[User]:
+    async def get_user(self, user_id: str) -> User | None:
         """Get a user by ID."""
         return self._users.get(user_id)
 
-    async def get_user_by_email(self, email: str) -> Optional[User]:
+    async def get_user_by_email(self, email: str) -> User | None:
         """Get a user by email."""
         user_id = self._user_by_email.get(email)
         if user_id:
@@ -187,7 +185,7 @@ class AuthService:
         name: str,
         oauth_provider: str,
         oauth_id: str,
-        avatar_url: Optional[str] = None,
+        avatar_url: str | None = None,
     ) -> tuple[User, Tenant, bool]:
         """Get or create a user from OAuth login. Returns (user, tenant, is_new)."""
         existing = await self.get_user_by_email(email)
@@ -230,7 +228,7 @@ class AuthService:
 
         return user, tenant, True
 
-    async def verify_password(self, email: str, password: str) -> Optional[User]:
+    async def verify_password(self, email: str, password: str) -> User | None:
         """Verify password and return user if valid."""
         user = await self.get_user_by_email(email)
         if not user or not user.password_hash:
@@ -248,8 +246,8 @@ class AuthService:
     async def create_session(
         self,
         user_id: str,
-        user_agent: Optional[str] = None,
-        ip_address: Optional[str] = None,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
     ) -> Session:
         """Create a new session for a user."""
         user = await self.get_user(user_id)
@@ -269,7 +267,7 @@ class AuthService:
         logger.info("session_created", session_id=session.id, user_id=user_id)
         return session
 
-    async def get_session_by_token(self, access_token: str) -> Optional[Session]:
+    async def get_session_by_token(self, access_token: str) -> Session | None:
         """Get a session by access token."""
         session_id = self._session_by_token.get(access_token)
         if session_id:
@@ -278,7 +276,7 @@ class AuthService:
                 return session
         return None
 
-    async def refresh_session(self, refresh_token: str) -> Optional[Session]:
+    async def refresh_session(self, refresh_token: str) -> Session | None:
         """Refresh a session using refresh token."""
         for session in self._sessions.values():
             if session.refresh_token == refresh_token:
@@ -332,7 +330,7 @@ class AuthService:
         )
         return api_key, raw_key
 
-    async def verify_api_key(self, raw_key: str) -> Optional[tuple[APIKey, Tenant]]:
+    async def verify_api_key(self, raw_key: str) -> tuple[APIKey, Tenant] | None:
         """Verify an API key and return the key and tenant if valid."""
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
         api_key_id = self._api_key_by_hash.get(key_hash)

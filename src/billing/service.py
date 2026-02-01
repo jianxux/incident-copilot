@@ -1,7 +1,5 @@
 """Stripe billing service for subscription management."""
 
-from typing import Optional
-
 import structlog
 
 from ..auth.models import PlanTier, Tenant
@@ -39,7 +37,7 @@ class BillingService:
             self.settings.stripe_api_key and self.settings.stripe_publishable_key
         )
 
-    def get_price_id(self, plan: PlanTier) -> Optional[str]:
+    def get_price_id(self, plan: PlanTier) -> str | None:
         """Get Stripe Price ID for a plan."""
         price_map = {
             PlanTier.STARTER: self.settings.stripe_price_starter,

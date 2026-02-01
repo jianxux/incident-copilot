@@ -6,9 +6,7 @@ Commands for validating configuration, testing integrations, and managing the se
 
 import asyncio
 import sys
-from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 import typer
 from rich import print as rprint
@@ -55,7 +53,7 @@ def validate(
 
     Checks all required environment variables and validates their format.
     """
-    from ..config import Settings, get_settings
+    from ..config import get_settings
 
     rprint(Panel.fit("[bold blue]Incident Copilot Configuration Validator[/bold blue]"))
     rprint()
@@ -235,10 +233,10 @@ def validate(
 
 def check_config(
     name: str,
-    value: Optional[str],
+    value: str | None,
     required: bool = True,
     format_hint: str = "",
-    validator: Optional[callable] = None,
+    validator: callable | None = None,
 ) -> tuple[CheckStatus, str, str]:
     """Check a configuration value."""
     if not value:
@@ -292,7 +290,7 @@ def test_integration(
                 rprint(f"  Error: {result.get('error', 'Unknown error')}")
                 raise typer.Exit(1)
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             rprint(f"[red]✗ Timeout after {timeout}s[/red]")
             raise typer.Exit(1)
         except Exception as e:
@@ -528,7 +526,7 @@ def test_all(
 
 @app.command()
 def send_test(
-    channel: Optional[str] = typer.Option(
+    channel: str | None = typer.Option(
         None, "--channel", "-c", help="Slack channel to send to"
     ),
     scenario: str = typer.Option(

@@ -3,7 +3,6 @@
 import secrets
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -26,8 +25,8 @@ class Tenant(BaseModel):
     plan: PlanTier = PlanTier.FREE
 
     # Billing
-    stripe_customer_id: Optional[str] = None
-    stripe_subscription_id: Optional[str] = None
+    stripe_customer_id: str | None = None
+    stripe_subscription_id: str | None = None
 
     # Limits based on plan
     max_incidents_per_month: int = 50  # Free tier default
@@ -82,18 +81,18 @@ class User(BaseModel):
     id: str = Field(default_factory=lambda: secrets.token_urlsafe(16))
     email: str
     name: str
-    avatar_url: Optional[str] = None
+    avatar_url: str | None = None
 
     # Tenant membership
     tenant_id: str
     role: UserRole = UserRole.MEMBER
 
     # OAuth provider info
-    oauth_provider: Optional[str] = None  # "github", "google", etc.
-    oauth_id: Optional[str] = None
+    oauth_provider: str | None = None  # "github", "google", etc.
+    oauth_id: str | None = None
 
     # Password auth (hashed, optional if using OAuth only)
-    password_hash: Optional[str] = None
+    password_hash: str | None = None
 
     # Status
     email_verified: bool = False
@@ -101,7 +100,7 @@ class User(BaseModel):
 
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    last_login: Optional[datetime] = None
+    last_login: datetime | None = None
 
     def can_manage_integrations(self) -> bool:
         """Check if user can manage integrations."""
@@ -132,8 +131,8 @@ class APIKey(BaseModel):
 
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    last_used: Optional[datetime] = None
-    expires_at: Optional[datetime] = None
+    last_used: datetime | None = None
+    expires_at: datetime | None = None
     is_active: bool = True
 
     @classmethod
@@ -179,8 +178,8 @@ class Session(BaseModel):
 
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    user_agent: Optional[str] = None
-    ip_address: Optional[str] = None
+    user_agent: str | None = None
+    ip_address: str | None = None
 
     def is_expired(self) -> bool:
         """Check if session is expired."""

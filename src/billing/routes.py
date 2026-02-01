@@ -1,12 +1,11 @@
 """API routes for billing and subscription management."""
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from ..auth.middleware import AuthContext, get_auth_context, get_current_user
 from ..auth.models import PlanTier, User
-from ..auth.service import auth_service
 from ..config import get_settings
 from .service import billing_service, get_stripe
 

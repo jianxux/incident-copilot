@@ -99,7 +99,7 @@ class ContextOrchestrator:
                 errors.append(f"{provider_name}: {str(datadog_ctx)}")
                 datadog_ctx = None
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("context_fetch_timeout")
             errors.append("Context fetch timed out")
             github_ctx = github_task.result() if github_task.done() else None
@@ -116,7 +116,7 @@ class ContextOrchestrator:
                     ),
                     timeout=5.0,
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.warning("ai_summarization_timeout")
                 errors.append("AI summarization timed out")
             except Exception as e:

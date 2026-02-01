@@ -1,7 +1,7 @@
 """Authentication middleware and dependencies for FastAPI."""
 
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable, Optional
 
 import structlog
 from fastapi import Depends, HTTPException, Request, status
@@ -22,10 +22,10 @@ class AuthContext:
 
     def __init__(
         self,
-        user: Optional[User] = None,
-        tenant: Optional[Tenant] = None,
-        session: Optional[Session] = None,
-        api_key_id: Optional[str] = None,
+        user: User | None = None,
+        tenant: Tenant | None = None,
+        session: Session | None = None,
+        api_key_id: str | None = None,
     ):
         self.user = user
         self.tenant = tenant
@@ -37,18 +37,18 @@ class AuthContext:
         return self.tenant is not None
 
     @property
-    def tenant_id(self) -> Optional[str]:
+    def tenant_id(self) -> str | None:
         return self.tenant.id if self.tenant else None
 
     @property
-    def user_id(self) -> Optional[str]:
+    def user_id(self) -> str | None:
         return self.user.id if self.user else None
 
 
 async def get_auth_context(
     request: Request,
-    bearer: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
-    api_key: Optional[str] = Depends(api_key_header),
+    bearer: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    api_key: str | None = Depends(api_key_header),
 ) -> AuthContext:
     """
     Extract authentication context from request.
@@ -118,7 +118,6 @@ def require_auth(func: Callable = None, *, require_user: bool = False):
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            request = kwargs.get("request")
             auth = kwargs.get("auth")
 
             if not auth or not auth.is_authenticated:

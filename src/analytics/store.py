@@ -2,7 +2,6 @@
 
 import asyncio
 from datetime import datetime
-from typing import Optional
 
 from .models import IncidentMetrics
 
@@ -24,8 +23,8 @@ class AnalyticsStore:
         incident_id: str,
         event_type: str,
         timestamp: datetime,
-        service_name: Optional[str] = None,
-        severity: Optional[str] = None,
+        service_name: str | None = None,
+        severity: str | None = None,
     ) -> IncidentMetrics:
         """
         Record an incident lifecycle event.
@@ -73,7 +72,7 @@ class AnalyticsStore:
 
             return metrics
 
-    async def get_incident_metrics(self, incident_id: str) -> Optional[IncidentMetrics]:
+    async def get_incident_metrics(self, incident_id: str) -> IncidentMetrics | None:
         """Get metrics for a specific incident."""
         return self._metrics.get(incident_id)
 
@@ -89,8 +88,8 @@ class AnalyticsStore:
         self,
         start: datetime,
         end: datetime,
-        service_name: Optional[str] = None,
-        severity: Optional[str] = None,
+        service_name: str | None = None,
+        severity: str | None = None,
     ) -> list[IncidentMetrics]:
         """Get metrics for incidents within a time period."""
         results = []

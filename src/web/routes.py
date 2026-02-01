@@ -6,7 +6,6 @@ import random
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 import structlog
 from fastapi import APIRouter, Request
@@ -48,7 +47,7 @@ def mask_secret(value: str) -> str:
     return f"{value[:4]}...{value[-4:]}"
 
 
-def format_datetime(dt: Optional[datetime]) -> str:
+def format_datetime(dt: datetime | None) -> str:
     """Format datetime for display."""
     if not dt:
         return "N/A"
@@ -110,7 +109,7 @@ async def health_check():
 
 
 @landing_router.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request, error: Optional[str] = None):
+async def login_page(request: Request, error: str | None = None):
     """Login page."""
     from ..auth.oauth import get_available_providers
 
@@ -346,9 +345,9 @@ async def sse_events(request: Request):
                     # Wait for events with timeout
                     event = await asyncio.wait_for(queue.get(), timeout=30.0)
                     yield f"data: {json.dumps(event)}\n\n"
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Send keepalive
-                    yield f": keepalive\n\n"
+                    yield ": keepalive\n\n"
         finally:
             await incident_store.unsubscribe(queue)
 

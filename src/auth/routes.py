@@ -1,16 +1,13 @@
 """API routes for authentication."""
 
-import secrets
-from typing import Optional
-
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr
 
 from ..config import get_settings
 from .middleware import AuthContext, get_auth_context, get_current_user
-from .models import Session, Tenant, User, UserRole
+from .models import User, UserRole
 from .oauth import OAuthProvider, get_available_providers, get_oauth_provider
 from .service import auth_service
 
@@ -28,7 +25,7 @@ class SignupRequest(BaseModel):
     email: EmailStr
     password: str
     name: str
-    company: Optional[str] = None
+    company: str | None = None
 
 
 class LoginRequest(BaseModel):
@@ -265,9 +262,9 @@ async def oauth_start(provider: str, request: Request):
 async def oauth_callback(
     provider: str,
     request: Request,
-    code: Optional[str] = None,
-    state: Optional[str] = None,
-    error: Optional[str] = None,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
 ):
     """Handle OAuth callback from provider."""
     settings = get_settings()
