@@ -32,6 +32,10 @@ logger = structlog.get_logger()
 templates_dir = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
 
+# Landing page router (root path)
+landing_router = APIRouter(tags=["landing"])
+
+# Dashboard router
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
@@ -80,6 +84,71 @@ templates.env.filters["status_color"] = status_color
 templates.env.filters["mask_secret"] = mask_secret
 
 
+# ============================================================================
+# Landing Page Routes
+# ============================================================================
+
+@landing_router.get("/", response_class=HTMLResponse)
+async def landing_page(request: Request):
+    """Marketing landing page for Incident Copilot."""
+    return templates.TemplateResponse(
+        "landing.html",
+        {"request": request},
+    )
+
+
+@landing_router.get("/api/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "ok", "service": "incident-copilot"}
+
+
+# ============================================================================
+# Auth Pages (login, signup, etc.)
+# ============================================================================
+
+@landing_router.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request, error: Optional[str] = None):
+    """Login page."""
+    from ..auth.oauth import get_available_providers
+    
+    error_messages = {
+        "oauth_denied": "You cancelled the login process.",
+        "oauth_invalid": "Invalid OAuth response. Please try again.",
+        "oauth_invalid_state": "Session expired. Please try again.",
+        "oauth_not_configured": "This login method is not configured.",
+        "oauth_token_failed": "Failed to authenticate. Please try again.",
+        "oauth_user_failed": "Failed to get user info. Please try again.",
+    }
+    
+    return templates.TemplateResponse(
+        "login.html",
+        {
+            "request": request,
+            "providers": get_available_providers(),
+            "error": error_messages.get(error, error) if error else None,
+        },
+    )
+
+
+@landing_router.get("/signup", response_class=HTMLResponse)
+async def signup_page(request: Request):
+    """Signup page."""
+    from ..auth.oauth import get_available_providers
+    
+    return templates.TemplateResponse(
+        "signup.html",
+        {
+            "request": request,
+            "providers": get_available_providers(),
+        },
+    )
+
+
+# ============================================================================
+# Dashboard Routes
+# ============================================================================
+
 @router.get("/", response_class=HTMLResponse)
 async def dashboard_home(request: Request):
     """Main dashboard page showing all incidents."""
@@ -93,6 +162,49 @@ async def dashboard_home(request: Request):
             "incidents": incidents,
             "stats": stats,
             "page_title": "Dashboard",
+        },
+    )
+
+
+@router.get("/onboarding", response_class=HTMLResponse)
+async def onboarding_page(request: Request):
+    """Onboarding page for new users to configure integrations."""
+    settings = get_settings()
+    
+    # Generate webhook URL for the tenant
+    webhook_url = f"{settings.app_url}/webhooks/pagerduty"
+    
+    return templates.TemplateResponse(
+        "onboarding.html",
+        {
+            "request": request,
+            "page_title": "Setup",
+            "webhook_url": webhook_url,
+        },
+    )
+
+
+@router.get("/billing", response_class=HTMLResponse)
+async def billing_page(request: Request):
+    """Billing and subscription management page."""
+    return templates.TemplateResponse(
+        "billing.html",
+        {
+            "request": request,
+            "page_title": "Billing",
+        },
+    )
+
+
+@router.get("/billing/success", response_class=HTMLResponse)
+async def billing_success_page(request: Request):
+    """Billing success page after checkout."""
+    return templates.TemplateResponse(
+        "billing.html",
+        {
+            "request": request,
+            "page_title": "Billing",
+            "success": True,
         },
     )
 

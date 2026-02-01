@@ -1,0 +1,418 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="mb-8">
+    <h1 class="text-2xl font-bold text-white">Analytics Dashboard</h1>
+    <p class="text-gray-400 mt-1">Track MTTR improvements and incident metrics</p>
+</div>
+
+<!-- Period Selector -->
+<div class="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-6">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <span class="text-gray-400 text-sm font-medium">Time Period:</span>
+            <div class="flex space-x-2">
+                <button onclick="setPeriod(7)" id="btn-7d" 
+                        class="period-btn px-4 py-2 rounded-lg text-sm font-medium transition bg-blue-600 text-white">
+                    7 Days
+                </button>
+                <button onclick="setPeriod(30)" id="btn-30d" 
+                        class="period-btn px-4 py-2 rounded-lg text-sm font-medium transition bg-slate-700 text-gray-300 hover:bg-slate-600">
+                    30 Days
+                </button>
+                <button onclick="setPeriod(90)" id="btn-90d" 
+                        class="period-btn px-4 py-2 rounded-lg text-sm font-medium transition bg-slate-700 text-gray-300 hover:bg-slate-600">
+                    90 Days
+                </button>
+            </div>
+        </div>
+        <button onclick="refreshData()" class="text-gray-400 hover:text-white transition">
+            <i class="fas fa-sync-alt mr-2"></i>Refresh
+        </button>
+    </div>
+</div>
+
+<!-- MTTR Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+    <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 card-hover transition-all duration-200">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-400 text-sm font-medium">Mean MTTR</p>
+                <p class="text-3xl font-bold text-white mt-1" id="stat-mean-mttr">--</p>
+                <p class="text-xs text-gray-500 mt-1">minutes</p>
+            </div>
+            <div class="bg-blue-500/20 p-3 rounded-lg">
+                <i class="fas fa-clock text-blue-400 text-xl"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 card-hover transition-all duration-200">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-400 text-sm font-medium">Median MTTR</p>
+                <p class="text-3xl font-bold text-cyan-400 mt-1" id="stat-median-mttr">--</p>
+                <p class="text-xs text-gray-500 mt-1">minutes</p>
+            </div>
+            <div class="bg-cyan-500/20 p-3 rounded-lg">
+                <i class="fas fa-stopwatch text-cyan-400 text-xl"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 card-hover transition-all duration-200">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-400 text-sm font-medium">P90 MTTR</p>
+                <p class="text-3xl font-bold text-purple-400 mt-1" id="stat-p90-mttr">--</p>
+                <p class="text-xs text-gray-500 mt-1">minutes</p>
+            </div>
+            <div class="bg-purple-500/20 p-3 rounded-lg">
+                <i class="fas fa-chart-line text-purple-400 text-xl"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 card-hover transition-all duration-200">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-400 text-sm font-medium">Total Incidents</p>
+                <p class="text-3xl font-bold text-white mt-1" id="stat-incidents">--</p>
+                <p class="text-xs text-gray-500 mt-1" id="stat-resolved">-- resolved</p>
+            </div>
+            <div class="bg-orange-500/20 p-3 rounded-lg">
+                <i class="fas fa-exclamation-circle text-orange-400 text-xl"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Comparison Section -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <!-- Period Comparison Card -->
+    <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-700">
+            <h3 class="text-lg font-semibold text-white flex items-center">
+                <i class="fas fa-exchange-alt mr-3 text-green-400"></i>
+                Period Comparison
+            </h3>
+        </div>
+        <div class="p-6">
+            <div class="flex items-center justify-center mb-4">
+                <div id="trend-indicator" class="flex items-center text-2xl font-bold">
+                    <span id="trend-icon" class="mr-2"></span>
+                    <span id="trend-value">--</span>
+                </div>
+            </div>
+            <p id="trend-description" class="text-center text-gray-400 text-sm">
+                Loading comparison data...
+            </p>
+            <div class="grid grid-cols-2 gap-4 mt-6">
+                <div class="bg-slate-700/50 rounded-lg p-4 text-center">
+                    <p class="text-xs text-gray-500 uppercase tracking-wide">Current Period</p>
+                    <p class="text-xl font-bold text-white mt-1" id="current-period-mttr">--</p>
+                    <p class="text-xs text-gray-400">mean MTTR (min)</p>
+                </div>
+                <div class="bg-slate-700/50 rounded-lg p-4 text-center">
+                    <p class="text-xs text-gray-500 uppercase tracking-wide">Previous Period</p>
+                    <p class="text-xl font-bold text-gray-400 mt-1" id="previous-period-mttr">--</p>
+                    <p class="text-xs text-gray-400">mean MTTR (min)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MTTR Trend Chart -->
+    <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-700">
+            <h3 class="text-lg font-semibold text-white flex items-center">
+                <i class="fas fa-chart-area mr-3 text-blue-400"></i>
+                MTTR Trend
+            </h3>
+        </div>
+        <div class="p-6">
+            <canvas id="mttr-chart" height="200"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Incidents Table -->
+<div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-white flex items-center">
+            <i class="fas fa-list mr-3 text-yellow-400"></i>
+            Recent Incidents
+        </h3>
+        <span class="text-sm text-gray-400" id="incidents-count">Loading...</span>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-slate-700/50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Incident ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Service</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Severity</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Triggered</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Time to Ack</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Time to Resolve</th>
+                </tr>
+            </thead>
+            <tbody id="incidents-table-body" class="divide-y divide-slate-700">
+                <tr>
+                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                        <i class="fas fa-spinner fa-spin mr-2"></i>Loading incidents...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+let currentPeriod = 7;
+let mttrChart = null;
+
+function formatMinutes(seconds) {
+    if (seconds === null || seconds === undefined) return '--';
+    return (seconds / 60).toFixed(1);
+}
+
+function formatDuration(seconds) {
+    if (seconds === null || seconds === undefined) return '--';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    if (mins < 60) return `${mins}m ${secs}s`;
+    const hours = Math.floor(mins / 60);
+    const remainMins = mins % 60;
+    return `${hours}h ${remainMins}m`;
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '--';
+    const date = new Date(dateStr);
+    return date.toLocaleString();
+}
+
+function severityBadge(severity) {
+    const colors = {
+        'critical': 'bg-red-600',
+        'high': 'bg-orange-500',
+        'medium': 'bg-yellow-500',
+        'low': 'bg-blue-500',
+        'info': 'bg-gray-500'
+    };
+    const color = colors[severity] || 'bg-gray-500';
+    return `<span class="px-2 py-1 text-xs rounded-full ${color} text-white capitalize">${severity}</span>`;
+}
+
+async function fetchStats() {
+    try {
+        const response = await fetch(`/api/analytics/mttr?days=${currentPeriod}`);
+        const stats = await response.json();
+        
+        document.getElementById('stat-mean-mttr').textContent = formatMinutes(stats.mean_mttr_seconds);
+        document.getElementById('stat-median-mttr').textContent = formatMinutes(stats.median_mttr_seconds);
+        document.getElementById('stat-p90-mttr').textContent = formatMinutes(stats.p90_mttr_seconds);
+        document.getElementById('stat-incidents').textContent = stats.incidents_count;
+        document.getElementById('stat-resolved').textContent = `${stats.resolved_count} resolved`;
+    } catch (error) {
+        console.error('Error fetching stats:', error);
+    }
+}
+
+async function fetchComparison() {
+    try {
+        const response = await fetch(`/api/analytics/comparison?days=${currentPeriod}`);
+        const comparison = await response.json();
+        
+        const trendIcon = document.getElementById('trend-icon');
+        const trendValue = document.getElementById('trend-value');
+        const trendIndicator = document.getElementById('trend-indicator');
+        const trendDesc = document.getElementById('trend-description');
+        
+        const change = comparison.mttr_change_percent;
+        
+        if (change !== null) {
+            if (comparison.trend === 'improving') {
+                trendIcon.innerHTML = '<i class="fas fa-arrow-down text-green-400"></i>';
+                trendValue.textContent = `${Math.abs(change).toFixed(1)}%`;
+                trendValue.className = 'text-green-400';
+                trendDesc.textContent = `MTTR improved by ${Math.abs(change).toFixed(1)}% compared to the previous ${currentPeriod} days`;
+            } else if (comparison.trend === 'degrading') {
+                trendIcon.innerHTML = '<i class="fas fa-arrow-up text-red-400"></i>';
+                trendValue.textContent = `${Math.abs(change).toFixed(1)}%`;
+                trendValue.className = 'text-red-400';
+                trendDesc.textContent = `MTTR increased by ${Math.abs(change).toFixed(1)}% compared to the previous ${currentPeriod} days`;
+            } else {
+                trendIcon.innerHTML = '<i class="fas fa-minus text-gray-400"></i>';
+                trendValue.textContent = 'Stable';
+                trendValue.className = 'text-gray-400';
+                trendDesc.textContent = 'MTTR is stable compared to the previous period';
+            }
+        } else {
+            trendIcon.innerHTML = '<i class="fas fa-question text-gray-500"></i>';
+            trendValue.textContent = 'N/A';
+            trendValue.className = 'text-gray-500';
+            trendDesc.textContent = 'Not enough data for comparison';
+        }
+        
+        document.getElementById('current-period-mttr').textContent = 
+            formatMinutes(comparison.current_period.mean_mttr_seconds);
+        document.getElementById('previous-period-mttr').textContent = 
+            formatMinutes(comparison.previous_period.mean_mttr_seconds);
+            
+    } catch (error) {
+        console.error('Error fetching comparison:', error);
+    }
+}
+
+async function fetchIncidents() {
+    try {
+        const response = await fetch(`/api/analytics/incidents?days=${currentPeriod}&limit=50`);
+        const incidents = await response.json();
+        
+        const tbody = document.getElementById('incidents-table-body');
+        document.getElementById('incidents-count').textContent = `${incidents.length} incidents`;
+        
+        if (incidents.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                        <i class="fas fa-inbox mr-2"></i>No incidents in this period
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = incidents.map(incident => `
+            <tr class="hover:bg-slate-700/50 transition-colors">
+                <td class="px-6 py-4 text-sm">
+                    <span class="font-mono text-blue-400">${incident.incident_id.substring(0, 8)}...</span>
+                </td>
+                <td class="px-6 py-4 text-sm text-white">${incident.service_name}</td>
+                <td class="px-6 py-4 text-sm">${severityBadge(incident.severity)}</td>
+                <td class="px-6 py-4 text-sm text-gray-400">${formatDate(incident.triggered_at)}</td>
+                <td class="px-6 py-4 text-sm text-gray-400">${formatDuration(incident.time_to_acknowledge_seconds)}</td>
+                <td class="px-6 py-4 text-sm text-gray-400">${formatDuration(incident.time_to_resolve_seconds)}</td>
+            </tr>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Error fetching incidents:', error);
+    }
+}
+
+async function updateChart() {
+    try {
+        const response = await fetch(`/api/analytics/incidents?days=${currentPeriod}&limit=100`);
+        const incidents = await response.json();
+        
+        // Group by day and calculate daily MTTR
+        const dailyData = {};
+        incidents.forEach(inc => {
+            if (inc.time_to_resolve_seconds) {
+                const day = inc.triggered_at.split('T')[0];
+                if (!dailyData[day]) {
+                    dailyData[day] = { total: 0, count: 0 };
+                }
+                dailyData[day].total += inc.time_to_resolve_seconds;
+                dailyData[day].count++;
+            }
+        });
+        
+        const sortedDays = Object.keys(dailyData).sort();
+        const labels = sortedDays.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+        const values = sortedDays.map(d => (dailyData[d].total / dailyData[d].count / 60).toFixed(1));
+        
+        const ctx = document.getElementById('mttr-chart').getContext('2d');
+        
+        if (mttrChart) {
+            mttrChart.destroy();
+        }
+        
+        mttrChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Mean MTTR (minutes)',
+                    data: values,
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: 'rgba(148, 163, 184, 0.1)'
+                        },
+                        ticks: {
+                            color: '#94a3b8'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: 'rgba(148, 163, 184, 0.1)'
+                        },
+                        ticks: {
+                            color: '#94a3b8'
+                        },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error updating chart:', error);
+    }
+}
+
+function setPeriod(days) {
+    currentPeriod = days;
+    
+    // Update button styles
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.classList.remove('bg-blue-600', 'text-white');
+        btn.classList.add('bg-slate-700', 'text-gray-300', 'hover:bg-slate-600');
+    });
+    
+    const activeBtn = document.getElementById(`btn-${days}d`);
+    activeBtn.classList.remove('bg-slate-700', 'text-gray-300', 'hover:bg-slate-600');
+    activeBtn.classList.add('bg-blue-600', 'text-white');
+    
+    refreshData();
+}
+
+async function refreshData() {
+    await Promise.all([
+        fetchStats(),
+        fetchComparison(),
+        fetchIncidents(),
+        updateChart()
+    ]);
+}
+
+// Initial load
+document.addEventListener('DOMContentLoaded', () => {
+    refreshData();
+});
+</script>
+{% endblock %}

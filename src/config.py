@@ -47,6 +47,15 @@ class Settings(BaseSettings):
     slack_bot_token: str = Field(default="", description="Slack bot OAuth token")
     slack_default_channel: str = Field(default="#incidents", description="Default Slack channel")
 
+    # Microsoft Teams
+    teams_webhook_url: str = Field(default="", description="Teams Incoming Webhook URL")
+
+    # Notification Provider (slack | teams | both)
+    notification_provider: str = Field(
+        default="slack",
+        description="Notification provider: 'slack', 'teams', or 'both'"
+    )
+
     # AI (Anthropic)
     anthropic_api_key: str = Field(default="", description="Anthropic API key")
     ai_model: str = Field(default="claude-3-haiku-20240307", description="AI model for summarization")
@@ -60,6 +69,32 @@ class Settings(BaseSettings):
 
     # Service mapping (simple key=value pairs, e.g., "payments-api=mycompany/payments")
     service_repo_map: dict[str, str] = Field(default_factory=dict)
+
+    # OAuth - GitHub
+    github_oauth_client_id: str = Field(default="", description="GitHub OAuth App Client ID")
+    github_oauth_client_secret: str = Field(default="", description="GitHub OAuth App Client Secret")
+
+    # OAuth - Google
+    google_oauth_client_id: str = Field(default="", description="Google OAuth Client ID")
+    google_oauth_client_secret: str = Field(default="", description="Google OAuth Client Secret")
+
+    # Auth
+    secret_key: str = Field(
+        default="change-me-in-production",
+        description="Secret key for signing tokens"
+    )
+    app_url: str = Field(
+        default="http://localhost:8000",
+        description="Public URL of the application"
+    )
+
+    # Stripe
+    stripe_api_key: str = Field(default="", description="Stripe API secret key")
+    stripe_publishable_key: str = Field(default="", description="Stripe publishable key")
+    stripe_webhook_secret: str = Field(default="", description="Stripe webhook signing secret")
+    stripe_price_starter: str = Field(default="", description="Stripe Price ID for Starter plan")
+    stripe_price_pro: str = Field(default="", description="Stripe Price ID for Pro plan")
+    stripe_price_enterprise: str = Field(default="", description="Stripe Price ID for Enterprise plan")
 
 
 @lru_cache
