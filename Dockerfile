@@ -2,12 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy source files first (needed for pip install)
-COPY pyproject.toml .
-COPY src/ src/
+# Install dependencies from requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Install dependencies
-RUN pip install --no-cache-dir .
+# Copy source
+COPY src/ src/
 
 # Run
 EXPOSE 8000
