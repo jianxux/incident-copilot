@@ -87,9 +87,7 @@ class RunbookLinker:
         scored_runbooks: list[tuple[float, Runbook, list[str]]] = []
 
         for runbook in self._index.runbooks:
-            score, matched_terms = self._score_runbook(
-                runbook, query_tf, service_name
-            )
+            score, matched_terms = self._score_runbook(runbook, query_tf, service_name)
             if score >= min_score:
                 scored_runbooks.append((score, runbook, matched_terms))
 
@@ -178,11 +176,53 @@ class RunbookLinker:
         """Tokenize text into terms."""
         # Common stopwords
         stopwords = {
-            "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
-            "of", "with", "by", "from", "as", "is", "was", "are", "were", "been",
-            "be", "have", "has", "had", "do", "does", "did", "will", "would",
-            "could", "should", "may", "might", "can", "this", "that", "these",
-            "those", "it", "its", "they", "them", "their", "we", "you", "your",
+            "the",
+            "a",
+            "an",
+            "and",
+            "or",
+            "but",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "of",
+            "with",
+            "by",
+            "from",
+            "as",
+            "is",
+            "was",
+            "are",
+            "were",
+            "been",
+            "be",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "can",
+            "this",
+            "that",
+            "these",
+            "those",
+            "it",
+            "its",
+            "they",
+            "them",
+            "their",
+            "we",
+            "you",
+            "your",
         }
 
         # Tokenize

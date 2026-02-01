@@ -16,6 +16,10 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0.25",
     "anthropic>=0.18.0",
     "slack-sdk>=3.27.0",
+    "aiohttp>=3.9.0",
+    "stripe>=8.0.0",
+    "email-validator>=2.0.0",
+    "numpy>=1.26.0",
     "structlog>=24.1.0",
     "boto3>=1.34.0",
     "typer>=0.9.0",
@@ -43,13 +47,29 @@ incident-copilot = "src.cli.main:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501", "E741"]  # Ignore line length (handled by black) and ambiguous variable names
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = false
+warn_unused_ignores = true
+ignore_missing_imports = true
+no_implicit_optional = false
+strict_optional = false
+check_untyped_defs = false

@@ -13,10 +13,10 @@ class TestRunbookIndexer:
     def test_extract_keywords(self):
         """Test keyword extraction from text."""
         indexer = RunbookIndexer()
-        
+
         text = "The payments service is experiencing high CPU usage. Check the database connections."
         keywords = indexer._extract_keywords(text)
-        
+
         assert "payments" in keywords
         assert "service" in keywords
         assert "cpu" in keywords
@@ -29,7 +29,7 @@ class TestRunbookIndexer:
     def test_extract_tags_from_frontmatter(self):
         """Test tag extraction from markdown frontmatter."""
         indexer = RunbookIndexer()
-        
+
         content = """---
 title: Database Troubleshooting
 tags: [database, mysql, troubleshooting]
@@ -40,7 +40,7 @@ tags: [database, mysql, troubleshooting]
 Steps to troubleshoot database issues.
 """
         tags = indexer._extract_tags(content)
-        
+
         assert "database" in tags
         assert "mysql" in tags
         assert "troubleshooting" in tags
@@ -48,7 +48,7 @@ Steps to troubleshoot database issues.
     def test_extract_services(self):
         """Test service name extraction."""
         indexer = RunbookIndexer()
-        
+
         content = """
 ## Service: payments-api
 
@@ -57,7 +57,7 @@ This runbook covers the payments-api service.
 services: [payments-api, checkout-service]
 """
         services = indexer._extract_services(content)
-        
+
         assert "payments-api" in services
 
     def test_parse_markdown_runbook(self):
@@ -68,7 +68,7 @@ services: [payments-api, checkout-service]
             name="test",
             local_path="/tmp/test",
         )
-        
+
         content = """# High CPU Troubleshooting
 
 This runbook helps diagnose high CPU issues.
@@ -78,14 +78,14 @@ This runbook helps diagnose high CPU issues.
 1. Check top processes
 2. Review application logs
 """
-        
+
         runbook = indexer._parse_markdown_runbook(
             content=content,
             filename="high-cpu.md",
             url="https://example.com/high-cpu.md",
             source=source,
         )
-        
+
         assert runbook.title == "High CPU Troubleshooting"
         assert "cpu" in runbook.keywords
         assert "troubleshooting" in runbook.keywords
@@ -130,7 +130,7 @@ class TestRunbookLinker:
                 services=["payments-api"],
             ),
         ]
-        
+
         vocabulary = {
             "cpu": 1,
             "high": 1,
@@ -141,7 +141,7 @@ class TestRunbookLinker:
             "leak": 1,
             "payments-api": 2,
         }
-        
+
         return RunbookIndex(runbooks=runbooks, vocabulary=vocabulary)
 
     def test_find_relevant_runbooks_by_query(self, sample_index):
@@ -149,12 +149,12 @@ class TestRunbookLinker:
         linker = RunbookLinker()
         linker._index = sample_index
         linker._compute_idf()
-        
+
         matches = linker.find_relevant_runbooks(
             query="high CPU usage on server",
             top_k=3,
         )
-        
+
         assert len(matches) > 0
         # First match should be the CPU runbook
         assert matches[0].title == "High CPU Troubleshooting"
@@ -165,14 +165,14 @@ class TestRunbookLinker:
         linker = RunbookLinker()
         linker._index = sample_index
         linker._compute_idf()
-        
+
         # Query about memory with payments-api service
         matches = linker.find_relevant_runbooks(
             query="memory issues",
             service_name="payments-api",
             top_k=3,
         )
-        
+
         assert len(matches) > 0
         # Memory leak runbook should match (it's for payments-api)
         titles = [m.title for m in matches]
@@ -183,9 +183,9 @@ class TestRunbookLinker:
         linker = RunbookLinker()
         linker._index = sample_index
         linker._compute_idf()
-        
+
         matches = linker.search("database connection", top_k=5)
-        
+
         assert len(matches) > 0
         assert any("Database" in m.title for m in matches)
 
@@ -194,14 +194,14 @@ class TestRunbookLinker:
         linker = RunbookLinker()
         linker._index = sample_index
         linker._compute_idf()
-        
+
         # Query with unrelated terms
         matches = linker.find_relevant_runbooks(
             query="kubernetes network policy",
             min_score=0.5,
             top_k=10,
         )
-        
+
         # Should return no or few results due to high min_score
         for match in matches:
             assert match.relevance_score >= 0.5

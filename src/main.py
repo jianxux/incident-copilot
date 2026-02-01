@@ -7,7 +7,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .api import demo_router, runbooks_router, webhooks_router
+from .api import analytics_router, demo_router, runbooks_router, webhooks_router
+from .auth.routes import router as auth_router
+from .billing.routes import router as billing_router
 from .config import get_settings
 from .web import web_router
 
@@ -54,14 +56,19 @@ def create_app() -> FastAPI:
     )
 
     # Include routers
+    app.include_router(auth_router)
+    app.include_router(billing_router)
     app.include_router(webhooks_router)
     app.include_router(runbooks_router)
     app.include_router(demo_router)
+    app.include_router(analytics_router)
     app.include_router(web_router)
 
     # Mount static files for web dashboard
     static_dir = Path(__file__).parent / "web" / "static"
-    app.mount("/dashboard/static", StaticFiles(directory=str(static_dir)), name="static")
+    app.mount(
+        "/dashboard/static", StaticFiles(directory=str(static_dir)), name="static"
+    )
 
     @app.on_event("startup")
     async def startup():
@@ -87,6 +94,10 @@ app = create_app()
 
 
 if __name__ == "__main__":
+    import os
+
     import uvicorn
 
-    uvicorn.run("src.main:app", host="0.0.0.0", port=8000, reload=True)
+    host = os.environ.get("HOST", "127.0.0.1")
+    port = int(os.environ.get("PORT", "8000"))
+    uvicorn.run("src.main:app", host=host, port=port, reload=True)

@@ -51,7 +51,7 @@ class EmbeddingGenerator:
     ) -> str:
         """
         Prepare incident data as text for embedding.
-        
+
         Combines title, service, description, and error logs into a single
         text representation that captures the incident's semantic meaning.
         """
@@ -70,12 +70,12 @@ class EmbeddingGenerator:
             parts.append("Error logs:\n" + "\n".join(truncated_logs))
 
         text = "\n".join(parts)
-        
+
         # Limit total text length to avoid token limits
         max_chars = 8000
         if len(text) > max_chars:
             text = text[:max_chars] + "..."
-            
+
         return text
 
     async def generate_embedding(
@@ -87,13 +87,13 @@ class EmbeddingGenerator:
     ) -> list[float]:
         """
         Generate embedding vector for incident data.
-        
+
         Args:
             title: Incident title
             service_name: Name of the affected service
             description: Optional incident description
             error_logs: Optional list of error log messages
-            
+
         Returns:
             List of floats representing the embedding vector
         """
@@ -103,7 +103,9 @@ class EmbeddingGenerator:
     async def _embed_text(self, text: str) -> list[float]:
         """Call OpenAI API to generate embedding."""
         if not self.api_key:
-            logger.warning("openai_api_key_not_set", msg="Using zero vector for embedding")
+            logger.warning(
+                "openai_api_key_not_set", msg="Using zero vector for embedding"
+            )
             return [0.0] * EMBEDDING_DIMENSION
 
         client = await self._get_client()
@@ -119,13 +121,13 @@ class EmbeddingGenerator:
             response.raise_for_status()
             data = response.json()
             embedding = data["data"][0]["embedding"]
-            
+
             logger.debug(
                 "embedding_generated",
                 text_length=len(text),
                 embedding_dim=len(embedding),
             )
-            
+
             return embedding
 
         except httpx.HTTPStatusError as e:
