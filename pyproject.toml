@@ -54,6 +54,7 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501", "E741"]  # Ignore line length (handled by black) and ambiguous variable names
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

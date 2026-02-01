@@ -1,7 +1,6 @@
 """API routes for analytics and MTTR metrics."""
 
 from datetime import datetime, timedelta
-from typing import Optional
 
 import structlog
 from fastapi import APIRouter, Query
@@ -19,8 +18,8 @@ tracker = AnalyticsTracker()
 @router.get("/mttr", response_model=MTTRStats)
 async def get_mttr_stats(
     days: int = Query(7, ge=1, le=365, description="Number of days to analyze"),
-    service: Optional[str] = Query(None, description="Filter by service name"),
-    severity: Optional[str] = Query(None, description="Filter by severity level"),
+    service: str | None = Query(None, description="Filter by service name"),
+    severity: str | None = Query(None, description="Filter by severity level"),
 ):
     """
     Get MTTR statistics for a time period.
@@ -40,8 +39,8 @@ async def get_mttr_stats(
 @router.get("/incidents", response_model=list[IncidentMetrics])
 async def get_incident_metrics(
     days: int = Query(7, ge=1, le=365, description="Number of days to fetch"),
-    service: Optional[str] = Query(None, description="Filter by service name"),
-    severity: Optional[str] = Query(None, description="Filter by severity level"),
+    service: str | None = Query(None, description="Filter by service name"),
+    severity: str | None = Query(None, description="Filter by severity level"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum incidents to return"),
 ):
     """
@@ -73,8 +72,8 @@ async def get_incident_metrics(
 @router.get("/comparison", response_model=PeriodComparison)
 async def compare_periods(
     days: int = Query(7, ge=1, le=180, description="Period length in days"),
-    service: Optional[str] = Query(None, description="Filter by service name"),
-    severity: Optional[str] = Query(None, description="Filter by severity level"),
+    service: str | None = Query(None, description="Filter by service name"),
+    severity: str | None = Query(None, description="Filter by severity level"),
 ):
     """
     Compare current period to the previous equivalent period.
@@ -99,7 +98,7 @@ async def compare_periods(
 
 @router.get("/summary")
 async def get_analytics_summary(
-    service: Optional[str] = Query(None, description="Filter by service name"),
+    service: str | None = Query(None, description="Filter by service name"),
 ):
     """
     Get a high-level analytics summary.
@@ -128,7 +127,7 @@ async def record_incident_triggered(
     incident_id: str,
     service_name: str,
     severity: str,
-    triggered_at: Optional[datetime] = None,
+    triggered_at: datetime | None = None,
 ):
     """Record an incident trigger event (for testing/manual entry)."""
     if triggered_at is None:
@@ -146,7 +145,7 @@ async def record_incident_triggered(
 @router.post("/record/acknowledged")
 async def record_incident_acknowledged(
     incident_id: str,
-    acknowledged_at: Optional[datetime] = None,
+    acknowledged_at: datetime | None = None,
 ):
     """Record an incident acknowledgement event."""
     if acknowledged_at is None:
@@ -162,7 +161,7 @@ async def record_incident_acknowledged(
 @router.post("/record/resolved")
 async def record_incident_resolved(
     incident_id: str,
-    resolved_at: Optional[datetime] = None,
+    resolved_at: datetime | None = None,
 ):
     """Record an incident resolution event."""
     if resolved_at is None:
@@ -178,7 +177,7 @@ async def record_incident_resolved(
 @router.post("/record/context-card")
 async def record_context_card_delivered(
     incident_id: str,
-    delivered_at: Optional[datetime] = None,
+    delivered_at: datetime | None = None,
 ):
     """Record context card delivery event."""
     if delivered_at is None:

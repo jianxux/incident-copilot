@@ -1,10 +1,8 @@
 """Data models for analytics and MTTR tracking."""
 
 from datetime import datetime
-from enum import Enum
-from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class IncidentMetrics(BaseModel):
@@ -12,28 +10,28 @@ class IncidentMetrics(BaseModel):
 
     incident_id: str
     triggered_at: datetime
-    acknowledged_at: Optional[datetime] = None
-    resolved_at: Optional[datetime] = None
-    context_card_delivered_at: Optional[datetime] = None
+    acknowledged_at: datetime | None = None
+    resolved_at: datetime | None = None
+    context_card_delivered_at: datetime | None = None
     service_name: str
     severity: str  # critical, high, medium, low, info
 
     @property
-    def time_to_acknowledge_seconds(self) -> Optional[float]:
+    def time_to_acknowledge_seconds(self) -> float | None:
         """Time from trigger to acknowledgement in seconds."""
         if self.triggered_at and self.acknowledged_at:
             return (self.acknowledged_at - self.triggered_at).total_seconds()
         return None
 
     @property
-    def time_to_resolve_seconds(self) -> Optional[float]:
+    def time_to_resolve_seconds(self) -> float | None:
         """Time from trigger to resolution in seconds."""
         if self.triggered_at and self.resolved_at:
             return (self.resolved_at - self.triggered_at).total_seconds()
         return None
 
     @property
-    def time_to_context_card_seconds(self) -> Optional[float]:
+    def time_to_context_card_seconds(self) -> float | None:
         """Time from trigger to context card delivery in seconds."""
         if self.triggered_at and self.context_card_delivered_at:
             return (self.context_card_delivered_at - self.triggered_at).total_seconds()
@@ -48,33 +46,33 @@ class MTTRStats(BaseModel):
     )
     period_start: datetime
     period_end: datetime
-    mean_mttr_seconds: Optional[float] = None
-    median_mttr_seconds: Optional[float] = None
-    p90_mttr_seconds: Optional[float] = None
+    mean_mttr_seconds: float | None = None
+    median_mttr_seconds: float | None = None
+    p90_mttr_seconds: float | None = None
     incidents_count: int = 0
     resolved_count: int = 0
-    improvement_percent: Optional[float] = None  # Compared to previous period
+    improvement_percent: float | None = None  # Compared to previous period
 
     # Additional metrics
-    mean_time_to_acknowledge_seconds: Optional[float] = None
-    mean_time_to_context_card_seconds: Optional[float] = None
+    mean_time_to_acknowledge_seconds: float | None = None
+    mean_time_to_context_card_seconds: float | None = None
 
     @property
-    def mean_mttr_minutes(self) -> Optional[float]:
+    def mean_mttr_minutes(self) -> float | None:
         """Mean MTTR in minutes."""
         if self.mean_mttr_seconds is not None:
             return self.mean_mttr_seconds / 60
         return None
 
     @property
-    def median_mttr_minutes(self) -> Optional[float]:
+    def median_mttr_minutes(self) -> float | None:
         """Median MTTR in minutes."""
         if self.median_mttr_seconds is not None:
             return self.median_mttr_seconds / 60
         return None
 
     @property
-    def p90_mttr_minutes(self) -> Optional[float]:
+    def p90_mttr_minutes(self) -> float | None:
         """P90 MTTR in minutes."""
         if self.p90_mttr_seconds is not None:
             return self.p90_mttr_seconds / 60
@@ -86,7 +84,7 @@ class PeriodComparison(BaseModel):
 
     current_period: MTTRStats
     previous_period: MTTRStats
-    mttr_change_percent: Optional[float] = None
+    mttr_change_percent: float | None = None
     incidents_count_change: int = 0
     trend: str = "stable"  # "improving", "degrading", "stable"
 

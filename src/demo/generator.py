@@ -2,8 +2,9 @@
 
 import asyncio
 import random
-from datetime import datetime, timedelta
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from datetime import datetime
+from typing import Any
 
 import structlog
 
@@ -17,7 +18,6 @@ from ..models import (
     MetricSnapshot,
     PastIncident,
     RunbookLink,
-    Severity,
 )
 from .scenarios import DEMO_SCENARIOS, get_scenario
 

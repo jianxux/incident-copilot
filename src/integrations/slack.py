@@ -93,7 +93,7 @@ class SlackAdapter:
         if card.github and card.github.recent_deploys:
             deploy_lines = ["*🚀 Recent Deployments:*"]
             for deploy in card.github.recent_deploys[:3]:
-                time_str = f"<!date^{int(deploy.timestamp.timestamp())}^{{time}}|{deploy.timestamp.isoformat()}>"
+                f"<!date^{int(deploy.timestamp.timestamp())}^{{time}}|{deploy.timestamp.isoformat()}>"
                 line = f"• `{deploy.short_sha}` by {deploy.author} - _{deploy.message[:60]}_"
                 if deploy.url:
                     line = f"• <{deploy.url}|`{deploy.short_sha}`> by {deploy.author} - _{deploy.message[:60]}_"

@@ -1,9 +1,8 @@
 """In-memory incident store for tracking processed incidents."""
 
 import asyncio
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 from ..models import ContextCard, Severity
 
@@ -18,9 +17,9 @@ class StoredIncident:
     severity: Severity
     status: str  # "processing", "completed", "error"
     triggered_at: datetime
-    processed_at: Optional[datetime] = None
-    context_card: Optional[ContextCard] = None
-    error_message: Optional[str] = None
+    processed_at: datetime | None = None
+    context_card: ContextCard | None = None
+    error_message: str | None = None
 
 
 class IncidentStore:
@@ -80,7 +79,7 @@ class IncidentStore:
         self,
         incident_id: str,
         context_card: ContextCard,
-    ) -> Optional[StoredIncident]:
+    ) -> StoredIncident | None:
         """Mark incident as completed with context card."""
         async with self._lock:
             if incident_id not in self._incidents:
@@ -106,7 +105,7 @@ class IncidentStore:
         self,
         incident_id: str,
         error_message: str,
-    ) -> Optional[StoredIncident]:
+    ) -> StoredIncident | None:
         """Mark incident as failed."""
         async with self._lock:
             if incident_id not in self._incidents:
@@ -128,7 +127,7 @@ class IncidentStore:
 
             return incident
 
-    async def get_incident(self, incident_id: str) -> Optional[StoredIncident]:
+    async def get_incident(self, incident_id: str) -> StoredIncident | None:
         """Get a single incident by ID."""
         return self._incidents.get(incident_id)
 

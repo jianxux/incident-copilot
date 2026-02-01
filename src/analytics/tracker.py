@@ -2,7 +2,6 @@
 
 import statistics
 from datetime import datetime, timedelta
-from typing import Optional
 
 import structlog
 
@@ -19,7 +18,7 @@ class AnalyticsTracker:
     Provides methods for recording events and computing MTTR statistics.
     """
 
-    def __init__(self, store: Optional[AnalyticsStore] = None):
+    def __init__(self, store: AnalyticsStore | None = None):
         self.store = store or analytics_store
 
     async def record_incident_triggered(
@@ -87,9 +86,9 @@ class AnalyticsTracker:
         self,
         start: datetime,
         end: datetime,
-        period_label: Optional[str] = None,
-        service_name: Optional[str] = None,
-        severity: Optional[str] = None,
+        period_label: str | None = None,
+        service_name: str | None = None,
+        severity: str | None = None,
     ) -> MTTRStats:
         """
         Calculate MTTR statistics for a time period.
@@ -154,8 +153,8 @@ class AnalyticsTracker:
         current_end: datetime,
         previous_start: datetime,
         previous_end: datetime,
-        service_name: Optional[str] = None,
-        severity: Optional[str] = None,
+        service_name: str | None = None,
+        severity: str | None = None,
     ) -> PeriodComparison:
         """
         Compare MTTR statistics between two time periods.
@@ -192,8 +191,8 @@ class AnalyticsTracker:
     async def get_stats_for_days(
         self,
         days: int,
-        service_name: Optional[str] = None,
-        severity: Optional[str] = None,
+        service_name: str | None = None,
+        severity: str | None = None,
     ) -> MTTRStats:
         """Get MTTR stats for the last N days."""
         end = datetime.utcnow()
@@ -209,8 +208,8 @@ class AnalyticsTracker:
     async def compare_to_previous(
         self,
         days: int,
-        service_name: Optional[str] = None,
-        severity: Optional[str] = None,
+        service_name: str | None = None,
+        severity: str | None = None,
     ) -> PeriodComparison:
         """Compare current period to the same duration previous period."""
         now = datetime.utcnow()

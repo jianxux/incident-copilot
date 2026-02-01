@@ -666,8 +666,8 @@ async def main():
     if args.stats:
         index = indexer.load_index()
         if index:
-            print(f"Runbook Index Statistics")
-            print(f"========================")
+            print("Runbook Index Statistics")
+            print("========================")
             print(f"Built at: {index.built_at}")
             print(f"Total runbooks: {len(index.runbooks)}")
             print(f"Vocabulary size: {len(index.vocabulary)}")

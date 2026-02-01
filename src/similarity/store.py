@@ -2,10 +2,10 @@
 
 import json
 import sqlite3
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Generator
 
 import numpy as np
 import structlog
@@ -50,11 +50,11 @@ class IncidentStore:
                 )
             """)
             conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_incidents_service 
+                CREATE INDEX IF NOT EXISTS idx_incidents_service
                 ON incidents(service)
             """)
             conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_incidents_occurred 
+                CREATE INDEX IF NOT EXISTS idx_incidents_occurred
                 ON incidents(occurred_at)
             """)
             conn.commit()
@@ -105,7 +105,7 @@ class IncidentStore:
         with self._get_connection() as conn:
             conn.execute(
                 """
-                INSERT OR REPLACE INTO incidents 
+                INSERT OR REPLACE INTO incidents
                 (incident_id, title, service, description, root_cause, resolution,
                  occurred_at, resolved_at, embedding, context_card)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -148,7 +148,7 @@ class IncidentStore:
         with self._get_connection() as conn:
             cursor = conn.execute(
                 """
-                UPDATE incidents 
+                UPDATE incidents
                 SET resolution = ?, root_cause = ?, resolved_at = ?
                 WHERE incident_id = ?
                 """,
@@ -202,9 +202,9 @@ class IncidentStore:
             if service:
                 rows = conn.execute(
                     """
-                    SELECT * FROM incidents 
+                    SELECT * FROM incidents
                     WHERE service = ?
-                    ORDER BY occurred_at DESC 
+                    ORDER BY occurred_at DESC
                     LIMIT ?
                     """,
                     (service, limit),
@@ -212,8 +212,8 @@ class IncidentStore:
             else:
                 rows = conn.execute(
                     """
-                    SELECT * FROM incidents 
-                    ORDER BY occurred_at DESC 
+                    SELECT * FROM incidents
+                    ORDER BY occurred_at DESC
                     LIMIT ?
                     """,
                     (limit,),
