@@ -7,6 +7,7 @@ Commands for validating configuration, testing integrations, and managing the se
 import asyncio
 import sys
 from enum import Enum
+from typing import Callable
 
 import typer
 from rich import print as rprint
@@ -236,7 +237,7 @@ def check_config(
     value: str | None,
     required: bool = True,
     format_hint: str = "",
-    validator: callable | None = None,
+    validator: Callable | None = None,
 ) -> tuple[CheckStatus, str, str]:
     """Check a configuration value."""
     if not value:

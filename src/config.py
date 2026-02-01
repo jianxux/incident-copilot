@@ -23,6 +23,13 @@ class Settings(BaseSettings):
         default="", description="PagerDuty webhook signing secret"
     )
 
+    # Opsgenie
+    opsgenie_api_key: str = Field(default="", description="Opsgenie API key")
+    opsgenie_webhook_secret: str = Field(
+        default="", description="Opsgenie webhook signing secret"
+    )
+    opsgenie_region: str = Field(default="us", description="Opsgenie region (us or eu)")
+
     # GitHub
     github_token: str = Field(default="", description="GitHub personal access token")
     github_org: str = Field(default="", description="GitHub organization name")
@@ -70,6 +77,9 @@ class Settings(BaseSettings):
     ai_model: str = Field(
         default="claude-3-haiku-20240307", description="AI model for summarization"
     )
+
+    # OpenAI (for embeddings)
+    openai_api_key: str = Field(default="", description="OpenAI API key for embeddings")
 
     # Database
     database_url: str = Field(
