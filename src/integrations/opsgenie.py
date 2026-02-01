@@ -34,12 +34,14 @@ class OpsgenieAdapter:
     def verify_webhook_signature(self, payload: bytes, signature: str) -> bool:
         """
         Verify Opsgenie webhook signature.
-        
+
         Opsgenie signs webhooks using HMAC-SHA256.
         The signature is sent in the X-OpsGenie-Signature header.
         """
         if not self.webhook_secret:
-            logger.warning("opsgenie_webhook_secret not configured, skipping verification")
+            logger.warning(
+                "opsgenie_webhook_secret not configured, skipping verification"
+            )
             return True
 
         expected = hmac.new(
@@ -53,7 +55,7 @@ class OpsgenieAdapter:
     def parse_webhook(self, payload: dict) -> OpsgenieAlert | None:
         """
         Parse Opsgenie v2 webhook payload into our model.
-        
+
         Opsgenie webhook payload structure:
         {
             "action": "Create|Acknowledge|...",
@@ -152,7 +154,7 @@ class OpsgenieAdapter:
     def _extract_service(self, alert_data: dict, tags: list[str]) -> str:
         """
         Extract service name from alert data.
-        
+
         Tries multiple sources in order:
         1. 'service' tag (e.g., "service:payments-api")
         2. 'entity' field
@@ -186,7 +188,7 @@ class OpsgenieAdapter:
     async def get_alert_details(self, alert_id: str) -> dict[str, Any] | None:
         """
         Fetch additional alert details from Opsgenie API.
-        
+
         Useful for getting full description, notes, and other metadata
         not included in the webhook payload.
         """
@@ -242,7 +244,7 @@ class OpsgenieAdapter:
     async def enrich_alert(self, alert: "OpsgenieAlert") -> "OpsgenieAlert":
         """
         Enrich alert with additional details from API.
-        
+
         Fetches full alert details and notes, adding them to the alert model.
         """
         if not self.api_key:
@@ -258,9 +260,7 @@ class OpsgenieAdapter:
             # Add teams
             teams = details.get("teams", [])
             if teams and not alert.responders:
-                alert.responders = [
-                    t.get("name", "") for t in teams if t.get("name")
-                ]
+                alert.responders = [t.get("name", "") for t in teams if t.get("name")]
 
             # Add extra properties
             if details.get("details"):

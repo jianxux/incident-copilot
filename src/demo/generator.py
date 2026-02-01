@@ -2,20 +2,20 @@
 
 import asyncio
 import random
-from datetime import datetime, timedelta
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from datetime import datetime
+from typing import Any
 
 import structlog
 
 from ..models import (
+    AILogSummary,
     ContextCard,
     DatadogContext,
     Deployment,
     GitHubContext,
     LogSummary,
     MetricSnapshot,
-    Severity,
-    AILogSummary,
     PastIncident,
     RunbookLink,
 )
@@ -27,7 +27,7 @@ logger = structlog.get_logger()
 class DemoGenerator:
     """
     Generate realistic demo data for Incident Copilot.
-    
+
     Simulates the full context assembly flow with configurable
     delays to demonstrate the real-time nature of the system.
     """
@@ -35,7 +35,7 @@ class DemoGenerator:
     def __init__(self, simulate_delays: bool = True):
         """
         Initialize the demo generator.
-        
+
         Args:
             simulate_delays: If True, adds realistic delays to simulate
                            actual API calls to integrations.
@@ -54,10 +54,10 @@ class DemoGenerator:
     ) -> ContextCard:
         """
         Generate a complete context card for a demo scenario.
-        
+
         Args:
             scenario_id: Specific scenario ID, or None for random selection.
-            
+
         Returns:
             A fully populated ContextCard.
         """
@@ -100,7 +100,11 @@ class DemoGenerator:
         logs = scenario["logs"]
         log_summaries = [
             LogSummary(
-                pattern=e["message"][:50] + "..." if len(e["message"]) > 50 else e["message"],
+                pattern=(
+                    e["message"][:50] + "..."
+                    if len(e["message"]) > 50
+                    else e["message"]
+                ),
                 count=e["count"],
                 level=e["level"],
                 sample_message=e["message"],
@@ -126,7 +130,9 @@ class DemoGenerator:
         ai_summary = AILogSummary(
             top_issues=ai_data["key_findings"],
             explanation=ai_data["summary"],
-            likely_cause=ai_data["key_findings"][0] if ai_data["key_findings"] else None,
+            likely_cause=(
+                ai_data["key_findings"][0] if ai_data["key_findings"] else None
+            ),
             suggested_actions=ai_data.get("suggested_runbooks", []),
         )
 
@@ -192,13 +198,13 @@ class DemoGenerator:
     ) -> AsyncIterator[dict[str, Any]]:
         """
         Stream the context assembly process step by step.
-        
+
         Yields status updates as each integration is "queried",
         useful for real-time UI updates during demos.
-        
+
         Args:
             scenario_id: Specific scenario ID, or None for random selection.
-            
+
         Yields:
             Status dictionaries with progress updates.
         """
@@ -237,9 +243,11 @@ class DemoGenerator:
             "message": f"Found {len(scenario['deployments'])} recent deployments",
             "data": {
                 "deployment_count": len(scenario["deployments"]),
-                "latest_deploy": scenario["deployments"][0]["sha"][:7]
-                if scenario["deployments"]
-                else None,
+                "latest_deploy": (
+                    scenario["deployments"][0]["sha"][:7]
+                    if scenario["deployments"]
+                    else None
+                ),
             },
             "elapsed_ms": self._elapsed_ms(start_time),
         }

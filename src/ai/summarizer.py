@@ -35,7 +35,11 @@ class LogSummarizer:
 
     def __init__(self, settings: Settings):
         self.settings = settings
-        self.client = AsyncAnthropic(api_key=settings.anthropic_api_key) if settings.anthropic_api_key else None
+        self.client = (
+            AsyncAnthropic(api_key=settings.anthropic_api_key)
+            if settings.anthropic_api_key
+            else None
+        )
         self.model = settings.ai_model
 
     async def summarize(

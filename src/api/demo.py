@@ -7,7 +7,7 @@ import structlog
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 
-from ..demo import DemoGenerator, DEMO_SCENARIOS
+from ..demo import DEMO_SCENARIOS, DemoGenerator
 from ..demo.scenarios import list_scenarios
 
 logger = structlog.get_logger()
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/demo", tags=["demo"])
 async def get_scenarios():
     """
     List available demo scenarios.
-    
+
     Returns a list of scenarios that can be used to generate
     demo context cards for demonstrations.
     """
@@ -33,7 +33,7 @@ async def get_scenarios():
 async def get_scenario_details(scenario_id: str):
     """
     Get full details for a specific scenario.
-    
+
     Returns the complete scenario definition including alert details,
     expected logs, deployments, and AI analysis.
     """
@@ -49,12 +49,16 @@ async def get_scenario_details(scenario_id: str):
 
 @router.post("/trigger")
 async def trigger_demo_incident(
-    scenario_id: Annotated[str | None, Query(description="Specific scenario to trigger")] = None,
-    simulate_delays: Annotated[bool, Query(description="Add realistic API delays")] = True,
+    scenario_id: Annotated[
+        str | None, Query(description="Specific scenario to trigger")
+    ] = None,
+    simulate_delays: Annotated[
+        bool, Query(description="Add realistic API delays")
+    ] = True,
 ):
     """
     Trigger a demo incident and return the assembled context card.
-    
+
     This simulates the full incident flow:
     1. Alert received from PagerDuty/Opsgenie
     2. GitHub deployments fetched
@@ -63,11 +67,11 @@ async def trigger_demo_incident(
     5. Similar incidents searched
     6. Runbooks linked
     7. Context card assembled
-    
+
     Args:
         scenario_id: Specific scenario ID, or None for random selection.
         simulate_delays: If True, adds realistic delays (~2-3s total).
-        
+
     Returns:
         Complete context card as JSON.
     """
@@ -85,14 +89,16 @@ async def trigger_demo_incident(
 
 @router.get("/trigger/stream")
 async def trigger_demo_incident_stream(
-    scenario_id: Annotated[str | None, Query(description="Specific scenario to trigger")] = None,
+    scenario_id: Annotated[
+        str | None, Query(description="Specific scenario to trigger")
+    ] = None,
 ):
     """
     Trigger a demo incident with streaming progress updates.
-    
+
     Returns Server-Sent Events (SSE) with progress updates as each
     integration is queried. Useful for real-time UI demonstrations.
-    
+
     Event types:
     - alert_received: Initial alert data
     - github_started/complete: Deployment fetch progress
@@ -129,12 +135,12 @@ async def preview_slack_message(
 ):
     """
     Generate a preview of the Slack message that would be sent.
-    
+
     Returns the formatted Slack blocks that would be delivered
     to the incidents channel, without actually sending.
     """
-    from ..delivery.slack import SlackDelivery
     from ..config import get_settings
+    from ..delivery.slack import SlackDelivery
 
     generator = DemoGenerator(simulate_delays=False)
     context_card = await generator.generate_context_card(scenario_id)
@@ -155,6 +161,7 @@ async def preview_slack_message(
 def _serialize_scenario(scenario: dict) -> dict:
     """Serialize scenario for JSON response."""
     from datetime import datetime
+
     from ..models import Severity
 
     def convert(obj):

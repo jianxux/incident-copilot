@@ -6,4 +6,10 @@ from .github import GitHubAdapter
 from .pagerduty import PagerDutyAdapter
 from .slack import SlackAdapter
 
-__all__ = ["PagerDutyAdapter", "GitHubAdapter", "DatadogAdapter", "CloudWatchAdapter", "SlackAdapter"]
+__all__ = [
+    "PagerDutyAdapter",
+    "GitHubAdapter",
+    "DatadogAdapter",
+    "CloudWatchAdapter",
+    "SlackAdapter",
+]

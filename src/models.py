@@ -42,6 +42,21 @@ class PagerDutyIncident(BaseModel):
     assigned_to: list[str] = Field(default_factory=list)
 
 
+class OpsgenieAlert(BaseModel):
+    """Parsed Opsgenie alert from webhook."""
+
+    alert_id: str
+    tiny_id: str | None = None
+    title: str
+    description: str | None = None
+    severity: Severity = Severity.MEDIUM
+    service_name: str
+    source: str | None = None
+    triggered_at: datetime
+    url: str | None = None
+    tags: list[str] = Field(default_factory=list)
+
+
 # --- GitHub Models ---
 
 

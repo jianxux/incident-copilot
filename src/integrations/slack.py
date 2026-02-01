@@ -14,10 +14,16 @@ class SlackAdapter:
 
     def __init__(self, settings: Settings):
         self.settings = settings
-        self.client = AsyncWebClient(token=settings.slack_bot_token) if settings.slack_bot_token else None
+        self.client = (
+            AsyncWebClient(token=settings.slack_bot_token)
+            if settings.slack_bot_token
+            else None
+        )
         self.default_channel = settings.slack_default_channel
 
-    async def send_context_card(self, card: ContextCard, channel: str | None = None) -> bool:
+    async def send_context_card(
+        self, card: ContextCard, channel: str | None = None
+    ) -> bool:
         """Send a context card to Slack."""
         if not self.client:
             logger.warning("slack_not_configured")
@@ -35,7 +41,9 @@ class SlackAdapter:
                 unfurl_links=False,
             )
 
-            logger.info("slack_message_sent", channel=target_channel, incident=card.incident_id)
+            logger.info(
+                "slack_message_sent", channel=target_channel, incident=card.incident_id
+            )
             return True
 
         except Exception as e:
@@ -56,24 +64,28 @@ class SlackAdapter:
         }
         emoji = severity_emoji.get(card.severity.value, "⚪")
 
-        blocks.append({
-            "type": "header",
-            "text": {
-                "type": "plain_text",
-                "text": f"{emoji} {card.service_name}: {card.title[:100]}",
-                "emoji": True,
-            },
-        })
+        blocks.append(
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": f"{emoji} {card.service_name}: {card.title[:100]}",
+                    "emoji": True,
+                },
+            }
+        )
 
         # Alert info
         alert_info = f"*Severity:* {card.severity.value.upper()}  |  *Triggered:* <!date^{int(card.triggered_at.timestamp())}^{{time}}|{card.triggered_at.isoformat()}>"
         if card.alert_url:
             alert_info += f"  |  <{card.alert_url}|View in PagerDuty>"
 
-        blocks.append({
-            "type": "section",
-            "text": {"type": "mrkdwn", "text": alert_info},
-        })
+        blocks.append(
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": alert_info},
+            }
+        )
 
         blocks.append({"type": "divider"})
 
@@ -81,16 +93,18 @@ class SlackAdapter:
         if card.github and card.github.recent_deploys:
             deploy_lines = ["*🚀 Recent Deployments:*"]
             for deploy in card.github.recent_deploys[:3]:
-                time_str = f"<!date^{int(deploy.timestamp.timestamp())}^{{time}}|{deploy.timestamp.isoformat()}>"
+                f"<!date^{int(deploy.timestamp.timestamp())}^{{time}}|{deploy.timestamp.isoformat()}>"
                 line = f"• `{deploy.short_sha}` by {deploy.author} - _{deploy.message[:60]}_"
                 if deploy.url:
                     line = f"• <{deploy.url}|`{deploy.short_sha}`> by {deploy.author} - _{deploy.message[:60]}_"
                 deploy_lines.append(line)
 
-            blocks.append({
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": "\n".join(deploy_lines)},
-            })
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": "\n".join(deploy_lines)},
+                }
+            )
 
         # Log Summary (AI or basic)
         if card.ai_summary:
@@ -100,20 +114,24 @@ class SlackAdapter:
             if card.ai_summary.explanation:
                 summary_lines.append(f"\n_{card.ai_summary.explanation[:200]}_")
 
-            blocks.append({
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": "\n".join(summary_lines)},
-            })
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": "\n".join(summary_lines)},
+                }
+            )
 
         elif card.datadog and card.datadog.log_summaries:
             summary_lines = ["*📋 Top Error Patterns:*"]
             for summary in card.datadog.log_summaries[:5]:
                 summary_lines.append(f"• ({summary.count}x) {summary.pattern[:80]}")
 
-            blocks.append({
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": "\n".join(summary_lines)},
-            })
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": "\n".join(summary_lines)},
+                }
+            )
 
         # Similar Past Incidents
         if card.similar_incidents:
@@ -124,10 +142,12 @@ class SlackAdapter:
                     line += f"\n  _Resolution: {inc.resolution[:100]}_"
                 incident_lines.append(line)
 
-            blocks.append({
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": "\n".join(incident_lines)},
-            })
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": "\n".join(incident_lines)},
+                }
+            )
 
         blocks.append({"type": "divider"})
 
@@ -142,18 +162,27 @@ class SlackAdapter:
             footer_parts.append(f"<{card.dashboard_url}|📊 Dashboard>")
 
         if footer_parts:
-            blocks.append({
-                "type": "context",
-                "elements": [{"type": "mrkdwn", "text": "  |  ".join(footer_parts)}],
-            })
+            blocks.append(
+                {
+                    "type": "context",
+                    "elements": [
+                        {"type": "mrkdwn", "text": "  |  ".join(footer_parts)}
+                    ],
+                }
+            )
 
         # Assembly time
         if card.assembly_time_ms:
-            blocks.append({
-                "type": "context",
-                "elements": [
-                    {"type": "mrkdwn", "text": f"_Context assembled in {card.assembly_time_ms}ms_"}
-                ],
-            })
+            blocks.append(
+                {
+                    "type": "context",
+                    "elements": [
+                        {
+                            "type": "mrkdwn",
+                            "text": f"_Context assembled in {card.assembly_time_ms}ms_",
+                        }
+                    ],
+                }
+            )
 
         return blocks

@@ -2,10 +2,10 @@
 
 import json
 import sqlite3
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Generator
 
 import numpy as np
 import structlog
@@ -21,7 +21,7 @@ DEFAULT_DB_PATH = Path("data/incidents.db")
 class IncidentStore:
     """
     Store incidents with their embeddings in SQLite.
-    
+
     Uses SQLite for metadata storage and stores embeddings as JSON blobs.
     For MVP, this is simple and works well for thousands of incidents.
     """
@@ -50,15 +50,15 @@ class IncidentStore:
                 )
             """)
             conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_incidents_service 
+                CREATE INDEX IF NOT EXISTS idx_incidents_service
                 ON incidents(service)
             """)
             conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_incidents_occurred 
+                CREATE INDEX IF NOT EXISTS idx_incidents_occurred
                 ON incidents(occurred_at)
             """)
             conn.commit()
-            
+
         logger.info("incident_store_initialized", db_path=str(self.db_path))
 
     @contextmanager
@@ -86,7 +86,7 @@ class IncidentStore:
     ) -> None:
         """
         Store an incident with its embedding.
-        
+
         Args:
             incident_id: Unique incident identifier
             title: Incident title
@@ -105,7 +105,7 @@ class IncidentStore:
         with self._get_connection() as conn:
             conn.execute(
                 """
-                INSERT OR REPLACE INTO incidents 
+                INSERT OR REPLACE INTO incidents
                 (incident_id, title, service, description, root_cause, resolution,
                  occurred_at, resolved_at, embedding, context_card)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -140,22 +140,22 @@ class IncidentStore:
     ) -> bool:
         """
         Update resolution info for an incident.
-        
+
         Returns True if incident was found and updated.
         """
         resolved_at = resolved_at or datetime.utcnow()
-        
+
         with self._get_connection() as conn:
             cursor = conn.execute(
                 """
-                UPDATE incidents 
+                UPDATE incidents
                 SET resolution = ?, root_cause = ?, resolved_at = ?
                 WHERE incident_id = ?
                 """,
                 (resolution, root_cause, resolved_at.isoformat(), incident_id),
             )
             conn.commit()
-            
+
             if cursor.rowcount > 0:
                 logger.info("incident_resolution_updated", incident_id=incident_id)
                 return True
@@ -176,7 +176,7 @@ class IncidentStore:
     def get_all_with_embeddings(self) -> list[tuple[PastIncident, np.ndarray]]:
         """
         Get all incidents with their embeddings.
-        
+
         Returns list of (incident, embedding) tuples.
         """
         with self._get_connection() as conn:
@@ -202,9 +202,9 @@ class IncidentStore:
             if service:
                 rows = conn.execute(
                     """
-                    SELECT * FROM incidents 
+                    SELECT * FROM incidents
                     WHERE service = ?
-                    ORDER BY occurred_at DESC 
+                    ORDER BY occurred_at DESC
                     LIMIT ?
                     """,
                     (service, limit),
@@ -212,8 +212,8 @@ class IncidentStore:
             else:
                 rows = conn.execute(
                     """
-                    SELECT * FROM incidents 
-                    ORDER BY occurred_at DESC 
+                    SELECT * FROM incidents
+                    ORDER BY occurred_at DESC
                     LIMIT ?
                     """,
                     (limit,),
@@ -237,7 +237,11 @@ class IncidentStore:
             root_cause=row["root_cause"],
             resolution=row["resolution"],
             occurred_at=datetime.fromisoformat(row["occurred_at"]),
-            resolved_at=datetime.fromisoformat(row["resolved_at"]) if row["resolved_at"] else None,
+            resolved_at=(
+                datetime.fromisoformat(row["resolved_at"])
+                if row["resolved_at"]
+                else None
+            ),
         )
 
     def delete_incident(self, incident_id: str) -> bool:
