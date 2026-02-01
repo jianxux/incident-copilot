@@ -13,7 +13,7 @@ logger = structlog.get_logger()
 
 class CloudWatchAdapter:
     """Adapter for AWS CloudWatch Logs API.
-    
+
     Provides log fetching capabilities parallel to DatadogAdapter,
     using the same output format for seamless integration.
     """
@@ -46,7 +46,9 @@ class CloudWatchAdapter:
             # (env vars, IAM role, ~/.aws/credentials, etc.)
             if self.settings.aws_access_key_id and self.settings.aws_secret_access_key:
                 client_kwargs["aws_access_key_id"] = self.settings.aws_access_key_id
-                client_kwargs["aws_secret_access_key"] = self.settings.aws_secret_access_key
+                client_kwargs["aws_secret_access_key"] = (
+                    self.settings.aws_secret_access_key
+                )
 
             self._logs_client = boto3.client(**client_kwargs)
 
@@ -54,7 +56,7 @@ class CloudWatchAdapter:
 
     def _get_log_groups_for_service(self, service_name: str) -> list[str]:
         """Get CloudWatch Log Group names for a service.
-        
+
         Uses the log_group_mappings config, or falls back to convention-based naming.
         """
         # Check explicit mapping first
@@ -77,7 +79,7 @@ class CloudWatchAdapter:
         self, service_name: str, time_range_minutes: int = 15
     ) -> DatadogContext | None:
         """Get CloudWatch context (logs) for a service.
-        
+
         Returns DatadogContext for compatibility with existing orchestrator.
         """
         if not self.settings.aws_region:
@@ -157,7 +159,9 @@ class CloudWatchAdapter:
         logs: list[LogEntry] = []
 
         # Filter for error/warning patterns
-        filter_pattern = '?ERROR ?WARN ?error ?warn ?Error ?Warning ?CRITICAL ?Exception'
+        filter_pattern = (
+            "?ERROR ?WARN ?error ?warn ?Error ?Warning ?CRITICAL ?Exception"
+        )
 
         try:
             response = client.filter_log_events(
@@ -204,7 +208,9 @@ class CloudWatchAdapter:
 
         if any(x in message_lower for x in ["critical", "fatal"]):
             return "critical"
-        elif any(x in message_lower for x in ["error", "exception", "failed", "failure"]):
+        elif any(
+            x in message_lower for x in ["error", "exception", "failed", "failure"]
+        ):
             return "error"
         elif any(x in message_lower for x in ["warn", "warning"]):
             return "warn"
@@ -220,12 +226,12 @@ class CloudWatchAdapter:
         time_range_minutes: int = 15,
     ) -> list[dict]:
         """Run a CloudWatch Logs Insights query for structured searches.
-        
+
         Args:
             service_name: Service name to determine log groups
             query: CloudWatch Logs Insights query string
             time_range_minutes: Time window to search
-            
+
         Returns:
             List of query result records
         """
@@ -307,7 +313,7 @@ class CloudWatchAdapter:
 
     def _summarize_logs(self, logs: list[LogEntry]) -> list[LogSummary]:
         """Create basic log summaries by grouping similar messages.
-        
+
         Same logic as DatadogAdapter for consistency.
         """
         if not logs:

@@ -21,7 +21,7 @@ DEFAULT_DB_PATH = Path("data/incidents.db")
 class IncidentStore:
     """
     Store incidents with their embeddings in SQLite.
-    
+
     Uses SQLite for metadata storage and stores embeddings as JSON blobs.
     For MVP, this is simple and works well for thousands of incidents.
     """
@@ -58,7 +58,7 @@ class IncidentStore:
                 ON incidents(occurred_at)
             """)
             conn.commit()
-            
+
         logger.info("incident_store_initialized", db_path=str(self.db_path))
 
     @contextmanager
@@ -86,7 +86,7 @@ class IncidentStore:
     ) -> None:
         """
         Store an incident with its embedding.
-        
+
         Args:
             incident_id: Unique incident identifier
             title: Incident title
@@ -140,11 +140,11 @@ class IncidentStore:
     ) -> bool:
         """
         Update resolution info for an incident.
-        
+
         Returns True if incident was found and updated.
         """
         resolved_at = resolved_at or datetime.utcnow()
-        
+
         with self._get_connection() as conn:
             cursor = conn.execute(
                 """
@@ -155,7 +155,7 @@ class IncidentStore:
                 (resolution, root_cause, resolved_at.isoformat(), incident_id),
             )
             conn.commit()
-            
+
             if cursor.rowcount > 0:
                 logger.info("incident_resolution_updated", incident_id=incident_id)
                 return True
@@ -176,7 +176,7 @@ class IncidentStore:
     def get_all_with_embeddings(self) -> list[tuple[PastIncident, np.ndarray]]:
         """
         Get all incidents with their embeddings.
-        
+
         Returns list of (incident, embedding) tuples.
         """
         with self._get_connection() as conn:
@@ -237,7 +237,11 @@ class IncidentStore:
             root_cause=row["root_cause"],
             resolution=row["resolution"],
             occurred_at=datetime.fromisoformat(row["occurred_at"]),
-            resolved_at=datetime.fromisoformat(row["resolved_at"]) if row["resolved_at"] else None,
+            resolved_at=(
+                datetime.fromisoformat(row["resolved_at"])
+                if row["resolved_at"]
+                else None
+            ),
         )
 
     def delete_incident(self, incident_id: str) -> bool:

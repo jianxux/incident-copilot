@@ -19,7 +19,7 @@ async def pagerduty_webhook(
 ):
     """
     Receive PagerDuty v3 webhook events.
-    
+
     Verifies signature, parses incident, and triggers context assembly.
     """
     settings = get_settings()

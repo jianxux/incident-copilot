@@ -3,7 +3,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from src.demo import DemoGenerator, DEMO_SCENARIOS
+from src.demo import DEMO_SCENARIOS, DemoGenerator
 from src.demo.scenarios import get_scenario, list_scenarios
 from src.main import app
 
@@ -44,15 +44,27 @@ class TestDemoScenarios:
 
     def test_all_scenarios_have_required_fields(self):
         """Test that all scenarios have required fields."""
-        required_fields = ["id", "name", "description", "alert", "deployments", "logs", "ai_summary"]
+        required_fields = [
+            "id",
+            "name",
+            "description",
+            "alert",
+            "deployments",
+            "logs",
+            "ai_summary",
+        ]
         alert_fields = ["id", "title", "service", "severity"]
 
         for scenario in DEMO_SCENARIOS:
             for field in required_fields:
-                assert field in scenario, f"Missing field '{field}' in scenario {scenario.get('id')}"
+                assert (
+                    field in scenario
+                ), f"Missing field '{field}' in scenario {scenario.get('id')}"
 
             for field in alert_fields:
-                assert field in scenario["alert"], f"Missing alert field '{field}' in scenario {scenario.get('id')}"
+                assert (
+                    field in scenario["alert"]
+                ), f"Missing alert field '{field}' in scenario {scenario.get('id')}"
 
 
 class TestDemoGenerator:
@@ -118,7 +130,9 @@ class TestDemoAPI:
 
     def test_trigger_demo(self, client):
         """Test triggering a demo incident."""
-        response = client.post("/demo/trigger?scenario_id=demo-stripe-timeout&simulate_delays=false")
+        response = client.post(
+            "/demo/trigger?scenario_id=demo-stripe-timeout&simulate_delays=false"
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "success"
@@ -173,7 +187,10 @@ class TestDemoContextCard:
         assert "user-service" in card.service_name
 
         # Check AI summary mentions database
-        assert "database" in card.ai_summary.explanation.lower() or "pool" in card.ai_summary.explanation.lower()
+        assert (
+            "database" in card.ai_summary.explanation.lower()
+            or "pool" in card.ai_summary.explanation.lower()
+        )
 
     @pytest.mark.asyncio
     async def test_similar_incidents_included(self):

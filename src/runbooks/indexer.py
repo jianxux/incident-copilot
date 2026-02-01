@@ -240,7 +240,9 @@ class RunbookIndexer:
     async def _fetch_notion(self, source: RunbookSource) -> list[Runbook]:
         """Fetch runbooks from Notion database."""
         if not source.notion_token or not source.notion_database_id:
-            raise ValueError("Notion source requires 'notion_token' and 'notion_database_id'")
+            raise ValueError(
+                "Notion source requires 'notion_token' and 'notion_database_id'"
+            )
 
         runbooks = []
         async with httpx.AsyncClient() as client:
@@ -251,7 +253,9 @@ class RunbookIndexer:
             }
 
             # Query database
-            db_url = f"https://api.notion.com/v1/databases/{source.notion_database_id}/query"
+            db_url = (
+                f"https://api.notion.com/v1/databases/{source.notion_database_id}/query"
+            )
 
             try:
                 resp = await client.post(db_url, headers=headers, json={})
@@ -279,7 +283,13 @@ class RunbookIndexer:
                     content_parts = []
                     for block in blocks.get("results", []):
                         block_type = block.get("type", "")
-                        if block_type in ("paragraph", "heading_1", "heading_2", "heading_3", "bulleted_list_item"):
+                        if block_type in (
+                            "paragraph",
+                            "heading_1",
+                            "heading_2",
+                            "heading_3",
+                            "bulleted_list_item",
+                        ):
                             rich_text = block.get(block_type, {}).get("rich_text", [])
                             for text_obj in rich_text:
                                 content_parts.append(text_obj.get("plain_text", ""))
@@ -288,7 +298,9 @@ class RunbookIndexer:
 
                     # Create runbook
                     runbook_id = f"notion-{page_id}"
-                    url = page.get("url", f"https://notion.so/{page_id.replace('-', '')}")
+                    url = page.get(
+                        "url", f"https://notion.so/{page_id.replace('-', '')}"
+                    )
 
                     runbook = Runbook(
                         id=runbook_id,
@@ -300,7 +312,9 @@ class RunbookIndexer:
                         keywords=self._extract_keywords(f"{title} {content}"),
                         tags=self._extract_tags(content),
                         services=self._extract_services(content),
-                        content_hash=hashlib.md5(content.encode()).hexdigest(),
+                        content_hash=hashlib.md5(
+                            content.encode(), usedforsecurity=False
+                        ).hexdigest(),
                     )
                     runbooks.append(runbook)
 
@@ -316,7 +330,9 @@ class RunbookIndexer:
         Note: Basic implementation using REST API. Requires API token auth.
         """
         if not source.confluence_url or not source.confluence_space:
-            raise ValueError("Confluence source requires 'confluence_url' and 'confluence_space'")
+            raise ValueError(
+                "Confluence source requires 'confluence_url' and 'confluence_space'"
+            )
 
         runbooks = []
 
@@ -343,20 +359,34 @@ class RunbookIndexer:
                     # Check if page has runbook-related labels
                     labels = [
                         lbl["name"]
-                        for lbl in page.get("metadata", {}).get("labels", {}).get("results", [])
+                        for lbl in page.get("metadata", {})
+                        .get("labels", {})
+                        .get("results", [])
                     ]
 
                     # Filter for runbook-related pages
-                    is_runbook = any(
-                        lbl in ["runbook", "runbooks", "operations", "oncall", "incident"]
-                        for lbl in labels
-                    ) or "runbook" in page.get("title", "").lower()
+                    is_runbook = (
+                        any(
+                            lbl
+                            in [
+                                "runbook",
+                                "runbooks",
+                                "operations",
+                                "oncall",
+                                "incident",
+                            ]
+                            for lbl in labels
+                        )
+                        or "runbook" in page.get("title", "").lower()
+                    )
 
                     if not is_runbook:
                         continue
 
                     # Parse HTML content to plain text
-                    html_content = page.get("body", {}).get("storage", {}).get("value", "")
+                    html_content = (
+                        page.get("body", {}).get("storage", {}).get("value", "")
+                    )
                     content = self._html_to_text(html_content)
 
                     page_url = f"{base_url}{page['_links']['webui']}"
@@ -371,7 +401,9 @@ class RunbookIndexer:
                         keywords=self._extract_keywords(f"{page['title']} {content}"),
                         tags=labels,
                         services=self._extract_services(content),
-                        content_hash=hashlib.md5(content.encode()).hexdigest(),
+                        content_hash=hashlib.md5(
+                            content.encode(), usedforsecurity=False
+                        ).hexdigest(),
                     )
                     runbooks.append(runbook)
 
@@ -440,7 +472,7 @@ class RunbookIndexer:
             description = desc_match.group(1).strip()[:200]
 
         # Generate unique ID
-        runbook_id = f"{source.type.value}-{hashlib.md5(url.encode()).hexdigest()[:12]}"
+        runbook_id = f"{source.type.value}-{hashlib.md5(url.encode(), usedforsecurity=False).hexdigest()[:12]}"
 
         return Runbook(
             id=runbook_id,
@@ -453,22 +485,98 @@ class RunbookIndexer:
             keywords=self._extract_keywords(f"{title} {content}"),
             tags=self._extract_tags(content),
             services=self._extract_services(content),
-            content_hash=hashlib.md5(content.encode()).hexdigest(),
+            content_hash=hashlib.md5(
+                content.encode(), usedforsecurity=False
+            ).hexdigest(),
         )
 
     def _extract_keywords(self, text: str) -> list[str]:
         """Extract keywords from text using simple tokenization and filtering."""
         # Common stopwords
         stopwords = {
-            "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
-            "of", "with", "by", "from", "as", "is", "was", "are", "were", "been",
-            "be", "have", "has", "had", "do", "does", "did", "will", "would",
-            "could", "should", "may", "might", "can", "this", "that", "these",
-            "those", "it", "its", "they", "them", "their", "we", "you", "your",
-            "he", "she", "him", "her", "his", "hers", "if", "then", "else",
-            "when", "where", "what", "which", "who", "how", "why", "all", "any",
-            "both", "each", "more", "most", "other", "some", "such", "no", "not",
-            "only", "same", "so", "than", "too", "very", "just", "also", "now",
+            "the",
+            "a",
+            "an",
+            "and",
+            "or",
+            "but",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "of",
+            "with",
+            "by",
+            "from",
+            "as",
+            "is",
+            "was",
+            "are",
+            "were",
+            "been",
+            "be",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "can",
+            "this",
+            "that",
+            "these",
+            "those",
+            "it",
+            "its",
+            "they",
+            "them",
+            "their",
+            "we",
+            "you",
+            "your",
+            "he",
+            "she",
+            "him",
+            "her",
+            "his",
+            "hers",
+            "if",
+            "then",
+            "else",
+            "when",
+            "where",
+            "what",
+            "which",
+            "who",
+            "how",
+            "why",
+            "all",
+            "any",
+            "both",
+            "each",
+            "more",
+            "most",
+            "other",
+            "some",
+            "such",
+            "no",
+            "not",
+            "only",
+            "same",
+            "so",
+            "than",
+            "too",
+            "very",
+            "just",
+            "also",
+            "now",
         }
 
         # Tokenize: extract words, lowercase, filter
@@ -494,7 +602,9 @@ class RunbookIndexer:
             fm_content = frontmatter_match.group(1)
             tags_match = re.search(r"tags:\s*\[(.+?)\]", fm_content)
             if tags_match:
-                tags.extend([t.strip().strip("'\"") for t in tags_match.group(1).split(",")])
+                tags.extend(
+                    [t.strip().strip("'\"") for t in tags_match.group(1).split(",")]
+                )
             # Also try YAML list format
             tags_list = re.findall(r"tags:\s*\n((?:\s*-\s*.+\n?)+)", fm_content)
             for tag_block in tags_list:

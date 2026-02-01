@@ -24,11 +24,11 @@ async def get_mttr_stats(
 ):
     """
     Get MTTR statistics for a time period.
-    
+
     Returns mean, median, and p90 MTTR values along with incident counts.
     """
     logger.info("api_get_mttr_stats", days=days, service=service, severity=severity)
-    
+
     stats = await tracker.get_stats_for_days(
         days=days,
         service_name=service,
@@ -46,7 +46,7 @@ async def get_incident_metrics(
 ):
     """
     Get incident metrics for a time period.
-    
+
     Returns detailed metrics for each incident including lifecycle timestamps.
     """
     logger.info(
@@ -56,17 +56,17 @@ async def get_incident_metrics(
         severity=severity,
         limit=limit,
     )
-    
+
     end = datetime.utcnow()
     start = end - timedelta(days=days)
-    
+
     metrics = await analytics_store.get_metrics_for_period(
         start=start,
         end=end,
         service_name=service,
         severity=severity,
     )
-    
+
     return metrics[:limit]
 
 
@@ -78,7 +78,7 @@ async def compare_periods(
 ):
     """
     Compare current period to the previous equivalent period.
-    
+
     For example, if days=7, compares this week to last week.
     Returns trend analysis and improvement percentage.
     """
@@ -88,7 +88,7 @@ async def compare_periods(
         service=service,
         severity=severity,
     )
-    
+
     comparison = await tracker.compare_to_previous(
         days=days,
         service_name=service,
@@ -103,23 +103,23 @@ async def get_analytics_summary(
 ):
     """
     Get a high-level analytics summary.
-    
+
     Returns stats for 7d, 30d, and 90d periods with comparisons.
     """
     logger.info("api_get_analytics_summary", service=service)
-    
+
     periods = [7, 30, 90]
     summary = {}
-    
+
     for days in periods:
         stats = await tracker.get_stats_for_days(days=days, service_name=service)
         comparison = await tracker.compare_to_previous(days=days, service_name=service)
-        
+
         summary[f"{days}d"] = {
             "stats": stats.model_dump(),
             "comparison": comparison.model_dump(),
         }
-    
+
     return summary
 
 
@@ -133,7 +133,7 @@ async def record_incident_triggered(
     """Record an incident trigger event (for testing/manual entry)."""
     if triggered_at is None:
         triggered_at = datetime.utcnow()
-        
+
     metrics = await tracker.record_incident_triggered(
         incident_id=incident_id,
         triggered_at=triggered_at,
@@ -151,7 +151,7 @@ async def record_incident_acknowledged(
     """Record an incident acknowledgement event."""
     if acknowledged_at is None:
         acknowledged_at = datetime.utcnow()
-        
+
     metrics = await tracker.record_incident_acknowledged(
         incident_id=incident_id,
         acknowledged_at=acknowledged_at,
@@ -167,7 +167,7 @@ async def record_incident_resolved(
     """Record an incident resolution event."""
     if resolved_at is None:
         resolved_at = datetime.utcnow()
-        
+
     metrics = await tracker.record_incident_resolved(
         incident_id=incident_id,
         resolved_at=resolved_at,
@@ -183,7 +183,7 @@ async def record_context_card_delivered(
     """Record context card delivery event."""
     if delivered_at is None:
         delivered_at = datetime.utcnow()
-        
+
     metrics = await tracker.record_context_card_delivered(
         incident_id=incident_id,
         delivered_at=delivered_at,

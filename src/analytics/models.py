@@ -43,7 +43,9 @@ class IncidentMetrics(BaseModel):
 class MTTRStats(BaseModel):
     """MTTR statistics for a time period."""
 
-    period: str  # e.g., "7d", "30d", "90d", or date range like "2024-01-01 to 2024-01-07"
+    period: (
+        str  # e.g., "7d", "30d", "90d", or date range like "2024-01-01 to 2024-01-07"
+    )
     period_start: datetime
     period_end: datetime
     mean_mttr_seconds: Optional[float] = None
@@ -89,9 +91,7 @@ class PeriodComparison(BaseModel):
     trend: str = "stable"  # "improving", "degrading", "stable"
 
     @classmethod
-    def from_stats(
-        cls, current: MTTRStats, previous: MTTRStats
-    ) -> "PeriodComparison":
+    def from_stats(cls, current: MTTRStats, previous: MTTRStats) -> "PeriodComparison":
         """Create comparison from two stats objects."""
         mttr_change = None
         trend = "stable"

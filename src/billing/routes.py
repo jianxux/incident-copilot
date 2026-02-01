@@ -17,11 +17,13 @@ router = APIRouter(prefix="/api/billing", tags=["billing"])
 
 class UpgradeRequest(BaseModel):
     """Request to upgrade subscription."""
+
     plan: PlanTier
 
 
 class PlanInfo(BaseModel):
     """Information about a pricing plan."""
+
     id: str
     name: str
     price_monthly: int
@@ -110,10 +112,10 @@ async def get_current_subscription(
     """Get current subscription info for the tenant."""
     if not auth.tenant:
         raise HTTPException(status_code=401, detail="Authentication required")
-    
+
     tenant = auth.tenant
     plan_info = PLANS.get(tenant.plan, PLANS[PlanTier.FREE])
-    
+
     return {
         "plan": tenant.plan,
         "plan_info": plan_info,
@@ -139,35 +141,35 @@ async def create_checkout(
             status_code=501,
             detail="Billing is not configured",
         )
-    
+
     if not auth.tenant:
         raise HTTPException(status_code=401, detail="Authentication required")
-    
+
     if not user.can_manage_billing():
         raise HTTPException(
             status_code=403,
             detail="Only the owner can manage billing",
         )
-    
+
     if request.plan == PlanTier.FREE:
         raise HTTPException(
             status_code=400,
             detail="Cannot checkout for free plan",
         )
-    
+
     if request.plan == PlanTier.ENTERPRISE:
         raise HTTPException(
             status_code=400,
             detail="Contact sales for Enterprise plan",
         )
-    
+
     settings = get_settings()
     tenant = auth.tenant
-    
+
     # Create Stripe customer if needed
     if not tenant.stripe_customer_id:
         await billing_service.create_customer(tenant, user.email, user.name)
-    
+
     # Create checkout session
     checkout_url = await billing_service.create_checkout_session(
         tenant=tenant,
@@ -175,7 +177,7 @@ async def create_checkout(
         success_url=f"{settings.app_url}/dashboard/billing/success",
         cancel_url=f"{settings.app_url}/dashboard/billing",
     )
-    
+
     return {"checkout_url": checkout_url}
 
 
@@ -190,29 +192,29 @@ async def create_portal_session(
             status_code=501,
             detail="Billing is not configured",
         )
-    
+
     if not auth.tenant:
         raise HTTPException(status_code=401, detail="Authentication required")
-    
+
     if not user.can_manage_billing():
         raise HTTPException(
             status_code=403,
             detail="Only the owner can manage billing",
         )
-    
+
     if not auth.tenant.stripe_customer_id:
         raise HTTPException(
             status_code=400,
             detail="No billing account set up",
         )
-    
+
     settings = get_settings()
-    
+
     portal_url = await billing_service.create_portal_session(
         tenant=auth.tenant,
         return_url=f"{settings.app_url}/dashboard/billing",
     )
-    
+
     return {"portal_url": portal_url}
 
 
@@ -221,16 +223,16 @@ async def stripe_webhook(request: Request):
     """Handle Stripe webhook events."""
     if not billing_service.is_configured:
         raise HTTPException(status_code=501, detail="Billing not configured")
-    
+
     settings = get_settings()
     stripe = get_stripe()
-    
+
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
-    
+
     if not sig_header:
         raise HTTPException(status_code=400, detail="Missing signature")
-    
+
     try:
         event = stripe.Webhook.construct_event(
             payload,
@@ -239,13 +241,13 @@ async def stripe_webhook(request: Request):
         )
     except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid signature")
-    
+
     # Handle the event
     event_type = event["type"]
     data = event["data"]["object"]
-    
+
     logger.info("stripe_webhook_received", event_type=event_type)
-    
+
     if event_type == "checkout.session.completed":
         await billing_service.handle_checkout_completed(data)
     elif event_type == "customer.subscription.updated":
@@ -254,5 +256,5 @@ async def stripe_webhook(request: Request):
         await billing_service.handle_subscription_updated(data)
     elif event_type == "invoice.paid":
         await billing_service.handle_invoice_paid(data)
-    
+
     return {"status": "ok"}

@@ -50,7 +50,7 @@ def test_verify_webhook_signature_no_secret():
     """Test signature verification skipped when no secret configured."""
     settings = Settings(opsgenie_webhook_secret="")
     adapter = OpsgenieAdapter(settings)
-    
+
     # Should return True (skip verification) when no secret
     assert adapter.verify_webhook_signature(b"any-payload", "any-signature") is True
 
@@ -333,7 +333,7 @@ async def test_get_alert_details_no_api_key():
     """Test get_alert_details returns None when no API key configured."""
     settings = Settings(opsgenie_api_key="")
     adapter = OpsgenieAdapter(settings)
-    
+
     result = await adapter.get_alert_details("some-alert-id")
     assert result is None
 
@@ -343,7 +343,7 @@ async def test_enrich_alert_no_api_key(adapter):
     """Test enrich_alert returns alert unchanged when no API key."""
     settings = Settings(opsgenie_api_key="")
     adapter_no_key = OpsgenieAdapter(settings)
-    
+
     payload = {
         "action": "Create",
         "alert": {
@@ -352,6 +352,6 @@ async def test_enrich_alert_no_api_key(adapter):
         },
     }
     alert = adapter.parse_webhook(payload)
-    
+
     enriched = await adapter_no_key.enrich_alert(alert)
     assert enriched.alert_id == alert.alert_id

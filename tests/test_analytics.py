@@ -1,13 +1,14 @@
 """Tests for analytics module."""
 
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
 from fastapi.testclient import TestClient
 
-from src.main import app
 from src.analytics.models import IncidentMetrics, MTTRStats, PeriodComparison
 from src.analytics.store import AnalyticsStore
 from src.analytics.tracker import AnalyticsTracker
+from src.main import app
 
 
 @pytest.fixture
@@ -261,7 +262,9 @@ class TestAnalyticsTracker:
         # Create some resolved incidents
         for i in range(5):
             triggered = now - timedelta(days=i, hours=i)
-            resolved = triggered + timedelta(minutes=20 + i * 5)  # 20, 25, 30, 35, 40 min
+            resolved = triggered + timedelta(
+                minutes=20 + i * 5
+            )  # 20, 25, 30, 35, 40 min
 
             await store.record_event(
                 incident_id=f"test-{i}",

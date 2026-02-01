@@ -28,6 +28,7 @@ console = Console()
 
 class CheckStatus(str, Enum):
     """Status of a configuration check."""
+
     OK = "ok"
     WARN = "warn"
     ERROR = "error"
@@ -51,151 +52,179 @@ def validate(
 ):
     """
     Validate environment configuration.
-    
+
     Checks all required environment variables and validates their format.
     """
-    from ..config import get_settings, Settings
-    
+    from ..config import Settings, get_settings
+
     rprint(Panel.fit("[bold blue]Incident Copilot Configuration Validator[/bold blue]"))
     rprint()
-    
+
     try:
         settings = get_settings()
     except Exception as e:
         rprint(f"[red]Failed to load settings: {e}[/red]")
         raise typer.Exit(1)
-    
+
     checks = []
-    
+
     # PagerDuty checks
-    checks.append(check_config(
-        "PagerDuty API Key",
-        settings.pagerduty_api_key,
-        required=False,
-        format_hint="Starts with 'u+' or is a valid API token",
-    ))
-    checks.append(check_config(
-        "PagerDuty Webhook Secret",
-        settings.pagerduty_webhook_secret,
-        required=False,
-        format_hint="32+ character signing secret",
-    ))
-    
+    checks.append(
+        check_config(
+            "PagerDuty API Key",
+            settings.pagerduty_api_key,
+            required=False,
+            format_hint="Starts with 'u+' or is a valid API token",
+        )
+    )
+    checks.append(
+        check_config(
+            "PagerDuty Webhook Secret",
+            settings.pagerduty_webhook_secret,
+            required=False,
+            format_hint="32+ character signing secret",
+        )
+    )
+
     # Opsgenie checks
-    checks.append(check_config(
-        "Opsgenie API Key",
-        getattr(settings, 'opsgenie_api_key', None),
-        required=False,
-        format_hint="GenieKey from Opsgenie API integration",
-    ))
-    
+    checks.append(
+        check_config(
+            "Opsgenie API Key",
+            getattr(settings, "opsgenie_api_key", None),
+            required=False,
+            format_hint="GenieKey from Opsgenie API integration",
+        )
+    )
+
     # GitHub checks
-    checks.append(check_config(
-        "GitHub Token",
-        settings.github_token,
-        required=True,
-        format_hint="Personal access token (ghp_xxx) or fine-grained token",
-        validator=lambda x: x.startswith("ghp_") or x.startswith("github_pat_"),
-    ))
-    checks.append(check_config(
-        "GitHub Organization",
-        settings.github_org,
-        required=True,
-        format_hint="GitHub org or username",
-    ))
-    
+    checks.append(
+        check_config(
+            "GitHub Token",
+            settings.github_token,
+            required=True,
+            format_hint="Personal access token (ghp_xxx) or fine-grained token",
+            validator=lambda x: x.startswith("ghp_") or x.startswith("github_pat_"),
+        )
+    )
+    checks.append(
+        check_config(
+            "GitHub Organization",
+            settings.github_org,
+            required=True,
+            format_hint="GitHub org or username",
+        )
+    )
+
     # Log provider checks
-    log_provider = getattr(settings, 'log_provider', 'datadog')
-    checks.append(check_config(
-        "Log Provider",
-        log_provider,
-        required=True,
-        format_hint="'datadog' or 'cloudwatch'",
-        validator=lambda x: x in ('datadog', 'cloudwatch'),
-    ))
-    
-    if log_provider == 'datadog':
-        checks.append(check_config(
-            "Datadog API Key",
-            settings.datadog_api_key,
+    log_provider = getattr(settings, "log_provider", "datadog")
+    checks.append(
+        check_config(
+            "Log Provider",
+            log_provider,
             required=True,
-            format_hint="32-character hex string",
-            validator=lambda x: len(x) == 32,
-        ))
-        checks.append(check_config(
-            "Datadog App Key",
-            settings.datadog_app_key,
-            required=True,
-            format_hint="40-character hex string",
-            validator=lambda x: len(x) == 40,
-        ))
+            format_hint="'datadog' or 'cloudwatch'",
+            validator=lambda x: x in ("datadog", "cloudwatch"),
+        )
+    )
+
+    if log_provider == "datadog":
+        checks.append(
+            check_config(
+                "Datadog API Key",
+                settings.datadog_api_key,
+                required=True,
+                format_hint="32-character hex string",
+                validator=lambda x: len(x) == 32,
+            )
+        )
+        checks.append(
+            check_config(
+                "Datadog App Key",
+                settings.datadog_app_key,
+                required=True,
+                format_hint="40-character hex string",
+                validator=lambda x: len(x) == 40,
+            )
+        )
     else:
-        checks.append(check_config(
-            "AWS Region",
-            getattr(settings, 'aws_region', None),
-            required=True,
-            format_hint="AWS region (e.g., us-east-1)",
-        ))
-    
+        checks.append(
+            check_config(
+                "AWS Region",
+                getattr(settings, "aws_region", None),
+                required=True,
+                format_hint="AWS region (e.g., us-east-1)",
+            )
+        )
+
     # Slack checks
-    checks.append(check_config(
-        "Slack Bot Token",
-        settings.slack_bot_token,
-        required=True,
-        format_hint="xoxb-xxx bot token",
-        validator=lambda x: x.startswith("xoxb-"),
-    ))
-    checks.append(check_config(
-        "Slack Default Channel",
-        settings.slack_default_channel,
-        required=True,
-        format_hint="Channel ID (C0123...) or name (#incidents)",
-    ))
-    
+    checks.append(
+        check_config(
+            "Slack Bot Token",
+            settings.slack_bot_token,
+            required=True,
+            format_hint="xoxb-xxx bot token",
+            validator=lambda x: x.startswith("xoxb-"),
+        )
+    )
+    checks.append(
+        check_config(
+            "Slack Default Channel",
+            settings.slack_default_channel,
+            required=True,
+            format_hint="Channel ID (C0123...) or name (#incidents)",
+        )
+    )
+
     # AI checks
-    checks.append(check_config(
-        "Anthropic API Key",
-        settings.anthropic_api_key,
-        required=True,
-        format_hint="sk-ant-xxx",
-        validator=lambda x: x.startswith("sk-ant-"),
-    ))
-    
+    checks.append(
+        check_config(
+            "Anthropic API Key",
+            settings.anthropic_api_key,
+            required=True,
+            format_hint="sk-ant-xxx",
+            validator=lambda x: x.startswith("sk-ant-"),
+        )
+    )
+
     # Optional checks
-    checks.append(check_config(
-        "OpenAI API Key (for embeddings)",
-        getattr(settings, 'openai_api_key', None),
-        required=False,
-        format_hint="sk-xxx (for similarity search)",
-    ))
-    
+    checks.append(
+        check_config(
+            "OpenAI API Key (for embeddings)",
+            getattr(settings, "openai_api_key", None),
+            required=False,
+            format_hint="sk-xxx (for similarity search)",
+        )
+    )
+
     # Display results
     table = Table(title="Configuration Checks")
     table.add_column("Check", style="cyan")
     table.add_column("Status")
     table.add_column("Details", style="dim")
-    
+
     ok_count = 0
     warn_count = 0
     error_count = 0
-    
+
     for check in checks:
         status, name, detail = check
         table.add_row(name, status_icon(status), detail if verbose else "")
-        
+
         if status == CheckStatus.OK:
             ok_count += 1
         elif status == CheckStatus.WARN:
             warn_count += 1
         elif status == CheckStatus.ERROR:
             error_count += 1
-    
+
     console.print(table)
     rprint()
-    
+
     # Summary
     if error_count > 0:
-        rprint(f"[red]✗ {error_count} required configuration(s) missing or invalid[/red]")
+        rprint(
+            f"[red]✗ {error_count} required configuration(s) missing or invalid[/red]"
+        )
         rprint("[dim]Run with --verbose for details[/dim]")
         raise typer.Exit(1)
     elif warn_count > 0:
@@ -216,10 +245,10 @@ def check_config(
         if required:
             return (CheckStatus.ERROR, name, f"Missing - {format_hint}")
         return (CheckStatus.SKIP, name, "Optional, not configured")
-    
+
     if validator and not validator(value):
         return (CheckStatus.WARN, name, f"Format may be invalid - {format_hint}")
-    
+
     # Mask the value for display
     masked = f"{value[:4]}...{value[-4:]}" if len(value) > 8 else "****"
     return (CheckStatus.OK, name, f"Configured ({masked})")
@@ -227,31 +256,33 @@ def check_config(
 
 @app.command()
 def test_integration(
-    integration: str = typer.Argument(..., help="Integration to test: github, datadog, cloudwatch, slack, pagerduty"),
+    integration: str = typer.Argument(
+        ..., help="Integration to test: github, datadog, cloudwatch, slack, pagerduty"
+    ),
     timeout: int = typer.Option(30, "--timeout", "-t", help="Timeout in seconds"),
 ):
     """
     Test connectivity to a specific integration.
-    
+
     Performs a live API call to verify credentials and connectivity.
     """
     from ..config import get_settings
-    
+
     settings = get_settings()
-    
+
     rprint(f"[bold]Testing {integration} integration...[/bold]")
-    
+
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
         task = progress.add_task(f"Connecting to {integration}...", total=None)
-        
+
         try:
             result = asyncio.run(_test_integration(integration, settings, timeout))
             progress.update(task, completed=True)
-            
+
             if result["success"]:
                 rprint(f"[green]✓ {integration} integration working![/green]")
                 for key, value in result.get("details", {}).items():
@@ -260,7 +291,7 @@ def test_integration(
                 rprint(f"[red]✗ {integration} integration failed[/red]")
                 rprint(f"  Error: {result.get('error', 'Unknown error')}")
                 raise typer.Exit(1)
-                
+
         except asyncio.TimeoutError:
             rprint(f"[red]✗ Timeout after {timeout}s[/red]")
             raise typer.Exit(1)
@@ -272,7 +303,7 @@ def test_integration(
 async def _test_integration(integration: str, settings, timeout: int) -> dict:
     """Test a specific integration."""
     integration = integration.lower()
-    
+
     if integration == "github":
         return await _test_github(settings)
     elif integration == "datadog":
@@ -290,10 +321,10 @@ async def _test_integration(integration: str, settings, timeout: int) -> dict:
 async def _test_github(settings) -> dict:
     """Test GitHub API connectivity."""
     import httpx
-    
+
     if not settings.github_token:
         return {"success": False, "error": "GitHub token not configured"}
-    
+
     async with httpx.AsyncClient() as client:
         response = await client.get(
             "https://api.github.com/user",
@@ -302,29 +333,34 @@ async def _test_github(settings) -> dict:
                 "Accept": "application/vnd.github.v3+json",
             },
         )
-        
+
         if response.status_code == 200:
             data = response.json()
             return {
                 "success": True,
                 "details": {
                     "Authenticated as": data.get("login"),
-                    "Rate limit remaining": response.headers.get("x-ratelimit-remaining"),
+                    "Rate limit remaining": response.headers.get(
+                        "x-ratelimit-remaining"
+                    ),
                 },
             }
         else:
-            return {"success": False, "error": f"HTTP {response.status_code}: {response.text[:100]}"}
+            return {
+                "success": False,
+                "error": f"HTTP {response.status_code}: {response.text[:100]}",
+            }
 
 
 async def _test_datadog(settings) -> dict:
     """Test Datadog API connectivity."""
     import httpx
-    
+
     if not settings.datadog_api_key or not settings.datadog_app_key:
         return {"success": False, "error": "Datadog API/App keys not configured"}
-    
-    site = getattr(settings, 'datadog_site', 'datadoghq.com')
-    
+
+    site = getattr(settings, "datadog_site", "datadoghq.com")
+
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"https://api.{site}/api/v1/validate",
@@ -333,7 +369,7 @@ async def _test_datadog(settings) -> dict:
                 "DD-APPLICATION-KEY": settings.datadog_app_key,
             },
         )
-        
+
         if response.status_code == 200:
             return {
                 "success": True,
@@ -343,7 +379,10 @@ async def _test_datadog(settings) -> dict:
                 },
             }
         else:
-            return {"success": False, "error": f"HTTP {response.status_code}: {response.text[:100]}"}
+            return {
+                "success": False,
+                "error": f"HTTP {response.status_code}: {response.text[:100]}",
+            }
 
 
 async def _test_cloudwatch(settings) -> dict:
@@ -353,19 +392,21 @@ async def _test_cloudwatch(settings) -> dict:
         from botocore.exceptions import ClientError
     except ImportError:
         return {"success": False, "error": "boto3 not installed"}
-    
-    region = getattr(settings, 'aws_region', 'us-east-1')
-    
+
+    region = getattr(settings, "aws_region", "us-east-1")
+
     try:
-        client = boto3.client('logs', region_name=region)
+        client = boto3.client("logs", region_name=region)
         response = client.describe_log_groups(limit=1)
-        
+
         return {
             "success": True,
             "details": {
                 "Region": region,
                 "Log groups accessible": "Yes",
-                "Sample group": response.get('logGroups', [{}])[0].get('logGroupName', 'N/A'),
+                "Sample group": response.get("logGroups", [{}])[0].get(
+                    "logGroupName", "N/A"
+                ),
             },
         }
     except ClientError as e:
@@ -375,16 +416,16 @@ async def _test_cloudwatch(settings) -> dict:
 async def _test_slack(settings) -> dict:
     """Test Slack API connectivity."""
     import httpx
-    
+
     if not settings.slack_bot_token:
         return {"success": False, "error": "Slack bot token not configured"}
-    
+
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "https://slack.com/api/auth.test",
             headers={"Authorization": f"Bearer {settings.slack_bot_token}"},
         )
-        
+
         data = response.json()
         if data.get("ok"):
             return {
@@ -402,10 +443,10 @@ async def _test_slack(settings) -> dict:
 async def _test_pagerduty(settings) -> dict:
     """Test PagerDuty API connectivity."""
     import httpx
-    
+
     if not settings.pagerduty_api_key:
         return {"success": False, "error": "PagerDuty API key not configured"}
-    
+
     async with httpx.AsyncClient() as client:
         response = await client.get(
             "https://api.pagerduty.com/abilities",
@@ -414,7 +455,7 @@ async def _test_pagerduty(settings) -> dict:
                 "Accept": "application/vnd.pagerduty+json;version=2",
             },
         )
-        
+
         if response.status_code == 200:
             data = response.json()
             return {
@@ -425,7 +466,10 @@ async def _test_pagerduty(settings) -> dict:
                 },
             }
         else:
-            return {"success": False, "error": f"HTTP {response.status_code}: {response.text[:100]}"}
+            return {
+                "success": False,
+                "error": f"HTTP {response.status_code}: {response.text[:100]}",
+            }
 
 
 @app.command()
@@ -434,28 +478,28 @@ def test_all(
 ):
     """
     Test all configured integrations.
-    
+
     Runs connectivity tests for all integrations that are configured.
     """
     from ..config import get_settings
-    
+
     settings = get_settings()
-    
+
     rprint(Panel.fit("[bold blue]Testing All Integrations[/bold blue]"))
     rprint()
-    
+
     integrations = ["github", "slack"]
-    
+
     # Add log provider
-    log_provider = getattr(settings, 'log_provider', 'datadog')
+    log_provider = getattr(settings, "log_provider", "datadog")
     integrations.append(log_provider)
-    
+
     # Optional integrations
     if settings.pagerduty_api_key:
         integrations.append("pagerduty")
-    
+
     results = []
-    
+
     for integration in integrations:
         rprint(f"Testing {integration}...", end=" ")
         try:
@@ -469,12 +513,12 @@ def test_all(
         except Exception as e:
             rprint(f"[red]✗[/red] {e}")
             results.append((integration, False, str(e)))
-    
+
     rprint()
-    
+
     passed = sum(1 for _, success, _ in results if success)
     total = len(results)
-    
+
     if passed == total:
         rprint(f"[green]✓ All {total} integrations working![/green]")
     else:
@@ -484,32 +528,36 @@ def test_all(
 
 @app.command()
 def send_test(
-    channel: Optional[str] = typer.Option(None, "--channel", "-c", help="Slack channel to send to"),
-    scenario: str = typer.Option("demo-stripe-timeout", "--scenario", "-s", help="Demo scenario to use"),
+    channel: Optional[str] = typer.Option(
+        None, "--channel", "-c", help="Slack channel to send to"
+    ),
+    scenario: str = typer.Option(
+        "demo-stripe-timeout", "--scenario", "-s", help="Demo scenario to use"
+    ),
 ):
     """
     Send a test context card to Slack.
-    
+
     Generates a demo context card and posts it to the specified Slack channel.
     """
     from ..config import get_settings
     from ..demo import DemoGenerator
-    
+
     settings = get_settings()
     target_channel = channel or settings.slack_default_channel
-    
+
     rprint(f"[bold]Sending test context card to {target_channel}...[/bold]")
-    
+
     async def send():
         from ..delivery.slack import SlackDelivery
-        
+
         generator = DemoGenerator(simulate_delays=False)
         card = await generator.generate_context_card(scenario)
-        
+
         slack = SlackDelivery(settings)
         result = await slack.deliver(card, channel=target_channel)
         return result
-    
+
     try:
         result = asyncio.run(send())
         if result.get("ok"):

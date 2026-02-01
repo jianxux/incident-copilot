@@ -8,7 +8,8 @@ import structlog
 
 from .ai import LogSummarizer
 from .config import Settings
-from .integrations import CloudWatchAdapter, DatadogAdapter, GitHubAdapter, SlackAdapter
+from .integrations import (CloudWatchAdapter, DatadogAdapter, GitHubAdapter,
+                           SlackAdapter)
 from .models import ContextCard, PagerDutyIncident, RunbookLink
 from .runbooks import RunbookLinker
 
@@ -18,7 +19,7 @@ logger = structlog.get_logger()
 class ContextOrchestrator:
     """
     Orchestrates context assembly from multiple sources.
-    
+
     When an incident is received:
     1. Fan-out: Fetch data from GitHub, Datadog in parallel
     2. AI: Summarize logs
@@ -43,14 +44,18 @@ class ContextOrchestrator:
             logger.info("log_provider_initialized", provider="datadog")
 
         # Keep datadog reference for backward compatibility
-        self.datadog = self.log_adapter if self.log_provider == "datadog" else DatadogAdapter(settings)
+        self.datadog = (
+            self.log_adapter
+            if self.log_provider == "datadog"
+            else DatadogAdapter(settings)
+        )
 
     async def process_incident(
         self, incident: PagerDutyIncident, slack_channel: str | None = None
     ) -> ContextCard:
         """
         Process an incident and deliver context card.
-        
+
         Returns the assembled context card.
         """
         start_time = time.monotonic()
@@ -84,8 +89,14 @@ class ContextOrchestrator:
                 github_ctx = None
 
             if isinstance(datadog_ctx, Exception):
-                provider_name = "CloudWatch" if self.log_provider == "cloudwatch" else "Datadog"
-                logger.error("log_fetch_error", provider=self.log_provider, error=str(datadog_ctx))
+                provider_name = (
+                    "CloudWatch" if self.log_provider == "cloudwatch" else "Datadog"
+                )
+                logger.error(
+                    "log_fetch_error",
+                    provider=self.log_provider,
+                    error=str(datadog_ctx),
+                )
                 errors.append(f"{provider_name}: {str(datadog_ctx)}")
                 datadog_ctx = None
 
