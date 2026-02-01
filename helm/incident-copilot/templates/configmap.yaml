@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "incident-copilot.fullname" . }}-config
+  labels:
+    {{- include "incident-copilot.labels" . | nindent 4 }}
+data:
+  LOG_PROVIDER: {{ .Values.config.logProvider | quote }}
+  AI_MODEL: {{ .Values.config.aiModel | quote }}
+  OPSGENIE_REGION: {{ .Values.config.opsgenieRegion | quote }}
+  AWS_REGION: {{ .Values.config.awsRegion | quote }}
+  {{- if .Values.config.cloudwatchLogGroupMap }}
+  CLOUDWATCH_LOG_GROUP_MAP: {{ .Values.config.cloudwatchLogGroupMap | quote }}
+  {{- end }}
+  {{- if .Values.slack.defaultChannel }}
+  SLACK_DEFAULT_CHANNEL: {{ .Values.slack.defaultChannel | quote }}
+  {{- end }}
+  {{- if .Values.github.org }}
+  GITHUB_ORG: {{ .Values.github.org | quote }}
+  {{- end }}
