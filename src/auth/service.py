@@ -7,8 +7,7 @@ from typing import Optional
 
 import structlog
 
-from .models import (PLAN_LIMITS, APIKey, PlanTier, Session, Tenant, User,
-                     UserRole)
+from .models import PLAN_LIMITS, APIKey, PlanTier, Session, Tenant, User, UserRole
 
 logger = structlog.get_logger()
 

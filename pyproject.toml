@@ -59,6 +59,9 @@ select = ["E", "F", "I", "N", "W", "UP"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 
+[tool.isort]
+profile = "black"
+
 [tool.mypy]
 python_version = "3.11"
 warn_return_any = false
