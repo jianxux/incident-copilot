@@ -1,5 +1,6 @@
 """Main FastAPI application for Incident Copilot."""
 
+import os
 from pathlib import Path
 
 import structlog
@@ -8,9 +9,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .api import analytics_router, demo_router, runbooks_router, webhooks_router
+from .api.metrics import router as metrics_router
 from .auth.routes import router as auth_router
 from .billing.routes import router as billing_router
 from .config import get_settings
+from .metrics import set_app_info, HEALTH_STATUS
+from .metrics.middleware import PrometheusMiddleware
 from .web import landing_router, web_router
 
 # Configure structured logging
@@ -46,6 +50,12 @@ def create_app() -> FastAPI:
         debug=settings.debug,
     )
 
+    # Prometheus metrics middleware (add first for accurate timing)
+    app.add_middleware(
+        PrometheusMiddleware,
+        exclude_paths={"/metrics", "/", "/health"},
+    )
+
     # CORS middleware
     app.add_middleware(
         CORSMiddleware,
@@ -56,6 +66,7 @@ def create_app() -> FastAPI:
     )
 
     # Include routers
+    app.include_router(metrics_router)
     app.include_router(auth_router)
     app.include_router(billing_router)
     app.include_router(webhooks_router)
@@ -74,6 +85,11 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     async def startup():
         logger.info("incident_copilot_starting", debug=settings.debug)
+        
+        # Initialize metrics
+        git_sha = os.environ.get("GIT_SHA")
+        set_app_info(version="0.1.0", git_sha=git_sha)
+        HEALTH_STATUS.labels(component="app").set(1)
 
     @app.on_event("shutdown")
     async def shutdown():
