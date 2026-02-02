@@ -4,7 +4,7 @@ import asyncio
 import json
 import random
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import structlog
@@ -271,7 +271,7 @@ async def incident_timeline(request: Request, incident_id: str):
     
     # Calculate duration
     start = incident.triggered_at
-    end = incident.processed_at or datetime.now()
+    end = incident.processed_at or datetime.now(timezone.utc)
     duration = format_duration(start, end) if start else "Unknown"
     
     # Calculate stats
