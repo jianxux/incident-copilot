@@ -13,7 +13,7 @@ from .api.metrics import router as metrics_router
 from .auth.routes import router as auth_router
 from .billing.routes import router as billing_router
 from .config import get_settings
-from .metrics import set_app_info, HEALTH_STATUS
+from .metrics import HEALTH_STATUS, set_app_info
 from .metrics.middleware import PrometheusMiddleware
 from .web import landing_router, web_router
 

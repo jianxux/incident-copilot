@@ -1,10 +1,11 @@
 """Prometheus metrics for Incident Copilot."""
 
-from prometheus_client import Counter, Histogram, Gauge, Info
-from typing import Optional
 import time
-from functools import wraps
 from collections.abc import Callable
+from functools import wraps
+from typing import Optional
+
+from prometheus_client import Counter, Gauge, Histogram, Info
 
 # Application info
 APP_INFO = Info(

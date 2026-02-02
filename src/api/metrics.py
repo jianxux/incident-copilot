@@ -1,18 +1,19 @@
 """Prometheus metrics endpoint."""
 
+import os
+
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import PlainTextResponse
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
-    generate_latest,
-    CollectorRegistry,
-    REGISTRY,
-    multiprocess,
     GC_COLLECTOR,
     PLATFORM_COLLECTOR,
     PROCESS_COLLECTOR,
+    REGISTRY,
+    CollectorRegistry,
+    generate_latest,
+    multiprocess,
 )
-import os
 
 router = APIRouter(tags=["metrics"])
 
