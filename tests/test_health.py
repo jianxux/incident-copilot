@@ -1,6 +1,6 @@
 """Tests for health check endpoints."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,7 +8,6 @@ from fastapi.testclient import TestClient
 from src.api.health import (
     ComponentHealth,
     HealthStatus,
-    check_database_health,
     check_github_health,
     check_redis_health,
     check_slack_health,
@@ -82,7 +81,7 @@ class TestHealthEndpoint:
         response = client.get("/health?full=true")
 
         data = response.json()
-        component_names = [c["name"] for c in data["components"]]
+        [c["name"] for c in data["components"]]
 
         # Should check more components in full mode
         assert len(data["components"]) >= 2
