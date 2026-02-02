@@ -1,0 +1,189 @@
+# Default values for incident-copilot
+# This is a YAML-formatted file.
+
+replicaCount: 1
+
+image:
+  repository: incident-copilot
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: incident-copilot.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: incident-copilot-tls
+  #    hosts:
+  #      - incident-copilot.local
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Application configuration (stored in ConfigMap)
+config:
+  # Log provider: "datadog" or "cloudwatch"
+  logProvider: "datadog"
+  # AI model for summarization
+  aiModel: "claude-sonnet-4-20250514"
+  # Opsgenie region: "us" or "eu"
+  opsgenieRegion: "us"
+  # AWS region for CloudWatch
+  awsRegion: "us-east-1"
+  # CloudWatch log group mapping (JSON string)
+  # Example: '{"payments-api": "/aws/lambda/payments,/ecs/payments"}'
+  cloudwatchLogGroupMap: ""
+
+# Secrets configuration
+# NOTE: For production, consider using external secrets management
+# (e.g., External Secrets Operator, Vault, sealed-secrets)
+
+# PagerDuty integration
+pagerduty:
+  # API key for PagerDuty
+  apiKey: ""
+  # Webhook signing secret
+  webhookSecret: ""
+
+# Opsgenie integration
+opsgenie:
+  # API key (GenieKey)
+  apiKey: ""
+  # Webhook signing secret
+  webhookSecret: ""
+
+# GitHub integration
+github:
+  # Personal access token
+  token: ""
+  # Organization name
+  org: ""
+
+# Datadog integration
+datadog:
+  # API key
+  apiKey: ""
+  # Application key
+  appKey: ""
+
+# AWS CloudWatch integration
+cloudwatch:
+  # AWS Access Key ID (optional if using IAM roles)
+  accessKeyId: ""
+  # AWS Secret Access Key
+  secretAccessKey: ""
+
+# Slack integration
+slack:
+  # Bot OAuth token
+  botToken: ""
+  # Default channel for notifications
+  defaultChannel: "#incidents"
+
+# Anthropic (Claude) integration
+anthropic:
+  # API key
+  apiKey: ""
+
+# Redis configuration
+redis:
+  # Enable bundled Redis (for simple deployments)
+  # For production, consider using an external Redis cluster
+  enabled: true
+  # External Redis URL (used when redis.enabled is false)
+  externalUrl: ""
+  
+  # Settings for bundled Redis
+  image:
+    repository: redis
+    tag: 7-alpine
+    pullPolicy: IfNotPresent
+  
+  service:
+    port: 6379
+  
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  
+  persistence:
+    enabled: false
+    size: 1Gi
+    storageClass: ""
+
+# Liveness and readiness probes
+probes:
+  liveness:
+    enabled: true
+    path: /
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    enabled: true
+    path: /
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
