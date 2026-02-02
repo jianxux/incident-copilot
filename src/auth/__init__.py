@@ -4,6 +4,14 @@ from .middleware import AuthMiddleware, get_current_user, require_auth
 from .models import APIKey, Session, Tenant, User
 from .oauth import GitHubOAuth, GoogleOAuth, OAuthProvider
 from .service import AuthService
+from .sso import (
+    IdentityProvider,
+    IdentityProviderType,
+    OIDCProvider,
+    SAMLProvider,
+    SSOConfig,
+    SSOSession,
+)
 
 __all__ = [
     "Tenant",
@@ -17,4 +25,11 @@ __all__ = [
     "OAuthProvider",
     "GitHubOAuth",
     "GoogleOAuth",
+    # SSO
+    "SSOConfig",
+    "IdentityProvider",
+    "IdentityProviderType",
+    "SSOSession",
+    "SAMLProvider",
+    "OIDCProvider",
 ]

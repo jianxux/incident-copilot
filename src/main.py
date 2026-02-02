@@ -12,11 +12,16 @@ from .api import (
     analytics_router,
     demo_router,
     health_router,
+    postmortem_router,
     runbooks_router,
     webhooks_router,
 )
+from .api.audit import router as audit_router
 from .api.health import set_app_start_time
+from .audit.middleware import AuditMiddleware
+from .audit.store import audit_store
 from .auth.routes import router as auth_router
+from .auth.sso.routes import router as sso_router
 from .billing.routes import router as billing_router
 from .config import get_settings
 from .metrics import HEALTH_STATUS, set_app_info
@@ -71,14 +76,25 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Audit logging middleware (if enabled)
+    if settings.audit_enabled:
+        app.add_middleware(
+            AuditMiddleware,
+            log_all_requests=settings.audit_log_all_requests,
+            exclude_paths=settings.audit_exclude_paths,
+        )
+
     # Include routers
     app.include_router(health_router)
     app.include_router(auth_router)
+    app.include_router(sso_router)
     app.include_router(billing_router)
     app.include_router(webhooks_router)
     app.include_router(runbooks_router)
     app.include_router(demo_router)
     app.include_router(analytics_router)
+    app.include_router(postmortem_router)
+    app.include_router(audit_router)
     app.include_router(landing_router)
     app.include_router(web_router)
 
@@ -97,6 +113,13 @@ def create_app() -> FastAPI:
         git_sha = os.environ.get("GIT_SHA")
         set_app_info(version="0.1.0", git_sha=git_sha)
         HEALTH_STATUS.labels(component="app").set(1)
+
+        # Initialize audit store
+        if settings.audit_enabled:
+            audit_store.database_url = settings.database_url
+            audit_store.retention_days = settings.audit_retention_days
+            await audit_store.initialize()
+            logger.info("audit_store_initialized", retention_days=settings.audit_retention_days)
 
     @app.on_event("shutdown")
     async def shutdown():

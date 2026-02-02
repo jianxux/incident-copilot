@@ -199,6 +199,69 @@ class Settings(BaseSettings):
         default="", description="Stripe Price ID for Enterprise plan"
     )
 
+    # SSO - General Settings
+    sso_session_lifetime_minutes: int = Field(
+        default=10,
+        description="SSO session state lifetime in minutes (for in-flight auth)",
+    )
+    sso_jit_provisioning_default: bool = Field(
+        default=True,
+        description="Enable JIT (Just-In-Time) user provisioning by default",
+    )
+
+    # SSO - SAML Settings
+    saml_sp_private_key: str = Field(
+        default="",
+        description="SP private key for SAML signing/decryption (PEM format)",
+    )
+    saml_sp_certificate: str = Field(
+        default="",
+        description="SP certificate for SAML signing (PEM format)",
+    )
+    saml_want_assertions_signed: bool = Field(
+        default=True,
+        description="Require signed SAML assertions",
+    )
+    saml_want_messages_signed: bool = Field(
+        default=True,
+        description="Require signed SAML messages",
+    )
+
+    # SSO - OIDC Settings
+    oidc_default_scopes: str = Field(
+        default="openid email profile",
+        description="Default OIDC scopes (space-separated)",
+    )
+    oidc_use_pkce_default: bool = Field(
+        default=True,
+        description="Use PKCE by default for OIDC flows",
+    )
+
+    # Audit Logging
+    audit_enabled: bool = Field(
+        default=True, description="Enable audit logging for compliance"
+    )
+    audit_retention_days: int = Field(
+        default=90, description="Number of days to retain audit logs"
+    )
+    audit_log_all_requests: bool = Field(
+        default=False, description="Log all API requests (verbose, for debugging)"
+    )
+    audit_exclude_paths: list[str] = Field(
+        default_factory=lambda: [
+            "/health",
+            "/healthz",
+            "/ready",
+            "/metrics",
+            "/favicon.ico",
+            "/static",
+            "/docs",
+            "/redoc",
+            "/openapi.json",
+        ],
+        description="Paths to exclude from audit logging",
+    )
+
 
 @lru_cache
 def get_settings() -> Settings:
