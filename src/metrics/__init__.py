@@ -3,7 +3,6 @@
 import time
 from collections.abc import Callable
 from functools import wraps
-from typing import Optional
 
 from prometheus_client import Counter, Gauge, Histogram, Info
 
