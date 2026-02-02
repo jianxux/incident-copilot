@@ -238,6 +238,89 @@ async def incident_detail(request: Request, incident_id: str):
     )
 
 
+@router.get("/incident/{incident_id}/timeline", response_class=HTMLResponse)
+async def incident_timeline(request: Request, incident_id: str):
+    """Interactive timeline view for an incident."""
+    from .timeline import TimelineBuilder, TimelineEventType, format_duration
+    
+    incident = await incident_store.get_incident(incident_id)
+
+    if not incident:
+        return templates.TemplateResponse(
+            "error.html",
+            {
+                "request": request,
+                "error": f"Incident {incident_id} not found",
+                "page_title": "Not Found",
+            },
+            status_code=404,
+        )
+
+    # Build timeline from context card
+    builder = TimelineBuilder()
+    incident_data = {
+        "notification_sent": True,
+        "notification_channel": "Slack",
+        "notification_time": incident.processed_at,
+    }
+    
+    if incident.context_card:
+        events = builder.build_from_context_card(incident.context_card, incident_data)
+    else:
+        events = []
+    
+    # Calculate duration
+    start = incident.triggered_at
+    end = incident.processed_at or datetime.now()
+    duration = format_duration(start, end) if start else "Unknown"
+    
+    # Calculate stats
+    stats = {
+        "alerts": len([e for e in events if "alert" in e.event_type.value]),
+        "deployments": len([e for e in events if e.event_type == TimelineEventType.DEPLOYMENT]),
+        "errors": len([e for e in events if e.event_type == TimelineEventType.LOG_ERROR]),
+        "key_events": len([e for e in events if e.is_key_event]),
+    }
+
+    return templates.TemplateResponse(
+        "timeline.html",
+        {
+            "request": request,
+            "incident_id": incident_id,
+            "incident_title": incident.title,
+            "events": events,
+            "duration": duration,
+            "stats": stats,
+            "page_title": f"Timeline - {incident_id[:8]}...",
+        },
+    )
+
+
+@router.get("/api/incidents/{incident_id}/timeline")
+async def get_incident_timeline_api(incident_id: str):
+    """API endpoint to get timeline data as JSON."""
+    from .timeline import TimelineBuilder
+    
+    incident = await incident_store.get_incident(incident_id)
+    
+    if not incident:
+        return {"error": "Incident not found"}, 404
+    
+    builder = TimelineBuilder()
+    incident_data = {
+        "notification_sent": True,
+        "notification_channel": "Slack",
+    }
+    
+    if incident.context_card:
+        builder.build_from_context_card(incident.context_card, incident_data)
+    
+    return {
+        "incident_id": incident_id,
+        "events": builder.to_dict(),
+    }
+
+
 @router.get("/config", response_class=HTMLResponse)
 async def config_page(request: Request):
     """Configuration page showing API key status."""
