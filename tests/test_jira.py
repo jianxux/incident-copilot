@@ -281,9 +281,7 @@ class TestCreateIncidentTicket:
                         {"sha": "abc1234", "author": "dev", "message": "Fix bug"}
                     ],
                     log_summary="Multiple timeout errors detected",
-                    similar_incidents=[
-                        {"title": "Past incident", "score": 0.85}
-                    ],
+                    similar_incidents=[{"title": "Past incident", "score": 0.85}],
                     runbook_url="https://wiki.example.com/runbook",
                 )
 
