@@ -82,6 +82,41 @@ class GitHubContext(BaseModel):
     codeowners: list[str] = Field(default_factory=list)
 
 
+# --- GitLab Models ---
+
+
+class MergeRequest(BaseModel):
+    """A merge request from GitLab."""
+
+    iid: int
+    title: str
+    author: str
+    merged_at: datetime
+    url: str | None = None
+    labels: list[str] = Field(default_factory=list)
+
+
+class Pipeline(BaseModel):
+    """A CI/CD pipeline from GitLab."""
+
+    id: int
+    status: str  # success, failed, running, pending, canceled
+    ref: str  # branch name
+    sha: str
+    created_at: datetime
+    url: str | None = None
+
+
+class GitLabContext(BaseModel):
+    """GitLab context for a service."""
+
+    project: str
+    recent_deploys: list[Deployment] = Field(default_factory=list)
+    merge_requests: list[MergeRequest] = Field(default_factory=list)
+    pipelines: list[Pipeline] = Field(default_factory=list)
+    codeowners: list[str] = Field(default_factory=list)
+
+
 # --- Datadog Models ---
 
 
@@ -184,6 +219,9 @@ class ContextCard(BaseModel):
 
     # GitHub context
     github: GitHubContext | None = None
+
+    # GitLab context
+    gitlab: GitLabContext | None = None
 
     # Datadog context
     datadog: DatadogContext | None = None

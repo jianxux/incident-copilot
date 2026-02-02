@@ -7,10 +7,13 @@ This guide walks you through setting up Incident Copilot with all supported inte
 1. [PagerDuty Setup](#pagerduty-setup)
 2. [Opsgenie Setup](#opsgenie-setup)
 3. [GitHub Setup](#github-setup)
-4. [Datadog Setup](#datadog-setup)
-5. [CloudWatch Setup](#cloudwatch-setup)
-6. [Slack Setup](#slack-setup)
-7. [Troubleshooting](#troubleshooting)
+4. [GitLab Setup](#gitlab-setup)
+5. [Datadog Setup](#datadog-setup)
+6. [CloudWatch Setup](#cloudwatch-setup)
+7. [Loki Setup](#loki-setup)
+8. [Slack Setup](#slack-setup)
+9. [Linear Setup](#linear-setup)
+10. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -309,6 +312,139 @@ SERVICE_REPO_MAP='{"payments-api": "myorg/payment-service", "auth": "myorg/ident
 
 ---
 
+## GitLab Setup
+
+Incident Copilot supports GitLab as an alternative to GitHub. You can use either gitlab.com or a self-hosted GitLab instance.
+
+> **Note**: Configure either GitHub OR GitLab, not both. If both are configured, GitHub takes precedence.
+
+### Step 1: Create a Personal Access Token
+
+1. Log in to your GitLab instance
+2. Go to **User Settings** → **Access Tokens**
+
+   ```
+   ┌─────────────────────────────────────────┐
+   │  GitLab                                 │
+   │  ├── Profile                            │
+   │  ├── Preferences                        │
+   │  └── Access Tokens  ◄──                 │
+   │                                         │
+   └─────────────────────────────────────────┘
+   ```
+
+3. Click **Add new token**
+4. Configure:
+   - **Token name**: Incident Copilot
+   - **Expiration date**: Set appropriate date (max 1 year)
+   - **Select scopes**:
+     - ✅ `read_api` (Read access to the API)
+     - ✅ `read_repository` (Read access to repositories)
+
+   ```
+   ┌─────────────────────────────────────────┐
+   │  Personal Access Tokens                 │
+   ├─────────────────────────────────────────┤
+   │  Token name: Incident Copilot           │
+   │  Expires at: 2026-01-01                 │
+   │                                         │
+   │  Select scopes:                         │
+   │  ☑ read_api                             │
+   │  ☑ read_repository                      │
+   │  ☐ write_repository                     │
+   │  ☐ read_registry                        │
+   │                                         │
+   │  [Create personal access token]         │
+   └─────────────────────────────────────────┘
+   ```
+
+5. Click **Create personal access token**
+6. **Copy the token** (you won't be able to see it again!)
+
+7. Add to your `.env`:
+   ```bash
+   GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
+   ```
+
+### Step 2: Configure GitLab URL (Self-Hosted Only)
+
+For self-hosted GitLab instances, set the URL:
+
+```bash
+# Default is https://gitlab.com
+GITLAB_URL=https://gitlab.your-company.com
+```
+
+### Step 3: Configure Project Mapping
+
+GitLab projects use paths that include groups and subgroups. You must explicitly map services to project paths:
+
+```bash
+# JSON format - service name to project path
+GITLAB_PROJECT_MAP='{
+  "payments-api": "mygroup/payments",
+  "auth-service": "mygroup/subgroup/auth-service",
+  "frontend": "web/frontend-app"
+}'
+```
+
+**Project Path Format:**
+- `group/project` — Simple group
+- `group/subgroup/project` — With subgroup
+- `group/subgroup/subsubgroup/project` — Nested subgroups
+
+**Finding Your Project Path:**
+1. Go to your project in GitLab
+2. The path is shown in the URL: `gitlab.com/mygroup/subgroup/project`
+3. Or find it in **Settings** → **General** → **Path**
+
+### Step 4: What Data is Fetched
+
+Incident Copilot fetches the following from GitLab:
+
+| Data | API Endpoint | Purpose |
+|------|--------------|---------|
+| Recent commits | `/repository/commits` | Show recent code changes |
+| Merged MRs | `/merge_requests?state=merged` | Highlight recently merged changes |
+| Pipelines | `/pipelines` | Show CI/CD status (success/failure) |
+| CODEOWNERS | `/repository/files/CODEOWNERS` | Identify code owners |
+
+### Step 5: Verify the Integration
+
+Test your configuration:
+
+```bash
+# Test API access
+curl -H "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "https://gitlab.com/api/v4/projects/mygroup%2Fpayments"
+
+# Test commits
+curl -H "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "https://gitlab.com/api/v4/projects/mygroup%2Fpayments/repository/commits?per_page=5"
+```
+
+### Required Permissions
+
+The token needs these minimum scopes:
+
+| Scope | Purpose | Required |
+|-------|---------|----------|
+| `read_api` | Access project data, MRs, pipelines | ✅ Yes |
+| `read_repository` | Read commits and files (CODEOWNERS) | ✅ Yes |
+
+### Rate Limits
+
+GitLab rate limits depend on your tier:
+
+| Tier | Authenticated Requests |
+|------|------------------------|
+| Free | 300 requests/minute |
+| Premium | 400 requests/minute |
+| Ultimate | 600 requests/minute |
+| Self-hosted | Configurable |
+
+---
+
 ## Datadog Setup
 
 ### Step 1: Create API Keys
@@ -483,6 +619,213 @@ CLOUDWATCH_LOG_GROUP_MAP='{
 
 ---
 
+## Loki Setup
+
+Use Grafana Loki instead of Datadog or CloudWatch by setting `LOG_PROVIDER=loki`.
+
+Incident Copilot supports both self-hosted Loki and Grafana Cloud Loki.
+
+### Step 1: Determine Your Authentication Method
+
+Loki supports multiple authentication methods:
+
+| Auth Type | Use Case | Configuration |
+|-----------|----------|---------------|
+| `none` | Self-hosted Loki without auth | No credentials needed |
+| `basic` | Grafana Cloud Loki | User ID + API Key |
+| `bearer` | Self-hosted with token auth | Bearer token |
+
+### Step 2: Configure for Self-Hosted Loki (No Auth)
+
+For basic self-hosted Loki deployments without authentication:
+
+```bash
+LOG_PROVIDER=loki
+LOKI_URL=http://loki:3100
+LOKI_AUTH_TYPE=none
+```
+
+### Step 3: Configure for Grafana Cloud Loki
+
+For Grafana Cloud, you need your User ID and an API Key:
+
+1. Log in to [grafana.com](https://grafana.com)
+2. Go to **My Account** → **Grafana Cloud** → **Details**
+3. Note your **User** (numeric ID) under the Loki section
+4. Copy the **URL** (e.g., `https://logs-prod-us-central1.grafana.net`)
+
+   ```
+   ┌─────────────────────────────────────────┐
+   │  Grafana Cloud - Loki                   │
+   ├─────────────────────────────────────────┤
+   │  User: 12345                            │
+   │  URL:  https://logs-prod-us-central1    │
+   │        .grafana.net                     │
+   │                                         │
+   │  [Generate API Key]                     │
+   └─────────────────────────────────────────┘
+   ```
+
+5. Generate a new API Key:
+   - Go to **Security** → **API Keys**
+   - Click **Create API Key**
+   - **Name**: Incident Copilot
+   - **Role**: Viewer (read-only is sufficient)
+   - Copy the generated key
+
+6. Add to your `.env`:
+   ```bash
+   LOG_PROVIDER=loki
+   LOKI_URL=https://logs-prod-us-central1.grafana.net
+   LOKI_AUTH_TYPE=basic
+   LOKI_USERNAME=12345
+   LOKI_PASSWORD=glc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   ```
+
+### Step 4: Configure for Self-Hosted Loki with Bearer Token
+
+For self-hosted Loki with token-based authentication:
+
+```bash
+LOG_PROVIDER=loki
+LOKI_URL=http://loki.internal:3100
+LOKI_AUTH_TYPE=bearer
+LOKI_TOKEN=your-bearer-token-here
+```
+
+### Step 5: Multi-Tenant Configuration
+
+If your Loki deployment is multi-tenant (common in large organizations), set the tenant ID:
+
+```bash
+# The X-Scope-OrgID header value
+LOKI_ORG_ID=my-tenant-id
+```
+
+This is required for:
+- Grafana Enterprise Loki
+- Multi-tenant self-hosted deployments
+- Some Grafana Cloud configurations
+
+### Step 6: Configure Service to Label Mapping
+
+By default, Incident Copilot tries these Loki label patterns:
+- `{service="service-name"}`
+- `{app="service-name"}`
+- `{application="service-name"}`
+
+For custom label mappings, configure `LOKI_SERVICE_LABELS`:
+
+```bash
+LOKI_SERVICE_LABELS='{
+  "payments-api": "namespace=\"production\",app=\"payments\"",
+  "auth-service": "service=\"auth\",env=\"prod\"",
+  "frontend": "job=\"frontend\""
+}'
+```
+
+**Common Label Patterns by Platform:**
+
+| Platform | Common Labels | Example |
+|----------|---------------|---------|
+| Kubernetes | `namespace`, `pod`, `container` | `namespace="prod",app="payments"` |
+| Docker | `container_name`, `compose_service` | `container_name="payments"` |
+| Promtail | `job`, `filename` | `job="myapp"` |
+| Fluentd | `tag`, `fluentd_tag` | `tag="app.payments"` |
+
+### Step 7: Verify the Integration
+
+Test your Loki connection:
+
+```bash
+# Self-hosted (no auth)
+curl http://loki:3100/ready
+
+# Grafana Cloud (basic auth)
+curl -u "12345:glc_your_api_key" \
+  "https://logs-prod-us-central1.grafana.net/loki/api/v1/labels"
+
+# Test a query
+curl -G "http://loki:3100/loki/api/v1/query_range" \
+  --data-urlencode 'query={service="payments-api"}' \
+  --data-urlencode 'limit=10'
+```
+
+### LogQL Query Reference
+
+Incident Copilot uses LogQL to query Loki. The default query pattern is:
+
+```logql
+{service="my-service"} |~ "(?i)(error|warn|exception|failed|failure|critical|fatal)"
+```
+
+**Useful LogQL patterns:**
+
+```logql
+# All logs for a service
+{service="payments"}
+
+# Errors only
+{service="payments"} |= "error"
+
+# Regex filter (case insensitive)
+{service="payments"} |~ "(?i)exception"
+
+# JSON parsing
+{service="payments"} | json | level="error"
+
+# Line format extraction
+{service="payments"} | pattern "<timestamp> <level> <message>"
+```
+
+### Environment Variables Reference
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `LOG_PROVIDER` | Yes | `datadog` | Set to `loki` |
+| `LOKI_URL` | Yes | - | Loki base URL |
+| `LOKI_AUTH_TYPE` | No | `none` | `none`, `basic`, or `bearer` |
+| `LOKI_USERNAME` | If basic | - | User ID for basic auth |
+| `LOKI_PASSWORD` | If basic | - | API key/password for basic auth |
+| `LOKI_TOKEN` | If bearer | - | Bearer token |
+| `LOKI_ORG_ID` | No | - | Tenant ID for multi-tenant |
+| `LOKI_SERVICE_LABELS` | No | - | JSON mapping of service→labels |
+
+### Troubleshooting Loki
+
+#### No logs returned
+
+**Check 1:** Verify labels exist
+```bash
+curl http://loki:3100/loki/api/v1/labels
+```
+
+**Check 2:** Verify label values
+```bash
+curl http://loki:3100/loki/api/v1/label/service/values
+```
+
+**Check 3:** Test a simple query directly
+```bash
+curl -G http://loki:3100/loki/api/v1/query \
+  --data-urlencode 'query={service="payments-api"}'
+```
+
+#### Authentication errors (401)
+
+- For Grafana Cloud: Ensure username is your numeric User ID, not email
+- For bearer auth: Check token hasn't expired
+- For multi-tenant: Verify `LOKI_ORG_ID` is correct
+
+#### Query timeout
+
+Loki queries can timeout on large time ranges. Try:
+- Reducing the time range
+- Adding more specific label filters
+- Using `limit` parameter
+
+---
+
 ## Slack Setup
 
 ### Step 1: Create a Slack App
@@ -570,6 +913,190 @@ Or use channel settings → **Integrations** → **Add an App**
    - **App icon**: Upload a 512x512 icon
    - **Background color**: `#FF5733` (orange-red)
    - **Short description**: Context-aware incident copilot
+
+---
+
+## Linear Setup
+
+Linear is a modern issue tracker popular with startups and engineering teams. Incident Copilot integrates with Linear to automatically create and manage incident tickets.
+
+### Step 1: Create a Linear API Key
+
+1. Log in to Linear at [linear.app](https://linear.app)
+2. Go to **Settings** → **API** (or visit [linear.app/settings/api](https://linear.app/settings/api))
+
+   <!-- Screenshot: linear-api-settings.png -->
+   ```
+   ┌─────────────────────────────────────────┐
+   │  Linear Settings                        │
+   │  ├── Account                            │
+   │  ├── Workspace                          │
+   │  ├── API  ◄──                           │
+   │  └── ...                                │
+   └─────────────────────────────────────────┘
+   ```
+
+3. Click **Create new API key**
+4. Configure:
+   - **Label**: Incident Copilot
+   - **Scope**: Select appropriate scopes (see below)
+
+5. Click **Create**
+6. **Copy the API key** (starts with `lin_api_`)
+
+   ⚠️ **Important**: You won't be able to see the key again after closing the modal!
+
+7. Add to your `.env`:
+   ```bash
+   LINEAR_API_KEY=lin_api_xxxxxxxxxxxxxxxxxxxx
+   ```
+
+### Step 2: Find Your Team ID
+
+You need your team ID to create issues in the correct team.
+
+**Option A: Via Linear URL**
+1. Go to your team's issues page in Linear
+2. The URL will look like: `https://linear.app/your-workspace/team/ENG/active`
+3. Note the team identifier (e.g., `ENG`)
+
+**Option B: Via API Explorer**
+1. Go to [Linear API Explorer](https://studio.apollographql.com/public/Linear-API/variant/current/explorer)
+2. Run this query:
+   ```graphql
+   query {
+     teams {
+       nodes {
+         id
+         name
+         key
+       }
+     }
+   }
+   ```
+3. Find your team and copy the `id` field
+
+**Option C: Via Incident Copilot CLI** (if installed)
+```bash
+# List all teams
+curl -X POST https://api.linear.app/graphql \
+  -H "Authorization: $LINEAR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "{ teams { nodes { id name key } } }"}'
+```
+
+Add the team ID to your `.env`:
+```bash
+LINEAR_TEAM_ID=your-team-uuid-here
+```
+
+### Step 3: (Optional) Configure Labels
+
+You can automatically apply labels to incident tickets. First, find your label IDs:
+
+```bash
+# Get labels for your team
+curl -X POST https://api.linear.app/graphql \
+  -H "Authorization: $LINEAR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "{ team(id: \"YOUR_TEAM_ID\") { labels { nodes { id name color } } } }"}'
+```
+
+Add label IDs to your `.env` (comma-separated for multiple):
+```bash
+LINEAR_LABEL_IDS=["label-uuid-1","label-uuid-2"]
+```
+
+### Step 4: Configure Environment
+
+Complete configuration example:
+
+```bash
+# Required
+LINEAR_API_KEY=lin_api_xxxxxxxxxxxxxxxxxxxx
+LINEAR_TEAM_ID=your-team-uuid
+
+# Optional
+LINEAR_LABEL_IDS=["incident-label-id","sev1-label-id"]
+```
+
+### Step 5: Test the Integration
+
+1. Trigger a test incident through PagerDuty or Opsgenie
+2. Check your Linear team for the new issue
+3. Verify the issue contains:
+   - Correct title with severity
+   - Rich description with context
+   - Appropriate priority mapping
+   - Applied labels (if configured)
+
+### Workflow States
+
+Incident Copilot maps issue workflow as follows:
+
+| Incident State | Linear State Type |
+|----------------|-------------------|
+| New | `triage` |
+| In Progress | `started` |
+| Resolved | `completed` |
+
+When resolving an incident, Copilot will:
+1. Add a resolution comment
+2. Transition to the first `completed` state (usually "Done")
+
+### Priority Mapping
+
+| Incident Severity | Linear Priority |
+|-------------------|-----------------|
+| SEV1 / CRITICAL | 1 (Urgent) |
+| SEV2 / HIGH | 2 (High) |
+| SEV3 / MEDIUM | 3 (Normal) |
+| SEV4 / LOW | 4 (Low) |
+
+### API Permissions
+
+The Linear API key needs these permissions:
+- **Issues**: Create, Read, Update
+- **Comments**: Create
+- **Teams**: Read
+- **Labels**: Read
+- **Workflow States**: Read
+
+### Linear vs Jira
+
+| Feature | Linear | Jira |
+|---------|--------|------|
+| API Type | GraphQL | REST |
+| Auth | API Key (Bearer) | Email + API Token (Basic) |
+| Issue ID | UUID | Project-Number (e.g., PROJ-123) |
+| Workflow | Team-based states | Project-based workflows |
+| Best For | Startups, modern teams | Enterprise, complex workflows |
+
+### Troubleshooting Linear
+
+#### API Key Invalid
+```
+Error: Linear API error: Authentication required
+```
+**Solution**: Verify your API key is correct and hasn't expired. Generate a new key if needed.
+
+#### Team Not Found
+```
+Error: Linear API error: Team not found
+```
+**Solution**: Verify the `LINEAR_TEAM_ID` is a valid UUID. Use the query above to find correct team IDs.
+
+#### Missing Workflow States
+```
+Warning: linear_no_done_state_found
+```
+**Solution**: Ensure your team has at least one workflow state with type `completed`. Check **Settings** → **Teams** → Your Team → **Workflow**.
+
+#### Rate Limiting
+Linear has generous rate limits (typically 400 requests/minute). If you hit limits:
+1. Check for duplicate webhook triggers
+2. Implement request batching for bulk operations
+3. Contact Linear support for limit increases
 
 ---
 
