@@ -1,8 +1,9 @@
 """Tests for Jira integration."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import httpx
+import pytest
 
 from src.integrations.jira import (
     JiraClient,
@@ -10,8 +11,8 @@ from src.integrations.jira import (
     JiraIssue,
     JiraTransition,
     create_incident_ticket,
-    update_incident_resolved,
     get_jira_client,
+    update_incident_resolved,
 )
 
 
