@@ -59,13 +59,17 @@ class TestWebhookMetrics:
 
     def test_webhook_counter_increments(self):
         """Webhook counter should increment on calls."""
-        initial = WEBHOOK_REQUESTS_TOTAL._metrics.get(
-            ("pagerduty", "success"), 
-            type("", (), {"_value": type("", (), {"get": lambda: 0})})()
-        )._value.get() if hasattr(WEBHOOK_REQUESTS_TOTAL, '_metrics') else 0
-        
+        initial = (
+            WEBHOOK_REQUESTS_TOTAL._metrics.get(
+                ("pagerduty", "success"),
+                type("", (), {"_value": type("", (), {"get": lambda: 0})})(),
+            )._value.get()
+            if hasattr(WEBHOOK_REQUESTS_TOTAL, "_metrics")
+            else 0
+        )
+
         WEBHOOK_REQUESTS_TOTAL.labels(source="pagerduty", status="success").inc()
-        
+
         # Verify increment (implementation-specific check)
         assert True  # Basic smoke test
 
@@ -83,46 +87,42 @@ class TestIntegrationMetrics:
     def test_integration_counter_labels(self):
         """Integration counter should accept correct labels."""
         INTEGRATION_REQUESTS_TOTAL.labels(
-            integration="github",
-            operation="fetch_commits",
-            status="success"
+            integration="github", operation="fetch_commits", status="success"
         ).inc()
-        
+
         INTEGRATION_REQUESTS_TOTAL.labels(
-            integration="datadog",
-            operation="fetch_logs",
-            status="error"
+            integration="datadog", operation="fetch_logs", status="error"
         ).inc()
 
     @pytest.mark.asyncio
     async def test_track_integration_call_decorator_async(self):
         """Decorator should track async integration calls."""
-        
+
         @track_integration_call("test_service", "test_operation")
         async def mock_integration_call():
             return "result"
-        
+
         result = await mock_integration_call()
         assert result == "result"
 
     def test_track_integration_call_decorator_sync(self):
         """Decorator should track sync integration calls."""
-        
+
         @track_integration_call("test_service", "test_operation")
         def mock_integration_call():
             return "result"
-        
+
         result = mock_integration_call()
         assert result == "result"
 
     @pytest.mark.asyncio
     async def test_track_integration_call_decorator_handles_errors(self):
         """Decorator should track errors and re-raise."""
-        
+
         @track_integration_call("test_service", "failing_operation")
         async def failing_call():
             raise ValueError("Test error")
-        
+
         with pytest.raises(ValueError):
             await failing_call()
 
@@ -138,10 +138,10 @@ class TestContextTimer:
     def test_context_timer_with_labels(self):
         """Context timer should work with labels."""
         from src.metrics import INTEGRATION_LATENCY_SECONDS
-        
+
         with ContextTimer(
             INTEGRATION_LATENCY_SECONDS,
-            labels={"integration": "github", "operation": "fetch"}
+            labels={"integration": "github", "operation": "fetch"},
         ):
             pass
 
@@ -152,9 +152,7 @@ class TestAIMetrics:
     def test_ai_counter_labels(self):
         """AI counter should accept correct labels."""
         AI_REQUESTS_TOTAL.labels(
-            model="claude-sonnet-4-20250514",
-            operation="summarize",
-            status="success"
+            model="claude-sonnet-4-20250514", operation="summarize", status="success"
         ).inc()
 
 

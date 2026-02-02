@@ -20,18 +20,18 @@ router = APIRouter(tags=["metrics"])
 
 def get_metrics_registry() -> CollectorRegistry:
     """Get the appropriate metrics registry.
-    
+
     Handles both single-process and multi-process (gunicorn) deployments.
     """
     # Check if running in multiprocess mode (e.g., gunicorn with workers)
     prometheus_multiproc_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
-    
+
     if prometheus_multiproc_dir:
         # Multiprocess mode - aggregate metrics from all workers
         registry = CollectorRegistry()
         multiprocess.MultiProcessCollector(registry)
         return registry
-    
+
     # Single process mode - use default registry
     return REGISTRY
 
@@ -50,7 +50,7 @@ def get_metrics_registry() -> CollectorRegistry:
 )
 async def metrics(request: Request) -> Response:
     """Expose Prometheus metrics endpoint.
-    
+
     This endpoint is designed to be scraped by Prometheus.
     Metrics include:
     - Webhook request counts and latencies
@@ -60,7 +60,7 @@ async def metrics(request: Request) -> Response:
     - HTTP request metrics
     """
     registry = get_metrics_registry()
-    
+
     return Response(
         content=generate_latest(registry),
         media_type=CONTENT_TYPE_LATEST,
@@ -75,7 +75,7 @@ async def metrics(request: Request) -> Response:
 async def metrics_health() -> dict:
     """Health check for metrics collection."""
     prometheus_multiproc_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
-    
+
     return {
         "status": "ok",
         "multiprocess_mode": prometheus_multiproc_dir is not None,

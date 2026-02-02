@@ -85,7 +85,7 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     async def startup():
         logger.info("incident_copilot_starting", debug=settings.debug)
-        
+
         # Initialize metrics
         git_sha = os.environ.get("GIT_SHA")
         set_app_info(version="0.1.0", git_sha=git_sha)
