@@ -8,7 +8,7 @@ import structlog
 
 from .ai import LogSummarizer
 from .config import Settings
-from .integrations import CloudWatchAdapter, DatadogAdapter, GitHubAdapter, SlackAdapter
+from .integrations import CloudWatchAdapter, DatadogAdapter, GitHubAdapter, GitLabAdapter, SlackAdapter
 from .models import ContextCard, PagerDutyIncident, RunbookLink
 from .runbooks import RunbookLinker
 
@@ -29,9 +29,15 @@ class ContextOrchestrator:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.github = GitHubAdapter(settings)
+        self.gitlab = GitLabAdapter(settings)
         self.slack = SlackAdapter(settings)
         self.summarizer = LogSummarizer(settings)
         self.runbook_linker = RunbookLinker()
+
+        # Determine SCM provider based on configuration
+        # Prefer GitHub if configured, fall back to GitLab
+        self.scm_provider = self._detect_scm_provider()
+        logger.info("scm_provider_initialized", provider=self.scm_provider)
 
         # Initialize log provider based on configuration
         self.log_provider = settings.log_provider.lower()
@@ -48,6 +54,15 @@ class ContextOrchestrator:
             if self.log_provider == "datadog"
             else DatadogAdapter(settings)
         )
+
+    def _detect_scm_provider(self) -> str:
+        """Detect which SCM provider to use based on configuration."""
+        if self.settings.github_token:
+            return "github"
+        elif self.settings.gitlab_token:
+            return "gitlab"
+        else:
+            return "none"
 
     async def process_incident(
         self, incident: PagerDutyIncident, slack_channel: str | None = None
@@ -67,8 +82,8 @@ class ContextOrchestrator:
         )
 
         # Fan-out: fetch from multiple sources in parallel
-        github_task = asyncio.create_task(
-            self._fetch_github_context(incident.service_name)
+        scm_task = asyncio.create_task(
+            self._fetch_scm_context(incident.service_name)
         )
         datadog_task = asyncio.create_task(
             self._fetch_log_context(incident.service_name)
@@ -76,21 +91,25 @@ class ContextOrchestrator:
 
         # Wait for both with timeout
         try:
-            github_ctx, datadog_ctx = await asyncio.wait_for(
-                asyncio.gather(github_task, datadog_task, return_exceptions=True),
+            scm_ctx, datadog_ctx = await asyncio.wait_for(
+                asyncio.gather(scm_task, datadog_task, return_exceptions=True),
                 timeout=8.0,  # Leave room for AI + Slack
             )
 
             # Handle exceptions from gather
-            if isinstance(github_ctx, Exception):
-                logger.error("github_fetch_error", error=str(github_ctx))
-                errors.append(f"GitHub: {str(github_ctx)}")
-                github_ctx = None
+            if isinstance(scm_ctx, Exception):
+                scm_name = "GitHub" if self.scm_provider == "github" else "GitLab"
+                logger.error("scm_fetch_error", provider=self.scm_provider, error=str(scm_ctx))
+                errors.append(f"{scm_name}: {str(scm_ctx)}")
+                scm_ctx = None
 
             if isinstance(datadog_ctx, Exception):
-                provider_name = (
-                    "CloudWatch" if self.log_provider == "cloudwatch" else "Datadog"
-                )
+                provider_names = {
+                    "cloudwatch": "CloudWatch",
+                    "loki": "Loki",
+                    "datadog": "Datadog",
+                }
+                provider_name = provider_names.get(self.log_provider, "Datadog")
                 logger.error(
                     "log_fetch_error",
                     provider=self.log_provider,
@@ -102,8 +121,12 @@ class ContextOrchestrator:
         except TimeoutError:
             logger.warning("context_fetch_timeout")
             errors.append("Context fetch timed out")
-            github_ctx = github_task.result() if github_task.done() else None
+            scm_ctx = scm_task.result() if scm_task.done() else None
             datadog_ctx = datadog_task.result() if datadog_task.done() else None
+        
+        # Extract GitHub context for backward compatibility
+        github_ctx = scm_ctx if self.scm_provider == "github" else None
+        gitlab_ctx = scm_ctx if self.scm_provider == "gitlab" else None
 
         # AI summarization (if we have logs)
         ai_summary = None
@@ -153,6 +176,13 @@ class ContextOrchestrator:
         # Assemble context card
         elapsed_ms = int((time.monotonic() - start_time) * 1000)
 
+        # Get codeowners from whichever SCM is configured
+        codeowners = []
+        if github_ctx:
+            codeowners = github_ctx.codeowners
+        elif gitlab_ctx:
+            codeowners = gitlab_ctx.codeowners
+        
         card = ContextCard(
             incident_id=incident.incident_id,
             title=incident.title,
@@ -161,11 +191,12 @@ class ContextOrchestrator:
             triggered_at=incident.triggered_at,
             alert_url=incident.html_url,
             github=github_ctx,
+            gitlab=gitlab_ctx,
             datadog=datadog_ctx,
             ai_summary=ai_summary,
             similar_incidents=[],  # TODO: implement similarity search
             runbooks=runbook_links,
-            owners=github_ctx.codeowners if github_ctx else incident.assigned_to,
+            owners=codeowners if codeowners else incident.assigned_to,
             assembled_at=datetime.utcnow(),
             assembly_time_ms=elapsed_ms,
             errors=errors,
@@ -175,7 +206,9 @@ class ContextOrchestrator:
             "context_assembled",
             incident_id=incident.incident_id,
             elapsed_ms=elapsed_ms,
+            scm_provider=self.scm_provider,
             has_github=github_ctx is not None,
+            has_gitlab=gitlab_ctx is not None,
             has_datadog=datadog_ctx is not None,
             has_ai=ai_summary is not None,
             error_count=len(errors),
@@ -186,12 +219,29 @@ class ContextOrchestrator:
 
         return card
 
+    async def _fetch_scm_context(self, service_name: str):
+        """Fetch SCM context from GitHub or GitLab based on configuration."""
+        if self.scm_provider == "github":
+            return await self._fetch_github_context(service_name)
+        elif self.scm_provider == "gitlab":
+            return await self._fetch_gitlab_context(service_name)
+        else:
+            return None
+
     async def _fetch_github_context(self, service_name: str):
         """Fetch GitHub context with error handling."""
         try:
             return await self.github.get_context(service_name)
         except Exception as e:
             logger.error("github_context_failed", service=service_name, error=str(e))
+            return None
+
+    async def _fetch_gitlab_context(self, service_name: str):
+        """Fetch GitLab context with error handling."""
+        try:
+            return await self.gitlab.get_context(service_name)
+        except Exception as e:
+            logger.error("gitlab_context_failed", service=service_name, error=str(e))
             return None
 
     async def _fetch_log_context(self, service_name: str):
