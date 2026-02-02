@@ -63,9 +63,37 @@ class Settings(BaseSettings):
         description="Service to CloudWatch Log Group mapping (e.g., payments-api=/aws/lambda/payments)",
     )
 
+    # Grafana Loki
+    loki_url: str = Field(
+        default="",
+        description="Loki base URL (e.g., http://loki:3100 or https://logs-prod-us-central1.grafana.net)",
+    )
+    loki_auth_type: str = Field(
+        default="none",
+        description="Loki authentication type: 'none', 'basic', or 'bearer'",
+    )
+    loki_username: str = Field(
+        default="", description="Loki username for basic auth (e.g., Grafana Cloud user ID)"
+    )
+    loki_password: str = Field(
+        default="", description="Loki password for basic auth (e.g., Grafana Cloud API key)"
+    )
+    loki_token: str = Field(
+        default="", description="Loki bearer token for token-based auth"
+    )
+    loki_org_id: str = Field(
+        default="",
+        description="Loki tenant ID for multi-tenant deployments (X-Scope-OrgID header)",
+    )
+    loki_service_labels: dict[str, str] = Field(
+        default_factory=dict,
+        description="Service to Loki label selector mapping (e.g., payments-api=service=\"payments\")",
+    )
+
     # Log Provider
     log_provider: str = Field(
-        default="datadog", description="Log provider to use: 'datadog' or 'cloudwatch'"
+        default="datadog",
+        description="Log provider to use: 'datadog', 'cloudwatch', or 'loki'",
     )
 
     # Slack
