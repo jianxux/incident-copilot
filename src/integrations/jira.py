@@ -4,8 +4,7 @@ Creates and updates Jira issues when incidents are detected,
 providing a seamless workflow for tracking and resolution.
 """
 
-import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -469,7 +468,7 @@ async def create_incident_ticket(
         f"**Service:** {service_name}",
         f"**Alert:** {alert_summary}",
         f"**Severity:** {severity}",
-        f"**Triggered:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
+        f"**Triggered:** {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}",
         "",
     ]
 
