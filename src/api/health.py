@@ -4,7 +4,7 @@ Provides comprehensive health status for the application and its dependencies.
 """
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -54,14 +54,14 @@ _app_start_time: datetime | None = None
 def set_app_start_time() -> None:
     """Set the application start time (call on startup)."""
     global _app_start_time
-    _app_start_time = datetime.now(timezone.utc)
+    _app_start_time = datetime.now(UTC)
 
 
 def get_uptime_seconds() -> float | None:
     """Get application uptime in seconds."""
     if _app_start_time is None:
         return None
-    return (datetime.now(timezone.utc) - _app_start_time).total_seconds()
+    return (datetime.now(UTC) - _app_start_time).total_seconds()
 
 
 async def check_redis_health() -> ComponentHealth:
@@ -457,7 +457,7 @@ async def health_check(
 
     return HealthResponse(
         status=overall_status,
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         version="0.1.0",
         uptime_seconds=get_uptime_seconds(),
         components=components,
