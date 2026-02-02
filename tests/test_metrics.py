@@ -6,14 +6,14 @@ from prometheus_client import REGISTRY
 
 from src.main import app
 from src.metrics import (
-    WEBHOOK_REQUESTS_TOTAL,
+    AI_REQUESTS_TOTAL,
+    CONTEXT_ASSEMBLY_SECONDS,
     CONTEXT_ASSEMBLY_TOTAL,
     INTEGRATION_REQUESTS_TOTAL,
-    AI_REQUESTS_TOTAL,
+    WEBHOOK_REQUESTS_TOTAL,
+    ContextTimer,
     set_app_info,
     track_integration_call,
-    ContextTimer,
-    CONTEXT_ASSEMBLY_SECONDS,
 )
 
 

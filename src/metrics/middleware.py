@@ -2,14 +2,15 @@
 
 import time
 from typing import Callable
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
 from . import (
-    HTTP_REQUESTS_TOTAL,
-    HTTP_REQUEST_DURATION_SECONDS,
     ACTIVE_CONNECTIONS,
+    HTTP_REQUEST_DURATION_SECONDS,
+    HTTP_REQUESTS_TOTAL,
 )
 
 
@@ -71,7 +72,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         Replace dynamic path segments (UUIDs, IDs) with placeholders.
         """
         import re
-        
+
         # Replace UUIDs
         path = re.sub(
             r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
