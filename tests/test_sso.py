@@ -345,14 +345,14 @@ class TestOIDCProvider:
             "jwks_uri": "https://idp.example.com/.well-known/jwks.json",
         }
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_response = AsyncMock()
+        with patch("src.auth.sso.oidc.httpx.AsyncClient") as mock_client:
+            mock_response = MagicMock()
             mock_response.json.return_value = mock_config
             mock_response.raise_for_status = MagicMock()
 
-            mock_client.return_value.__aenter__.return_value.get = AsyncMock(
-                return_value=mock_response
-            )
+            async_context = AsyncMock()
+            async_context.get = AsyncMock(return_value=mock_response)
+            mock_client.return_value.__aenter__.return_value = async_context
 
             config = await provider.discover_configuration()
 
