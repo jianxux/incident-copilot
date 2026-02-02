@@ -2,7 +2,6 @@
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
 import pytest
 
 from src.integrations.jira import (
@@ -11,7 +10,6 @@ from src.integrations.jira import (
     JiraIssue,
     JiraTransition,
     create_incident_ticket,
-    get_jira_client,
     update_incident_resolved,
 )
 
