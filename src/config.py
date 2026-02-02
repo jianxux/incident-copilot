@@ -34,6 +34,17 @@ class Settings(BaseSettings):
     github_token: str = Field(default="", description="GitHub personal access token")
     github_org: str = Field(default="", description="GitHub organization name")
 
+    # GitLab
+    gitlab_token: str = Field(default="", description="GitLab personal access token")
+    gitlab_url: str = Field(
+        default="https://gitlab.com",
+        description="GitLab instance URL (for self-hosted)",
+    )
+    gitlab_project_map: dict[str, str] = Field(
+        default_factory=dict,
+        description="Service to GitLab project path mapping (e.g., payments-api=mygroup/payments)",
+    )
+
     # Datadog
     datadog_api_key: str = Field(default="", description="Datadog API key")
     datadog_app_key: str = Field(default="", description="Datadog application key")
@@ -126,6 +137,20 @@ class Settings(BaseSettings):
     jira_api_token: str = Field(default="", description="Jira API token")
     jira_default_project: str = Field(
         default="INCIDENT", description="Default Jira project key for incidents"
+    )
+
+    # Linear
+    linear_api_key: str = Field(
+        default="",
+        description="Linear API key (from https://linear.app/settings/api)",
+    )
+    linear_team_id: str = Field(
+        default="",
+        description="Default Linear team ID for incidents",
+    )
+    linear_label_ids: list[str] = Field(
+        default_factory=list,
+        description="Optional label IDs to apply to incident issues",
     )
 
     # Stripe
