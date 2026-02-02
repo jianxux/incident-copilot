@@ -16,7 +16,7 @@ from . import (
 
 class PrometheusMiddleware(BaseHTTPMiddleware):
     """Middleware to track HTTP request metrics."""
-    
+
     def __init__(
         self,
         app: ASGIApp,
@@ -25,22 +25,22 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         # Paths to exclude from metrics (e.g., /metrics itself, health checks)
         self.exclude_paths = exclude_paths or {"/metrics", "/health"}
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Skip excluded paths
         if request.url.path in self.exclude_paths:
             return await call_next(request)
-        
+
         # Normalize endpoint for cardinality control
         # Replace path parameters with placeholders
         endpoint = self._normalize_path(request.url.path)
         method = request.method
-        
+
         # Track active connections
         ACTIVE_CONNECTIONS.inc()
-        
+
         start_time = time.perf_counter()
-        
+
         try:
             response = await call_next(request)
             status_code = str(response.status_code)
@@ -50,25 +50,25 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         finally:
             # Record metrics
             duration = time.perf_counter() - start_time
-            
+
             HTTP_REQUESTS_TOTAL.labels(
                 method=method,
                 endpoint=endpoint,
                 status_code=status_code,
             ).inc()
-            
+
             HTTP_REQUEST_DURATION_SECONDS.labels(
                 method=method,
                 endpoint=endpoint,
             ).observe(duration)
-            
+
             ACTIVE_CONNECTIONS.dec()
-        
+
         return response
-    
+
     def _normalize_path(self, path: str) -> str:
         """Normalize URL paths to reduce cardinality.
-        
+
         Replace dynamic path segments (UUIDs, IDs) with placeholders.
         """
         import re
@@ -80,13 +80,13 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
             path,
             flags=re.IGNORECASE,
         )
-        
+
         # Replace numeric IDs
         path = re.sub(r"/\d+(?=/|$)", "/{id}", path)
-        
+
         # Replace tenant IDs (commonly prefixed paths)
         path = re.sub(r"/tenants/[^/]+", "/tenants/{tenant_id}", path)
         path = re.sub(r"/incidents/[^/]+", "/incidents/{incident_id}", path)
         path = re.sub(r"/users/[^/]+", "/users/{user_id}", path)
-        
+
         return path
