@@ -67,11 +67,33 @@ OPSGENIE_WEBHOOK_SECRET=your-webhook-secret
 OPSGENIE_REGION=us  # or 'eu' for EU region
 ```
 
-### 4. Create Slack App
+### 4. Configure Notifications
+
+#### Option A: Slack App
 
 1. Create a new Slack app at https://api.slack.com/apps
 2. Add Bot Token Scopes: `chat:write`, `chat:write.public`
 3. Install to workspace and copy Bot OAuth Token to `.env`
+4. Set `NOTIFICATION_PROVIDER=slack`
+
+#### Option B: Microsoft Teams
+
+1. In Teams, go to the channel where you want notifications
+2. Click `...` → **Connectors** → **Incoming Webhook**
+3. Configure the webhook:
+   - Name: "Incident Copilot"
+   - Upload an icon (optional)
+4. Copy the webhook URL to `TEAMS_WEBHOOK_URL` in `.env`
+5. Set `NOTIFICATION_PROVIDER=teams`
+
+#### Option C: Both Slack and Teams
+
+To send context cards to both platforms simultaneously:
+```bash
+NOTIFICATION_PROVIDER=both
+SLACK_BOT_TOKEN=xoxb-your-token
+TEAMS_WEBHOOK_URL=https://outlook.office.com/webhook/...
+```
 
 ## API Endpoints
 
@@ -143,7 +165,13 @@ All configuration via environment variables:
 | `AWS_SECRET_ACCESS_KEY` | AWS secret key |
 | `CLOUDWATCH_LOG_GROUP_MAP` | JSON mapping of service to log groups |
 | `SLACK_BOT_TOKEN` | Slack bot OAuth token |
+| `TEAMS_WEBHOOK_URL` | Microsoft Teams Incoming Webhook URL |
+| `NOTIFICATION_PROVIDER` | Notification target: `slack`, `teams`, or `both` |
 | `ANTHROPIC_API_KEY` | Anthropic API key for Claude |
+| `JIRA_BASE_URL` | Jira Cloud URL (e.g., https://yourcompany.atlassian.net) |
+| `JIRA_EMAIL` | Jira user email for API authentication |
+| `JIRA_API_TOKEN` | Jira API token |
+| `JIRA_DEFAULT_PROJECT` | Default Jira project key for incidents |
 
 ## AWS CloudWatch Integration
 
@@ -200,6 +228,63 @@ Without explicit mapping, it tries common conventions:
 - Filter by time window (default: last 15 minutes)
 - CloudWatch Logs Insights queries for structured searches
 - Same output format as Datadog for seamless AI summarization
+
+## Kubernetes Deployment
+
+Deploy to Kubernetes using the included Helm chart.
+
+### Quick Start
+
+```bash
+# Install with required secrets
+helm install incident-copilot ./helm/incident-copilot \
+  --set anthropic.apiKey=sk-ant-xxx \
+  --set slack.botToken=xoxb-xxx \
+  --set pagerduty.apiKey=xxx \
+  --set pagerduty.webhookSecret=xxx \
+  --set github.token=ghp_xxx \
+  --set github.org=your-org \
+  --set datadog.apiKey=xxx \
+  --set datadog.appKey=xxx
+```
+
+### With Ingress
+
+```bash
+helm install incident-copilot ./helm/incident-copilot \
+  -f my-values.yaml \
+  --set ingress.enabled=true \
+  --set ingress.hosts[0].host=incident-copilot.example.com
+```
+
+### Production Deployment
+
+For production, use a values file:
+
+```yaml
+# values-production.yaml
+replicaCount: 2
+
+image:
+  repository: your-registry/incident-copilot
+  tag: "0.2.0"
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+
+redis:
+  persistence:
+    enabled: true
+    size: 5Gi
+```
+
+```bash
+helm install incident-copilot ./helm/incident-copilot -f values-production.yaml
+```
+
+See [helm/README.md](helm/README.md) for full configuration options.
 
 ## Roadmap
 
