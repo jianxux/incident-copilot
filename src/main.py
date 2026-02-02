@@ -7,7 +7,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .api import analytics_router, demo_router, health_router, runbooks_router, webhooks_router
+from .api import (
+    analytics_router,
+    demo_router,
+    health_router,
+    runbooks_router,
+    webhooks_router,
+)
 from .api.health import set_app_start_time
 from .auth.routes import router as auth_router
 from .billing.routes import router as billing_router

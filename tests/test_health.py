@@ -1,20 +1,21 @@
 """Tests for health check endpoints."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from fastapi.testclient import TestClient
 
-from src.main import app
 from src.api.health import (
-    HealthStatus,
     ComponentHealth,
-    check_redis_health,
+    HealthStatus,
     check_database_health,
     check_github_health,
+    check_redis_health,
     check_slack_health,
-    set_app_start_time,
     get_uptime_seconds,
+    set_app_start_time,
 )
+from src.main import app
 
 
 @pytest.fixture
