@@ -34,8 +34,7 @@ class IncidentStore:
     def _init_db(self):
         """Initialize the database schema."""
         with self._get_connection() as conn:
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS incidents (
                     incident_id TEXT PRIMARY KEY,
                     title TEXT NOT NULL,
@@ -49,20 +48,15 @@ class IncidentStore:
                     context_card TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_incidents_service
                 ON incidents(service)
-            """
-            )
-            conn.execute(
-                """
+            """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_incidents_occurred
                 ON incidents(occurred_at)
-            """
-            )
+            """)
             conn.commit()
 
         logger.info("incident_store_initialized", db_path=str(self.db_path))
