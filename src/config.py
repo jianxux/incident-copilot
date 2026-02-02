@@ -90,10 +90,32 @@ class Settings(BaseSettings):
         description="Service to Loki label selector mapping (e.g., payments-api=service=\"payments\")",
     )
 
+    # Splunk
+    splunk_url: str = Field(
+        default="",
+        description="Splunk REST API URL (e.g., https://splunk.example.com:8089)",
+    )
+    splunk_token: str = Field(
+        default="",
+        description="Splunk authentication token (recommended for automation)",
+    )
+    splunk_username: str = Field(
+        default="",
+        description="Splunk username for basic auth (alternative to token)",
+    )
+    splunk_password: str = Field(
+        default="",
+        description="Splunk password for basic auth",
+    )
+    splunk_index_map: dict[str, str] = Field(
+        default_factory=dict,
+        description="Service to Splunk index mapping (e.g., payments-api=payments_logs)",
+    )
+
     # Log Provider
     log_provider: str = Field(
         default="datadog",
-        description="Log provider to use: 'datadog', 'cloudwatch', or 'loki'",
+        description="Log provider to use: 'datadog', 'cloudwatch', 'loki', or 'splunk'",
     )
 
     # Slack
@@ -165,6 +187,32 @@ class Settings(BaseSettings):
     jira_api_token: str = Field(default="", description="Jira API token")
     jira_default_project: str = Field(
         default="INCIDENT", description="Default Jira project key for incidents"
+    )
+
+    # ServiceNow
+    servicenow_instance: str = Field(
+        default="",
+        description="ServiceNow instance URL (e.g., https://yourcompany.service-now.com)",
+    )
+    servicenow_username: str = Field(
+        default="",
+        description="ServiceNow username for basic auth",
+    )
+    servicenow_password: str = Field(
+        default="",
+        description="ServiceNow password for basic auth",
+    )
+    servicenow_api_key: str = Field(
+        default="",
+        description="ServiceNow OAuth token or API key (alternative to basic auth)",
+    )
+    servicenow_assignment_group: str = Field(
+        default="",
+        description="Default assignment group for new incidents",
+    )
+    servicenow_caller_id: str = Field(
+        default="",
+        description="Default caller ID for incidents created by the copilot",
     )
 
     # Linear
