@@ -150,7 +150,7 @@ HEALTH_STATUS = Gauge(
 )
 
 
-def set_app_info(version: str, git_sha: Optional[str] = None) -> None:
+def set_app_info(version: str, git_sha: str | None = None) -> None:
     """Set application information metric."""
     info = {"version": version}
     if git_sha:
@@ -218,10 +218,10 @@ def track_integration_call(integration: str, operation: str):
 class ContextTimer:
     """Context manager for timing operations."""
 
-    def __init__(self, histogram: Histogram, labels: Optional[dict] = None):
+    def __init__(self, histogram: Histogram, labels: dict | None = None):
         self.histogram = histogram
         self.labels = labels or {}
-        self.start_time: Optional[float] = None
+        self.start_time: float | None = None
 
     def __enter__(self):
         self.start_time = time.perf_counter()

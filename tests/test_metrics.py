@@ -2,7 +2,6 @@
 
 import pytest
 from fastapi.testclient import TestClient
-from prometheus_client import REGISTRY
 
 from src.main import app
 from src.metrics import (
@@ -59,7 +58,7 @@ class TestWebhookMetrics:
 
     def test_webhook_counter_increments(self):
         """Webhook counter should increment on calls."""
-        initial = (
+        (
             WEBHOOK_REQUESTS_TOTAL._metrics.get(
                 ("pagerduty", "success"),
                 type("", (), {"_value": type("", (), {"get": lambda: 0})})(),
