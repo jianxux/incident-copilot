@@ -8,8 +8,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .api import analytics_router, demo_router, runbooks_router, webhooks_router
-from .api.metrics import router as metrics_router
+from .api import (
+    analytics_router,
+    demo_router,
+    health_router,
+    runbooks_router,
+    webhooks_router,
+)
+from .api.health import set_app_start_time
 from .auth.routes import router as auth_router
 from .billing.routes import router as billing_router
 from .config import get_settings
@@ -66,7 +72,7 @@ def create_app() -> FastAPI:
     )
 
     # Include routers
-    app.include_router(metrics_router)
+    app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(billing_router)
     app.include_router(webhooks_router)
@@ -85,6 +91,7 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     async def startup():
         logger.info("incident_copilot_starting", debug=settings.debug)
+        set_app_start_time()
 
         # Initialize metrics
         git_sha = os.environ.get("GIT_SHA")
