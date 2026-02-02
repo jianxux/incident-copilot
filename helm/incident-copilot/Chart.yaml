@@ -1,0 +1,16 @@
+apiVersion: v2
+name: incident-copilot
+description: Context-aware incident copilot for on-call engineers
+type: application
+version: 0.1.0
+appVersion: "0.2.0"
+keywords:
+  - incident-response
+  - on-call
+  - pagerduty
+  - opsgenie
+  - slack
+home: https://github.com/your-org/incident-copilot
+maintainers:
+  - name: Your Team
+    email: team@example.com
