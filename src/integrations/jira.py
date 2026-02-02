@@ -93,7 +93,7 @@ class JiraClient:
         """Get or create HTTP client."""
         if self._client is None:
             import base64
-            
+
             # Jira Cloud uses Basic auth with email:api_token
             auth_string = f"{self.email}:{self.api_token}"
             auth_bytes = base64.b64encode(auth_string.encode()).decode()
