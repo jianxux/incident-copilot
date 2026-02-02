@@ -119,7 +119,8 @@ class Settings(BaseSettings):
 
     # Jira
     jira_base_url: str = Field(
-        default="", description="Jira Cloud URL (e.g., https://yourcompany.atlassian.net)"
+        default="",
+        description="Jira Cloud URL (e.g., https://yourcompany.atlassian.net)",
     )
     jira_email: str = Field(default="", description="Jira user email for API auth")
     jira_api_token: str = Field(default="", description="Jira API token")
