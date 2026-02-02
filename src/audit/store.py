@@ -47,6 +47,10 @@ class AuditStore:
         self._events_by_tenant: dict[str, list[AuditEvent]] = defaultdict(list)
         self._lock = asyncio.Lock()
 
+    async def initialize(self) -> None:
+        """Initialize the in-memory store (no-op for memory store)."""
+        pass
+
     async def store_event(self, event: AuditEvent) -> AuditEvent:
         """Store an audit event in memory."""
         async with self._lock:
