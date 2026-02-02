@@ -168,6 +168,10 @@ All configuration via environment variables:
 | `TEAMS_WEBHOOK_URL` | Microsoft Teams Incoming Webhook URL |
 | `NOTIFICATION_PROVIDER` | Notification target: `slack`, `teams`, or `both` |
 | `ANTHROPIC_API_KEY` | Anthropic API key for Claude |
+| `JIRA_BASE_URL` | Jira Cloud URL (e.g., https://yourcompany.atlassian.net) |
+| `JIRA_EMAIL` | Jira user email for API authentication |
+| `JIRA_API_TOKEN` | Jira API token |
+| `JIRA_DEFAULT_PROJECT` | Default Jira project key for incidents |
 
 ## AWS CloudWatch Integration
 
