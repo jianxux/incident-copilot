@@ -21,7 +21,7 @@ router = APIRouter(tags=["health"])
 
 class HealthStatus(str, Enum):
     """Health status enum."""
-    
+
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
@@ -29,7 +29,7 @@ class HealthStatus(str, Enum):
 
 class ComponentHealth(BaseModel):
     """Health status of a single component."""
-    
+
     name: str
     status: HealthStatus
     latency_ms: float | None = None
@@ -39,7 +39,7 @@ class ComponentHealth(BaseModel):
 
 class HealthResponse(BaseModel):
     """Overall health response."""
-    
+
     status: HealthStatus
     timestamp: str
     version: str
@@ -67,19 +67,19 @@ def get_uptime_seconds() -> float | None:
 async def check_redis_health() -> ComponentHealth:
     """Check Redis connectivity."""
     import time
-    
+
     settings = get_settings()
     start = time.perf_counter()
-    
+
     try:
         import redis.asyncio as redis
-        
+
         client = redis.from_url(settings.redis_url, socket_timeout=5.0)
         await client.ping()
         await client.close()
-        
+
         latency = (time.perf_counter() - start) * 1000
-        
+
         return ComponentHealth(
             name="redis",
             status=HealthStatus.HEALTHY,
@@ -99,23 +99,23 @@ async def check_redis_health() -> ComponentHealth:
 async def check_database_health() -> ComponentHealth:
     """Check PostgreSQL connectivity."""
     import time
-    
+
     settings = get_settings()
     start = time.perf_counter()
-    
+
     try:
         from sqlalchemy import text
         from sqlalchemy.ext.asyncio import create_async_engine
-        
+
         engine = create_async_engine(settings.database_url, pool_pre_ping=True)
-        
+
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-        
+
         await engine.dispose()
-        
+
         latency = (time.perf_counter() - start) * 1000
-        
+
         return ComponentHealth(
             name="database",
             status=HealthStatus.HEALTHY,
@@ -135,18 +135,18 @@ async def check_database_health() -> ComponentHealth:
 async def check_pagerduty_health() -> ComponentHealth:
     """Check PagerDuty API connectivity."""
     import time
-    
+
     settings = get_settings()
-    
+
     if not settings.pagerduty_api_key:
         return ComponentHealth(
             name="pagerduty",
             status=HealthStatus.DEGRADED,
             message="Not configured",
         )
-    
+
     start = time.perf_counter()
-    
+
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
@@ -157,9 +157,9 @@ async def check_pagerduty_health() -> ComponentHealth:
                 },
             )
             response.raise_for_status()
-        
+
         latency = (time.perf_counter() - start) * 1000
-        
+
         return ComponentHealth(
             name="pagerduty",
             status=HealthStatus.HEALTHY,
@@ -179,18 +179,18 @@ async def check_pagerduty_health() -> ComponentHealth:
 async def check_github_health() -> ComponentHealth:
     """Check GitHub API connectivity."""
     import time
-    
+
     settings = get_settings()
-    
+
     if not settings.github_token:
         return ComponentHealth(
             name="github",
             status=HealthStatus.DEGRADED,
             message="Not configured",
         )
-    
+
     start = time.perf_counter()
-    
+
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
@@ -202,10 +202,10 @@ async def check_github_health() -> ComponentHealth:
             )
             response.raise_for_status()
             data = response.json()
-        
+
         latency = (time.perf_counter() - start) * 1000
         rate_limit = data.get("rate", {})
-        
+
         return ComponentHealth(
             name="github",
             status=HealthStatus.HEALTHY,
@@ -229,18 +229,18 @@ async def check_github_health() -> ComponentHealth:
 async def check_datadog_health() -> ComponentHealth:
     """Check Datadog API connectivity."""
     import time
-    
+
     settings = get_settings()
-    
+
     if not settings.datadog_api_key or not settings.datadog_app_key:
         return ComponentHealth(
             name="datadog",
             status=HealthStatus.DEGRADED,
             message="Not configured",
         )
-    
+
     start = time.perf_counter()
-    
+
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
@@ -251,9 +251,9 @@ async def check_datadog_health() -> ComponentHealth:
                 },
             )
             response.raise_for_status()
-        
+
         latency = (time.perf_counter() - start) * 1000
-        
+
         return ComponentHealth(
             name="datadog",
             status=HealthStatus.HEALTHY,
@@ -273,18 +273,18 @@ async def check_datadog_health() -> ComponentHealth:
 async def check_slack_health() -> ComponentHealth:
     """Check Slack API connectivity."""
     import time
-    
+
     settings = get_settings()
-    
+
     if not settings.slack_bot_token:
         return ComponentHealth(
             name="slack",
             status=HealthStatus.DEGRADED,
             message="Not configured",
         )
-    
+
     start = time.perf_counter()
-    
+
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
@@ -294,9 +294,9 @@ async def check_slack_health() -> ComponentHealth:
                 },
             )
             data = response.json()
-        
+
         latency = (time.perf_counter() - start) * 1000
-        
+
         if data.get("ok"):
             return ComponentHealth(
                 name="slack",
@@ -328,18 +328,18 @@ async def check_slack_health() -> ComponentHealth:
 async def check_anthropic_health() -> ComponentHealth:
     """Check Anthropic API connectivity."""
     import time
-    
+
     settings = get_settings()
-    
+
     if not settings.anthropic_api_key:
         return ComponentHealth(
             name="anthropic",
             status=HealthStatus.DEGRADED,
             message="Not configured",
         )
-    
+
     start = time.perf_counter()
-    
+
     try:
         # Just check if the API key format is valid by making a minimal request
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -355,9 +355,9 @@ async def check_anthropic_health() -> ComponentHealth:
             if response.status_code == 401:
                 raise ValueError("Invalid API key")
             response.raise_for_status()
-        
+
         latency = (time.perf_counter() - start) * 1000
-        
+
         return ComponentHealth(
             name="anthropic",
             status=HealthStatus.HEALTHY,
@@ -385,16 +385,16 @@ async def health_check(
     full: bool = False,
 ) -> HealthResponse:
     """Comprehensive health check endpoint.
-    
+
     Args:
         full: If True, check all external dependencies (slower).
               If False, just check core components (fast).
-    
+
     Returns:
         Health status of all components.
     """
     components = []
-    
+
     if full:
         # Run all health checks in parallel
         checks = await asyncio.gather(
@@ -407,7 +407,7 @@ async def health_check(
             check_anthropic_health(),
             return_exceptions=True,
         )
-        
+
         for check in checks:
             if isinstance(check, Exception):
                 components.append(
@@ -426,7 +426,7 @@ async def health_check(
             check_database_health(),
             return_exceptions=True,
         )
-        
+
         for check in checks:
             if isinstance(check, Exception):
                 components.append(
@@ -438,23 +438,23 @@ async def health_check(
                 )
             else:
                 components.append(check)
-    
+
     # Determine overall status
     statuses = [c.status for c in components]
-    
+
     if all(s == HealthStatus.HEALTHY for s in statuses):
         overall_status = HealthStatus.HEALTHY
     elif any(s == HealthStatus.UNHEALTHY for s in statuses):
         overall_status = HealthStatus.UNHEALTHY
     else:
         overall_status = HealthStatus.DEGRADED
-    
+
     # Set HTTP status code based on health
     if overall_status == HealthStatus.UNHEALTHY:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     elif overall_status == HealthStatus.DEGRADED:
         response.status_code = status.HTTP_200_OK  # Still operational
-    
+
     return HealthResponse(
         status=overall_status,
         timestamp=datetime.now(timezone.utc).isoformat(),
@@ -471,7 +471,7 @@ async def health_check(
 )
 async def liveness() -> dict:
     """Kubernetes liveness probe.
-    
+
     Returns 200 if the application is running.
     This should always succeed unless the app is completely broken.
     """
@@ -485,19 +485,19 @@ async def liveness() -> dict:
 )
 async def readiness(response: Response) -> dict:
     """Kubernetes readiness probe.
-    
+
     Returns 200 if the application is ready to serve traffic.
     Checks core dependencies (Redis, DB).
     """
     redis_health = await check_redis_health()
     db_health = await check_database_health()
-    
+
     if (
         redis_health.status == HealthStatus.HEALTHY
         and db_health.status == HealthStatus.HEALTHY
     ):
         return {"status": "ready"}
-    
+
     response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return {
         "status": "not_ready",

@@ -54,7 +54,7 @@ class TestReadinessEndpoint:
                 # Create a test client
                 client = TestClient(app)
                 response = client.get("/health/ready")
-                
+
                 # May or may not be 200 depending on actual connectivity
                 # Just verify the endpoint exists and returns valid JSON
                 assert response.status_code in [200, 503]
@@ -67,10 +67,10 @@ class TestHealthEndpoint:
     def test_health_returns_valid_response(self, client):
         """Health check should return valid response structure."""
         response = client.get("/health")
-        
+
         # May be 200 or 503 depending on actual connectivity
         assert response.status_code in [200, 503]
-        
+
         data = response.json()
         assert "status" in data
         assert "timestamp" in data
@@ -80,10 +80,10 @@ class TestHealthEndpoint:
     def test_health_full_check(self, client):
         """Full health check should include all components."""
         response = client.get("/health?full=true")
-        
+
         data = response.json()
         component_names = [c["name"] for c in data["components"]]
-        
+
         # Should check more components in full mode
         assert len(data["components"]) >= 2
 
@@ -100,7 +100,7 @@ class TestComponentHealthChecks:
         with patch("src.api.health.get_settings", return_value=mock_settings):
             # Will fail to connect in tests, but should return valid structure
             result = await check_redis_health()
-            
+
             assert isinstance(result, ComponentHealth)
             assert result.name == "redis"
             assert result.status in [HealthStatus.HEALTHY, HealthStatus.UNHEALTHY]
@@ -113,7 +113,7 @@ class TestComponentHealthChecks:
 
         with patch("src.api.health.get_settings", return_value=mock_settings):
             result = await check_github_health()
-            
+
             assert result.status == HealthStatus.DEGRADED
             assert result.message == "Not configured"
 
@@ -125,7 +125,7 @@ class TestComponentHealthChecks:
 
         with patch("src.api.health.get_settings", return_value=mock_settings):
             result = await check_slack_health()
-            
+
             assert result.status == HealthStatus.DEGRADED
             assert result.message == "Not configured"
 
@@ -137,14 +137,15 @@ class TestUptime:
         """Uptime should be None before app start."""
         # Reset the start time
         import src.api.health as health_module
+
         health_module._app_start_time = None
-        
+
         assert get_uptime_seconds() is None
 
     def test_uptime_after_start(self):
         """Uptime should be positive after app start."""
         set_app_start_time()
-        
+
         uptime = get_uptime_seconds()
         assert uptime is not None
         assert uptime >= 0
@@ -158,7 +159,7 @@ class TestHealthStatus:
         # This tests the actual behavior - may vary based on environment
         response = client.get("/health")
         data = response.json()
-        
+
         # Verify status is one of the valid values
         assert data["status"] in ["healthy", "degraded", "unhealthy"]
 
@@ -166,7 +167,7 @@ class TestHealthStatus:
         """HTTP status codes should match health status."""
         response = client.get("/health")
         data = response.json()
-        
+
         if data["status"] == "unhealthy":
             assert response.status_code == 503
         else:
@@ -182,7 +183,7 @@ class TestComponentHealthModel:
             name="test",
             status=HealthStatus.HEALTHY,
         )
-        
+
         assert health.name == "test"
         assert health.status == HealthStatus.HEALTHY
         assert health.latency_ms is None
@@ -197,7 +198,7 @@ class TestComponentHealthModel:
             message="API accessible",
             details={"rate_limit_remaining": 4999},
         )
-        
+
         assert health.name == "github"
         assert health.latency_ms == 150.5
         assert health.details["rate_limit_remaining"] == 4999
