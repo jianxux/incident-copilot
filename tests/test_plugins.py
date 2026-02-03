@@ -1,8 +1,11 @@
 """Tests for the webhook plugin framework."""
 
 from __future__ import annotations
+
 from unittest.mock import AsyncMock, patch
+
 import pytest
+
 from src.plugins import (
     PayloadTransformer,
     PluginEvent,
