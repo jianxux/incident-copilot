@@ -285,6 +285,57 @@ class Settings(BaseSettings):
         description="Use PKCE by default for OIDC flows",
     )
 
+    # Rate Limiting
+    ratelimit_enabled: bool = Field(
+        default=True, description="Enable API rate limiting"
+    )
+    ratelimit_exclude_paths: list[str] = Field(
+        default_factory=lambda: [
+            "/health",
+            "/healthz",
+            "/ready",
+            "/metrics",
+            "/favicon.ico",
+            "/static/*",
+            "/docs",
+            "/redoc",
+            "/openapi.json",
+        ],
+        description="Paths to exclude from rate limiting",
+    )
+    
+    # Rate limits per scope (token bucket: capacity = burst, refill_rate = sustained rate/sec)
+    ratelimit_ip_capacity: int = Field(
+        default=100, description="Max requests per IP (burst capacity)"
+    )
+    ratelimit_ip_refill_rate: float = Field(
+        default=10.0, description="IP rate limit refill rate (tokens/second)"
+    )
+    ratelimit_api_key_capacity: int = Field(
+        default=1000, description="Max requests per API key (burst capacity)"
+    )
+    ratelimit_api_key_refill_rate: float = Field(
+        default=50.0, description="API key rate limit refill rate (tokens/second)"
+    )
+    ratelimit_tenant_capacity: int = Field(
+        default=5000, description="Max requests per tenant (burst capacity)"
+    )
+    ratelimit_tenant_refill_rate: float = Field(
+        default=100.0, description="Tenant rate limit refill rate (tokens/second)"
+    )
+    ratelimit_user_capacity: int = Field(
+        default=200, description="Max requests per user (burst capacity)"
+    )
+    ratelimit_user_refill_rate: float = Field(
+        default=20.0, description="User rate limit refill rate (tokens/second)"
+    )
+    ratelimit_global_capacity: int = Field(
+        default=10000, description="Global API rate limit (burst capacity)"
+    )
+    ratelimit_global_refill_rate: float = Field(
+        default=500.0, description="Global rate limit refill rate (tokens/second)"
+    )
+
     # Audit Logging
     audit_enabled: bool = Field(
         default=True, description="Enable audit logging for compliance"
