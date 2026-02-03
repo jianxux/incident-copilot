@@ -226,8 +226,7 @@ class PostgresAuditStore:
             await self.connect()
 
         async with self._pool.acquire() as conn:
-            await conn.execute(
-                """
+            await conn.execute("""
                 CREATE TABLE IF NOT EXISTS audit_events (
                     id VARCHAR(32) PRIMARY KEY,
                     event_type VARCHAR(64) NOT NULL,
@@ -261,8 +260,7 @@ class PostgresAuditStore:
                     ON audit_events (category);
                 CREATE INDEX IF NOT EXISTS idx_audit_timestamp 
                     ON audit_events (timestamp DESC);
-            """
-            )
+            """)
 
     async def store_event(self, event: AuditEvent) -> AuditEvent:
         """Store an audit event in PostgreSQL."""
