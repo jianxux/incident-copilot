@@ -149,12 +149,30 @@ class SlackAdapter:
                 }
             )
 
+        # On-Call Information
+        if card.oncall and card.oncall.has_oncall:
+            oncall_lines = ["*👤 On-Call:*"]
+            for person in card.oncall.oncall_persons[:3]:
+                mention = person.slack_mention
+                oncall_lines.append(f"• {mention}")
+            if card.oncall.schedule_url:
+                oncall_lines.append(f"<{card.oncall.schedule_url}|View Schedule>")
+
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": "\n".join(oncall_lines)},
+                }
+            )
+
         blocks.append({"type": "divider"})
 
         # Footer: Owners, Runbook, Dashboard
         footer_parts = []
 
-        if card.owners:
+        if card.oncall and card.oncall.primary_oncall:
+            footer_parts.append(f"*On-Call:* {card.oncall.primary_oncall.slack_mention}")
+        elif card.owners:
             footer_parts.append(f"*Owners:* {', '.join(card.owners[:5])}")
         if card.runbook_url:
             footer_parts.append(f"<{card.runbook_url}|📖 Runbook>")

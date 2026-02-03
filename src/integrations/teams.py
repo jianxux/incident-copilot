@@ -209,6 +209,22 @@ class TeamsAdapter:
                 }
             )
 
+        # On-Call Information section
+        if card.oncall and card.oncall.has_oncall:
+            oncall_lines = ["**👤 On-Call:**"]
+            for person in card.oncall.oncall_persons[:3]:
+                mention = person.teams_mention
+                oncall_lines.append(f"• {mention}")
+
+            body.append(
+                {
+                    "type": "TextBlock",
+                    "text": "\n".join(oncall_lines),
+                    "wrap": True,
+                    "spacing": "Medium",
+                }
+            )
+
         # Divider before footer
         body.append(
             {
@@ -219,8 +235,18 @@ class TeamsAdapter:
             }
         )
 
-        # Owners section
-        if card.owners:
+        # On-Call or Owners section
+        if card.oncall and card.oncall.primary_oncall:
+            oncall_text = f"**On-Call:** {card.oncall.primary_oncall.name}"
+            body.append(
+                {
+                    "type": "TextBlock",
+                    "text": oncall_text,
+                    "wrap": True,
+                    "spacing": "Small",
+                }
+            )
+        elif card.owners:
             owners_text = f"**Owners:** {', '.join(card.owners[:5])}"
             body.append(
                 {
@@ -280,6 +306,15 @@ class TeamsAdapter:
                     "type": "Action.OpenUrl",
                     "title": "📊 Open Dashboard",
                     "url": card.dashboard_url,
+                }
+            )
+
+        if card.oncall and card.oncall.schedule_url:
+            actions.append(
+                {
+                    "type": "Action.OpenUrl",
+                    "title": "👤 On-Call Schedule",
+                    "url": card.oncall.schedule_url,
                 }
             )
 

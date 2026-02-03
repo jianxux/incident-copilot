@@ -30,6 +30,24 @@ class Settings(BaseSettings):
     )
     opsgenie_region: str = Field(default="us", description="Opsgenie region (us or eu)")
 
+    # On-Call Roster
+    oncall_provider: str = Field(
+        default="auto",
+        description="On-call provider: 'pagerduty', 'opsgenie', or 'auto' (detect from credentials)",
+    )
+    oncall_schedule_id: str = Field(
+        default="",
+        description="Default on-call schedule ID to fetch",
+    )
+    oncall_schedule_map: dict[str, str] = Field(
+        default_factory=dict,
+        description="Service to schedule ID mapping (e.g., payments-api=SCHEDULE123)",
+    )
+    oncall_enabled: bool = Field(
+        default=True,
+        description="Enable on-call roster fetching",
+    )
+
     # GitHub
     github_token: str = Field(default="", description="GitHub personal access token")
     github_org: str = Field(default="", description="GitHub organization name")
@@ -120,6 +138,9 @@ class Settings(BaseSettings):
 
     # Slack
     slack_bot_token: str = Field(default="", description="Slack bot OAuth token")
+    slack_signing_secret: str = Field(
+        default="", description="Slack app signing secret for request verification"
+    )
     slack_default_channel: str = Field(
         default="#incidents", description="Default Slack channel"
     )
@@ -283,6 +304,86 @@ class Settings(BaseSettings):
     oidc_use_pkce_default: bool = Field(
         default=True,
         description="Use PKCE by default for OIDC flows",
+    )
+
+    # Rate Limiting
+    ratelimit_enabled: bool = Field(
+        default=True, description="Enable API rate limiting"
+    )
+    ratelimit_exclude_paths: list[str] = Field(
+        default_factory=lambda: [
+            "/health",
+            "/healthz",
+            "/ready",
+            "/metrics",
+            "/favicon.ico",
+            "/static/*",
+            "/docs",
+            "/redoc",
+            "/openapi.json",
+        ],
+        description="Paths to exclude from rate limiting",
+    )
+    
+    # Rate limits per scope (token bucket: capacity = burst, refill_rate = sustained rate/sec)
+    ratelimit_ip_capacity: int = Field(
+        default=100, description="Max requests per IP (burst capacity)"
+    )
+    ratelimit_ip_refill_rate: float = Field(
+        default=10.0, description="IP rate limit refill rate (tokens/second)"
+    )
+    ratelimit_api_key_capacity: int = Field(
+        default=1000, description="Max requests per API key (burst capacity)"
+    )
+    ratelimit_api_key_refill_rate: float = Field(
+        default=50.0, description="API key rate limit refill rate (tokens/second)"
+    )
+    ratelimit_tenant_capacity: int = Field(
+        default=5000, description="Max requests per tenant (burst capacity)"
+    )
+    ratelimit_tenant_refill_rate: float = Field(
+        default=100.0, description="Tenant rate limit refill rate (tokens/second)"
+    )
+    ratelimit_user_capacity: int = Field(
+        default=200, description="Max requests per user (burst capacity)"
+    )
+    ratelimit_user_refill_rate: float = Field(
+        default=20.0, description="User rate limit refill rate (tokens/second)"
+    )
+    ratelimit_global_capacity: int = Field(
+        default=10000, description="Global API rate limit (burst capacity)"
+    )
+    ratelimit_global_refill_rate: float = Field(
+        default=500.0, description="Global rate limit refill rate (tokens/second)"
+    )
+
+    # Alert Correlation
+    correlation_enabled: bool = Field(
+        default=True, description="Enable alert correlation engine"
+    )
+    correlation_default_rules: bool = Field(
+        default=True, description="Setup default correlation rules on startup"
+    )
+    correlation_time_window_seconds: int = Field(
+        default=300, description="Default time window for grouping alerts (5 min)"
+    )
+    correlation_similarity_threshold: float = Field(
+        default=0.7, description="Default fuzzy match threshold for pattern matching"
+    )
+    correlation_group_ttl: int = Field(
+        default=86400, description="TTL for correlation groups in seconds (24h)"
+    )
+    correlation_stale_after_seconds: int = Field(
+        default=3600, description="Mark groups stale after N seconds without activity (1h)"
+    )
+    correlation_max_alerts_per_group: int = Field(
+        default=1000, description="Maximum alerts in a single group"
+    )
+    correlation_suppress_duplicates: bool = Field(
+        default=True, description="Suppress duplicate notifications by default"
+    )
+    correlation_re_notify_after_seconds: int = Field(
+        default=1800, description="Re-notify if group still active after N seconds (30 min)"
     )
 
     # Audit Logging
