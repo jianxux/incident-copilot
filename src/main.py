@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .api import (
     analytics_router,
+    correlation_router,
     demo_router,
     health_router,
     postmortem_router,
@@ -26,6 +27,7 @@ from .billing.routes import router as billing_router
 from .config import get_settings
 from .metrics import HEALTH_STATUS, set_app_info
 from .metrics.middleware import PrometheusMiddleware
+from .slack_commands import slack_commands_router
 from .web import landing_router, web_router
 
 # Configure structured logging
@@ -90,11 +92,13 @@ def create_app() -> FastAPI:
     app.include_router(sso_router)
     app.include_router(billing_router)
     app.include_router(webhooks_router)
+    app.include_router(correlation_router)
     app.include_router(runbooks_router)
     app.include_router(demo_router)
     app.include_router(analytics_router)
     app.include_router(postmortem_router)
     app.include_router(audit_router)
+    app.include_router(slack_commands_router)
     app.include_router(landing_router)
     app.include_router(web_router)
 
