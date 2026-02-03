@@ -26,17 +26,20 @@ router = APIRouter(prefix="/api/postmortems", tags=["postmortems"])
 
 class GenerateResponse(BaseModel):
     """Response for postmortem generation."""
+
     postmortem: Postmortem
     message: str
 
 
 class ExportRequest(BaseModel):
     """Request to export a postmortem."""
+
     format: PostmortemFormat = PostmortemFormat.MARKDOWN
 
 
 class ExportResponse(BaseModel):
     """Response containing exported postmortem."""
+
     format: PostmortemFormat
     content: str
     postmortem_id: str
@@ -44,6 +47,7 @@ class ExportResponse(BaseModel):
 
 class PostmortemListResponse(BaseModel):
     """Response for listing postmortems."""
+
     postmortems: list[Postmortem]
     total: int
 
@@ -405,7 +409,9 @@ async def refresh_postmortem(
     postmortem_id: str,
     sections: Annotated[
         list[str] | None,
-        Query(description="Sections to refresh: timeline, root_cause, impact, action_items"),
+        Query(
+            description="Sections to refresh: timeline, root_cause, impact, action_items"
+        ),
     ] = None,
 ) -> Postmortem:
     """
@@ -431,7 +437,8 @@ async def refresh_postmortem(
         title=postmortem.title.replace("Postmortem: ", ""),
         severity=Severity(postmortem.severity),
         service_name=postmortem.service_name,
-        triggered_at=postmortem.incident_started_at or __import__("datetime").datetime.utcnow(),
+        triggered_at=postmortem.incident_started_at
+        or __import__("datetime").datetime.utcnow(),
         alert_url=postmortem.alert_url,
         dashboard_url=postmortem.dashboard_url,
     )
@@ -487,7 +494,10 @@ async def update_postmortem_status(
     valid_transitions = {
         PostmortemStatus.DRAFT: [PostmortemStatus.IN_REVIEW],
         PostmortemStatus.IN_REVIEW: [PostmortemStatus.DRAFT, PostmortemStatus.APPROVED],
-        PostmortemStatus.APPROVED: [PostmortemStatus.IN_REVIEW, PostmortemStatus.PUBLISHED],
+        PostmortemStatus.APPROVED: [
+            PostmortemStatus.IN_REVIEW,
+            PostmortemStatus.PUBLISHED,
+        ],
         PostmortemStatus.PUBLISHED: [PostmortemStatus.APPROVED],
     }
 

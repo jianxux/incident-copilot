@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 class PostmortemFormat(str, Enum):
     """Output formats for postmortems."""
+
     MARKDOWN = "markdown"
     JSON = "json"
     CONFLUENCE = "confluence"
@@ -17,6 +18,7 @@ class PostmortemFormat(str, Enum):
 
 class PostmortemStatus(str, Enum):
     """Status of a postmortem."""
+
     DRAFT = "draft"
     IN_REVIEW = "in_review"
     APPROVED = "approved"
@@ -25,6 +27,7 @@ class PostmortemStatus(str, Enum):
 
 class TimelineEventType(str, Enum):
     """Types of timeline events."""
+
     ALERT_TRIGGERED = "alert_triggered"
     ALERT_ACKNOWLEDGED = "alert_acknowledged"
     INVESTIGATION_STARTED = "investigation_started"
@@ -41,6 +44,7 @@ class TimelineEventType(str, Enum):
 
 class TimelineEvent(BaseModel):
     """A single event in the incident timeline."""
+
     timestamp: datetime
     event_type: TimelineEventType = TimelineEventType.OTHER
     title: str
@@ -52,6 +56,7 @@ class TimelineEvent(BaseModel):
 
 class RootCauseAnalysis(BaseModel):
     """Root cause analysis section of the postmortem."""
+
     primary_cause: str
     contributing_factors: list[str] = Field(default_factory=list)
     trigger: str | None = None
@@ -62,6 +67,7 @@ class RootCauseAnalysis(BaseModel):
 
 class ImpactAssessment(BaseModel):
     """Impact assessment section of the postmortem."""
+
     severity: str
     duration_minutes: int | None = None
     users_affected: int | None = None
@@ -78,6 +84,7 @@ class ImpactAssessment(BaseModel):
 
 class ActionItemPriority(str, Enum):
     """Priority levels for action items."""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -86,6 +93,7 @@ class ActionItemPriority(str, Enum):
 
 class ActionItemStatus(str, Enum):
     """Status of action items."""
+
     TODO = "todo"
     IN_PROGRESS = "in_progress"
     DONE = "done"
@@ -94,6 +102,7 @@ class ActionItemStatus(str, Enum):
 
 class ActionItem(BaseModel):
     """A follow-up action item from the postmortem."""
+
     id: str
     title: str
     description: str | None = None
@@ -107,6 +116,7 @@ class ActionItem(BaseModel):
 
 class ResolutionStep(BaseModel):
     """A step taken to resolve the incident."""
+
     order: int
     description: str
     actor: str | None = None
@@ -116,6 +126,7 @@ class ResolutionStep(BaseModel):
 
 class Postmortem(BaseModel):
     """Complete postmortem document."""
+
     id: str
     incident_id: str
     title: str
@@ -151,6 +162,7 @@ class Postmortem(BaseModel):
 
 class PostmortemGenerateRequest(BaseModel):
     """Request to generate a postmortem."""
+
     incident_id: str
     format: PostmortemFormat = PostmortemFormat.MARKDOWN
     include_ai_analysis: bool = True
@@ -159,6 +171,7 @@ class PostmortemGenerateRequest(BaseModel):
 
 class PostmortemUpdateRequest(BaseModel):
     """Request to update a postmortem."""
+
     title: str | None = None
     executive_summary: str | None = None
     status: PostmortemStatus | None = None
