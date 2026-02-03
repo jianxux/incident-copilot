@@ -8,8 +8,8 @@ from datetime import datetime, timedelta
 from typing import Any
 from urllib.parse import urlencode
 from xml.etree import ElementTree as StdlibET
-
 import defusedxml.ElementTree as ET
+
 import structlog
 
 from .models import IdentityProvider, SSOSession, SSOUserInfo
