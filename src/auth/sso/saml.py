@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlencode
 
-import defusedxml.ElementTree as ET
+import defusedxml.ElementTree as ET  # noqa: N817
 import structlog
 
 from .models import IdentityProvider, SSOSession, SSOUserInfo
@@ -477,11 +477,6 @@ class SAMLProvider(BaseProvider):
             want_assertions_signed
             if want_assertions_signed is not None
             else self.settings.want_assertions_signed
-        )
-        want_msg_signed = (
-            want_messages_signed
-            if want_messages_signed is not None
-            else self.settings.want_messages_signed
         )
 
         # Build metadata XML
