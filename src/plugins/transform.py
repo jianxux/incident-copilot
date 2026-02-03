@@ -15,7 +15,7 @@ logger = structlog.get_logger()
 class PayloadTransformer:
     def __init__(self):
         self._env = Environment(
-            loader=BaseLoader(), autoescape=False, trim_blocks=True, lstrip_blocks=True
+            loader=BaseLoader(), autoescape=False,  # nosec B701 - intentional for JSON payload transformation trim_blocks=True, lstrip_blocks=True
         )
         self._env.filters.update(
             {
