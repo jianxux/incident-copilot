@@ -36,7 +36,9 @@ class TagStore:
         """Initialize the store."""
         pass
 
-    async def create_tag(self, request: TagCreate, created_by: str | None = None) -> Tag:
+    async def create_tag(
+        self, request: TagCreate, created_by: str | None = None
+    ) -> Tag:
         """Create a new tag."""
         async with self._lock:
             tag_id = f"tag-{uuid.uuid4().hex[:12]}"
@@ -85,7 +87,8 @@ class TagStore:
             for incident_id in list(self._tag_incidents.get(tag_id, [])):
                 if incident_id in self._incident_tags:
                     self._incident_tags[incident_id] = [
-                        it for it in self._incident_tags[incident_id]
+                        it
+                        for it in self._incident_tags[incident_id]
                         if it.tag_id != tag_id
                     ]
             del self._tags[tag_id]
@@ -112,7 +115,7 @@ class TagStore:
             tag.incident_count = len(self._tag_incidents.get(tag.id, []))
         total = len(tags)
         tags = sorted(tags, key=lambda t: t.name.lower())
-        return tags[offset:offset + limit], total
+        return tags[offset : offset + limit], total
 
     async def get_children(self, parent_id: str) -> list[Tag]:
         """Get all child tags of a parent."""
@@ -163,8 +166,7 @@ class TagStore:
                 return False
             original_len = len(self._incident_tags[incident_id])
             self._incident_tags[incident_id] = [
-                it for it in self._incident_tags[incident_id]
-                if it.tag_id != tag_id
+                it for it in self._incident_tags[incident_id] if it.tag_id != tag_id
             ]
             if len(self._incident_tags[incident_id]) < original_len:
                 if tag_id in self._tag_incidents:
@@ -175,10 +177,16 @@ class TagStore:
     async def get_incident_tags(self, incident_id: str) -> list[Tag]:
         """Get all tags for an incident."""
         incident_tags = self._incident_tags.get(incident_id, [])
-        return [self._tags[it.tag_id] for it in incident_tags if it.tag_id in self._tags]
+        return [
+            self._tags[it.tag_id] for it in incident_tags if it.tag_id in self._tags
+        ]
 
     async def get_incidents_by_tag(
-        self, tag_id: str, include_children: bool = True, limit: int = 100, offset: int = 0,
+        self,
+        tag_id: str,
+        include_children: bool = True,
+        limit: int = 100,
+        offset: int = 0,
     ) -> tuple[list[str], int]:
         """Get all incident IDs with a specific tag."""
         tag_ids = {tag_id}
@@ -188,10 +196,13 @@ class TagStore:
         for tid in tag_ids:
             incident_ids.update(self._tag_incidents.get(tid, []))
         incident_list = sorted(incident_ids)
-        return incident_list[offset:offset + limit], len(incident_list)
+        return incident_list[offset : offset + limit], len(incident_list)
 
     async def search_incidents_by_tags(
-        self, tag_ids: list[str], match_all: bool = False, include_children: bool = True,
+        self,
+        tag_ids: list[str],
+        match_all: bool = False,
+        include_children: bool = True,
     ) -> list[str]:
         """Search incidents by multiple tags."""
         if not tag_ids:
@@ -200,15 +211,21 @@ class TagStore:
         if include_children:
             for tag_id in tag_ids:
                 expanded_tag_ids.update(await self.get_all_descendants(tag_id))
-        tag_incident_sets = [self._tag_incidents.get(tid, set()) for tid in expanded_tag_ids]
+        tag_incident_sets = [
+            self._tag_incidents.get(tid, set()) for tid in expanded_tag_ids
+        ]
         if match_all:
-            result = set.intersection(*tag_incident_sets) if tag_incident_sets else set()
+            result = (
+                set.intersection(*tag_incident_sets) if tag_incident_sets else set()
+            )
         else:
             result = set.union(*tag_incident_sets) if tag_incident_sets else set()
         return sorted(result)
 
     async def create_auto_rule(
-        self, request: AutoTagRuleCreate, created_by: str | None = None,
+        self,
+        request: AutoTagRuleCreate,
+        created_by: str | None = None,
     ) -> AutoTagRule:
         """Create an auto-tag rule."""
         async with self._lock:
@@ -229,7 +246,9 @@ class TagStore:
         """Get an auto-tag rule by ID."""
         return self._auto_rules.get(rule_id)
 
-    async def update_auto_rule(self, rule_id: str, request: AutoTagRuleUpdate) -> AutoTagRule | None:
+    async def update_auto_rule(
+        self, rule_id: str, request: AutoTagRuleUpdate
+    ) -> AutoTagRule | None:
         """Update an auto-tag rule."""
         async with self._lock:
             rule = self._auto_rules.get(rule_id)
@@ -250,7 +269,9 @@ class TagStore:
                 return True
             return False
 
-    async def list_auto_rules(self, tag_id: str | None = None, enabled_only: bool = False) -> list[AutoTagRule]:
+    async def list_auto_rules(
+        self, tag_id: str | None = None, enabled_only: bool = False
+    ) -> list[AutoTagRule]:
         """List auto-tag rules."""
         rules = list(self._auto_rules.values())
         if tag_id:
@@ -260,7 +281,11 @@ class TagStore:
         return sorted(rules, key=lambda r: (-r.priority, r.created_at))
 
     async def evaluate_auto_rules(
-        self, incident_id: str, service_name: str, title: str, severity: str,
+        self,
+        incident_id: str,
+        service_name: str,
+        title: str,
+        severity: str,
     ) -> list[tuple[str, float]]:
         """Evaluate all auto-tag rules for an incident."""
         rules = await self.list_auto_rules(enabled_only=True)
@@ -309,6 +334,7 @@ class PostgresTagStore:
     async def connect(self) -> None:
         """Establish database connection pool."""
         import asyncpg
+
         self._pool = await asyncpg.create_pool(
             self.database_url.replace("+asyncpg", ""),
             min_size=2,

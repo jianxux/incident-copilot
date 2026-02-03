@@ -197,14 +197,18 @@ class OnCallAdapter:
 
         return OnCallRoster(
             schedule_id=schedule_id,
-            schedule_name=schedule_data.get("name", schedule_id) if schedule_data else schedule_id,
+            schedule_name=(
+                schedule_data.get("name", schedule_id) if schedule_data else schedule_id
+            ),
             provider=OnCallProvider.PAGERDUTY.value,
             oncall_persons=oncall_persons,
             fetched_at=now,
             schedule_url=f"https://app.pagerduty.com/schedules/{schedule_id}",
         )
 
-    async def _get_pagerduty_schedule_info(self, schedule_id: str) -> dict[str, Any] | None:
+    async def _get_pagerduty_schedule_info(
+        self, schedule_id: str
+    ) -> dict[str, Any] | None:
         """Fetch schedule metadata from PagerDuty."""
         url = f"{self.api_base}/schedules/{schedule_id}"
 
@@ -257,7 +261,9 @@ class OnCallAdapter:
 
         # Get schedule metadata
         schedule_info = await self._get_opsgenie_schedule_info(schedule_id)
-        schedule_name = schedule_info.get("name", schedule_id) if schedule_info else schedule_id
+        schedule_name = (
+            schedule_info.get("name", schedule_id) if schedule_info else schedule_id
+        )
 
         logger.info(
             "opsgenie_oncall_fetched",
@@ -274,7 +280,9 @@ class OnCallAdapter:
             schedule_url=f"https://app.opsgenie.com/schedule#/{schedule_id}",
         )
 
-    async def _get_opsgenie_schedule_info(self, schedule_id: str) -> dict[str, Any] | None:
+    async def _get_opsgenie_schedule_info(
+        self, schedule_id: str
+    ) -> dict[str, Any] | None:
         """Fetch schedule metadata from Opsgenie."""
         url = f"{self.api_base}/schedules/{schedule_id}"
 

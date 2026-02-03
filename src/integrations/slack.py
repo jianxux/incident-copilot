@@ -171,7 +171,9 @@ class SlackAdapter:
         footer_parts = []
 
         if card.oncall and card.oncall.primary_oncall:
-            footer_parts.append(f"*On-Call:* {card.oncall.primary_oncall.slack_mention}")
+            footer_parts.append(
+                f"*On-Call:* {card.oncall.primary_oncall.slack_mention}"
+            )
         elif card.owners:
             footer_parts.append(f"*Owners:* {', '.join(card.owners[:5])}")
         if card.runbook_url:

@@ -62,10 +62,20 @@ def create_app() -> FastAPI:
     )
 
     app.add_middleware(PrometheusMiddleware, exclude_paths={"/metrics", "/", "/health"})
-    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     if settings.audit_enabled:
-        app.add_middleware(AuditMiddleware, log_all_requests=settings.audit_log_all_requests, exclude_paths=settings.audit_exclude_paths)
+        app.add_middleware(
+            AuditMiddleware,
+            log_all_requests=settings.audit_log_all_requests,
+            exclude_paths=settings.audit_exclude_paths,
+        )
 
     app.include_router(health_router)
     app.include_router(auth_router)
@@ -83,7 +93,9 @@ def create_app() -> FastAPI:
     app.include_router(web_router)
 
     static_dir = Path(__file__).parent / "web" / "static"
-    app.mount("/dashboard/static", StaticFiles(directory=str(static_dir)), name="static")
+    app.mount(
+        "/dashboard/static", StaticFiles(directory=str(static_dir)), name="static"
+    )
 
     @app.on_event("startup")
     async def startup():
@@ -97,7 +109,9 @@ def create_app() -> FastAPI:
             audit_store.database_url = settings.database_url
             audit_store.retention_days = settings.audit_retention_days
             await audit_store.initialize()
-            logger.info("audit_store_initialized", retention_days=settings.audit_retention_days)
+            logger.info(
+                "audit_store_initialized", retention_days=settings.audit_retention_days
+            )
 
     @app.on_event("shutdown")
     async def shutdown():
@@ -115,6 +129,7 @@ app = create_app()
 
 if __name__ == "__main__":
     import uvicorn
+
     host = os.environ.get("HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", "8000"))
     uvicorn.run("src.main:app", host=host, port=port, reload=True)

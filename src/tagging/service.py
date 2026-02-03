@@ -38,7 +38,9 @@ class TaggingService:
         self.settings = settings or get_settings()
         self.suggester = suggester or get_tag_suggester(self.settings)
 
-    async def create_tag(self, request: TagCreate, created_by: str | None = None) -> Tag:
+    async def create_tag(
+        self, request: TagCreate, created_by: str | None = None
+    ) -> Tag:
         """Create a new tag."""
         if request.parent_id:
             parent = await self.store.get_tag(request.parent_id)
@@ -110,7 +112,9 @@ class TaggingService:
                 return []
             children = await self._build_hierarchy(root_id)
             return [TagHierarchy(tag=tag, children=children)]
-        root_tags, _ = await self.store.list_tags(parent_id=None, include_children=False)
+        root_tags, _ = await self.store.list_tags(
+            parent_id=None, include_children=False
+        )
         return [
             TagHierarchy(tag=tag, children=await self._build_hierarchy(tag.id))
             for tag in root_tags
@@ -190,7 +194,9 @@ class TaggingService:
         """Get an auto-tagging rule by ID."""
         return await self.store.get_auto_rule(rule_id)
 
-    async def update_auto_rule(self, rule_id: str, request: AutoTagRuleUpdate) -> AutoTagRule | None:
+    async def update_auto_rule(
+        self, rule_id: str, request: AutoTagRuleUpdate
+    ) -> AutoTagRule | None:
         """Update an auto-tagging rule."""
         return await self.store.update_auto_rule(rule_id, request)
 
@@ -198,12 +204,18 @@ class TaggingService:
         """Delete an auto-tagging rule."""
         return await self.store.delete_auto_rule(rule_id)
 
-    async def list_auto_rules(self, tag_id: str | None = None, enabled_only: bool = False) -> list[AutoTagRule]:
+    async def list_auto_rules(
+        self, tag_id: str | None = None, enabled_only: bool = False
+    ) -> list[AutoTagRule]:
         """List auto-tagging rules."""
         return await self.store.list_auto_rules(tag_id, enabled_only)
 
     async def auto_tag_incident(
-        self, incident_id: str, service_name: str, title: str, severity: str,
+        self,
+        incident_id: str,
+        service_name: str,
+        title: str,
+        severity: str,
     ) -> list[IncidentTag]:
         """Automatically apply tags to an incident based on rules."""
         matches = await self.store.evaluate_auto_rules(
@@ -270,7 +282,9 @@ class TaggingService:
         tag = await self.store.get_tag(tag_id)
         if not tag:
             return None
-        _, total = await self.store.get_incidents_by_tag(tag_id=tag_id, include_children=True)
+        _, total = await self.store.get_incidents_by_tag(
+            tag_id=tag_id, include_children=True
+        )
         return TagStats(tag_id=tag_id, tag_name=tag.name, incident_count=total)
 
     async def get_popular_tags(self, limit: int = 10) -> list[TagStats]:
@@ -278,8 +292,12 @@ class TaggingService:
         tags, _ = await self.store.list_tags(include_children=True, limit=1000)
         stats = []
         for tag in tags:
-            _, total = await self.store.get_incidents_by_tag(tag_id=tag.id, include_children=False)
-            stats.append(TagStats(tag_id=tag.id, tag_name=tag.name, incident_count=total))
+            _, total = await self.store.get_incidents_by_tag(
+                tag_id=tag.id, include_children=False
+            )
+            stats.append(
+                TagStats(tag_id=tag.id, tag_name=tag.name, incident_count=total)
+            )
         stats.sort(key=lambda s: s.incident_count, reverse=True)
         return stats[:limit]
 

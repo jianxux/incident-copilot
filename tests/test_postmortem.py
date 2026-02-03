@@ -286,10 +286,10 @@ class TestPostmortemStore:
     async def test_save_and_get(self, sample_postmortem):
         """Test saving and retrieving a postmortem."""
         store = PostmortemStore()
-        
+
         saved = await store.save(sample_postmortem)
         assert saved.id == sample_postmortem.id
-        
+
         retrieved = await store.get(sample_postmortem.id)
         assert retrieved is not None
         assert retrieved.id == sample_postmortem.id
@@ -300,7 +300,7 @@ class TestPostmortemStore:
         """Test retrieving by incident ID."""
         store = PostmortemStore()
         await store.save(sample_postmortem)
-        
+
         retrieved = await store.get_by_incident(sample_postmortem.incident_id)
         assert retrieved is not None
         assert retrieved.id == sample_postmortem.id
@@ -311,12 +311,12 @@ class TestPostmortemStore:
         store = PostmortemStore()
         original_version = sample_postmortem.version
         await store.save(sample_postmortem)
-        
+
         updates = PostmortemUpdateRequest(
             status=PostmortemStatus.IN_REVIEW,
             executive_summary="Updated summary",
         )
-        
+
         updated = await store.update(sample_postmortem.incident_id, updates)
         assert updated is not None
         assert updated.status == PostmortemStatus.IN_REVIEW
@@ -328,10 +328,10 @@ class TestPostmortemStore:
         """Test deleting a postmortem."""
         store = PostmortemStore()
         await store.save(sample_postmortem)
-        
+
         deleted = await store.delete(sample_postmortem.incident_id)
         assert deleted is True
-        
+
         retrieved = await store.get(sample_postmortem.id)
         assert retrieved is None
 
@@ -339,7 +339,7 @@ class TestPostmortemStore:
     async def test_list_with_filters(self):
         """Test listing postmortems with filters."""
         store = PostmortemStore()
-        
+
         pm1 = Postmortem(
             id="pm-1",
             incident_id="INC-1",
@@ -358,20 +358,20 @@ class TestPostmortemStore:
             executive_summary="Summary 2",
             status=PostmortemStatus.APPROVED,
         )
-        
+
         await store.save(pm1)
         await store.save(pm2)
-        
+
         # Test status filter
         drafts = await store.list(status=PostmortemStatus.DRAFT)
         assert len(drafts) == 1
         assert drafts[0].id == "pm-1"
-        
+
         # Test service filter
         service_a = await store.list(service_name="service-a")
         assert len(service_a) == 1
         assert service_a[0].service_name == "service-a"
-        
+
         # Test limit
         limited = await store.list(limit=1)
         assert len(limited) == 1
@@ -398,7 +398,7 @@ class TestPostmortemGenerator:
         """Test building context string from context card."""
         generator = PostmortemGenerator(test_settings)
         context_str = generator._build_context_string(sample_context_card)
-        
+
         assert "Recent Deployments" in context_str
         assert "abc123d" in context_str
         assert "jane.doe" in context_str
@@ -409,7 +409,7 @@ class TestPostmortemGenerator:
         """Test creating basic timeline without AI."""
         generator = PostmortemGenerator(test_settings)
         timeline = generator._create_basic_timeline(sample_context_card)
-        
+
         assert len(timeline) >= 1
         # Should have alert triggered event
         alert_event = next(
@@ -424,13 +424,13 @@ class TestPostmortemGenerator:
         """Test generating postmortem without AI."""
         settings = Settings(anthropic_api_key="")
         generator = PostmortemGenerator(settings)
-        
+
         postmortem = await generator.generate(
             incident_id="INC-12345",
             context_card=sample_context_card,
             include_ai_analysis=False,
         )
-        
+
         assert postmortem.incident_id == "INC-12345"
         assert postmortem.service_name == "payments-api"
         assert postmortem.ai_generated is False
@@ -440,27 +440,35 @@ class TestPostmortemGenerator:
     async def test_generate_with_mocked_ai(self, test_settings, sample_context_card):
         """Test generating postmortem with mocked AI responses."""
         generator = PostmortemGenerator(test_settings)
-        
+
         # Mock the AI client
         mock_response = MagicMock()
-        mock_response.content = [MagicMock(text=json.dumps([
-            {
-                "timestamp": "2024-01-15T10:00:00Z",
-                "event_type": "alert_triggered",
-                "title": "High error rate alert fired",
-                "source": "pagerduty",
-            }
-        ]))]
-        
-        with patch.object(generator.client.messages, "create", new_callable=AsyncMock) as mock_create:
+        mock_response.content = [
+            MagicMock(
+                text=json.dumps(
+                    [
+                        {
+                            "timestamp": "2024-01-15T10:00:00Z",
+                            "event_type": "alert_triggered",
+                            "title": "High error rate alert fired",
+                            "source": "pagerduty",
+                        }
+                    ]
+                )
+            )
+        ]
+
+        with patch.object(
+            generator.client.messages, "create", new_callable=AsyncMock
+        ) as mock_create:
             mock_create.return_value = mock_response
-            
+
             postmortem = await generator.generate(
                 incident_id="INC-12345",
                 context_card=sample_context_card,
                 include_ai_analysis=True,
             )
-            
+
             assert postmortem.incident_id == "INC-12345"
             assert postmortem.ai_generated is True
 
@@ -475,7 +483,7 @@ class TestMarkdownTemplate:
         """Test basic markdown rendering."""
         template = MarkdownTemplate()
         output = template.render(sample_postmortem)
-        
+
         assert f"# {sample_postmortem.title}" in output
         assert "## Executive Summary" in output
         assert sample_postmortem.executive_summary in output
@@ -488,7 +496,7 @@ class TestMarkdownTemplate:
         """Test timeline rendering."""
         template = MarkdownTemplate()
         output = template.render(sample_postmortem)
-        
+
         for event in sample_postmortem.timeline:
             assert event.title in output
 
@@ -496,7 +504,7 @@ class TestMarkdownTemplate:
         """Test action items table rendering."""
         template = MarkdownTemplate()
         output = template.render(sample_postmortem)
-        
+
         assert "| Priority | Title | Status | Owner |" in output
         for item in sample_postmortem.action_items:
             assert item.title in output
@@ -504,7 +512,7 @@ class TestMarkdownTemplate:
     def test_format_duration(self):
         """Test duration formatting."""
         template = MarkdownTemplate()
-        
+
         assert template._format_duration(30) == "30 minutes"
         assert template._format_duration(60) == "1 hour"
         assert template._format_duration(90) == "1h 30m"
@@ -518,7 +526,7 @@ class TestConfluenceTemplate:
         """Test basic Confluence rendering."""
         template = ConfluenceTemplate()
         output = template.render(sample_postmortem)
-        
+
         assert f"h1. {sample_postmortem.title}" in output
         assert "{info}" in output
         assert "{toc}" in output
@@ -528,14 +536,14 @@ class TestConfluenceTemplate:
         """Test timeline table rendering."""
         template = ConfluenceTemplate()
         output = template.render(sample_postmortem)
-        
+
         assert "||Time||Event||Actor||" in output
 
     def test_render_status_macro(self, sample_postmortem):
         """Test status macro rendering."""
         template = ConfluenceTemplate()
         output = template.render(sample_postmortem)
-        
+
         # Should have a status macro with color
         assert "{status:colour=" in output
 
@@ -547,10 +555,10 @@ class TestSlackTemplate:
         """Test basic Slack Block Kit rendering."""
         template = SlackTemplate()
         output = template.render(sample_postmortem)
-        
+
         data = json.loads(output)
         assert "blocks" in data
-        
+
         # Should have a header block
         header = next((b for b in data["blocks"] if b.get("type") == "header"), None)
         assert header is not None
@@ -559,21 +567,24 @@ class TestSlackTemplate:
         """Test that all sections are present."""
         template = SlackTemplate()
         output = template.render(sample_postmortem)
-        
+
         data = json.loads(output)
         block_texts = []
         for block in data["blocks"]:
             if block.get("type") == "section" and block.get("text"):
                 block_texts.append(block["text"].get("text", ""))
-        
+
         full_text = " ".join(block_texts)
-        assert "Executive Summary" in full_text or sample_postmortem.executive_summary[:50] in full_text
+        assert (
+            "Executive Summary" in full_text
+            or sample_postmortem.executive_summary[:50] in full_text
+        )
 
     def test_render_has_action_buttons(self, sample_postmortem):
         """Test that action buttons are present."""
         template = SlackTemplate()
         output = template.render(sample_postmortem)
-        
+
         data = json.loads(output)
         actions = next((b for b in data["blocks"] if b.get("type") == "actions"), None)
         assert actions is not None
@@ -586,7 +597,7 @@ class TestJSONTemplate:
         """Test that output is valid JSON."""
         template = JSONTemplate()
         output = template.render(sample_postmortem)
-        
+
         data = json.loads(output)
         assert data["id"] == sample_postmortem.id
         assert data["incident_id"] == sample_postmortem.incident_id
@@ -595,7 +606,7 @@ class TestJSONTemplate:
         """Test that all fields are included."""
         template = JSONTemplate()
         output = template.render(sample_postmortem)
-        
+
         data = json.loads(output)
         assert "timeline" in data
         assert "root_cause" in data
@@ -638,18 +649,20 @@ class TestPostmortemRoutes:
                 "include_ai_analysis": False,
             },
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "postmortem" in data
         assert data["postmortem"]["incident_id"] == "INC-99999"
 
     @pytest.mark.asyncio
-    async def test_generate_returns_existing(self, client, clean_store, sample_postmortem):
+    async def test_generate_returns_existing(
+        self, client, clean_store, sample_postmortem
+    ):
         """Test that generate returns existing postmortem."""
         # First save a postmortem
         await postmortem_store.save(sample_postmortem)
-        
+
         response = client.post(
             "/api/postmortems/generate",
             json={
@@ -657,7 +670,7 @@ class TestPostmortemRoutes:
                 "include_ai_analysis": False,
             },
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["postmortem"]["id"] == sample_postmortem.id
@@ -667,9 +680,9 @@ class TestPostmortemRoutes:
     async def test_get_postmortem(self, client, clean_store, sample_postmortem):
         """Test GET /api/postmortems/{id}."""
         await postmortem_store.save(sample_postmortem)
-        
+
         response = client.get(f"/api/postmortems/{sample_postmortem.id}")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == sample_postmortem.id
@@ -684,9 +697,11 @@ class TestPostmortemRoutes:
     async def test_get_by_incident(self, client, clean_store, sample_postmortem):
         """Test GET /api/postmortems/by-incident/{incident_id}."""
         await postmortem_store.save(sample_postmortem)
-        
-        response = client.get(f"/api/postmortems/by-incident/{sample_postmortem.incident_id}")
-        
+
+        response = client.get(
+            f"/api/postmortems/by-incident/{sample_postmortem.incident_id}"
+        )
+
         assert response.status_code == 200
         data = response.json()
         assert data["incident_id"] == sample_postmortem.incident_id
@@ -695,7 +710,7 @@ class TestPostmortemRoutes:
     async def test_update_postmortem(self, client, clean_store, sample_postmortem):
         """Test PUT /api/postmortems/{id}."""
         await postmortem_store.save(sample_postmortem)
-        
+
         response = client.put(
             f"/api/postmortems/{sample_postmortem.id}",
             json={
@@ -703,7 +718,7 @@ class TestPostmortemRoutes:
                 "executive_summary": "Updated summary text",
             },
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "in_review"
@@ -713,12 +728,12 @@ class TestPostmortemRoutes:
     async def test_delete_postmortem(self, client, clean_store, sample_postmortem):
         """Test DELETE /api/postmortems/{id}."""
         await postmortem_store.save(sample_postmortem)
-        
+
         response = client.delete(f"/api/postmortems/{sample_postmortem.id}")
-        
+
         assert response.status_code == 200
         assert "deleted successfully" in response.json()["message"]
-        
+
         # Verify it's gone
         get_response = client.get(f"/api/postmortems/{sample_postmortem.id}")
         assert get_response.status_code == 404
@@ -727,9 +742,9 @@ class TestPostmortemRoutes:
     async def test_list_postmortems(self, client, clean_store, sample_postmortem):
         """Test GET /api/postmortems."""
         await postmortem_store.save(sample_postmortem)
-        
+
         response = client.get("/api/postmortems")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "postmortems" in data
@@ -739,11 +754,11 @@ class TestPostmortemRoutes:
     async def test_list_with_filters(self, client, clean_store, sample_postmortem):
         """Test GET /api/postmortems with filters."""
         await postmortem_store.save(sample_postmortem)
-        
+
         # Filter by status
         response = client.get("/api/postmortems?status=draft")
         assert response.status_code == 200
-        
+
         # Filter by service
         response = client.get("/api/postmortems?service=payments-api")
         assert response.status_code == 200
@@ -754,13 +769,13 @@ class TestPostmortemRoutes:
     async def test_export_postmortem(self, client, clean_store, sample_postmortem):
         """Test POST /api/postmortems/{id}/export."""
         await postmortem_store.save(sample_postmortem)
-        
+
         for fmt in ["markdown", "confluence", "slack", "json"]:
             response = client.post(
                 f"/api/postmortems/{sample_postmortem.id}/export",
                 json={"format": fmt},
             )
-            
+
             assert response.status_code == 200
             data = response.json()
             assert data["format"] == fmt
@@ -770,9 +785,11 @@ class TestPostmortemRoutes:
     async def test_export_raw(self, client, clean_store, sample_postmortem):
         """Test GET /api/postmortems/{id}/export/{format}."""
         await postmortem_store.save(sample_postmortem)
-        
-        response = client.get(f"/api/postmortems/{sample_postmortem.id}/export/markdown")
-        
+
+        response = client.get(
+            f"/api/postmortems/{sample_postmortem.id}/export/markdown"
+        )
+
         assert response.status_code == 200
         assert "text/markdown" in response.headers["content-type"]
         assert sample_postmortem.title in response.text
@@ -781,14 +798,14 @@ class TestPostmortemRoutes:
     async def test_status_transitions(self, client, clean_store, sample_postmortem):
         """Test POST /api/postmortems/{id}/status transitions."""
         await postmortem_store.save(sample_postmortem)
-        
+
         # Valid transition: draft -> in_review
         response = client.post(
             f"/api/postmortems/{sample_postmortem.id}/status?status=in_review"
         )
         assert response.status_code == 200
         assert response.json()["status"] == "in_review"
-        
+
         # Valid transition: in_review -> approved
         response = client.post(
             f"/api/postmortems/{sample_postmortem.id}/status?status=approved&approved_by=admin"
@@ -797,10 +814,12 @@ class TestPostmortemRoutes:
         assert response.json()["status"] == "approved"
 
     @pytest.mark.asyncio
-    async def test_invalid_status_transition(self, client, clean_store, sample_postmortem):
+    async def test_invalid_status_transition(
+        self, client, clean_store, sample_postmortem
+    ):
         """Test invalid status transitions are rejected."""
         await postmortem_store.save(sample_postmortem)
-        
+
         # Invalid: draft -> published (must go through in_review and approved)
         response = client.post(
             f"/api/postmortems/{sample_postmortem.id}/status?status=published"
@@ -825,7 +844,7 @@ class TestModels:
             actor="test.user",
             source="pagerduty",
         )
-        
+
         assert event.title == "Test alert"
         assert event.event_type == TimelineEventType.ALERT_TRIGGERED
 
@@ -835,7 +854,7 @@ class TestModels:
             id="test-1",
             title="Test action",
         )
-        
+
         assert item.priority == ActionItemPriority.MEDIUM
         assert item.status == ActionItemStatus.TODO
         assert item.owner is None
@@ -844,7 +863,7 @@ class TestModels:
         """Test Postmortem JSON serialization."""
         json_str = sample_postmortem.model_dump_json()
         data = json.loads(json_str)
-        
+
         assert data["id"] == sample_postmortem.id
         assert "timeline" in data
         assert "root_cause" in data
@@ -854,7 +873,7 @@ class TestModels:
         request = PostmortemUpdateRequest(
             title="New title",
         )
-        
+
         dump = request.model_dump(exclude_unset=True)
         assert "title" in dump
         assert "status" not in dump

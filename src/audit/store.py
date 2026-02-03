@@ -32,7 +32,7 @@ class AuditStoreProtocol(Protocol):
 
 class AuditStore:
     """In-memory audit store for development and testing.
-    
+
     For production, use PostgresAuditStore.
     """
 
@@ -57,13 +57,16 @@ class AuditStore:
             self._events.append(event)
             if event.tenant_id:
                 self._events_by_tenant[event.tenant_id].append(event)
-            
+
             # Enforce max events limit (remove oldest)
             while len(self._events) > self.max_events:
                 oldest = self._events.pop(0)
-                if oldest.tenant_id and oldest in self._events_by_tenant[oldest.tenant_id]:
+                if (
+                    oldest.tenant_id
+                    and oldest in self._events_by_tenant[oldest.tenant_id]
+                ):
                     self._events_by_tenant[oldest.tenant_id].remove(oldest)
-        
+
         return event
 
     async def query_events(self, query: AuditLogQuery) -> list[AuditEvent]:
@@ -71,13 +74,13 @@ class AuditStore:
         async with self._lock:
             # Start with tenant-filtered events
             events = list(self._events_by_tenant.get(query.tenant_id, []))
-        
+
         # Apply filters
         events = self._apply_filters(events, query)
-        
+
         # Sort by timestamp descending (newest first)
         events.sort(key=lambda e: e.timestamp, reverse=True)
-        
+
         # Apply pagination
         start = query.offset
         end = start + query.limit
@@ -87,7 +90,7 @@ class AuditStore:
         """Count events matching query."""
         async with self._lock:
             events = list(self._events_by_tenant.get(query.tenant_id, []))
-        
+
         events = self._apply_filters(events, query)
         return len(events)
 
@@ -103,59 +106,62 @@ class AuditStore:
         """Remove events older than retention period."""
         cutoff = datetime.utcnow() - timedelta(days=self.retention_days)
         deleted = 0
-        
+
         async with self._lock:
             # Filter out old events
             old_events = [e for e in self._events if e.timestamp < cutoff]
             deleted = len(old_events)
-            
+
             self._events = [e for e in self._events if e.timestamp >= cutoff]
-            
+
             # Update tenant indices
             for tenant_id in self._events_by_tenant:
                 self._events_by_tenant[tenant_id] = [
-                    e for e in self._events_by_tenant[tenant_id]
+                    e
+                    for e in self._events_by_tenant[tenant_id]
                     if e.timestamp >= cutoff
                 ]
-        
+
         return deleted
 
-    def _apply_filters(self, events: list[AuditEvent], query: AuditLogQuery) -> list[AuditEvent]:
+    def _apply_filters(
+        self, events: list[AuditEvent], query: AuditLogQuery
+    ) -> list[AuditEvent]:
         """Apply query filters to events list."""
         filtered = events
-        
+
         # Date range filter
         if query.start_date:
             filtered = [e for e in filtered if e.timestamp >= query.start_date]
         if query.end_date:
             filtered = [e for e in filtered if e.timestamp <= query.end_date]
-        
+
         # Event type filter
         if query.event_types:
             filtered = [e for e in filtered if e.event_type in query.event_types]
-        
+
         # Category filter
         if query.categories:
             filtered = [e for e in filtered if e.category in query.categories]
-        
+
         # User filter
         if query.user_id:
             filtered = [e for e in filtered if e.user_id == query.user_id]
-        
+
         # Resource filter
         if query.resource_type:
             filtered = [e for e in filtered if e.resource_type == query.resource_type]
         if query.resource_id:
             filtered = [e for e in filtered if e.resource_id == query.resource_id]
-        
+
         # Outcome filter
         if query.outcome:
             filtered = [e for e in filtered if e.outcome == query.outcome]
-        
+
         # IP address filter
         if query.ip_address:
             filtered = [e for e in filtered if e.ip_address == query.ip_address]
-        
+
         return filtered
 
     async def search_events(
@@ -167,22 +173,22 @@ class AuditStore:
         """Full-text search across event actions and metadata."""
         async with self._lock:
             events = self._events_by_tenant.get(tenant_id, [])
-        
+
         text_lower = text.lower()
         matching = []
-        
+
         for event in events:
             # Search in action
             if text_lower in event.action.lower():
                 matching.append(event)
                 continue
-            
+
             # Search in metadata values
             for value in event.metadata.values():
                 if isinstance(value, str) and text_lower in value.lower():
                     matching.append(event)
                     break
-        
+
         # Sort by timestamp descending
         matching.sort(key=lambda e: e.timestamp, reverse=True)
         return matching[:limit]
@@ -218,9 +224,10 @@ class PostgresAuditStore:
         """Create audit_events table if it doesn't exist."""
         if not self._pool:
             await self.connect()
-        
+
         async with self._pool.acquire() as conn:
-            await conn.execute("""
+            await conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS audit_events (
                     id VARCHAR(32) PRIMARY KEY,
                     event_type VARCHAR(64) NOT NULL,
@@ -254,13 +261,14 @@ class PostgresAuditStore:
                     ON audit_events (category);
                 CREATE INDEX IF NOT EXISTS idx_audit_timestamp 
                     ON audit_events (timestamp DESC);
-            """)
+            """
+            )
 
     async def store_event(self, event: AuditEvent) -> AuditEvent:
         """Store an audit event in PostgreSQL."""
         if not self._pool:
             await self.connect()
-        
+
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """
@@ -291,120 +299,128 @@ class PostgresAuditStore:
                 event.session_id,
                 event.timestamp,
             )
-        
+
         return event
 
     async def query_events(self, query: AuditLogQuery) -> list[AuditEvent]:
         """Query audit events from PostgreSQL."""
         if not self._pool:
             await self.connect()
-        
+
         conditions = ["tenant_id = $1"]
         params: list = [query.tenant_id]
         param_num = 2
-        
+
         if query.start_date:
             conditions.append(f"timestamp >= ${param_num}")
             params.append(query.start_date)
             param_num += 1
-        
+
         if query.end_date:
             conditions.append(f"timestamp <= ${param_num}")
             params.append(query.end_date)
             param_num += 1
-        
+
         if query.event_types:
-            placeholders = ", ".join(f"${i}" for i in range(param_num, param_num + len(query.event_types)))
+            placeholders = ", ".join(
+                f"${i}" for i in range(param_num, param_num + len(query.event_types))
+            )
             conditions.append(f"event_type IN ({placeholders})")
             params.extend(et.value for et in query.event_types)
             param_num += len(query.event_types)
-        
+
         if query.categories:
-            placeholders = ", ".join(f"${i}" for i in range(param_num, param_num + len(query.categories)))
+            placeholders = ", ".join(
+                f"${i}" for i in range(param_num, param_num + len(query.categories))
+            )
             conditions.append(f"category IN ({placeholders})")
             params.extend(c.value for c in query.categories)
             param_num += len(query.categories)
-        
+
         if query.user_id:
             conditions.append(f"user_id = ${param_num}")
             params.append(query.user_id)
             param_num += 1
-        
+
         if query.resource_type:
             conditions.append(f"resource_type = ${param_num}")
             params.append(query.resource_type)
             param_num += 1
-        
+
         if query.resource_id:
             conditions.append(f"resource_id = ${param_num}")
             params.append(query.resource_id)
             param_num += 1
-        
+
         if query.outcome:
             conditions.append(f"outcome = ${param_num}")
             params.append(query.outcome.value)
             param_num += 1
-        
+
         if query.ip_address:
             conditions.append(f"ip_address = ${param_num}")
             params.append(query.ip_address)
             param_num += 1
-        
+
         where_clause = " AND ".join(conditions)
-        
+
         sql = f"""
             SELECT * FROM audit_events
             WHERE {where_clause}
             ORDER BY timestamp DESC
             LIMIT ${param_num} OFFSET ${param_num + 1}
-        """
+        """  # nosec B608 - where_clause is built from validated enum values and parameterized parts
         params.extend([query.limit, query.offset])
-        
+
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(sql, *params)
-        
+
         return [self._row_to_event(row) for row in rows]
 
     async def count_events(self, query: AuditLogQuery) -> int:
         """Count events matching query."""
         if not self._pool:
             await self.connect()
-        
+
         conditions = ["tenant_id = $1"]
         params: list = [query.tenant_id]
         param_num = 2
-        
+
         if query.start_date:
             conditions.append(f"timestamp >= ${param_num}")
             params.append(query.start_date)
             param_num += 1
-        
+
         if query.end_date:
             conditions.append(f"timestamp <= ${param_num}")
             params.append(query.end_date)
             param_num += 1
-        
+
         if query.event_types:
-            placeholders = ", ".join(f"${i}" for i in range(param_num, param_num + len(query.event_types)))
+            placeholders = ", ".join(
+                f"${i}" for i in range(param_num, param_num + len(query.event_types))
+            )
             conditions.append(f"event_type IN ({placeholders})")
             params.extend(et.value for et in query.event_types)
             param_num += len(query.event_types)
-        
+
         if query.categories:
-            placeholders = ", ".join(f"${i}" for i in range(param_num, param_num + len(query.categories)))
+            placeholders = ", ".join(
+                f"${i}" for i in range(param_num, param_num + len(query.categories))
+            )
             conditions.append(f"category IN ({placeholders})")
             params.extend(c.value for c in query.categories)
             param_num += len(query.categories)
-        
+
         if query.user_id:
             conditions.append(f"user_id = ${param_num}")
             params.append(query.user_id)
             param_num += 1
-        
+
         where_clause = " AND ".join(conditions)
-        
-        sql = f"SELECT COUNT(*) FROM audit_events WHERE {where_clause}"
-        
+
+        sql = f"SELECT COUNT(*) FROM audit_events WHERE {where_clause}"  # nosec B608 - where_clause is built from validated enum values and parameterized parts
+
         async with self._pool.acquire() as conn:
             return await conn.fetchval(sql, *params)
 
@@ -412,15 +428,15 @@ class PostgresAuditStore:
         """Delete events older than retention period."""
         if not self._pool:
             await self.connect()
-        
+
         cutoff = datetime.utcnow() - timedelta(days=self.retention_days)
-        
+
         async with self._pool.acquire() as conn:
             result = await conn.execute(
                 "DELETE FROM audit_events WHERE timestamp < $1",
                 cutoff,
             )
-        
+
         # Extract count from "DELETE N"
         return int(result.split()[-1])
 
@@ -433,7 +449,7 @@ class PostgresAuditStore:
         """Full-text search across event actions and metadata."""
         if not self._pool:
             await self.connect()
-        
+
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
                 """
@@ -447,13 +463,13 @@ class PostgresAuditStore:
                 f"%{text}%",
                 limit,
             )
-        
+
         return [self._row_to_event(row) for row in rows]
 
     def _row_to_event(self, row: asyncpg.Record) -> AuditEvent:
         """Convert database row to AuditEvent."""
         from .models import EventCategory, EventType, Outcome
-        
+
         return AuditEvent(
             id=row["id"],
             event_type=EventType(row["event_type"]),
@@ -486,10 +502,12 @@ def get_audit_store() -> AuditStore | PostgresAuditStore:
     return audit_store
 
 
-async def init_audit_store(database_url: str | None = None, retention_days: int = 90) -> None:
+async def init_audit_store(
+    database_url: str | None = None, retention_days: int = 90
+) -> None:
     """Initialize the audit store with appropriate backend."""
     global audit_store
-    
+
     if database_url and not database_url.startswith("sqlite"):
         audit_store = PostgresAuditStore(database_url, retention_days)
         await audit_store.connect()

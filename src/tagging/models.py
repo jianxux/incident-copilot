@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 class TagColor(str, Enum):
     """Predefined tag colors for UI consistency."""
+
     RED = "red"
     ORANGE = "orange"
     YELLOW = "yellow"
@@ -22,6 +23,7 @@ class TagColor(str, Enum):
 
 class Tag(BaseModel):
     """A tag that can be applied to incidents."""
+
     id: str = Field(..., description="Unique tag identifier")
     name: str = Field(..., min_length=1, max_length=50, description="Tag name")
     description: str | None = Field(None, max_length=255)
@@ -36,6 +38,7 @@ class Tag(BaseModel):
 
 class TagCreate(BaseModel):
     """Request to create a new tag."""
+
     name: str = Field(..., min_length=1, max_length=50)
     description: str | None = None
     color: TagColor = TagColor.BLUE
@@ -44,6 +47,7 @@ class TagCreate(BaseModel):
 
 class TagUpdate(BaseModel):
     """Request to update an existing tag."""
+
     name: str | None = Field(None, min_length=1, max_length=50)
     description: str | None = None
     color: TagColor | None = None
@@ -52,6 +56,7 @@ class TagUpdate(BaseModel):
 
 class IncidentTag(BaseModel):
     """Association between an incident and a tag."""
+
     incident_id: str
     tag_id: str
     applied_at: datetime = Field(default_factory=datetime.utcnow)
@@ -62,6 +67,7 @@ class IncidentTag(BaseModel):
 
 class AutoTagRuleType(str, Enum):
     """Types of auto-tagging rules."""
+
     SERVICE_NAME = "service_name"
     TITLE_KEYWORD = "title_keyword"
     SEVERITY = "severity"
@@ -70,6 +76,7 @@ class AutoTagRuleType(str, Enum):
 
 class AutoTagRule(BaseModel):
     """Rule for automatically applying tags to incidents."""
+
     id: str
     tag_id: str
     rule_type: AutoTagRuleType
@@ -83,6 +90,7 @@ class AutoTagRule(BaseModel):
 
 class AutoTagRuleCreate(BaseModel):
     """Request to create an auto-tag rule."""
+
     tag_id: str
     rule_type: AutoTagRuleType
     pattern: str
@@ -92,6 +100,7 @@ class AutoTagRuleCreate(BaseModel):
 
 class AutoTagRuleUpdate(BaseModel):
     """Request to update an auto-tag rule."""
+
     pattern: str | None = None
     is_enabled: bool | None = None
     priority: int | None = None
@@ -99,6 +108,7 @@ class AutoTagRuleUpdate(BaseModel):
 
 class TagSuggestion(BaseModel):
     """An AI-suggested tag for an incident."""
+
     tag_id: str
     tag_name: str
     confidence: float = Field(ge=0.0, le=1.0)
@@ -107,12 +117,14 @@ class TagSuggestion(BaseModel):
 
 class TagHierarchy(BaseModel):
     """A tag with its children for hierarchical display."""
+
     tag: Tag
     children: list["TagHierarchy"] = Field(default_factory=list)
 
 
 class TagStats(BaseModel):
     """Statistics for tag usage."""
+
     tag_id: str
     tag_name: str
     incident_count: int
@@ -122,17 +134,20 @@ class TagStats(BaseModel):
 
 class IncidentTagsResponse(BaseModel):
     """Response containing incident's tags."""
+
     incident_id: str
     tags: list[Tag]
 
 
 class AddTagsRequest(BaseModel):
     """Request to add tags to an incident."""
+
     tag_ids: list[str] = Field(..., min_length=1)
 
 
 class TagIncidentsResponse(BaseModel):
     """Response containing tag's incidents."""
+
     tag: Tag
     incident_ids: list[str]
     total: int
@@ -140,12 +155,14 @@ class TagIncidentsResponse(BaseModel):
 
 class TagListResponse(BaseModel):
     """Response for listing tags."""
+
     tags: list[Tag]
     total: int
 
 
 class TagSearchFilters(BaseModel):
     """Filters for searching incidents by tags."""
+
     tag_ids: list[str] | None = None
     include_children: bool = True
     match_all: bool = False

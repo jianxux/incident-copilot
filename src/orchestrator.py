@@ -8,7 +8,14 @@ import structlog
 
 from .ai import LogSummarizer
 from .config import Settings
-from .integrations import CloudWatchAdapter, DatadogAdapter, GitHubAdapter, GitLabAdapter, OnCallAdapter, SlackAdapter
+from .integrations import (
+    CloudWatchAdapter,
+    DatadogAdapter,
+    GitHubAdapter,
+    GitLabAdapter,
+    OnCallAdapter,
+    SlackAdapter,
+)
 from .models import ContextCard, OnCallRoster, PagerDutyIncident, RunbookLink
 from .runbooks import RunbookLinker
 
@@ -83,9 +90,7 @@ class ContextOrchestrator:
         )
 
         # Fan-out: fetch from multiple sources in parallel
-        scm_task = asyncio.create_task(
-            self._fetch_scm_context(incident.service_name)
-        )
+        scm_task = asyncio.create_task(self._fetch_scm_context(incident.service_name))
         datadog_task = asyncio.create_task(
             self._fetch_log_context(incident.service_name)
         )
@@ -96,14 +101,18 @@ class ContextOrchestrator:
         # Wait for all with timeout
         try:
             scm_ctx, datadog_ctx, oncall_roster = await asyncio.wait_for(
-                asyncio.gather(scm_task, datadog_task, oncall_task, return_exceptions=True),
+                asyncio.gather(
+                    scm_task, datadog_task, oncall_task, return_exceptions=True
+                ),
                 timeout=8.0,  # Leave room for AI + Slack
             )
 
             # Handle exceptions from gather
             if isinstance(scm_ctx, Exception):
                 scm_name = "GitHub" if self.scm_provider == "github" else "GitLab"
-                logger.error("scm_fetch_error", provider=self.scm_provider, error=str(scm_ctx))
+                logger.error(
+                    "scm_fetch_error", provider=self.scm_provider, error=str(scm_ctx)
+                )
                 errors.append(f"{scm_name}: {str(scm_ctx)}")
                 scm_ctx = None
 
@@ -133,7 +142,7 @@ class ContextOrchestrator:
             scm_ctx = scm_task.result() if scm_task.done() else None
             datadog_ctx = datadog_task.result() if datadog_task.done() else None
             oncall_roster = oncall_task.result() if oncall_task.done() else None
-        
+
         # Extract GitHub context for backward compatibility
         github_ctx = scm_ctx if self.scm_provider == "github" else None
         gitlab_ctx = scm_ctx if self.scm_provider == "gitlab" else None
@@ -192,7 +201,7 @@ class ContextOrchestrator:
             codeowners = github_ctx.codeowners
         elif gitlab_ctx:
             codeowners = gitlab_ctx.codeowners
-        
+
         card = ContextCard(
             incident_id=incident.incident_id,
             title=incident.title,

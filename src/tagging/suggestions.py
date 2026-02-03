@@ -79,12 +79,14 @@ class TagSuggester:
                 confidence = float(item.get("confidence", 0))
                 if confidence < min_confidence:
                     continue
-                suggestions.append(TagSuggestion(
-                    tag_id=tag_id,
-                    tag_name=item.get("tag_name", tag_id_map[tag_id].name),
-                    confidence=min(1.0, max(0.0, confidence)),
-                    reason=item.get("reason", "AI suggested"),
-                ))
+                suggestions.append(
+                    TagSuggestion(
+                        tag_id=tag_id,
+                        tag_name=item.get("tag_name", tag_id_map[tag_id].name),
+                        confidence=min(1.0, max(0.0, confidence)),
+                        reason=item.get("reason", "AI suggested"),
+                    )
+                )
             suggestions.sort(key=lambda s: s.confidence, reverse=True)
             return suggestions[:max_suggestions]
         except (json.JSONDecodeError, Exception) as e:
@@ -115,12 +117,14 @@ class TagSuggester:
                 confidence = 0.7
                 reason = f"Tag matches severity level '{severity}'"
             if confidence > 0:
-                suggestions.append(TagSuggestion(
-                    tag_id=tag.id,
-                    tag_name=tag.name,
-                    confidence=confidence,
-                    reason=reason,
-                ))
+                suggestions.append(
+                    TagSuggestion(
+                        tag_id=tag.id,
+                        tag_name=tag.name,
+                        confidence=confidence,
+                        reason=reason,
+                    )
+                )
         suggestions.sort(key=lambda s: s.confidence, reverse=True)
         return suggestions[:max_suggestions]
 
@@ -134,6 +138,7 @@ def get_tag_suggester(settings: Settings | None = None) -> TagSuggester:
     if _suggester is None:
         if settings is None:
             from ..config import get_settings
+
             settings = get_settings()
         _suggester = TagSuggester(settings)
     return _suggester
