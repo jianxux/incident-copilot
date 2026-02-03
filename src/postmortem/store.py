@@ -21,7 +21,11 @@ class PostmortemStore:
         postmortem.updated_at = datetime.utcnow()
         self._postmortems[postmortem.id] = postmortem
         self._by_incident[postmortem.incident_id] = postmortem.id
-        logger.info("postmortem_saved", postmortem_id=postmortem.id, incident_id=postmortem.incident_id)
+        logger.info(
+            "postmortem_saved",
+            postmortem_id=postmortem.id,
+            incident_id=postmortem.incident_id,
+        )
         return postmortem
 
     async def get(self, postmortem_id: str) -> Postmortem | None:
@@ -35,7 +39,9 @@ class PostmortemStore:
             return self._postmortems.get(postmortem_id)
         return None
 
-    async def update(self, incident_id: str, updates: PostmortemUpdateRequest) -> Postmortem | None:
+    async def update(
+        self, incident_id: str, updates: PostmortemUpdateRequest
+    ) -> Postmortem | None:
         """Update an existing postmortem."""
         postmortem = await self.get_by_incident(incident_id)
         if not postmortem:
@@ -46,7 +52,11 @@ class PostmortemStore:
                 setattr(postmortem, field, value)
         postmortem.updated_at = datetime.utcnow()
         postmortem.version += 1
-        logger.info("postmortem_updated", postmortem_id=postmortem.id, version=postmortem.version)
+        logger.info(
+            "postmortem_updated",
+            postmortem_id=postmortem.id,
+            version=postmortem.version,
+        )
         return postmortem
 
     async def delete(self, incident_id: str) -> bool:
@@ -54,11 +64,20 @@ class PostmortemStore:
         postmortem_id = self._by_incident.pop(incident_id, None)
         if postmortem_id:
             self._postmortems.pop(postmortem_id, None)
-            logger.info("postmortem_deleted", postmortem_id=postmortem_id, incident_id=incident_id)
+            logger.info(
+                "postmortem_deleted",
+                postmortem_id=postmortem_id,
+                incident_id=incident_id,
+            )
             return True
         return False
 
-    async def list(self, status: PostmortemStatus | None = None, service_name: str | None = None, limit: int = 100) -> list[Postmortem]:
+    async def list(
+        self,
+        status: PostmortemStatus | None = None,
+        service_name: str | None = None,
+        limit: int = 100,
+    ) -> list[Postmortem]:
         """List postmortems with optional filters."""
         postmortems = list(self._postmortems.values())
         if status:

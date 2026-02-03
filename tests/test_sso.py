@@ -27,7 +27,6 @@ from src.auth.sso.routes import (
     save_sso_session,
 )
 
-
 # --- Model Tests ---
 
 
@@ -205,7 +204,9 @@ class TestSSOModels:
         assert "auth0" in OIDC_PROVIDER_PRESETS
 
         # Google preset should have issuer
-        assert OIDC_PROVIDER_PRESETS["google"]["issuer"] == "https://accounts.google.com"
+        assert (
+            OIDC_PROVIDER_PRESETS["google"]["issuer"] == "https://accounts.google.com"
+        )
 
 
 # --- Session Management Tests ---
@@ -438,6 +439,7 @@ class TestSAMLProvider:
 
         with pytest.raises(ValueError, match="SAML settings"):
             from src.auth.sso.saml import SAMLProvider
+
             SAMLProvider(idp_no_saml, "https://app.example.com")
 
     def test_saml_attribute_mapping(self):
