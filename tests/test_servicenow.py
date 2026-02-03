@@ -1,15 +1,16 @@
 """Tests for ServiceNow integration."""
 
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from src.config import Settings
 from src.integrations.servicenow import (
-    ServiceNowAdapter,
-    IncidentState,
     IncidentImpact,
+    IncidentState,
     IncidentUrgency,
+    ServiceNowAdapter,
 )
 
 

@@ -1,9 +1,12 @@
 """API endpoints for plugin management."""
 
 from __future__ import annotations
+
 from typing import Any
+
 import structlog
 from fastapi import APIRouter, HTTPException, Query, status
+
 from ..plugins import PluginRegistry, get_registry
 from ..plugins.models import (
     Plugin,

@@ -1,9 +1,11 @@
 """Payload transformation utilities using Jinja2 templates."""
 
 from __future__ import annotations
+
 import json
 from datetime import datetime
 from typing import Any
+
 import structlog
 from jinja2 import BaseLoader, Environment, TemplateSyntaxError, UndefinedError
 
