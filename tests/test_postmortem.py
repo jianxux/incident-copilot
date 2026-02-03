@@ -43,7 +43,6 @@ from src.postmortem import (
     render_postmortem,
 )
 
-
 # --- Fixtures ---
 
 
