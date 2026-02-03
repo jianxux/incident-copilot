@@ -91,10 +91,12 @@ class Settings(BaseSettings):
         description="Loki authentication type: 'none', 'basic', or 'bearer'",
     )
     loki_username: str = Field(
-        default="", description="Loki username for basic auth (e.g., Grafana Cloud user ID)"
+        default="",
+        description="Loki username for basic auth (e.g., Grafana Cloud user ID)",
     )
     loki_password: str = Field(
-        default="", description="Loki password for basic auth (e.g., Grafana Cloud API key)"
+        default="",
+        description="Loki password for basic auth (e.g., Grafana Cloud API key)",
     )
     loki_token: str = Field(
         default="", description="Loki bearer token for token-based auth"
@@ -105,7 +107,7 @@ class Settings(BaseSettings):
     )
     loki_service_labels: dict[str, str] = Field(
         default_factory=dict,
-        description="Service to Loki label selector mapping (e.g., payments-api=service=\"payments\")",
+        description='Service to Loki label selector mapping (e.g., payments-api=service="payments")',
     )
 
     # Splunk
@@ -324,7 +326,7 @@ class Settings(BaseSettings):
         ],
         description="Paths to exclude from rate limiting",
     )
-    
+
     # Rate limits per scope (token bucket: capacity = burst, refill_rate = sustained rate/sec)
     ratelimit_ip_capacity: int = Field(
         default=100, description="Max requests per IP (burst capacity)"
@@ -374,7 +376,8 @@ class Settings(BaseSettings):
         default=86400, description="TTL for correlation groups in seconds (24h)"
     )
     correlation_stale_after_seconds: int = Field(
-        default=3600, description="Mark groups stale after N seconds without activity (1h)"
+        default=3600,
+        description="Mark groups stale after N seconds without activity (1h)",
     )
     correlation_max_alerts_per_group: int = Field(
         default=1000, description="Maximum alerts in a single group"
@@ -383,7 +386,8 @@ class Settings(BaseSettings):
         default=True, description="Suppress duplicate notifications by default"
     )
     correlation_re_notify_after_seconds: int = Field(
-        default=1800, description="Re-notify if group still active after N seconds (30 min)"
+        default=1800,
+        description="Re-notify if group still active after N seconds (30 min)",
     )
 
     # Audit Logging
