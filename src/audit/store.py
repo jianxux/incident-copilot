@@ -249,16 +249,16 @@ class PostgresAuditStore:
                     timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 );
-                
-                CREATE INDEX IF NOT EXISTS idx_audit_tenant_timestamp 
+
+                CREATE INDEX IF NOT EXISTS idx_audit_tenant_timestamp
                     ON audit_events (tenant_id, timestamp DESC);
-                CREATE INDEX IF NOT EXISTS idx_audit_user_timestamp 
+                CREATE INDEX IF NOT EXISTS idx_audit_user_timestamp
                     ON audit_events (user_id, timestamp DESC);
-                CREATE INDEX IF NOT EXISTS idx_audit_event_type 
+                CREATE INDEX IF NOT EXISTS idx_audit_event_type
                     ON audit_events (event_type);
-                CREATE INDEX IF NOT EXISTS idx_audit_category 
+                CREATE INDEX IF NOT EXISTS idx_audit_category
                     ON audit_events (category);
-                CREATE INDEX IF NOT EXISTS idx_audit_timestamp 
+                CREATE INDEX IF NOT EXISTS idx_audit_timestamp
                     ON audit_events (timestamp DESC);
             """)
 
