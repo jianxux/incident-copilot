@@ -7,7 +7,8 @@ from datetime import datetime
 from typing import Any
 
 from .models import AuditEvent, EventCategory, EventType, Outcome
-from .store import AuditStore, audit_store as default_store
+from .store import AuditStore
+from .store import audit_store as default_store
 
 
 class AuditLogger:
