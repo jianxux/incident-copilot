@@ -45,7 +45,7 @@ class TestSplunkAdapter:
         )
         adapter = SplunkAdapter(settings)
         headers = adapter._get_headers()
-        
+
         # Should use Basic auth
         assert headers["Authorization"].startswith("Basic ")
 
@@ -89,20 +89,26 @@ class TestFetchLogs:
                 "sourcetype": "json",
             },
         ]
-        
-        with patch.object(adapter, "_create_search_job", new_callable=AsyncMock) as mock_create:
-            with patch.object(adapter, "_wait_for_job", new_callable=AsyncMock) as mock_wait:
-                with patch.object(adapter, "_get_job_results", new_callable=AsyncMock) as mock_results_fn:
+
+        with patch.object(
+            adapter, "_create_search_job", new_callable=AsyncMock
+        ) as mock_create:
+            with patch.object(
+                adapter, "_wait_for_job", new_callable=AsyncMock
+            ) as mock_wait:
+                with patch.object(
+                    adapter, "_get_job_results", new_callable=AsyncMock
+                ) as mock_results_fn:
                     mock_create.return_value = "test-sid-123"
                     mock_wait.return_value = True
                     mock_results_fn.return_value = mock_results
-                    
+
                     entries = await adapter.fetch_logs(
                         service_name="payments-api",
                         minutes_back=60,
                         max_results=100,
                     )
-        
+
         assert len(entries) == 2
         assert entries[0].level == "ERROR"
         assert "Payment processing failed" in entries[0].message
@@ -113,40 +119,52 @@ class TestFetchLogs:
         """Test fetch when Splunk is not configured."""
         settings = Settings(splunk_url="")
         adapter = SplunkAdapter(settings)
-        
+
         entries = await adapter.fetch_logs("payments-api")
         assert entries == []
 
     @pytest.mark.asyncio
     async def test_fetch_logs_job_timeout(self, adapter):
         """Test when search job times out."""
-        with patch.object(adapter, "_create_search_job", new_callable=AsyncMock) as mock_create:
-            with patch.object(adapter, "_wait_for_job", new_callable=AsyncMock) as mock_wait:
+        with patch.object(
+            adapter, "_create_search_job", new_callable=AsyncMock
+        ) as mock_create:
+            with patch.object(
+                adapter, "_wait_for_job", new_callable=AsyncMock
+            ) as mock_wait:
                 mock_create.return_value = "test-sid-123"
                 mock_wait.return_value = False  # Timeout
-                
+
                 entries = await adapter.fetch_logs("payments-api")
-        
+
         assert entries == []
 
     @pytest.mark.asyncio
     async def test_fetch_logs_with_severity_filter(self, adapter):
         """Test log fetch with severity filter."""
-        with patch.object(adapter, "_create_search_job", new_callable=AsyncMock) as mock_create:
-            with patch.object(adapter, "_wait_for_job", new_callable=AsyncMock) as mock_wait:
-                with patch.object(adapter, "_get_job_results", new_callable=AsyncMock) as mock_results:
+        with patch.object(
+            adapter, "_create_search_job", new_callable=AsyncMock
+        ) as mock_create:
+            with patch.object(
+                adapter, "_wait_for_job", new_callable=AsyncMock
+            ) as mock_wait:
+                with patch.object(
+                    adapter, "_get_job_results", new_callable=AsyncMock
+                ) as mock_results:
                     mock_create.return_value = "test-sid"
                     mock_wait.return_value = True
                     mock_results.return_value = []
-                    
+
                     await adapter.fetch_logs(
                         service_name="payments-api",
                         severity="ERROR",
                     )
-                    
+
                     # Verify the query includes error severity
                     call_args = mock_create.call_args
-                    query = call_args.kwargs.get("search_query", call_args.args[0] if call_args.args else "")
+                    query = call_args.kwargs.get(
+                        "search_query", call_args.args[0] if call_args.args else ""
+                    )
                     assert "ERROR" in query or "error" in query
 
 
@@ -191,21 +209,25 @@ class TestSavedSearch:
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            
+
             # Mock dispatch response
             mock_dispatch_response = MagicMock()
             mock_dispatch_response.status_code = 200
             mock_dispatch_response.json.return_value = {"sid": "saved-search-sid"}
             mock_dispatch_response.raise_for_status = MagicMock()
             mock_client.post.return_value = mock_dispatch_response
-            
-            with patch.object(adapter, "_wait_for_job", new_callable=AsyncMock) as mock_wait:
-                with patch.object(adapter, "_get_job_results", new_callable=AsyncMock) as mock_results:
+
+            with patch.object(
+                adapter, "_wait_for_job", new_callable=AsyncMock
+            ) as mock_wait:
+                with patch.object(
+                    adapter, "_get_job_results", new_callable=AsyncMock
+                ) as mock_results:
                     mock_wait.return_value = True
                     mock_results.return_value = [{"result": "data"}]
-                    
+
                     results = await adapter.run_saved_search("my_saved_search")
-        
+
         assert len(results) == 1
         assert results[0]["result"] == "data"
 
@@ -214,7 +236,7 @@ class TestSavedSearch:
         """Test saved search when not configured."""
         settings = Settings(splunk_url="")
         adapter = SplunkAdapter(settings)
-        
+
         results = await adapter.run_saved_search("my_saved_search")
         assert results == []
 
@@ -228,23 +250,25 @@ class TestHealth:
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            
+
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json.return_value = {
-                "entry": [{
-                    "content": {
-                        "version": "9.0.0",
-                        "serverName": "splunk-prod",
-                        "os_name": "Linux",
+                "entry": [
+                    {
+                        "content": {
+                            "version": "9.0.0",
+                            "serverName": "splunk-prod",
+                            "os_name": "Linux",
+                        }
                     }
-                }]
+                ]
             }
             mock_response.raise_for_status = MagicMock()
             mock_client.get.return_value = mock_response
-            
+
             health = await adapter.get_health()
-        
+
         assert health["status"] == "healthy"
         assert health["version"] == "9.0.0"
         assert health["server_name"] == "splunk-prod"
@@ -254,7 +278,7 @@ class TestHealth:
         """Test health when not configured."""
         settings = Settings(splunk_url="")
         adapter = SplunkAdapter(settings)
-        
+
         health = await adapter.get_health()
         assert health["status"] == "unconfigured"
 
@@ -265,9 +289,9 @@ class TestHealth:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
             mock_client.get.side_effect = Exception("Connection refused")
-            
+
             health = await adapter.get_health()
-        
+
         assert health["status"] == "unhealthy"
         assert "Connection refused" in health["error"]
 
@@ -278,17 +302,26 @@ class TestAlertSearch:
     @pytest.mark.asyncio
     async def test_search_alerts_success(self, adapter):
         """Test searching for triggered alerts."""
-        with patch.object(adapter, "_create_search_job", new_callable=AsyncMock) as mock_create:
-            with patch.object(adapter, "_wait_for_job", new_callable=AsyncMock) as mock_wait:
-                with patch.object(adapter, "_get_job_results", new_callable=AsyncMock) as mock_results:
+        with patch.object(
+            adapter, "_create_search_job", new_callable=AsyncMock
+        ) as mock_create:
+            with patch.object(
+                adapter, "_wait_for_job", new_callable=AsyncMock
+            ) as mock_wait:
+                with patch.object(
+                    adapter, "_get_job_results", new_callable=AsyncMock
+                ) as mock_results:
                     mock_create.return_value = "alert-search-sid"
                     mock_wait.return_value = True
                     mock_results.return_value = [
-                        {"ss_name": "payments-api-error-rate", "trigger_time": "1738476000"},
+                        {
+                            "ss_name": "payments-api-error-rate",
+                            "trigger_time": "1738476000",
+                        },
                     ]
-                    
+
                     alerts = await adapter.search_alerts("payments-api")
-        
+
         assert len(alerts) == 1
 
     @pytest.mark.asyncio
@@ -296,6 +329,6 @@ class TestAlertSearch:
         """Test alert search when not configured."""
         settings = Settings(splunk_url="")
         adapter = SplunkAdapter(settings)
-        
+
         alerts = await adapter.search_alerts("payments-api")
         assert alerts == []

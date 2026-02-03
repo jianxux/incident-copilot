@@ -1,8 +1,10 @@
 """Data models for alert correlation."""
+
 from datetime import datetime
 from enum import Enum
 from typing import Any
 from pydantic import BaseModel, Field
+
 
 class CorrelationStrategy(str, Enum):
     TIME_BASED = "time_based"
@@ -11,11 +13,13 @@ class CorrelationStrategy(str, Enum):
     PATTERN_BASED = "pattern"
     COMPOSITE = "composite"
 
+
 class AlertGroupStatus(str, Enum):
     ACTIVE = "active"
     STALE = "stale"
     CLOSED = "closed"
     RESOLVED = "resolved"
+
 
 class IncomingAlert(BaseModel):
     alert_id: str
@@ -28,6 +32,7 @@ class IncomingAlert(BaseModel):
     triggered_at: datetime = Field(default_factory=datetime.utcnow)
     url: str | None = None
     extra: dict[str, Any] = Field(default_factory=dict)
+
 
 class AlertGroup(BaseModel):
     group_id: str
@@ -70,7 +75,9 @@ class AlertGroup(BaseModel):
             self.title = f"[{alert.service}] {alert.title}"
 
     def update_summary(self) -> None:
-        parts = [f"{self.alert_count} related alerts" if self.alert_count > 1 else "1 alert"]
+        parts = [
+            f"{self.alert_count} related alerts" if self.alert_count > 1 else "1 alert"
+        ]
         if len(self.services) > 1:
             parts.append(f"across {len(self.services)} services")
         elif self.service:
@@ -78,6 +85,7 @@ class AlertGroup(BaseModel):
         if self.suppressed_count > 0:
             parts.append(f"({self.suppressed_count} notifications suppressed)")
         self.summary = " ".join(parts)
+
 
 class CorrelationRule(BaseModel):
     rule_id: str
@@ -106,6 +114,7 @@ class CorrelationRule(BaseModel):
 
     def matches_tags(self, alert_tags: list[str]) -> bool:
         return not self.match_tags or all(tag in alert_tags for tag in self.match_tags)
+
 
 class CorrelationResult(BaseModel):
     alert: IncomingAlert
