@@ -143,7 +143,7 @@ class CommandHandler:
                 }
                 for rb in matches
             ]
-        except:
+        except Exception:
             runbook_dicts = []
         return BlockKitBuilder.runbook_response(service, runbook_dicts)
 
