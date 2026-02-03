@@ -1,16 +1,14 @@
 """Tests for API rate limiting module."""
 
 import asyncio
-import time
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
-from starlette.middleware.base import RequestResponseEndpoint
 
-from src.ratelimit.limiter import RateLimiter, rate_limiter
+from src.ratelimit.limiter import RateLimiter
 from src.ratelimit.middleware import RateLimitMiddleware, rate_limit
 from src.ratelimit.models import (
     EndpointRateLimit,

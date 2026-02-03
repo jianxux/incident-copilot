@@ -5,7 +5,6 @@ import hashlib
 import re
 import time
 from datetime import datetime, timedelta
-from typing import Any
 
 import structlog
 from redis import asyncio as aioredis

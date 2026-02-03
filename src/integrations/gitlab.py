@@ -1,6 +1,6 @@
 """GitLab integration adapter."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from urllib.parse import quote
 
 import httpx
@@ -122,7 +122,7 @@ class GitLabAdapter:
         self, client: httpx.AsyncClient, project_path: str, since_hours: int
     ) -> list[Deployment]:
         """Fetch recent commits from the default branch."""
-        since = (datetime.now(timezone.utc) - timedelta(hours=since_hours)).isoformat()
+        since = (datetime.now(UTC) - timedelta(hours=since_hours)).isoformat()
         encoded_path = self._encode_project_path(project_path)
 
         url = f"{self.api_url}/projects/{encoded_path}/repository/commits"
@@ -156,7 +156,7 @@ class GitLabAdapter:
             try:
                 timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
             except (ValueError, AttributeError):
-                timestamp = datetime.now(timezone.utc)
+                timestamp = datetime.now(UTC)
 
             deploys.append(
                 Deployment(
@@ -180,7 +180,7 @@ class GitLabAdapter:
         self, client: httpx.AsyncClient, project_path: str, since_hours: int
     ) -> list[MergeRequest]:
         """Fetch recently merged MRs."""
-        since = (datetime.now(timezone.utc) - timedelta(hours=since_hours)).isoformat()
+        since = (datetime.now(UTC) - timedelta(hours=since_hours)).isoformat()
         encoded_path = self._encode_project_path(project_path)
 
         url = f"{self.api_url}/projects/{encoded_path}/merge_requests"
@@ -211,7 +211,7 @@ class GitLabAdapter:
             try:
                 merged_at = datetime.fromisoformat(merged_at_str.replace("Z", "+00:00"))
             except (ValueError, AttributeError):
-                merged_at = datetime.now(timezone.utc)
+                merged_at = datetime.now(UTC)
 
             merge_requests.append(
                 MergeRequest(
@@ -257,7 +257,7 @@ class GitLabAdapter:
         pipelines_data = resp.json()
         pipelines = []
 
-        since = datetime.now(timezone.utc) - timedelta(hours=since_hours)
+        since = datetime.now(UTC) - timedelta(hours=since_hours)
 
         for pipeline in pipelines_data:
             # Parse timestamp
@@ -267,7 +267,7 @@ class GitLabAdapter:
                     created_at_str.replace("Z", "+00:00")
                 )
             except (ValueError, AttributeError):
-                created_at = datetime.now(timezone.utc)
+                created_at = datetime.now(UTC)
 
             # Filter by time
             if created_at.replace(tzinfo=None) < since.replace(tzinfo=None):

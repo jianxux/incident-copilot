@@ -12,11 +12,8 @@ from src.auth.models import UserRole
 
 from .limiter import rate_limiter
 from .models import (
-    RateLimitConfig,
     RateLimitOverride,
-    RateLimitResult,
     RateLimitScope,
-    RateLimitStatus,
 )
 
 logger = structlog.get_logger()
