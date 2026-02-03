@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 
 from ..config import get_settings
 from ..correlation import (
-    AlertGroup,
     AlertGroupStatus,
     CorrelationRule,
     CorrelationStrategy,

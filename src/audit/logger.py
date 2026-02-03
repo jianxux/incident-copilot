@@ -238,7 +238,7 @@ class AuditLogger:
         return await self.log_event(
             EventCategory.AUTHENTICATION,
             EventType.LOGOUT,
-            f"User logged out",
+            "User logged out",
             tenant_id=tenant_id,
             user_id=user_id,
             user_email=user_email,

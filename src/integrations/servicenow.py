@@ -1,9 +1,8 @@
 """ServiceNow ITSM integration for incident management."""
 
 import base64
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
-from typing import Any
 
 import httpx
 import structlog
