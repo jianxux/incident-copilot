@@ -2,9 +2,7 @@
 
 import asyncio
 import base64
-import json
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import UTC, datetime
 
 import httpx
 import structlog
@@ -241,7 +239,7 @@ class SplunkAdapter:
                 timestamp = self._parse_timestamp(result.get("_time", ""))
                 entries.append(
                     LogEntry(
-                        timestamp=timestamp or datetime.now(timezone.utc),
+                        timestamp=timestamp or datetime.now(UTC),
                         message=result.get("_raw", result.get("message", "")),
                         level=result.get(
                             "level", result.get("severity", "INFO")
@@ -311,7 +309,7 @@ class SplunkAdapter:
 
         # Try parsing as epoch
         try:
-            return datetime.fromtimestamp(float(time_str), tz=timezone.utc)
+            return datetime.fromtimestamp(float(time_str), tz=UTC)
         except (ValueError, TypeError):
             pass
 
