@@ -24,6 +24,62 @@ class AlertSource(str, Enum):
     MANUAL = "manual"
 
 
+# --- On-Call Models ---
+
+
+class OnCallPerson(BaseModel):
+    """A person currently on-call."""
+
+    id: str
+    name: str
+    email: str | None = None
+    phone: str | None = None
+    avatar_url: str | None = None
+    slack_user_id: str | None = None
+    provider: str = "unknown"
+    raw_data: dict = Field(default_factory=dict)
+
+    @property
+    def slack_mention(self) -> str:
+        """Return Slack mention format if Slack ID is available."""
+        if self.slack_user_id:
+            return f"<@{self.slack_user_id}>"
+        return self.name
+
+    @property
+    def teams_mention(self) -> str:
+        """Return Teams mention format (requires email)."""
+        if self.email:
+            return f"<at>{self.email}</at>"
+        return self.name
+
+
+class OnCallRoster(BaseModel):
+    """On-call roster from PagerDuty or Opsgenie."""
+
+    schedule_id: str
+    schedule_name: str
+    provider: str  # "pagerduty" or "opsgenie"
+    oncall_persons: list[OnCallPerson] = Field(default_factory=list)
+    fetched_at: datetime
+    schedule_url: str | None = None
+
+    @property
+    def primary_oncall(self) -> OnCallPerson | None:
+        """Return the primary (first) on-call person."""
+        return self.oncall_persons[0] if self.oncall_persons else None
+
+    @property
+    def oncall_names(self) -> list[str]:
+        """Return list of on-call person names."""
+        return [p.name for p in self.oncall_persons]
+
+    @property
+    def has_oncall(self) -> bool:
+        """Check if anyone is currently on-call."""
+        return len(self.oncall_persons) > 0
+
+
 # --- PagerDuty Models ---
 
 
@@ -234,6 +290,9 @@ class ContextCard(BaseModel):
 
     # Linked runbooks
     runbooks: list[RunbookLink] = Field(default_factory=list)
+
+    # On-call roster
+    oncall: OnCallRoster | None = None
 
     # Service info
     owners: list[str] = Field(default_factory=list)
