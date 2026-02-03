@@ -478,7 +478,7 @@ class SAMLProvider(BaseProvider):
             if want_assertions_signed is not None
             else self.settings.want_assertions_signed
         )
-        want_msg_signed = (
+        _ = (
             want_messages_signed
             if want_messages_signed is not None
             else self.settings.want_messages_signed
