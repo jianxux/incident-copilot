@@ -98,7 +98,7 @@
                 <!-- Result Card -->
                 <div id="resultCard" class="hidden">
                     <h3 class="text-lg font-semibold mb-4 text-gray-900">📋 Context Card Generated</h3>
-                    <div id="contextCardContent" class="bg-gray-50 rounded-lg p-4 space-y-4">
+                    <div id="contextCardContent" class="bg-gray-50 rounded-lg p-4 space-y-4 text-gray-900">
                         <!-- Context card will be rendered here -->
                     </div>
                 </div>
@@ -186,8 +186,8 @@ function renderContextCard(card) {
     
     let html = `
         <div class="border-l-4 ${severity_color} pl-4">
-            <h4 class="font-semibold text-lg">${card.title}</h4>
-            <p class="text-sm text-gray-500">Service: ${card.service_name} | Severity: ${card.severity.toUpperCase()}</p>
+            <h4 class="font-semibold text-lg text-gray-900">${card.title}</h4>
+            <p class="text-sm text-gray-600">Service: ${card.service_name} | Severity: ${card.severity.toUpperCase()}</p>
         </div>
     `;
     
@@ -208,8 +208,8 @@ function renderContextCard(card) {
     if (card.ai_summary) {
         html += `
             <div class="border rounded-lg p-4">
-                <h5 class="font-medium mb-2">🤖 AI Analysis</h5>
-                <div class="text-sm whitespace-pre-line">${card.ai_summary.explanation.substring(0, 500)}${card.ai_summary.explanation.length > 500 ? '...' : ''}</div>
+                <h5 class="font-medium mb-2 text-gray-900">🤖 AI Analysis</h5>
+                <div class="text-sm whitespace-pre-line text-gray-800">${card.ai_summary.explanation.substring(0, 500)}${card.ai_summary.explanation.length > 500 ? '...' : ''}</div>
             </div>
         `;
     }
