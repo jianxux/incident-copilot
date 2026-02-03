@@ -27,19 +27,19 @@ logger = structlog.get_logger()
 
 class RateLimiter:
     """Token bucket rate limiter with Redis backend.
-    
+
     Implements the token bucket algorithm:
     - Each bucket has a capacity (max tokens)
     - Tokens are added at a fixed rate
     - Each request consumes tokens
     - If not enough tokens, request is denied
-    
+
     Benefits of token bucket:
     - Allows bursts up to capacity
     - Smooth rate limiting over time
     - Redis atomic operations prevent race conditions
     """
-    
+
     # Lua script for atomic token bucket operation
     TOKEN_BUCKET_SCRIPT = """
     local key = KEYS[1]
@@ -92,7 +92,7 @@ class RateLimiter:
     
     return {allowed, remaining, retry_after}
     """
-    
+
     def __init__(
         self,
         redis_url: str | None = None,
@@ -104,29 +104,26 @@ class RateLimiter:
         self.key_prefix = key_prefix
         self._redis: aioredis.Redis | None = None
         self._script_sha: str | None = None
-        
+
         # Default configurations per scope
         self._configs: dict[RateLimitScope, RateLimitConfig] = {}
         self._endpoint_limits: list[EndpointRateLimit] = []
         self._overrides: dict[str, RateLimitOverride] = {}
-        
+
         # In-memory fallback when Redis unavailable
         self._memory_buckets: dict[str, dict[str, float]] = {}
         self._use_memory_fallback = False
-        
+
         # Initialize default configs
         self._init_default_configs(default_configs)
-        
+
         # Event callbacks
         self._on_limit_exceeded: list[callable] = []
-    
-    def _init_default_configs(
-        self,
-        configs: list[RateLimitConfig] | None
-    ) -> None:
+
+    def _init_default_configs(self, configs: list[RateLimitConfig] | None) -> None:
         """Initialize default rate limit configurations."""
         settings = get_settings()
-        
+
         if configs:
             for config in configs:
                 self._configs[config.scope] = config
@@ -138,38 +135,38 @@ class RateLimiter:
                     scope=RateLimitScope.IP,
                     capacity=settings.ratelimit_ip_capacity,
                     refill_rate=settings.ratelimit_ip_refill_rate,
-                    description="Per-IP address rate limit"
+                    description="Per-IP address rate limit",
                 ),
                 RateLimitScope.API_KEY: RateLimitConfig(
                     name="API Key Rate Limit",
                     scope=RateLimitScope.API_KEY,
                     capacity=settings.ratelimit_api_key_capacity,
                     refill_rate=settings.ratelimit_api_key_refill_rate,
-                    description="Per-API key rate limit"
+                    description="Per-API key rate limit",
                 ),
                 RateLimitScope.TENANT: RateLimitConfig(
                     name="Tenant Rate Limit",
                     scope=RateLimitScope.TENANT,
                     capacity=settings.ratelimit_tenant_capacity,
                     refill_rate=settings.ratelimit_tenant_refill_rate,
-                    description="Per-tenant rate limit"
+                    description="Per-tenant rate limit",
                 ),
                 RateLimitScope.USER: RateLimitConfig(
                     name="User Rate Limit",
                     scope=RateLimitScope.USER,
                     capacity=settings.ratelimit_user_capacity,
                     refill_rate=settings.ratelimit_user_refill_rate,
-                    description="Per-user rate limit"
+                    description="Per-user rate limit",
                 ),
                 RateLimitScope.GLOBAL: RateLimitConfig(
                     name="Global Rate Limit",
                     scope=RateLimitScope.GLOBAL,
                     capacity=settings.ratelimit_global_capacity,
                     refill_rate=settings.ratelimit_global_refill_rate,
-                    description="Global API rate limit"
+                    description="Global API rate limit",
                 ),
             }
-    
+
     async def _get_redis(self) -> aioredis.Redis | None:
         """Get or create Redis connection."""
         if self._redis is None:
@@ -189,30 +186,26 @@ class RateLimiter:
                 logger.warning(
                     "rate_limiter_redis_connection_failed",
                     error=str(e),
-                    fallback="memory"
+                    fallback="memory",
                 )
                 self._use_memory_fallback = True
                 return None
         return self._redis
-    
+
     async def close(self) -> None:
         """Close Redis connection."""
         if self._redis:
             await self._redis.close()
             self._redis = None
             self._script_sha = None
-    
+
     def _make_key(self, scope: RateLimitScope, identifier: str) -> str:
         """Create a Redis key for the rate limit bucket."""
         # Hash the identifier for consistent key length
         id_hash = hashlib.sha256(identifier.encode()).hexdigest()[:16]
         return f"{self.key_prefix}:{scope.value}:{id_hash}"
-    
-    def _get_config(
-        self,
-        scope: RateLimitScope,
-        identifier: str
-    ) -> RateLimitConfig:
+
+    def _get_config(self, scope: RateLimitScope, identifier: str) -> RateLimitConfig:
         """Get configuration for a scope, considering overrides."""
         base_config = self._configs.get(scope)
         if not base_config:
@@ -223,11 +216,11 @@ class RateLimiter:
                 capacity=1000,
                 refill_rate=100,
             )
-        
+
         # Check for override
         override_key = f"{scope.value}:{identifier}"
         override = self._overrides.get(override_key)
-        
+
         if override and override.enabled:
             # Check expiration
             if override.expires_at and override.expires_at < datetime.utcnow():
@@ -239,11 +232,11 @@ class RateLimiter:
                     scope=scope,
                     capacity=override.capacity or base_config.capacity,
                     refill_rate=override.refill_rate or base_config.refill_rate,
-                    description=f"Overridden: {override.reason}"
+                    description=f"Overridden: {override.reason}",
                 )
-        
+
         return base_config
-    
+
     async def _check_redis(
         self,
         key: str,
@@ -254,10 +247,10 @@ class RateLimiter:
         redis = await self._get_redis()
         if not redis or not self._script_sha:
             return await self._check_memory(key, config, cost)
-        
+
         now = time.time()
         ttl = int(config.capacity / config.refill_rate * 2) + 60  # TTL with buffer
-        
+
         try:
             result = await redis.evalsha(
                 self._script_sha,
@@ -269,16 +262,16 @@ class RateLimiter:
                 cost,
                 ttl,
             )
-            
+
             allowed = bool(result[0])
             remaining = float(result[1])
             retry_after = float(result[2]) if not allowed else None
-            
+
             # Calculate reset time
             tokens_needed = config.capacity - remaining
             seconds_to_full = tokens_needed / config.refill_rate
             reset_at = datetime.utcnow() + timedelta(seconds=seconds_to_full)
-            
+
             return RateLimitResult(
                 allowed=allowed,
                 limit=config.capacity,
@@ -289,12 +282,12 @@ class RateLimiter:
                 key=key,
                 cost=cost,
             )
-            
+
         except Exception as e:
             logger.error("rate_limiter_redis_error", error=str(e), key=key)
             # Fall back to memory
             return await self._check_memory(key, config, cost)
-    
+
     async def _check_memory(
         self,
         key: str,
@@ -303,37 +296,37 @@ class RateLimiter:
     ) -> RateLimitResult:
         """Check rate limit using in-memory fallback."""
         now = time.time()
-        
+
         if key not in self._memory_buckets:
             self._memory_buckets[key] = {
                 "tokens": config.capacity,
                 "last_update": now,
             }
-        
+
         bucket = self._memory_buckets[key]
-        
+
         # Refill tokens
         elapsed = now - bucket["last_update"]
         tokens_to_add = elapsed * config.refill_rate
         bucket["tokens"] = min(config.capacity, bucket["tokens"] + tokens_to_add)
         bucket["last_update"] = now
-        
+
         # Check and consume
         allowed = bucket["tokens"] >= cost
         remaining = bucket["tokens"]
         retry_after = None
-        
+
         if allowed:
             bucket["tokens"] -= cost
             remaining = bucket["tokens"]
         else:
             retry_after = (cost - bucket["tokens"]) / config.refill_rate
-        
+
         # Calculate reset time
         tokens_needed = config.capacity - remaining
         seconds_to_full = tokens_needed / config.refill_rate
         reset_at = datetime.utcnow() + timedelta(seconds=seconds_to_full)
-        
+
         return RateLimitResult(
             allowed=allowed,
             limit=config.capacity,
@@ -344,7 +337,7 @@ class RateLimiter:
             key=key,
             cost=cost,
         )
-    
+
     async def check(
         self,
         scope: RateLimitScope,
@@ -354,19 +347,19 @@ class RateLimiter:
         method: str | None = None,
     ) -> RateLimitResult:
         """Check rate limit for a given scope and identifier.
-        
+
         Args:
             scope: The rate limit scope (IP, API_KEY, TENANT, etc.)
             identifier: The unique identifier for this scope
             cost: Token cost for this request
             endpoint: Optional endpoint path for endpoint-specific limits
             method: Optional HTTP method
-            
+
         Returns:
             RateLimitResult with allowed status and headers
         """
         config = self._get_config(scope, identifier)
-        
+
         if not config.enabled:
             # Return permissive result if disabled
             return RateLimitResult(
@@ -378,16 +371,16 @@ class RateLimiter:
                 key="disabled",
                 cost=cost,
             )
-        
+
         # Check endpoint-specific limits
         if endpoint:
             endpoint_config = self._get_endpoint_config(endpoint, method)
             if endpoint_config:
                 cost = endpoint_config.cost
-        
+
         key = self._make_key(scope, identifier)
         result = await self._check_redis(key, config, cost)
-        
+
         # Emit event if limit exceeded
         if not result.allowed:
             await self._emit_limit_exceeded(
@@ -398,9 +391,9 @@ class RateLimiter:
                 endpoint=endpoint,
                 method=method,
             )
-        
+
         return result
-    
+
     async def check_multiple(
         self,
         checks: list[tuple[RateLimitScope, str]],
@@ -409,18 +402,18 @@ class RateLimiter:
         method: str | None = None,
     ) -> RateLimitResult:
         """Check multiple rate limits and return the most restrictive.
-        
+
         Args:
             checks: List of (scope, identifier) tuples to check
             cost: Token cost for this request
             endpoint: Optional endpoint path
             method: Optional HTTP method
-            
+
         Returns:
             The most restrictive RateLimitResult
         """
         results = []
-        
+
         for scope, identifier in checks:
             if identifier:  # Skip if identifier is empty
                 result = await self.check(
@@ -431,7 +424,7 @@ class RateLimiter:
                     method=method,
                 )
                 results.append(result)
-        
+
         if not results:
             # No checks performed, allow
             return RateLimitResult(
@@ -443,15 +436,15 @@ class RateLimiter:
                 key="none",
                 cost=cost,
             )
-        
+
         # Return first denied or most restrictive allowed
         denied = [r for r in results if not r.allowed]
         if denied:
             return denied[0]
-        
+
         # Return the one with lowest remaining tokens
         return min(results, key=lambda r: r.remaining)
-    
+
     def _get_endpoint_config(
         self,
         endpoint: str,
@@ -463,11 +456,11 @@ class RateLimiter:
                 if method is None or method.upper() in limit.methods:
                     return limit
         return None
-    
+
     def add_endpoint_limit(self, limit: EndpointRateLimit) -> None:
         """Add an endpoint-specific rate limit."""
         self._endpoint_limits.append(limit)
-    
+
     def set_override(self, override: RateLimitOverride) -> None:
         """Set a rate limit override for a specific key."""
         key = f"{override.scope.value}:{override.key}"
@@ -479,7 +472,7 @@ class RateLimiter:
             refill_rate=override.refill_rate,
             reason=override.reason,
         )
-    
+
     def remove_override(self, scope: RateLimitScope, key: str) -> bool:
         """Remove a rate limit override."""
         override_key = f"{scope.value}:{key}"
@@ -488,7 +481,7 @@ class RateLimiter:
             logger.info("rate_limit_override_removed", key=override_key)
             return True
         return False
-    
+
     async def get_status(
         self,
         scope: RateLimitScope,
@@ -497,27 +490,26 @@ class RateLimiter:
         """Get current rate limit status for an entity."""
         config = self._get_config(scope, identifier)
         key = self._make_key(scope, identifier)
-        
+
         redis = await self._get_redis()
         requests = 0
-        
+
         if redis and not self._use_memory_fallback:
             try:
                 bucket = await redis.hgetall(key)
                 counter_key = f"{key}:requests"
                 requests = int(await redis.get(counter_key) or 0)
-                
+
                 if bucket:
                     tokens = float(bucket.get("tokens", config.capacity))
                     last_update = float(bucket.get("last_update", time.time()))
-                    
+
                     # Calculate current tokens with refill
                     elapsed = time.time() - last_update
                     current_tokens = min(
-                        config.capacity,
-                        tokens + elapsed * config.refill_rate
+                        config.capacity, tokens + elapsed * config.refill_rate
                     )
-                    
+
                     return RateLimitStatus(
                         key=key,
                         scope=scope,
@@ -529,20 +521,17 @@ class RateLimiter:
                     )
             except Exception as e:
                 logger.warning("rate_limiter_get_status_error", error=str(e))
-        
+
         # Check memory buckets
         if key in self._memory_buckets:
             bucket = self._memory_buckets[key]
             tokens = bucket.get("tokens", config.capacity)
             last_update = bucket.get("last_update", time.time())
-            
+
             # Calculate current tokens with refill
             elapsed = time.time() - last_update
-            current_tokens = min(
-                config.capacity,
-                tokens + elapsed * config.refill_rate
-            )
-            
+            current_tokens = min(config.capacity, tokens + elapsed * config.refill_rate)
+
             return RateLimitStatus(
                 key=key,
                 scope=scope,
@@ -552,7 +541,7 @@ class RateLimiter:
                 last_refill=datetime.fromtimestamp(last_update),
                 requests_in_window=requests,
             )
-        
+
         # Return default status (no activity yet)
         return RateLimitStatus(
             key=key,
@@ -563,11 +552,11 @@ class RateLimiter:
             last_refill=datetime.utcnow(),
             requests_in_window=requests,
         )
-    
+
     async def reset(self, scope: RateLimitScope, identifier: str) -> bool:
         """Reset rate limit for a specific key."""
         key = self._make_key(scope, identifier)
-        
+
         redis = await self._get_redis()
         if redis:
             try:
@@ -576,14 +565,14 @@ class RateLimiter:
                 return True
             except Exception as e:
                 logger.error("rate_limit_reset_error", error=str(e), key=key)
-        
+
         # Memory fallback
         if key in self._memory_buckets:
             del self._memory_buckets[key]
             return True
-        
+
         return False
-    
+
     async def _emit_limit_exceeded(
         self,
         scope: RateLimitScope,
@@ -602,7 +591,7 @@ class RateLimiter:
             current_tokens=result.remaining,
             limit=result.limit,
         )
-        
+
         for callback in self._on_limit_exceeded:
             try:
                 if asyncio.iscoroutinefunction(callback):
@@ -611,7 +600,7 @@ class RateLimiter:
                     callback(event)
             except Exception as e:
                 logger.error("rate_limit_callback_error", error=str(e))
-        
+
         logger.warning(
             "rate_limit_exceeded",
             scope=scope.value,
@@ -620,15 +609,15 @@ class RateLimiter:
             remaining=result.remaining,
             limit=result.limit,
         )
-    
+
     def on_limit_exceeded(self, callback: callable) -> None:
         """Register a callback for when rate limit is exceeded."""
         self._on_limit_exceeded.append(callback)
-    
+
     def get_configs(self) -> dict[RateLimitScope, RateLimitConfig]:
         """Get all rate limit configurations."""
         return self._configs.copy()
-    
+
     def update_config(
         self,
         scope: RateLimitScope,
@@ -640,14 +629,14 @@ class RateLimiter:
         config = self._configs.get(scope)
         if not config:
             raise ValueError(f"No configuration for scope: {scope}")
-        
+
         if capacity is not None:
             config.capacity = capacity
         if refill_rate is not None:
             config.refill_rate = refill_rate
         if enabled is not None:
             config.enabled = enabled
-        
+
         return config
 
 

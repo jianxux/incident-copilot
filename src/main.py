@@ -129,7 +129,9 @@ def create_app() -> FastAPI:
             audit_store.database_url = settings.database_url
             audit_store.retention_days = settings.audit_retention_days
             await audit_store.initialize()
-            logger.info("audit_store_initialized", retention_days=settings.audit_retention_days)
+            logger.info(
+                "audit_store_initialized", retention_days=settings.audit_retention_days
+            )
 
     @app.on_event("shutdown")
     async def shutdown():

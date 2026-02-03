@@ -40,9 +40,13 @@ class MarkdownTemplate(BaseTemplate):
         lines.append(f"**Status:** {postmortem.status.value.replace('_', ' ').title()}")
         lines.append(f"**Service:** {postmortem.service_name}")
         lines.append(f"**Severity:** {postmortem.severity.upper()}")
-        lines.append(f"**Date:** {postmortem.incident_started_at.strftime('%Y-%m-%d') if postmortem.incident_started_at else 'Unknown'}")
+        lines.append(
+            f"**Date:** {postmortem.incident_started_at.strftime('%Y-%m-%d') if postmortem.incident_started_at else 'Unknown'}"
+        )
         if postmortem.incident_duration_minutes:
-            lines.append(f"**Duration:** {self._format_duration(postmortem.incident_duration_minutes)}")
+            lines.append(
+                f"**Duration:** {self._format_duration(postmortem.incident_duration_minutes)}"
+            )
         lines.append("")
 
         # Executive Summary
@@ -78,12 +82,18 @@ class MarkdownTemplate(BaseTemplate):
                     lines.append(f"- {factor}")
                 lines.append("")
             if postmortem.root_cause.detection_method:
-                lines.append(f"**Detection Method:** {postmortem.root_cause.detection_method}")
+                lines.append(
+                    f"**Detection Method:** {postmortem.root_cause.detection_method}"
+                )
                 lines.append("")
             if postmortem.root_cause.why_not_prevented:
-                lines.append(f"**Why Not Prevented:** {postmortem.root_cause.why_not_prevented}")
+                lines.append(
+                    f"**Why Not Prevented:** {postmortem.root_cause.why_not_prevented}"
+                )
                 lines.append("")
-            lines.append(f"**Confidence Level:** {postmortem.root_cause.confidence_level.title()}")
+            lines.append(
+                f"**Confidence Level:** {postmortem.root_cause.confidence_level.title()}"
+            )
             lines.append("")
 
         # Impact Assessment
@@ -95,21 +105,37 @@ class MarkdownTemplate(BaseTemplate):
                 lines.append("")
             lines.append(f"- **Severity:** {postmortem.impact.severity.upper()}")
             if postmortem.impact.duration_minutes:
-                lines.append(f"- **Duration:** {self._format_duration(postmortem.impact.duration_minutes)}")
+                lines.append(
+                    f"- **Duration:** {self._format_duration(postmortem.impact.duration_minutes)}"
+                )
             if postmortem.impact.users_affected:
-                lines.append(f"- **Users Affected:** {postmortem.impact.users_affected:,}")
+                lines.append(
+                    f"- **Users Affected:** {postmortem.impact.users_affected:,}"
+                )
             if postmortem.impact.users_affected_description:
-                lines.append(f"- **User Impact:** {postmortem.impact.users_affected_description}")
+                lines.append(
+                    f"- **User Impact:** {postmortem.impact.users_affected_description}"
+                )
             if postmortem.impact.revenue_impact:
-                lines.append(f"- **Revenue Impact:** {postmortem.impact.revenue_impact}")
+                lines.append(
+                    f"- **Revenue Impact:** {postmortem.impact.revenue_impact}"
+                )
             if postmortem.impact.sla_breach:
-                lines.append(f"- **SLA Breach:** Yes - {postmortem.impact.sla_breach_description or 'Details pending'}")
+                lines.append(
+                    f"- **SLA Breach:** Yes - {postmortem.impact.sla_breach_description or 'Details pending'}"
+                )
             if postmortem.impact.data_loss:
-                lines.append(f"- **Data Loss:** Yes - {postmortem.impact.data_loss_description or 'Details pending'}")
+                lines.append(
+                    f"- **Data Loss:** Yes - {postmortem.impact.data_loss_description or 'Details pending'}"
+                )
             if postmortem.impact.services_affected:
-                lines.append(f"- **Services Affected:** {', '.join(postmortem.impact.services_affected)}")
+                lines.append(
+                    f"- **Services Affected:** {', '.join(postmortem.impact.services_affected)}"
+                )
             if postmortem.impact.regions_affected:
-                lines.append(f"- **Regions Affected:** {', '.join(postmortem.impact.regions_affected)}")
+                lines.append(
+                    f"- **Regions Affected:** {', '.join(postmortem.impact.regions_affected)}"
+                )
             lines.append("")
 
         # Resolution Steps
@@ -186,7 +212,9 @@ class MarkdownTemplate(BaseTemplate):
         lines.append(f"*Incident ID: {postmortem.incident_id}*")
         if postmortem.ai_generated:
             lines.append(f"*AI Generated: {postmortem.ai_model}*")
-        lines.append(f"*Last Updated: {postmortem.updated_at.strftime('%Y-%m-%d %H:%M:%S UTC')}*")
+        lines.append(
+            f"*Last Updated: {postmortem.updated_at.strftime('%Y-%m-%d %H:%M:%S UTC')}*"
+        )
 
         return "\n".join(lines)
 
@@ -213,14 +241,16 @@ class ConfluenceTemplate(BaseTemplate):
         # Header with status macro
         lines.append(f"h1. {postmortem.title}")
         lines.append("")
-        
+
         # Info panel
         lines.append("{info}")
         lines.append(f"*Service:* {postmortem.service_name}")
         lines.append(f"*Severity:* {postmortem.severity.upper()}")
         lines.append(f"*Status:* {postmortem.status.value.replace('_', ' ').title()}")
         if postmortem.incident_started_at:
-            lines.append(f"*Date:* {postmortem.incident_started_at.strftime('%Y-%m-%d')}")
+            lines.append(
+                f"*Date:* {postmortem.incident_started_at.strftime('%Y-%m-%d')}"
+            )
         if postmortem.incident_duration_minutes:
             lines.append(f"*Duration:* {postmortem.incident_duration_minutes} minutes")
         lines.append("{info}")
@@ -256,7 +286,7 @@ class ConfluenceTemplate(BaseTemplate):
             lines.append(postmortem.root_cause.primary_cause)
             lines.append("{panel}")
             lines.append("")
-            
+
             if postmortem.root_cause.contributing_factors:
                 lines.append("*Contributing Factors:*")
                 for factor in postmortem.root_cause.contributing_factors:
@@ -274,21 +304,27 @@ class ConfluenceTemplate(BaseTemplate):
             if postmortem.impact.summary:
                 lines.append(postmortem.impact.summary)
                 lines.append("")
-            
+
             severity_color = {
                 "critical": "red",
-                "high": "orange", 
+                "high": "orange",
                 "medium": "yellow",
                 "low": "green",
             }.get(postmortem.impact.severity.lower(), "grey")
-            
-            lines.append(f"{{status:colour={severity_color}|title={postmortem.impact.severity.upper()}}}")
+
+            lines.append(
+                f"{{status:colour={severity_color}|title={postmortem.impact.severity.upper()}}}"
+            )
             lines.append("")
-            
+
             if postmortem.impact.users_affected:
-                lines.append(f"* *Users Affected:* {postmortem.impact.users_affected:,}")
+                lines.append(
+                    f"* *Users Affected:* {postmortem.impact.users_affected:,}"
+                )
             if postmortem.impact.services_affected:
-                lines.append(f"* *Services:* {', '.join(postmortem.impact.services_affected)}")
+                lines.append(
+                    f"* *Services:* {', '.join(postmortem.impact.services_affected)}"
+                )
             if postmortem.impact.sla_breach:
                 lines.append("* *SLA Breach:* (/) Yes")
             if postmortem.impact.data_loss:
@@ -315,20 +351,26 @@ class ConfluenceTemplate(BaseTemplate):
                 }.get(item.status.value, "(!)")
                 owner = item.owner or "TBD"
                 due = item.due_date.strftime("%Y-%m-%d") if item.due_date else "-"
-                lines.append(f"|{priority_icon}{item.priority.value.upper()}|{item.title}|{status_icon}|{owner}|{due}|")
+                lines.append(
+                    f"|{priority_icon}{item.priority.value.upper()}|{item.title}|{status_icon}|{owner}|{due}|"
+                )
             lines.append("")
 
         # Lessons Learned
-        if postmortem.lessons_learned or postmortem.what_went_well or postmortem.what_went_poorly:
+        if (
+            postmortem.lessons_learned
+            or postmortem.what_went_well
+            or postmortem.what_went_poorly
+        ):
             lines.append("h2. Retrospective")
             lines.append("")
-            
+
             if postmortem.lessons_learned:
                 lines.append("h3. Lessons Learned")
                 for lesson in postmortem.lessons_learned:
                     lines.append(f"* {lesson}")
                 lines.append("")
-            
+
             if postmortem.what_went_well:
                 lines.append("h3. What Went Well")
                 lines.append("{color:green}")
@@ -336,7 +378,7 @@ class ConfluenceTemplate(BaseTemplate):
                     lines.append(f"* {item}")
                 lines.append("{color}")
                 lines.append("")
-            
+
             if postmortem.what_went_poorly:
                 lines.append("h3. What Went Poorly")
                 lines.append("{color:red}")
@@ -365,14 +407,16 @@ class SlackTemplate(BaseTemplate):
         blocks = []
 
         # Header
-        blocks.append({
-            "type": "header",
-            "text": {
-                "type": "plain_text",
-                "text": f"📋 {postmortem.title}",
-                "emoji": True
+        blocks.append(
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": f"📋 {postmortem.title}",
+                    "emoji": True,
+                },
             }
-        })
+        )
 
         # Metadata section
         severity_emoji = {
@@ -383,79 +427,104 @@ class SlackTemplate(BaseTemplate):
         }.get(postmortem.severity.lower(), "⚪")
 
         status_text = postmortem.status.value.replace("_", " ").title()
-        duration_text = f"{postmortem.incident_duration_minutes} min" if postmortem.incident_duration_minutes else "Unknown"
+        duration_text = (
+            f"{postmortem.incident_duration_minutes} min"
+            if postmortem.incident_duration_minutes
+            else "Unknown"
+        )
 
-        blocks.append({
-            "type": "section",
-            "fields": [
-                {"type": "mrkdwn", "text": f"*Service:*\n{postmortem.service_name}"},
-                {"type": "mrkdwn", "text": f"*Severity:*\n{severity_emoji} {postmortem.severity.upper()}"},
-                {"type": "mrkdwn", "text": f"*Status:*\n{status_text}"},
-                {"type": "mrkdwn", "text": f"*Duration:*\n{duration_text}"},
-            ]
-        })
+        blocks.append(
+            {
+                "type": "section",
+                "fields": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"*Service:*\n{postmortem.service_name}",
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": f"*Severity:*\n{severity_emoji} {postmortem.severity.upper()}",
+                    },
+                    {"type": "mrkdwn", "text": f"*Status:*\n{status_text}"},
+                    {"type": "mrkdwn", "text": f"*Duration:*\n{duration_text}"},
+                ],
+            }
+        )
 
         blocks.append({"type": "divider"})
 
         # Executive Summary
-        blocks.append({
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f"*Executive Summary*\n{postmortem.executive_summary[:2900]}"
+        blocks.append(
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*Executive Summary*\n{postmortem.executive_summary[:2900]}",
+                },
             }
-        })
+        )
 
         # Root Cause
         if postmortem.root_cause:
             blocks.append({"type": "divider"})
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"*🔍 Root Cause*\n{postmortem.root_cause.primary_cause}"
-                }
-            })
-
-            if postmortem.root_cause.contributing_factors:
-                factors_text = "\n".join(f"• {f}" for f in postmortem.root_cause.contributing_factors[:5])
-                blocks.append({
+            blocks.append(
+                {
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"*Contributing Factors:*\n{factors_text}"
+                        "text": f"*🔍 Root Cause*\n{postmortem.root_cause.primary_cause}",
+                    },
+                }
+            )
+
+            if postmortem.root_cause.contributing_factors:
+                factors_text = "\n".join(
+                    f"• {f}" for f in postmortem.root_cause.contributing_factors[:5]
+                )
+                blocks.append(
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f"*Contributing Factors:*\n{factors_text}",
+                        },
                     }
-                })
+                )
 
         # Impact
         if postmortem.impact and postmortem.impact.summary:
             blocks.append({"type": "divider"})
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"*📊 Impact*\n{postmortem.impact.summary}"
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*📊 Impact*\n{postmortem.impact.summary}",
+                    },
                 }
-            })
+            )
 
         # Timeline (condensed)
         if postmortem.timeline:
             blocks.append({"type": "divider"})
             timeline_items = postmortem.timeline[:5]
             timeline_text = "\n".join(
-                f"• `{e.timestamp.strftime('%H:%M')}` {e.title}"
-                for e in timeline_items
+                f"• `{e.timestamp.strftime('%H:%M')}` {e.title}" for e in timeline_items
             )
             if len(postmortem.timeline) > 5:
-                timeline_text += f"\n_...and {len(postmortem.timeline) - 5} more events_"
-            
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"*📅 Timeline*\n{timeline_text}"
+                timeline_text += (
+                    f"\n_...and {len(postmortem.timeline) - 5} more events_"
+                )
+
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*📅 Timeline*\n{timeline_text}",
+                    },
                 }
-            })
+            )
 
         # Action Items (top 3)
         if postmortem.action_items:
@@ -465,50 +534,59 @@ class SlackTemplate(BaseTemplate):
                 for item in postmortem.action_items[:3]
             )
             if len(postmortem.action_items) > 3:
-                items_text += f"\n_...and {len(postmortem.action_items) - 3} more items_"
-            
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"*✅ Action Items*\n{items_text}"
+                items_text += (
+                    f"\n_...and {len(postmortem.action_items) - 3} more items_"
+                )
+
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*✅ Action Items*\n{items_text}",
+                    },
                 }
-            })
+            )
 
         # Links
         link_elements = []
         if postmortem.alert_url:
-            link_elements.append({
-                "type": "button",
-                "text": {"type": "plain_text", "text": "View Alert"},
-                "url": postmortem.alert_url
-            })
+            link_elements.append(
+                {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "View Alert"},
+                    "url": postmortem.alert_url,
+                }
+            )
         if postmortem.dashboard_url:
-            link_elements.append({
-                "type": "button",
-                "text": {"type": "plain_text", "text": "Dashboard"},
-                "url": postmortem.dashboard_url
-            })
+            link_elements.append(
+                {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "Dashboard"},
+                    "url": postmortem.dashboard_url,
+                }
+            )
 
         if link_elements:
             blocks.append({"type": "divider"})
-            blocks.append({
-                "type": "actions",
-                "elements": link_elements[:5]  # Slack limit
-            })
+            blocks.append(
+                {"type": "actions", "elements": link_elements[:5]}  # Slack limit
+            )
 
         # Footer
-        blocks.append({
-            "type": "context",
-            "elements": [
-                {
-                    "type": "mrkdwn",
-                    "text": f"Postmortem ID: `{postmortem.id}` | "
-                           f"Incident: `{postmortem.incident_id}` | "
-                           f"{'🤖 AI Generated' if postmortem.ai_generated else '✍️ Manual'}"
-                }
-            ]
-        })
+        blocks.append(
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"Postmortem ID: `{postmortem.id}` | "
+                        f"Incident: `{postmortem.incident_id}` | "
+                        f"{'🤖 AI Generated' if postmortem.ai_generated else '✍️ Manual'}",
+                    }
+                ],
+            }
+        )
 
         return json.dumps({"blocks": blocks}, indent=2)
 
@@ -522,9 +600,14 @@ class JSONTemplate(BaseTemplate):
         """Render postmortem as structured JSON."""
         # Use Pydantic's built-in serialization with custom handling
         data = postmortem.model_dump(mode="json")
-        
+
         # Ensure datetime fields are ISO formatted strings
-        for key in ["created_at", "updated_at", "incident_started_at", "incident_resolved_at"]:
+        for key in [
+            "created_at",
+            "updated_at",
+            "incident_started_at",
+            "incident_resolved_at",
+        ]:
             if data.get(key) and isinstance(data[key], str):
                 # Already a string from model_dump
                 pass

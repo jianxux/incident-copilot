@@ -16,6 +16,7 @@ logger = structlog.get_logger()
 
 class IncidentState(int, Enum):
     """ServiceNow incident states."""
+
     NEW = 1
     IN_PROGRESS = 2
     ON_HOLD = 3
@@ -26,6 +27,7 @@ class IncidentState(int, Enum):
 
 class IncidentImpact(int, Enum):
     """ServiceNow incident impact levels."""
+
     HIGH = 1
     MEDIUM = 2
     LOW = 3
@@ -33,6 +35,7 @@ class IncidentImpact(int, Enum):
 
 class IncidentUrgency(int, Enum):
     """ServiceNow incident urgency levels."""
+
     HIGH = 1
     MEDIUM = 2
     LOW = 3
@@ -40,14 +43,18 @@ class IncidentUrgency(int, Enum):
 
 class ServiceNowAdapter:
     """Adapter for ServiceNow REST API.
-    
+
     Supports CRUD operations on incidents, problems, changes, and CIs.
     Uses the Table API for most operations.
     """
 
     def __init__(self, settings: Settings):
         self.settings = settings
-        self.instance_url = settings.servicenow_instance.rstrip("/") if settings.servicenow_instance else ""
+        self.instance_url = (
+            settings.servicenow_instance.rstrip("/")
+            if settings.servicenow_instance
+            else ""
+        )
         self.username = settings.servicenow_username
         self.password = settings.servicenow_password
         self.api_key = settings.servicenow_api_key
@@ -65,7 +72,7 @@ class ServiceNowAdapter:
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
-        
+
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         elif self.username and self.password:
@@ -73,7 +80,7 @@ class ServiceNowAdapter:
                 f"{self.username}:{self.password}".encode()
             ).decode()
             headers["Authorization"] = f"Basic {credentials}"
-        
+
         return headers
 
     def _severity_to_impact(self, severity: str) -> IncidentImpact:
@@ -117,7 +124,7 @@ class ServiceNowAdapter:
         additional_fields: dict | None = None,
     ) -> dict:
         """Create a new incident in ServiceNow.
-        
+
         Args:
             short_description: Brief summary of the incident
             description: Detailed description
@@ -126,7 +133,7 @@ class ServiceNowAdapter:
             alert_id: Original alert ID for correlation
             context_summary: AI-generated context summary
             additional_fields: Additional ServiceNow fields to set
-        
+
         Returns:
             Created incident data including sys_id and number
         """
@@ -136,14 +143,14 @@ class ServiceNowAdapter:
 
         impact = self._severity_to_impact(severity)
         urgency = self._severity_to_urgency(severity)
-        
+
         # Build full description with context
         full_description = description
         if context_summary:
             full_description += f"\n\n--- AI Context Summary ---\n{context_summary}"
         if alert_id:
             full_description += f"\n\nOriginal Alert ID: {alert_id}"
-        
+
         incident_data = {
             "short_description": short_description[:160],  # ServiceNow limit
             "description": full_description,
@@ -153,7 +160,7 @@ class ServiceNowAdapter:
             "category": "Software",
             "subcategory": "Application",
         }
-        
+
         if self.assignment_group:
             incident_data["assignment_group"] = self.assignment_group
         if self.caller_id:
@@ -161,7 +168,7 @@ class ServiceNowAdapter:
         if service_name:
             incident_data["cmdb_ci"] = service_name  # Configuration Item
             incident_data["u_service_name"] = service_name  # Custom field
-        
+
         # Add any additional fields
         if additional_fields:
             incident_data.update(additional_fields)
@@ -176,15 +183,15 @@ class ServiceNowAdapter:
                 response.raise_for_status()
                 result = response.json()
                 incident = result.get("result", {})
-                
+
                 logger.info(
                     "Created ServiceNow incident",
                     number=incident.get("number"),
                     sys_id=incident.get("sys_id"),
                 )
-                
+
                 return incident
-                
+
         except httpx.HTTPStatusError as e:
             logger.error(
                 "ServiceNow API error",
@@ -198,10 +205,10 @@ class ServiceNowAdapter:
 
     async def get_incident(self, sys_id: str) -> dict:
         """Get an incident by sys_id.
-        
+
         Args:
             sys_id: ServiceNow sys_id of the incident
-        
+
         Returns:
             Incident data or empty dict if not found
         """
@@ -217,7 +224,7 @@ class ServiceNowAdapter:
                 response.raise_for_status()
                 result = response.json()
                 return result.get("result", {})
-                
+
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 return {}
@@ -233,11 +240,11 @@ class ServiceNowAdapter:
         updates: dict,
     ) -> dict:
         """Update an existing incident.
-        
+
         Args:
             sys_id: ServiceNow sys_id of the incident
             updates: Fields to update
-        
+
         Returns:
             Updated incident data
         """
@@ -254,15 +261,15 @@ class ServiceNowAdapter:
                 response.raise_for_status()
                 result = response.json()
                 incident = result.get("result", {})
-                
+
                 logger.info(
                     "Updated ServiceNow incident",
                     number=incident.get("number"),
                     sys_id=sys_id,
                 )
-                
+
                 return incident
-                
+
         except Exception as e:
             logger.error("Error updating ServiceNow incident", error=str(e))
             return {}
@@ -275,13 +282,13 @@ class ServiceNowAdapter:
         close_notes: str = "",
     ) -> dict:
         """Resolve an incident.
-        
+
         Args:
             sys_id: ServiceNow sys_id of the incident
             resolution_code: Resolution code/category
             resolution_notes: Notes about the resolution
             close_notes: Additional close notes
-        
+
         Returns:
             Updated incident data
         """
@@ -290,10 +297,10 @@ class ServiceNowAdapter:
             "close_code": resolution_code,
             "close_notes": close_notes or resolution_notes,
         }
-        
+
         if resolution_notes:
             updates["resolution_notes"] = resolution_notes
-        
+
         return await self.update_incident(sys_id, updates)
 
     async def add_work_note(
@@ -302,11 +309,11 @@ class ServiceNowAdapter:
         note: str,
     ) -> dict:
         """Add a work note to an incident.
-        
+
         Args:
             sys_id: ServiceNow sys_id of the incident
             note: Work note text
-        
+
         Returns:
             Updated incident data
         """
@@ -321,11 +328,11 @@ class ServiceNowAdapter:
         comment: str,
     ) -> dict:
         """Add a customer-visible comment to an incident.
-        
+
         Args:
             sys_id: ServiceNow sys_id of the incident
             comment: Comment text (visible to customer)
-        
+
         Returns:
             Updated incident data
         """
@@ -342,13 +349,13 @@ class ServiceNowAdapter:
         limit: int = 10,
     ) -> list[dict]:
         """Search for incidents.
-        
+
         Args:
             query: Full-text search query
             state: Filter by incident state
             service_name: Filter by service/CI name
             limit: Maximum results to return
-        
+
         Returns:
             List of matching incidents
         """
@@ -357,14 +364,14 @@ class ServiceNowAdapter:
 
         # Build encoded query
         query_parts = []
-        
+
         if query:
             query_parts.append(f"short_descriptionLIKE{query}^ORdescriptionLIKE{query}")
         if state:
             query_parts.append(f"state={state.value}")
         if service_name:
             query_parts.append(f"cmdb_ciLIKE{service_name}")
-        
+
         encoded_query = "^".join(query_parts) if query_parts else ""
 
         try:
@@ -375,7 +382,7 @@ class ServiceNowAdapter:
                 }
                 if encoded_query:
                     params["sysparm_query"] = encoded_query
-                
+
                 response = await client.get(
                     f"{self.api_url}/table/incident",
                     headers=self._get_headers(),
@@ -384,7 +391,7 @@ class ServiceNowAdapter:
                 response.raise_for_status()
                 result = response.json()
                 return result.get("result", [])
-                
+
         except Exception as e:
             logger.error("Error searching ServiceNow incidents", error=str(e))
             return []
@@ -396,19 +403,19 @@ class ServiceNowAdapter:
         limit: int = 5,
     ) -> list[dict]:
         """Find similar past incidents.
-        
+
         Args:
             short_description: Description to match against
             service_name: Optional service filter
             limit: Maximum results
-        
+
         Returns:
             List of similar incidents
         """
         # Extract key terms for search
         terms = short_description.split()[:5]  # First 5 words
         query = " ".join(terms)
-        
+
         return await self.search_incidents(
             query=query,
             service_name=service_name,
@@ -417,10 +424,10 @@ class ServiceNowAdapter:
 
     async def get_cmdb_ci(self, name: str) -> dict | None:
         """Look up a Configuration Item by name.
-        
+
         Args:
             name: CI name to look up
-        
+
         Returns:
             CI data or None if not found
         """
@@ -441,7 +448,7 @@ class ServiceNowAdapter:
                 result = response.json()
                 items = result.get("result", [])
                 return items[0] if items else None
-                
+
         except Exception as e:
             logger.error("Error looking up CMDB CI", error=str(e))
             return None
@@ -457,7 +464,7 @@ class ServiceNowAdapter:
         risk: str = "Moderate",
     ) -> dict:
         """Create a change request.
-        
+
         Args:
             short_description: Brief summary
             description: Detailed description
@@ -466,7 +473,7 @@ class ServiceNowAdapter:
             end_date: Planned end date
             change_type: Normal, Standard, or Emergency
             risk: Low, Moderate, or High
-        
+
         Returns:
             Created change request data
         """
@@ -480,7 +487,7 @@ class ServiceNowAdapter:
             "risk": risk,
             "category": "Software",
         }
-        
+
         if service_name:
             change_data["cmdb_ci"] = service_name
         if start_date:
@@ -498,15 +505,15 @@ class ServiceNowAdapter:
                 response.raise_for_status()
                 result = response.json()
                 change = result.get("result", {})
-                
+
                 logger.info(
                     "Created ServiceNow change request",
                     number=change.get("number"),
                     sys_id=change.get("sys_id"),
                 )
-                
+
                 return change
-                
+
         except Exception as e:
             logger.error("Error creating change request", error=str(e))
             return {}
@@ -518,12 +525,12 @@ class ServiceNowAdapter:
         limit: int = 10,
     ) -> list[dict]:
         """Get recent change requests.
-        
+
         Args:
             service_name: Filter by service/CI
             hours_back: How far back to look
             limit: Maximum results
-        
+
         Returns:
             List of recent changes
         """
@@ -535,7 +542,7 @@ class ServiceNowAdapter:
         ]
         if service_name:
             query_parts.append(f"cmdb_ciLIKE{service_name}")
-        
+
         encoded_query = "^".join(query_parts)
 
         try:
@@ -552,7 +559,7 @@ class ServiceNowAdapter:
                 response.raise_for_status()
                 result = response.json()
                 return result.get("result", [])
-                
+
         except Exception as e:
             logger.error("Error getting recent changes", error=str(e))
             return []
@@ -570,12 +577,12 @@ class ServiceNowAdapter:
                     params={"sysparm_limit": 1},
                 )
                 response.raise_for_status()
-                
+
                 return {
                     "status": "healthy",
                     "instance": self.instance_url,
                 }
-                
+
         except Exception as e:
             return {"status": "unhealthy", "error": str(e)}
 
@@ -587,19 +594,19 @@ class ServiceNowAdapter:
         alert_url: str | None = None,
     ) -> bool:
         """Link an incident to an external alert for correlation.
-        
+
         Args:
             incident_sys_id: ServiceNow incident sys_id
             alert_id: External alert ID
             alert_source: Alert source (PagerDuty, Opsgenie, etc.)
             alert_url: Optional URL to the alert
-        
+
         Returns:
             True if link was created successfully
         """
         work_note = f"Linked to {alert_source} Alert: {alert_id}"
         if alert_url:
             work_note += f"\nURL: {alert_url}"
-        
+
         result = await self.add_work_note(incident_sys_id, work_note)
         return bool(result)
