@@ -10,7 +10,6 @@ from src.config import Settings
 from src.integrations.oncall import OnCallAdapter, OnCallProvider
 from src.models import OnCallPerson, OnCallRoster
 
-
 # --- Fixtures ---
 
 
