@@ -4,9 +4,8 @@ Supports both self-hosted Loki and Grafana Cloud Loki.
 Provides log fetching capabilities using LogQL queries.
 """
 
-import re
 from datetime import datetime, timedelta
-from typing import Any, Literal
+from typing import Any
 
 import httpx
 import structlog
