@@ -6,12 +6,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
 from src.api.tags import incidents_router
 from src.api.tags import router as tags_router
+
 from src.config import Settings
 from src.tagging import (
-    AddTagsRequest,
     AutoTagRuleCreate,
     AutoTagRuleType,
     Tag,

@@ -14,7 +14,6 @@ from .models import (
     AutoTagRuleUpdate,
     IncidentTag,
     Tag,
-    TagColor,
     TagCreate,
     TagUpdate,
 )

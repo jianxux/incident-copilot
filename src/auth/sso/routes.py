@@ -1,11 +1,11 @@
 """FastAPI routes for SSO (SAML and OIDC) authentication."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlencode
 
 import structlog
-from fastapi import APIRouter, Form, HTTPException, Query, Request
+from fastapi import APIRouter, Form, HTTPException, Query
 from fastapi.responses import RedirectResponse, Response
 
 from src.config import get_settings
@@ -18,7 +18,6 @@ from .models import (
     SAMLSettings,
     SSOConfig,
     SSOSession,
-    SSOUserInfo,
 )
 from .oidc import OIDCProvider
 from .saml import SAMLProvider

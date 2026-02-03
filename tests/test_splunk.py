@@ -1,6 +1,5 @@
 """Tests for Splunk integration."""
 
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
