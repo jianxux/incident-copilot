@@ -9,6 +9,7 @@ from src.auth.models import UserRole
 from src.auth.service import auth_service
 
 from .models import (
+    OIDC_PROVIDER_PRESETS,
     IdentityProvider,
     IdentityProviderType,
     OIDCSettings,
@@ -16,7 +17,6 @@ from .models import (
     SSOConfig,
     SSOSession,
     SSOUserInfo,
-    OIDC_PROVIDER_PRESETS,
 )
 from .oidc import OIDCProvider
 from .saml import SAMLProvider

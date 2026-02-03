@@ -3,7 +3,9 @@
 import re
 from dataclasses import dataclass
 from typing import Any
+
 import structlog
+
 from ..runbooks import RunbookLinker
 from ..web.store import incident_store
 from .responses import BlockKitBuilder
