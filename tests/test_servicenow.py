@@ -78,7 +78,7 @@ class TestCreateIncident:
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            
+
             mock_response = MagicMock()
             mock_response.status_code = 201
             mock_response.json.return_value = {
@@ -90,7 +90,7 @@ class TestCreateIncident:
             }
             mock_response.raise_for_status = MagicMock()
             mock_client.post.return_value = mock_response
-            
+
             incident = await adapter.create_incident(
                 short_description="Payment processing failed",
                 description="Users unable to complete payments",
@@ -98,7 +98,7 @@ class TestCreateIncident:
                 service_name="payments-api",
                 alert_id="PD-12345",
             )
-        
+
         assert incident["sys_id"] == "abc123"
         assert incident["number"] == "INC0001234"
 
@@ -108,18 +108,18 @@ class TestCreateIncident:
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            
+
             mock_response = MagicMock()
             mock_response.json.return_value = {"result": {"sys_id": "abc123"}}
             mock_response.raise_for_status = MagicMock()
             mock_client.post.return_value = mock_response
-            
+
             await adapter.create_incident(
                 short_description="Test",
                 description="Test description",
                 context_summary="AI analysis shows database timeout",
             )
-            
+
             # Verify description includes context
             call_args = mock_client.post.call_args
             json_data = call_args.kwargs.get("json", {})
@@ -130,7 +130,7 @@ class TestCreateIncident:
         """Test incident creation when not configured."""
         settings = Settings(servicenow_instance="")
         adapter = ServiceNowAdapter(settings)
-        
+
         incident = await adapter.create_incident(
             short_description="Test",
             description="Test",
@@ -147,7 +147,7 @@ class TestUpdateIncident:
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            
+
             mock_response = MagicMock()
             mock_response.json.return_value = {
                 "result": {
@@ -157,41 +157,53 @@ class TestUpdateIncident:
             }
             mock_response.raise_for_status = MagicMock()
             mock_client.patch.return_value = mock_response
-            
+
             incident = await adapter.update_incident(
                 sys_id="abc123",
                 updates={"state": IncidentState.IN_PROGRESS.value},
             )
-        
+
         assert incident["sys_id"] == "abc123"
 
     @pytest.mark.asyncio
     async def test_resolve_incident(self, adapter):
         """Test resolving an incident."""
-        with patch.object(adapter, "update_incident", new_callable=AsyncMock) as mock_update:
+        with patch.object(
+            adapter, "update_incident", new_callable=AsyncMock
+        ) as mock_update:
             mock_update.return_value = {"sys_id": "abc123", "state": "6"}
-            
+
             incident = await adapter.resolve_incident(
                 sys_id="abc123",
                 resolution_code="Solved (Permanently)",
                 resolution_notes="Fixed database connection pool",
             )
-        
+
         # Verify update was called with correct state
         call_args = mock_update.call_args
-        updates = call_args.args[1] if len(call_args.args) > 1 else call_args.kwargs.get("updates", {})
+        updates = (
+            call_args.args[1]
+            if len(call_args.args) > 1
+            else call_args.kwargs.get("updates", {})
+        )
         assert updates.get("state") == IncidentState.RESOLVED.value
 
     @pytest.mark.asyncio
     async def test_add_work_note(self, adapter):
         """Test adding a work note."""
-        with patch.object(adapter, "update_incident", new_callable=AsyncMock) as mock_update:
+        with patch.object(
+            adapter, "update_incident", new_callable=AsyncMock
+        ) as mock_update:
             mock_update.return_value = {"sys_id": "abc123"}
-            
+
             await adapter.add_work_note("abc123", "Investigation in progress")
-        
+
         call_args = mock_update.call_args
-        updates = call_args.args[1] if len(call_args.args) > 1 else call_args.kwargs.get("updates", {})
+        updates = (
+            call_args.args[1]
+            if len(call_args.args) > 1
+            else call_args.kwargs.get("updates", {})
+        )
         assert updates.get("work_notes") == "Investigation in progress"
 
 
@@ -204,7 +216,7 @@ class TestSearchIncidents:
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            
+
             mock_response = MagicMock()
             mock_response.json.return_value = {
                 "result": [
@@ -214,13 +226,13 @@ class TestSearchIncidents:
             }
             mock_response.raise_for_status = MagicMock()
             mock_client.get.return_value = mock_response
-            
+
             incidents = await adapter.search_incidents(
                 query="payment",
                 state=IncidentState.NEW,
                 limit=10,
             )
-        
+
         assert len(incidents) == 2
         assert incidents[0]["number"] == "INC001"
 
@@ -229,21 +241,25 @@ class TestSearchIncidents:
         """Test search when not configured."""
         settings = Settings(servicenow_instance="")
         adapter = ServiceNowAdapter(settings)
-        
+
         incidents = await adapter.search_incidents(query="test")
         assert incidents == []
 
     @pytest.mark.asyncio
     async def test_get_similar_incidents(self, adapter):
         """Test finding similar incidents."""
-        with patch.object(adapter, "search_incidents", new_callable=AsyncMock) as mock_search:
-            mock_search.return_value = [{"sys_id": "1", "short_description": "Payment failure"}]
-            
+        with patch.object(
+            adapter, "search_incidents", new_callable=AsyncMock
+        ) as mock_search:
+            mock_search.return_value = [
+                {"sys_id": "1", "short_description": "Payment failure"}
+            ]
+
             similar = await adapter.get_similar_incidents(
                 short_description="Payment processing failed for user",
                 service_name="payments-api",
             )
-        
+
         assert len(similar) == 1
 
 
@@ -256,7 +272,7 @@ class TestGetIncident:
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            
+
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json.return_value = {
@@ -264,9 +280,9 @@ class TestGetIncident:
             }
             mock_response.raise_for_status = MagicMock()
             mock_client.get.return_value = mock_response
-            
+
             incident = await adapter.get_incident("abc123")
-        
+
         assert incident["sys_id"] == "abc123"
 
     @pytest.mark.asyncio
@@ -275,16 +291,17 @@ class TestGetIncident:
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            
+
             import httpx
+
             mock_response = MagicMock()
             mock_response.status_code = 404
             mock_client.get.side_effect = httpx.HTTPStatusError(
                 "Not found", request=MagicMock(), response=mock_response
             )
-            
+
             incident = await adapter.get_incident("nonexistent")
-        
+
         assert incident == {}
 
 
@@ -297,16 +314,16 @@ class TestCMDB:
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            
+
             mock_response = MagicMock()
             mock_response.json.return_value = {
                 "result": [{"sys_id": "ci123", "name": "payments-api"}]
             }
             mock_response.raise_for_status = MagicMock()
             mock_client.get.return_value = mock_response
-            
+
             ci = await adapter.get_cmdb_ci("payments-api")
-        
+
         assert ci["sys_id"] == "ci123"
         assert ci["name"] == "payments-api"
 
@@ -316,14 +333,14 @@ class TestCMDB:
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            
+
             mock_response = MagicMock()
             mock_response.json.return_value = {"result": []}
             mock_response.raise_for_status = MagicMock()
             mock_client.get.return_value = mock_response
-            
+
             ci = await adapter.get_cmdb_ci("nonexistent")
-        
+
         assert ci is None
 
 
@@ -336,21 +353,21 @@ class TestChangeRequest:
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            
+
             mock_response = MagicMock()
             mock_response.json.return_value = {
                 "result": {"sys_id": "chg123", "number": "CHG001"}
             }
             mock_response.raise_for_status = MagicMock()
             mock_client.post.return_value = mock_response
-            
+
             change = await adapter.create_change_request(
                 short_description="Deploy payments-api v2.1",
                 description="Production deployment of new payment features",
                 service_name="payments-api",
                 change_type="Normal",
             )
-        
+
         assert change["sys_id"] == "chg123"
         assert change["number"] == "CHG001"
 
@@ -360,7 +377,7 @@ class TestChangeRequest:
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            
+
             mock_response = MagicMock()
             mock_response.json.return_value = {
                 "result": [
@@ -370,12 +387,12 @@ class TestChangeRequest:
             }
             mock_response.raise_for_status = MagicMock()
             mock_client.get.return_value = mock_response
-            
+
             changes = await adapter.get_recent_changes(
                 service_name="payments-api",
                 hours_back=24,
             )
-        
+
         assert len(changes) == 2
 
 
@@ -388,14 +405,14 @@ class TestHealth:
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            
+
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.raise_for_status = MagicMock()
             mock_client.get.return_value = mock_response
-            
+
             health = await adapter.get_health()
-        
+
         assert health["status"] == "healthy"
         assert "instance.service-now.com" in health["instance"]
 
@@ -404,7 +421,7 @@ class TestHealth:
         """Test health when not configured."""
         settings = Settings(servicenow_instance="")
         adapter = ServiceNowAdapter(settings)
-        
+
         health = await adapter.get_health()
         assert health["status"] == "unconfigured"
 
@@ -415,9 +432,9 @@ class TestHealth:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
             mock_client.get.side_effect = Exception("Connection refused")
-            
+
             health = await adapter.get_health()
-        
+
         assert health["status"] == "unhealthy"
         assert "Connection refused" in health["error"]
 
@@ -428,19 +445,25 @@ class TestAlertLinking:
     @pytest.mark.asyncio
     async def test_link_incident_to_alert(self, adapter):
         """Test linking an incident to an external alert."""
-        with patch.object(adapter, "add_work_note", new_callable=AsyncMock) as mock_note:
+        with patch.object(
+            adapter, "add_work_note", new_callable=AsyncMock
+        ) as mock_note:
             mock_note.return_value = {"sys_id": "abc123"}
-            
+
             result = await adapter.link_incident_to_alert(
                 incident_sys_id="abc123",
                 alert_id="PD-12345",
                 alert_source="PagerDuty",
                 alert_url="https://pagerduty.com/incidents/12345",
             )
-        
+
         assert result is True
         call_args = mock_note.call_args
-        note = call_args.args[1] if len(call_args.args) > 1 else call_args.kwargs.get("note", "")
+        note = (
+            call_args.args[1]
+            if len(call_args.args) > 1
+            else call_args.kwargs.get("note", "")
+        )
         assert "PagerDuty" in note
         assert "PD-12345" in note
         assert "https://pagerduty.com" in note

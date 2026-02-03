@@ -151,9 +151,7 @@ class TestLinearClient:
     async def test_create_issue_graphql_error(self, linear_client):
         """Should raise error on GraphQL errors."""
         mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "errors": [{"message": "Team not found"}]
-        }
+        mock_response.json.return_value = {"errors": [{"message": "Team not found"}]}
         mock_response.raise_for_status = MagicMock()
 
         with patch.object(linear_client, "_get_client") as mock_get_client:

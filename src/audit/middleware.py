@@ -16,7 +16,7 @@ from .models import EventCategory, EventType, Outcome
 
 class AuditMiddleware(BaseHTTPMiddleware):
     """Middleware that automatically logs API requests for audit trail.
-    
+
     Captures request/response details, extracts actor from auth context,
     and logs to the audit store.
     """
@@ -42,27 +42,27 @@ class AuditMiddleware(BaseHTTPMiddleware):
         # Skip if audit disabled
         if not self.enabled:
             return await call_next(request)
-        
+
         # Check if path should be excluded
         path = request.url.path
         if self._should_exclude(path):
             return await call_next(request)
-        
+
         # Generate request ID if not present
         request_id = request.headers.get("X-Request-ID") or secrets.token_urlsafe(8)
-        
+
         # Extract request info
         ip_address = self._get_client_ip(request)
         user_agent = request.headers.get("User-Agent")
-        
+
         # Time the request
         start_time = time.perf_counter()
-        
+
         # Process request
         try:
             response = await call_next(request)
             duration_ms = (time.perf_counter() - start_time) * 1000
-            
+
             # Log audit event
             await self._log_request(
                 request=request,
@@ -72,15 +72,15 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 user_agent=user_agent,
                 duration_ms=duration_ms,
             )
-            
+
             # Add request ID to response headers
             response.headers["X-Request-ID"] = request_id
-            
+
             return response
-            
+
         except Exception as e:
             duration_ms = (time.perf_counter() - start_time) * 1000
-            
+
             # Log error
             await self._log_error(
                 request=request,
@@ -106,15 +106,15 @@ class AuditMiddleware(BaseHTTPMiddleware):
         if forwarded:
             # Take first IP (original client)
             return forwarded.split(",")[0].strip()
-        
+
         real_ip = request.headers.get("X-Real-IP")
         if real_ip:
             return real_ip
-        
+
         # Fall back to direct connection
         if request.client:
             return request.client.host
-        
+
         return None
 
     def _extract_actor(self, request: Request) -> dict[str, Any]:
@@ -126,7 +126,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
             "api_key_id": None,
             "session_id": None,
         }
-        
+
         # Check request state for auth info (set by auth middleware)
         if hasattr(request.state, "user"):
             user = request.state.user
@@ -136,16 +136,16 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 actor["user_id"] = user.id
             if hasattr(user, "email"):
                 actor["user_email"] = user.email
-        
+
         if hasattr(request.state, "tenant_id"):
             actor["tenant_id"] = request.state.tenant_id
-        
+
         if hasattr(request.state, "api_key_id"):
             actor["api_key_id"] = request.state.api_key_id
-        
+
         if hasattr(request.state, "session_id"):
             actor["session_id"] = request.state.session_id
-        
+
         # Check for tenant in path parameters
         if not actor["tenant_id"]:
             # Try to extract from path (e.g., /api/v1/tenants/{tenant_id}/...)
@@ -154,20 +154,22 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 idx = path_parts.index("tenants")
                 if idx + 1 < len(path_parts):
                     actor["tenant_id"] = path_parts[idx + 1]
-        
+
         return actor
 
-    def _determine_event_type(self, method: str, path: str, status_code: int) -> EventType:
+    def _determine_event_type(
+        self, method: str, path: str, status_code: int
+    ) -> EventType:
         """Determine the appropriate event type based on request details."""
         # Auth-related endpoints
         if "/auth/" in path or "/login" in path or "/oauth" in path:
             if status_code < 400:
                 return EventType.LOGIN_SUCCESS
             return EventType.LOGIN_FAILURE
-        
+
         if "/logout" in path:
             return EventType.LOGOUT
-        
+
         # API key endpoints
         if "/api-keys" in path or "/apikeys" in path:
             if method == "POST":
@@ -175,11 +177,11 @@ class AuditMiddleware(BaseHTTPMiddleware):
             if method == "DELETE":
                 return EventType.API_KEY_REVOKED
             return EventType.API_KEY_USED
-        
+
         # Webhook endpoints
         if "/webhooks" in path or "/webhook" in path:
             return EventType.WEBHOOK_RECEIVED
-        
+
         # Incident endpoints
         if "/incidents" in path:
             if method == "GET":
@@ -188,13 +190,13 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 return EventType.INCIDENT_CREATED
             if method == "PUT" or method == "PATCH":
                 return EventType.INCIDENT_UPDATED
-        
+
         # Settings endpoints
         if "/settings" in path or "/config" in path:
             if method == "GET":
                 return EventType.SETTINGS_VIEWED
             return EventType.SETTINGS_UPDATED
-        
+
         # User management
         if "/users" in path or "/members" in path or "/team" in path:
             if method == "POST":
@@ -203,19 +205,19 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 return EventType.USER_DELETED
             if method == "PUT" or method == "PATCH":
                 return EventType.USER_UPDATED
-        
+
         # Audit log access
         if "/audit" in path:
             if "/export" in path:
                 return EventType.AUDIT_LOG_EXPORTED
             return EventType.AUDIT_LOG_VIEWED
-        
+
         # Default based on access
         if status_code == 403:
             return EventType.ACCESS_DENIED
         if status_code >= 400:
             return EventType.SYSTEM_ERROR
-        
+
         return EventType.ACCESS_GRANTED
 
     def _determine_category(self, event_type: EventType) -> EventCategory:
@@ -230,7 +232,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
         }
         if event_type in auth_events:
             return EventCategory.AUTHENTICATION
-        
+
         authz_events = {
             EventType.ACCESS_GRANTED,
             EventType.ACCESS_DENIED,
@@ -239,7 +241,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
         }
         if event_type in authz_events:
             return EventCategory.AUTHORIZATION
-        
+
         api_key_events = {
             EventType.API_KEY_CREATED,
             EventType.API_KEY_REVOKED,
@@ -247,7 +249,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
         }
         if event_type in api_key_events:
             return EventCategory.API_KEY
-        
+
         webhook_events = {
             EventType.WEBHOOK_RECEIVED,
             EventType.WEBHOOK_PROCESSED,
@@ -255,7 +257,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
         }
         if event_type in webhook_events:
             return EventCategory.WEBHOOK
-        
+
         data_events = {
             EventType.INCIDENT_VIEWED,
             EventType.INCIDENT_CREATED,
@@ -264,7 +266,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
         }
         if event_type in data_events:
             return EventCategory.DATA_ACCESS
-        
+
         config_events = {
             EventType.SETTINGS_VIEWED,
             EventType.SETTINGS_UPDATED,
@@ -272,7 +274,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
         }
         if event_type in config_events:
             return EventCategory.CONFIGURATION
-        
+
         user_events = {
             EventType.USER_CREATED,
             EventType.USER_UPDATED,
@@ -280,7 +282,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
         }
         if event_type in user_events:
             return EventCategory.USER_MANAGEMENT
-        
+
         return EventCategory.SYSTEM
 
     def _determine_outcome(self, status_code: int) -> Outcome:
@@ -312,18 +314,18 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 important_reads = ["/audit", "/users", "/settings", "/incidents"]
                 if not any(imp in path for imp in important_reads):
                     return
-        
+
         actor = self._extract_actor(request)
         method = request.method
         path = request.url.path
         status_code = response.status_code
-        
+
         event_type = self._determine_event_type(method, path, status_code)
         category = self._determine_category(event_type)
         outcome = self._determine_outcome(status_code)
-        
+
         action = f"{method} {path}"
-        
+
         await audit_logger.log_event(
             category=category,
             event_type=event_type,
@@ -342,7 +344,9 @@ class AuditMiddleware(BaseHTTPMiddleware):
             metadata={
                 "status_code": status_code,
                 "duration_ms": round(duration_ms, 2),
-                "query_params": dict(request.query_params) if request.query_params else None,
+                "query_params": (
+                    dict(request.query_params) if request.query_params else None
+                ),
             },
         )
 
@@ -359,7 +363,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
         actor = self._extract_actor(request)
         method = request.method
         path = request.url.path
-        
+
         await audit_logger.log_event(
             category=EventCategory.SYSTEM,
             event_type=EventType.SYSTEM_ERROR,
@@ -385,11 +389,11 @@ class AuditMiddleware(BaseHTTPMiddleware):
 
 def add_audit_middleware(app: ASGIApp) -> ASGIApp:
     """Add audit middleware to a FastAPI application.
-    
+
     Usage:
         from fastapi import FastAPI
         from src.audit.middleware import add_audit_middleware
-        
+
         app = FastAPI()
         app.add_middleware(AuditMiddleware)
         # or
@@ -398,7 +402,7 @@ def add_audit_middleware(app: ASGIApp) -> ASGIApp:
     settings = get_settings()
     if not settings.audit_enabled:
         return app
-    
+
     return AuditMiddleware(app)
 
 
@@ -409,27 +413,28 @@ def audit_log(
     action_template: str | None = None,
 ) -> Callable:
     """Decorator to explicitly log an audit event for an endpoint.
-    
+
     Usage:
         @router.post("/api-keys")
         @audit_log(EventType.API_KEY_CREATED, action_template="Created API key: {name}")
         async def create_api_key(name: str, current_user: User = Depends(get_current_user)):
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         async def wrapper(*args, **kwargs):
             # Get request from kwargs if available
             request: Request | None = kwargs.get("request")
-            
+
             # Execute the endpoint
             result = await func(*args, **kwargs)
-            
+
             # Build action string
             if action_template:
                 action = action_template.format(**kwargs)
             else:
                 action = f"{event_type.value}"
-            
+
             # Extract actor info
             actor: dict[str, Any] = {}
             if request:
@@ -438,7 +443,7 @@ def audit_log(
                     actor["tenant_id"] = getattr(user, "tenant_id", None)
                     actor["user_id"] = getattr(user, "id", None)
                     actor["user_email"] = getattr(user, "email", None)
-            
+
             # Log the event
             await audit_logger.log_event(
                 category=category or EventCategory.SYSTEM,
@@ -446,8 +451,9 @@ def audit_log(
                 action=action,
                 **actor,
             )
-            
+
             return result
-        
+
         return wrapper
+
     return decorator

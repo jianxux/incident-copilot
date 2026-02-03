@@ -25,7 +25,9 @@ class GitLabAdapter:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.token = settings.gitlab_token
-        self.base_url = settings.gitlab_url.rstrip("/") if settings.gitlab_url else self.DEFAULT_URL
+        self.base_url = (
+            settings.gitlab_url.rstrip("/") if settings.gitlab_url else self.DEFAULT_URL
+        )
         self.project_map = settings.gitlab_project_map
 
     @property
@@ -88,9 +90,15 @@ class GitLabAdapter:
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 # Fetch data in parallel
-                deploys = await self._fetch_recent_commits(client, project_path, since_hours)
-                merge_requests = await self._fetch_recent_merge_requests(client, project_path, since_hours)
-                pipelines = await self._fetch_recent_pipelines(client, project_path, since_hours)
+                deploys = await self._fetch_recent_commits(
+                    client, project_path, since_hours
+                )
+                merge_requests = await self._fetch_recent_merge_requests(
+                    client, project_path, since_hours
+                )
+                pipelines = await self._fetch_recent_pipelines(
+                    client, project_path, since_hours
+                )
                 codeowners = await self._fetch_codeowners(client, project_path)
 
                 return GitLabContext(
@@ -140,9 +148,11 @@ class GitLabAdapter:
 
         for commit in commits[:5]:  # Limit to 5 most recent
             sha = commit.get("id", "")
-            
+
             # Parse timestamp
-            timestamp_str = commit.get("committed_date", "") or commit.get("created_at", "")
+            timestamp_str = commit.get("committed_date", "") or commit.get(
+                "created_at", ""
+            )
             try:
                 timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
             except (ValueError, AttributeError):
@@ -253,7 +263,9 @@ class GitLabAdapter:
             # Parse timestamp
             created_at_str = pipeline.get("created_at", "")
             try:
-                created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+                created_at = datetime.fromisoformat(
+                    created_at_str.replace("Z", "+00:00")
+                )
             except (ValueError, AttributeError):
                 created_at = datetime.now(timezone.utc)
 
@@ -280,7 +292,10 @@ class GitLabAdapter:
         reraise=True,
     )
     async def _fetch_deployments(
-        self, client: httpx.AsyncClient, project_path: str, environment: str = "production"
+        self,
+        client: httpx.AsyncClient,
+        project_path: str,
+        environment: str = "production",
     ) -> list[dict]:
         """Fetch recent deployments from an environment."""
         encoded_path = self._encode_project_path(project_path)
@@ -301,12 +316,21 @@ class GitLabAdapter:
 
         # Now fetch deployments for this environment
         deploy_url = f"{self.api_url}/projects/{encoded_path}/deployments"
-        params = {"environment": environment, "per_page": 5, "order_by": "created_at", "sort": "desc"}
+        params = {
+            "environment": environment,
+            "per_page": 5,
+            "order_by": "created_at",
+            "sort": "desc",
+        }
 
         resp = await client.get(deploy_url, headers=self._get_headers(), params=params)
 
         if resp.status_code != 200:
-            logger.warning("gitlab_deployments_failed", project=project_path, status=resp.status_code)
+            logger.warning(
+                "gitlab_deployments_failed",
+                project=project_path,
+                status=resp.status_code,
+            )
             return []
 
         return resp.json()
@@ -316,7 +340,7 @@ class GitLabAdapter:
     ) -> list[str]:
         """Fetch CODEOWNERS file and extract owners."""
         encoded_path = self._encode_project_path(project_path)
-        
+
         # Try common CODEOWNERS locations
         paths = ["CODEOWNERS", ".gitlab/CODEOWNERS", "docs/CODEOWNERS"]
 
@@ -384,5 +408,7 @@ class GitLabAdapter:
                 return None
 
         except Exception as e:
-            logger.error("gitlab_project_info_error", project=project_path, error=str(e))
+            logger.error(
+                "gitlab_project_info_error", project=project_path, error=str(e)
+            )
             return None

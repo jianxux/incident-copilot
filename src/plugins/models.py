@@ -1,19 +1,23 @@
 """Data models for the plugin framework."""
+
 from __future__ import annotations
 from datetime import datetime
 from enum import Enum
 from typing import Any
 from pydantic import BaseModel, Field, field_validator
 
+
 class PluginType(str, Enum):
     WEBHOOK = "webhook"
     ENRICHMENT = "enrichment"
     FILTER = "filter"
 
+
 class PluginStatus(str, Enum):
     ACTIVE = "active"
     DISABLED = "disabled"
     ERROR = "error"
+
 
 class PluginEvent(str, Enum):
     INCIDENT_TRIGGERED = "incident.triggered"
@@ -22,22 +26,26 @@ class PluginEvent(str, Enum):
     CONTEXT_ASSEMBLED = "context.assembled"
     POSTMORTEM_CREATED = "postmortem.created"
 
+
 class RetryConfig(BaseModel):
     max_retries: int = Field(default=3, ge=0, le=10)
     initial_delay_ms: int = Field(default=1000, ge=100, le=30000)
     max_delay_ms: int = Field(default=30000, ge=1000, le=300000)
     backoff_multiplier: float = Field(default=2.0, ge=1.0, le=5.0)
 
+
 class HmacConfig(BaseModel):
     secret: str
     algorithm: str = "sha256"
     header_name: str = "X-Webhook-Signature"
+
     @field_validator("algorithm")
     @classmethod
     def validate_algorithm(cls, v: str) -> str:
         if v.lower() not in {"sha256", "sha512", "sha1"}:
             raise ValueError("Algorithm must be sha256, sha512, or sha1")
         return v.lower()
+
 
 class WebhookConfig(BaseModel):
     url: str
@@ -48,6 +56,7 @@ class WebhookConfig(BaseModel):
     hmac: HmacConfig | None = None
     payload_template: str | None = None
     include_full_card: bool = True
+
 
 class EnrichmentConfig(BaseModel):
     url: str
@@ -60,22 +69,39 @@ class EnrichmentConfig(BaseModel):
     target_field: str = "custom_enrichment"
     cache_ttl_seconds: int = Field(default=300, ge=0, le=86400)
 
+
 class FilterCondition(BaseModel):
     field: str
     operator: str
     value: Any
+
     @field_validator("operator")
     @classmethod
     def validate_operator(cls, v: str) -> str:
-        if v.lower() not in {"eq", "ne", "in", "not_in", "contains", "matches", "gt", "lt", "gte", "lte"}:
-            raise ValueError("Operator must be eq, ne, in, not_in, contains, matches, gt, lt, gte, or lte")
+        if v.lower() not in {
+            "eq",
+            "ne",
+            "in",
+            "not_in",
+            "contains",
+            "matches",
+            "gt",
+            "lt",
+            "gte",
+            "lte",
+        }:
+            raise ValueError(
+                "Operator must be eq, ne, in, not_in, contains, matches, gt, lt, gte, or lte"
+            )
         return v.lower()
+
 
 class FilterConfig(BaseModel):
     conditions: list[FilterCondition] = Field(default_factory=list)
     match_mode: str = "all"
     action: str = "include"
     modifications: dict[str, Any] = Field(default_factory=dict)
+
 
 class PluginMetrics(BaseModel):
     total_executions: int = 0
@@ -85,6 +111,7 @@ class PluginMetrics(BaseModel):
     last_execution_at: datetime | None = None
     last_error: str | None = None
     consecutive_failures: int = 0
+
 
 class Plugin(BaseModel):
     id: str
@@ -102,16 +129,22 @@ class Plugin(BaseModel):
     metrics: PluginMetrics = Field(default_factory=PluginMetrics)
     max_consecutive_failures: int = 5
 
+
 class PluginCreateRequest(BaseModel):
-    id: str = Field(pattern=r"^[a-z0-9][a-z0-9-_]*[a-z0-9]$", min_length=3, max_length=64)
+    id: str = Field(
+        pattern=r"^[a-z0-9][a-z0-9-_]*[a-z0-9]$", min_length=3, max_length=64
+    )
     name: str = Field(min_length=1, max_length=128)
     description: str = ""
     type: PluginType
-    events: list[PluginEvent] = Field(default_factory=lambda: [PluginEvent.CONTEXT_ASSEMBLED])
+    events: list[PluginEvent] = Field(
+        default_factory=lambda: [PluginEvent.CONTEXT_ASSEMBLED]
+    )
     priority: int = Field(default=100, ge=1, le=1000)
     webhook_config: WebhookConfig | None = None
     enrichment_config: EnrichmentConfig | None = None
     filter_config: FilterConfig | None = None
+
 
 class PluginUpdateRequest(BaseModel):
     name: str | None = None
@@ -123,9 +156,11 @@ class PluginUpdateRequest(BaseModel):
     enrichment_config: EnrichmentConfig | None = None
     filter_config: FilterConfig | None = None
 
+
 class PluginTestRequest(BaseModel):
     sample_data: dict[str, Any] = Field(default_factory=dict)
     dry_run: bool = True
+
 
 class PluginTestResult(BaseModel):
     success: bool
@@ -136,6 +171,7 @@ class PluginTestResult(BaseModel):
     response: dict[str, Any] | None = None
     error: str | None = None
     details: dict[str, Any] = Field(default_factory=dict)
+
 
 class WebhookDelivery(BaseModel):
     id: str
