@@ -309,7 +309,7 @@ class SAMLProvider(BaseProvider):
             return name_id_elem.text
         return None
 
-    def process_response(
+    def _process_saml_response(
         self,
         saml_response: str,
         expected_request_id: str | None = None,
@@ -348,7 +348,7 @@ class SAMLProvider(BaseProvider):
         # Map attributes to user info
         return self._map_attributes_to_user(name_id, attributes)
 
-    async def process_response(
+    async def _process_saml_response(
         self,
         response_data: dict[str, Any],
         session: SSOSession,
@@ -367,7 +367,7 @@ class SAMLProvider(BaseProvider):
             raise ValueError("No SAMLResponse in response data")
 
         # Use the sync method
-        return self.process_response(
+        return self._process_saml_response(
             saml_response=saml_response,
             expected_request_id=session.saml_request_id,
         )
