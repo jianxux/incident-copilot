@@ -286,6 +286,15 @@ class Settings(BaseSettings):
         description="Use PKCE by default for OIDC flows",
     )
 
+    # Alert Correlation
+    correlation_enabled: bool = Field(default=True, description="Enable alert correlation engine")
+    correlation_default_rules: bool = Field(default=True, description="Setup default correlation rules on startup")
+    correlation_time_window_seconds: int = Field(default=300, description="Default time window for grouping alerts (5 min)")
+    correlation_similarity_threshold: float = Field(default=0.7, description="Default fuzzy match threshold")
+    correlation_group_ttl: int = Field(default=86400, description="TTL for correlation groups in seconds (24h)")
+    correlation_stale_after_seconds: int = Field(default=3600, description="Mark groups stale after N seconds without activity")
+    correlation_suppress_duplicates: bool = Field(default=True, description="Suppress duplicate notifications by default")
+
     # Audit Logging
     audit_enabled: bool = Field(
         default=True, description="Enable audit logging for compliance"
