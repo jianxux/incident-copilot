@@ -404,7 +404,9 @@ class LinearClient:
             created_at=comment_data.get("createdAt"),
         )
 
-    async def get_workflow_states(self, team_id: str | None = None) -> list[LinearWorkflowState]:
+    async def get_workflow_states(
+        self, team_id: str | None = None
+    ) -> list[LinearWorkflowState]:
         """Get workflow states for a team.
 
         Args:
