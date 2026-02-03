@@ -1,6 +1,5 @@
 """Tests for Loki integration adapter."""
 
-from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

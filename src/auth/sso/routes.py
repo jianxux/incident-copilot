@@ -1,24 +1,23 @@
 """FastAPI routes for SSO (SAML and OIDC) authentication."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlencode
 
 import structlog
-from fastapi import APIRouter, Form, HTTPException, Query, Request
+from fastapi import APIRouter, Form, HTTPException, Query
 from fastapi.responses import RedirectResponse, Response
 
 from src.config import get_settings
 
 from .models import (
+    OIDC_PROVIDER_PRESETS,
     IdentityProvider,
     IdentityProviderType,
     OIDCSettings,
     SAMLSettings,
     SSOConfig,
     SSOSession,
-    SSOUserInfo,
-    OIDC_PROVIDER_PRESETS,
 )
 from .oidc import OIDCProvider
 from .saml import SAMLProvider
@@ -328,8 +327,8 @@ async def saml_init(
 @router.post("/saml/acs/{tenant_id}")
 async def saml_acs(
     tenant_id: str,
-    SAMLResponse: str = Form(...),
-    RelayState: str | None = Form(None),
+    SAMLResponse: str = Form(...),  # noqa: N803
+    RelayState: str | None = Form(None),  # noqa: N803
 ) -> RedirectResponse:
     """SAML Assertion Consumer Service (ACS) endpoint."""
     app_url = get_app_url()

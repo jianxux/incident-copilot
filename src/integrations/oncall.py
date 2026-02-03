@@ -5,7 +5,7 @@ Provides unified access to on-call schedules from:
 - Opsgenie Schedules API
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -160,7 +160,7 @@ class OnCallAdapter:
         Docs: https://developer.pagerduty.com/api-reference/846ecf84402bb-list-users-on-call
         """
         url = f"{self.api_base}/schedules/{schedule_id}/users"
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         params = {
             "since": now.isoformat(),
@@ -276,7 +276,7 @@ class OnCallAdapter:
             schedule_name=schedule_name,
             provider=OnCallProvider.OPSGENIE.value,
             oncall_persons=oncall_persons,
-            fetched_at=datetime.now(timezone.utc),
+            fetched_at=datetime.now(UTC),
             schedule_url=f"https://app.opsgenie.com/schedule#/{schedule_id}",
         )
 

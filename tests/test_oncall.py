@@ -1,7 +1,7 @@
 """Tests for On-Call Roster integration."""
 
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -324,7 +324,7 @@ def test_oncall_roster_primary_oncall():
             OnCallPerson(id="1", name="First"),
             OnCallPerson(id="2", name="Second"),
         ],
-        fetched_at=datetime.now(timezone.utc),
+        fetched_at=datetime.now(UTC),
     )
     assert roster.primary_oncall is not None
     assert roster.primary_oncall.name == "First"
@@ -337,7 +337,7 @@ def test_oncall_roster_primary_oncall_empty():
         schedule_name="Test",
         provider="pagerduty",
         oncall_persons=[],
-        fetched_at=datetime.now(timezone.utc),
+        fetched_at=datetime.now(UTC),
     )
     assert roster.primary_oncall is None
 
@@ -352,7 +352,7 @@ def test_oncall_roster_oncall_names():
             OnCallPerson(id="1", name="Alice"),
             OnCallPerson(id="2", name="Bob"),
         ],
-        fetched_at=datetime.now(timezone.utc),
+        fetched_at=datetime.now(UTC),
     )
     assert roster.oncall_names == ["Alice", "Bob"]
 
@@ -364,7 +364,7 @@ def test_oncall_roster_has_oncall_true():
         schedule_name="Test",
         provider="pagerduty",
         oncall_persons=[OnCallPerson(id="1", name="Alice")],
-        fetched_at=datetime.now(timezone.utc),
+        fetched_at=datetime.now(UTC),
     )
     assert roster.has_oncall is True
 
@@ -376,7 +376,7 @@ def test_oncall_roster_has_oncall_false():
         schedule_name="Test",
         provider="pagerduty",
         oncall_persons=[],
-        fetched_at=datetime.now(timezone.utc),
+        fetched_at=datetime.now(UTC),
     )
     assert roster.has_oncall is False
 
