@@ -1,10 +1,12 @@
 """API endpoints for alert correlation management."""
 
-from datetime import datetime
 import uuid
+from datetime import datetime
+
 import structlog
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel, Field
+
 from ..config import get_settings
 from ..correlation import (
     AlertGroup,

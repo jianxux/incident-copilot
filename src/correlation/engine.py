@@ -3,7 +3,9 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import Callable
+
 import structlog
+
 from ..config import Settings
 from ..models import OpsgenieAlert, PagerDutyIncident
 from .models import (
