@@ -36,6 +36,7 @@ class LokiAdapter:
 
         if self.auth_type == "basic":
             import base64
+
             credentials = f"{self.settings.loki_username}:{self.settings.loki_password}"
             encoded = base64.b64encode(credentials.encode()).decode()
             headers["Authorization"] = f"Basic {encoded}"
@@ -51,16 +52,24 @@ class LokiAdapter:
             return self.service_labels[service_name]
         return f'{{service="{service_name}"}} or {{app="{service_name}"}}'
 
-    def _build_logql_query(self, service_name: str, include_errors_only: bool = True) -> str:
+    def _build_logql_query(
+        self, service_name: str, include_errors_only: bool = True
+    ) -> str:
         """Build a LogQL query for fetching logs."""
         label_selector = self._get_label_selector(service_name)
-        base_query = label_selector if label_selector.startswith("{") else f'{{{label_selector}}}'
-        
+        base_query = (
+            label_selector
+            if label_selector.startswith("{")
+            else f"{{{label_selector}}}"
+        )
+
         if include_errors_only:
             return f'{base_query} |~ "(?i)(error|warn|exception|failed|failure|critical|fatal)"'
         return base_query
 
-    async def get_context(self, service_name: str, time_range_minutes: int = 15) -> DatadogContext | None:
+    async def get_context(
+        self, service_name: str, time_range_minutes: int = 15
+    ) -> DatadogContext | None:
         """Get Loki context (logs) for a service."""
         if not self.base_url:
             logger.warning("loki_url_not_configured")
@@ -80,7 +89,9 @@ class LokiAdapter:
             logger.error("loki_fetch_failed", service=service_name, error=str(e))
             return None
 
-    async def _fetch_logs(self, service_name: str, time_range_minutes: int, limit: int = 100) -> list[LogEntry]:
+    async def _fetch_logs(
+        self, service_name: str, time_range_minutes: int, limit: int = 100
+    ) -> list[LogEntry]:
         """Fetch logs from Loki using query_range endpoint."""
         now = datetime.utcnow()
         start_time = now - timedelta(minutes=time_range_minutes)
@@ -102,7 +113,9 @@ class LokiAdapter:
             }
 
             try:
-                resp = await client.get(url, headers=self._get_auth_headers(), params=params)
+                resp = await client.get(
+                    url, headers=self._get_auth_headers(), params=params
+                )
 
                 if resp.status_code != 200:
                     logger.warning("loki_query_failed", status=resp.status_code)
@@ -118,7 +131,9 @@ class LokiAdapter:
         all_logs.sort(key=lambda x: x.timestamp, reverse=True)
         return all_logs[:limit]
 
-    def _parse_log_streams(self, result: list[dict], service_name: str) -> list[LogEntry]:
+    def _parse_log_streams(
+        self, result: list[dict], service_name: str
+    ) -> list[LogEntry]:
         """Parse Loki log streams into LogEntry objects."""
         logs: list[LogEntry] = []
 
@@ -159,7 +174,9 @@ class LokiAdapter:
 
         if any(x in message_lower for x in ["critical", "fatal", "panic"]):
             return "critical"
-        elif any(x in message_lower for x in ["error", "exception", "failed", "failure"]):
+        elif any(
+            x in message_lower for x in ["error", "exception", "failed", "failure"]
+        ):
             return "error"
         elif any(x in message_lower for x in ["warn", "warning"]):
             return "warn"

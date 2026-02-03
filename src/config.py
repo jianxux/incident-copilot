@@ -73,10 +73,12 @@ class Settings(BaseSettings):
         description="Loki authentication type: 'none', 'basic', or 'bearer'",
     )
     loki_username: str = Field(
-        default="", description="Loki username for basic auth (e.g., Grafana Cloud user ID)"
+        default="",
+        description="Loki username for basic auth (e.g., Grafana Cloud user ID)",
     )
     loki_password: str = Field(
-        default="", description="Loki password for basic auth (e.g., Grafana Cloud API key)"
+        default="",
+        description="Loki password for basic auth (e.g., Grafana Cloud API key)",
     )
     loki_token: str = Field(
         default="", description="Loki bearer token for token-based auth"
@@ -87,7 +89,7 @@ class Settings(BaseSettings):
     )
     loki_service_labels: dict[str, str] = Field(
         default_factory=dict,
-        description="Service to Loki label selector mapping (e.g., payments-api=service=\"payments\")",
+        description='Service to Loki label selector mapping (e.g., payments-api=service="payments")',
     )
 
     # Splunk
@@ -120,7 +122,9 @@ class Settings(BaseSettings):
 
     # Slack
     slack_bot_token: str = Field(default="", description="Slack bot OAuth token")
-    slack_signing_secret: str = Field(default="", description="Slack app signing secret")
+    slack_signing_secret: str = Field(
+        default="", description="Slack app signing secret"
+    )
     slack_default_channel: str = Field(
         default="#incidents", description="Default Slack channel"
     )
