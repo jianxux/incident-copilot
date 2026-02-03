@@ -1,7 +1,6 @@
 """Tests for incident timeline functionality."""
 
-from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -49,7 +48,7 @@ class TestTimelineEvent:
         """Test creating a timeline event."""
         event = TimelineEvent(
             id="evt_1",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             event_type=TimelineEventType.ALERT_TRIGGERED,
             title="High error rate detected",
             description="Error rate exceeded 5% threshold",
@@ -67,7 +66,7 @@ class TestTimelineEvent:
         """Test default values for timeline events."""
         event = TimelineEvent(
             id="evt_1",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             event_type=TimelineEventType.COMMENT,
             title="Test comment",
         )
@@ -89,7 +88,7 @@ class TestTimelineBuilder:
     def test_add_event(self, builder):
         """Test adding an event to the timeline."""
         event = builder.add_event(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             event_type=TimelineEventType.ALERT_TRIGGERED,
             title="Test alert",
             is_key_event=True,
@@ -103,13 +102,13 @@ class TestTimelineBuilder:
     def test_event_icons_and_colors(self, builder):
         """Test that events get correct icons and colors."""
         alert_event = builder.add_event(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             event_type=TimelineEventType.ALERT_TRIGGERED,
             title="Alert",
         )
 
         deploy_event = builder.add_event(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             event_type=TimelineEventType.DEPLOYMENT,
             title="Deploy",
         )
@@ -121,7 +120,7 @@ class TestTimelineBuilder:
 
     def test_events_sorted_by_timestamp(self, builder):
         """Test that events are returned sorted by timestamp."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         builder.add_event(
             timestamp=now + timedelta(hours=1),
@@ -141,13 +140,13 @@ class TestTimelineBuilder:
     def test_get_key_events(self, builder):
         """Test filtering for key events only."""
         builder.add_event(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             event_type=TimelineEventType.ALERT_TRIGGERED,
             title="Key Event",
             is_key_event=True,
         )
         builder.add_event(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             event_type=TimelineEventType.COMMENT,
             title="Regular Event",
             is_key_event=False,
@@ -160,17 +159,17 @@ class TestTimelineBuilder:
     def test_get_events_by_type(self, builder):
         """Test filtering events by type."""
         builder.add_event(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             event_type=TimelineEventType.DEPLOYMENT,
             title="Deploy 1",
         )
         builder.add_event(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             event_type=TimelineEventType.LOG_ERROR,
             title="Error 1",
         )
         builder.add_event(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             event_type=TimelineEventType.DEPLOYMENT,
             title="Deploy 2",
         )
@@ -181,7 +180,7 @@ class TestTimelineBuilder:
     def test_to_dict(self, builder):
         """Test converting timeline to dict for JSON serialization."""
         builder.add_event(
-            timestamp=datetime(2026, 2, 2, 4, 0, 0, tzinfo=timezone.utc),
+            timestamp=datetime(2026, 2, 2, 4, 0, 0, tzinfo=UTC),
             event_type=TimelineEventType.ALERT_TRIGGERED,
             title="Test",
         )
@@ -203,7 +202,7 @@ class TestBuildFromContextCard:
     @pytest.fixture
     def sample_context_card(self):
         """Create a sample context card for testing."""
-        triggered_at = datetime(2026, 2, 2, 3, 0, 0, tzinfo=timezone.utc)
+        triggered_at = datetime(2026, 2, 2, 3, 0, 0, tzinfo=UTC)
 
         return ContextCard(
             incident_id="inc-123",
@@ -297,25 +296,25 @@ class TestFormatRelativeTime:
 
     def test_seconds_ago(self):
         """Test formatting for seconds ago."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result = format_relative_time(now - timedelta(seconds=30))
         assert "30 seconds ago" in result
 
     def test_minutes_ago(self):
         """Test formatting for minutes ago."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result = format_relative_time(now - timedelta(minutes=5))
         assert "5 minute" in result
 
     def test_hours_ago(self):
         """Test formatting for hours ago."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result = format_relative_time(now - timedelta(hours=3))
         assert "3 hour" in result
 
     def test_days_ago(self):
         """Test formatting for days ago."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result = format_relative_time(now - timedelta(days=2))
         assert "2 day" in result
 

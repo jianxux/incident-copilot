@@ -7,7 +7,7 @@ from typing import Any
 import structlog
 from fastapi import APIRouter, HTTPException, Query, status
 
-from ..plugins import PluginRegistry, get_registry
+from ..plugins import get_registry
 from ..plugins.models import (
     Plugin,
     PluginCreateRequest,
