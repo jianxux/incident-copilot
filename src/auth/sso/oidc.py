@@ -1,9 +1,8 @@
 """OIDC (OpenID Connect) provider implementation."""
 
 import base64
-import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlencode
 
@@ -11,8 +10,8 @@ import httpx
 import structlog
 
 from .models import (
-    IdentityProvider,
     OIDC_PROVIDER_PRESETS,
+    IdentityProvider,
     SSOSession,
     SSOUserInfo,
 )

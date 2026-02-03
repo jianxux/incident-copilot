@@ -16,7 +16,6 @@ from .models import (
     ImpactAssessment,
     Postmortem,
     PostmortemStatus,
-    ResolutionStep,
     RootCauseAnalysis,
     TimelineEvent,
     TimelineEventType,
@@ -180,7 +179,7 @@ Generate a reflection on this incident. Respond with JSON:
   "lessons_learned": ["Lesson 1", "Lesson 2", ...],
   "what_went_well": ["Thing 1", "Thing 2", ...],
   "what_went_poorly": ["Thing 1", "Thing 2", ...],
-  "lucky_factors": ["Factor 1", ...] 
+  "lucky_factors": ["Factor 1", ...]
 }}
 
 Be honest and constructive. Focus on systemic improvements, not blame.

@@ -1,7 +1,6 @@
 """Tests for SSO (SAML and OIDC) authentication."""
 
 import base64
-import secrets
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -9,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.auth.sso.models import (
+    OIDC_PROVIDER_PRESETS,
     IdentityProvider,
     IdentityProviderType,
     OIDCSettings,
@@ -16,7 +16,6 @@ from src.auth.sso.models import (
     SSOConfig,
     SSOSession,
     SSOUserInfo,
-    OIDC_PROVIDER_PRESETS,
 )
 from src.auth.sso.oidc import OIDCProvider
 from src.auth.sso.routes import (

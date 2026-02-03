@@ -1,13 +1,13 @@
 """Incident Timeline API and utilities."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
 import structlog
+from pydantic import BaseModel, Field
 
-from ..models import ContextCard, Severity
+from ..models import ContextCard
 
 logger = structlog.get_logger()
 
@@ -157,7 +157,7 @@ class TimelineBuilder:
         if card.github and card.github.recent_deployments:
             for deploy in card.github.recent_deployments:
                 if deploy.deployed_at and deploy.deployed_at < (
-                    card.triggered_at or datetime.now(timezone.utc)
+                    card.triggered_at or datetime.now(UTC)
                 ):
                     self.add_event(
                         timestamp=deploy.deployed_at,
@@ -198,7 +198,7 @@ class TimelineBuilder:
         if card.runbooks:
             for runbook in card.runbooks:
                 self.add_event(
-                    timestamp=card.triggered_at or datetime.now(timezone.utc),
+                    timestamp=card.triggered_at or datetime.now(UTC),
                     event_type=TimelineEventType.RUNBOOK_LINKED,
                     title=f"Runbook: {runbook.title}",
                     description=f"Matched with {runbook.match_score}% confidence",
@@ -210,7 +210,7 @@ class TimelineBuilder:
         if card.similar_incidents:
             for similar in card.similar_incidents[:3]:
                 self.add_event(
-                    timestamp=card.triggered_at or datetime.now(timezone.utc),
+                    timestamp=card.triggered_at or datetime.now(UTC),
                     event_type=TimelineEventType.SIMILAR_INCIDENT,
                     title=f"Similar: {similar.title[:50]}",
                     description=f"Similarity: {similar.similarity_score:.0%}",
@@ -224,7 +224,7 @@ class TimelineBuilder:
         # Context assembled
         if card.assembly_time_ms:
             self.add_event(
-                timestamp=card.triggered_at or datetime.now(timezone.utc),
+                timestamp=card.triggered_at or datetime.now(UTC),
                 event_type=TimelineEventType.CONTEXT_ASSEMBLED,
                 title="Context card assembled",
                 description=f"Assembled in {card.assembly_time_ms}ms",
@@ -235,9 +235,7 @@ class TimelineBuilder:
         # Notification sent
         if incident_data.get("notification_sent"):
             self.add_event(
-                timestamp=incident_data.get(
-                    "notification_time", datetime.now(timezone.utc)
-                ),
+                timestamp=incident_data.get("notification_time", datetime.now(UTC)),
                 event_type=TimelineEventType.NOTIFICATION_SENT,
                 title=f"Notification sent to {incident_data.get('notification_channel', 'Slack')}",
                 source="Incident Copilot",
@@ -273,9 +271,9 @@ class TimelineBuilder:
 
 def format_relative_time(dt: datetime) -> str:
     """Format datetime as relative time (e.g., '5 minutes ago')."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
 
     diff = now - dt
     seconds = int(diff.total_seconds())

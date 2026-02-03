@@ -1,15 +1,15 @@
 """Tests for ServiceNow integration."""
 
-import pytest
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from src.config import Settings
 from src.integrations.servicenow import (
-    ServiceNowAdapter,
-    IncidentState,
     IncidentImpact,
+    IncidentState,
     IncidentUrgency,
+    ServiceNowAdapter,
 )
 
 
@@ -173,7 +173,7 @@ class TestUpdateIncident:
         ) as mock_update:
             mock_update.return_value = {"sys_id": "abc123", "state": "6"}
 
-            incident = await adapter.resolve_incident(
+            await adapter.resolve_incident(
                 sys_id="abc123",
                 resolution_code="Solved (Permanently)",
                 resolution_notes="Fixed database connection pool",
