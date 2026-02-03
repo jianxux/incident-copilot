@@ -66,8 +66,17 @@
                             <a href="/dashboard" class="{% if page_title == 'Dashboard' %}bg-slate-700 text-white{% else %}text-gray-300 hover:bg-slate-700 hover:text-white{% endif %} rounded-md px-3 py-2 text-sm font-medium transition">
                                 <i class="fas fa-chart-line mr-2"></i>Dashboard
                             </a>
+                            <a href="/dashboard/analytics" class="{% if page_title == 'Analytics' %}bg-slate-700 text-white{% else %}text-gray-300 hover:bg-slate-700 hover:text-white{% endif %} rounded-md px-3 py-2 text-sm font-medium transition">
+                                <i class="fas fa-chart-bar mr-2"></i>Analytics
+                            </a>
                             <a href="/dashboard/config" class="{% if page_title == 'Configuration' %}bg-slate-700 text-white{% else %}text-gray-300 hover:bg-slate-700 hover:text-white{% endif %} rounded-md px-3 py-2 text-sm font-medium transition">
-                                <i class="fas fa-cog mr-2"></i>Configuration
+                                <i class="fas fa-cog mr-2"></i>Config
+                            </a>
+                            <a href="/dashboard/onboarding" class="{% if page_title == 'Setup' %}bg-slate-700 text-white{% else %}text-gray-300 hover:bg-slate-700 hover:text-white{% endif %} rounded-md px-3 py-2 text-sm font-medium transition">
+                                <i class="fas fa-plug mr-2"></i>Setup
+                            </a>
+                            <a href="/dashboard/billing" class="{% if page_title == 'Billing' %}bg-slate-700 text-white{% else %}text-gray-300 hover:bg-slate-700 hover:text-white{% endif %} rounded-md px-3 py-2 text-sm font-medium transition">
+                                <i class="fas fa-credit-card mr-2"></i>Billing
                             </a>
                             <a href="/dashboard/demo" class="{% if page_title == 'Demo Mode' %}bg-gradient-to-r from-purple-600 to-pink-500 text-white{% else %}bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 hover:from-purple-500/40 hover:to-pink-500/40{% endif %} rounded-md px-3 py-2 text-sm font-medium transition">
                                 <i class="fas fa-play-circle mr-2"></i>Demo
