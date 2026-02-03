@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlencode
 
-import defusedxml.ElementTree as ET
+import defusedxml.ElementTree as ET  # noqa: N817
 import structlog
 
 from .models import IdentityProvider, SSOSession, SSOUserInfo
