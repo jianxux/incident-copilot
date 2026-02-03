@@ -8,8 +8,8 @@ import structlog
 
 from .ai import LogSummarizer
 from .config import Settings
-from .integrations import CloudWatchAdapter, DatadogAdapter, GitHubAdapter, GitLabAdapter, SlackAdapter
-from .models import ContextCard, PagerDutyIncident, RunbookLink
+from .integrations import CloudWatchAdapter, DatadogAdapter, GitHubAdapter, GitLabAdapter, OnCallAdapter, SlackAdapter
+from .models import ContextCard, OnCallRoster, PagerDutyIncident, RunbookLink
 from .runbooks import RunbookLinker
 
 logger = structlog.get_logger()
@@ -33,6 +33,7 @@ class ContextOrchestrator:
         self.slack = SlackAdapter(settings)
         self.summarizer = LogSummarizer(settings)
         self.runbook_linker = RunbookLinker()
+        self.oncall = OnCallAdapter(settings)
 
         # Determine SCM provider based on configuration
         # Prefer GitHub if configured, fall back to GitLab
@@ -88,11 +89,14 @@ class ContextOrchestrator:
         datadog_task = asyncio.create_task(
             self._fetch_log_context(incident.service_name)
         )
+        oncall_task = asyncio.create_task(
+            self._fetch_oncall_roster(incident.service_name)
+        )
 
-        # Wait for both with timeout
+        # Wait for all with timeout
         try:
-            scm_ctx, datadog_ctx = await asyncio.wait_for(
-                asyncio.gather(scm_task, datadog_task, return_exceptions=True),
+            scm_ctx, datadog_ctx, oncall_roster = await asyncio.wait_for(
+                asyncio.gather(scm_task, datadog_task, oncall_task, return_exceptions=True),
                 timeout=8.0,  # Leave room for AI + Slack
             )
 
@@ -118,11 +122,17 @@ class ContextOrchestrator:
                 errors.append(f"{provider_name}: {str(datadog_ctx)}")
                 datadog_ctx = None
 
+            if isinstance(oncall_roster, Exception):
+                logger.error("oncall_fetch_error", error=str(oncall_roster))
+                errors.append(f"On-Call: {str(oncall_roster)}")
+                oncall_roster = None
+
         except TimeoutError:
             logger.warning("context_fetch_timeout")
             errors.append("Context fetch timed out")
             scm_ctx = scm_task.result() if scm_task.done() else None
             datadog_ctx = datadog_task.result() if datadog_task.done() else None
+            oncall_roster = oncall_task.result() if oncall_task.done() else None
         
         # Extract GitHub context for backward compatibility
         github_ctx = scm_ctx if self.scm_provider == "github" else None
@@ -196,6 +206,7 @@ class ContextOrchestrator:
             ai_summary=ai_summary,
             similar_incidents=[],  # TODO: implement similarity search
             runbooks=runbook_links,
+            oncall=oncall_roster,
             owners=codeowners if codeowners else incident.assigned_to,
             assembled_at=datetime.utcnow(),
             assembly_time_ms=elapsed_ms,
@@ -211,6 +222,8 @@ class ContextOrchestrator:
             has_gitlab=gitlab_ctx is not None,
             has_datadog=datadog_ctx is not None,
             has_ai=ai_summary is not None,
+            has_oncall=oncall_roster is not None,
+            oncall_count=len(oncall_roster.oncall_persons) if oncall_roster else 0,
             error_count=len(errors),
         )
 
@@ -260,3 +273,27 @@ class ContextOrchestrator:
     async def _fetch_datadog_context(self, service_name: str):
         """Fetch Datadog context with error handling. Deprecated: use _fetch_log_context."""
         return await self._fetch_log_context(service_name)
+
+    async def _fetch_oncall_roster(self, service_name: str) -> OnCallRoster | None:
+        """Fetch on-call roster for the service."""
+        if not getattr(self.settings, "oncall_enabled", True):
+            return None
+
+        try:
+            roster = await self.oncall.get_oncall_for_service(service_name)
+            if roster:
+                logger.info(
+                    "oncall_roster_fetched",
+                    service=service_name,
+                    schedule_id=roster.schedule_id,
+                    oncall_count=len(roster.oncall_persons),
+                    oncall_names=roster.oncall_names,
+                )
+            return roster
+        except Exception as e:
+            logger.error(
+                "oncall_roster_failed",
+                service=service_name,
+                error=str(e),
+            )
+            return None
