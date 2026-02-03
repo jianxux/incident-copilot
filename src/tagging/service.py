@@ -19,7 +19,7 @@ from .models import (
     TagSuggestion,
     TagUpdate,
 )
-from .store import TagStore, PostgresTagStore, get_tag_store
+from .store import PostgresTagStore, TagStore, get_tag_store
 from .suggestions import TagSuggester, get_tag_suggester
 
 logger = structlog.get_logger()

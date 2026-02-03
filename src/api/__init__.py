@@ -1,13 +1,12 @@
 """API routes for Incident Copilot."""
 
+from ..postmortem import postmortem_router
 from .analytics import router as analytics_router
 from .correlation import router as correlation_router
 from .demo import router as demo_router
 from .health import router as health_router
 from .runbooks import router as runbooks_router
 from .webhooks import router as webhooks_router
-
-from ..postmortem import postmortem_router
 
 __all__ = [
     "webhooks_router",

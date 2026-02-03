@@ -11,8 +11,8 @@ import httpx
 import structlog
 
 from .models import (
-    IdentityProvider,
     OIDC_PROVIDER_PRESETS,
+    IdentityProvider,
     SSOSession,
     SSOUserInfo,
 )

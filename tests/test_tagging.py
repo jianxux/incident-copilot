@@ -7,6 +7,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from src.api.tags import incidents_router
+from src.api.tags import router as tags_router
 from src.config import Settings
 from src.tagging import (
     AddTagsRequest,
@@ -15,13 +17,12 @@ from src.tagging import (
     Tag,
     TagColor,
     TagCreate,
+    TaggingService,
     TagStore,
     TagUpdate,
-    TaggingService,
     reset_tagging_service,
 )
 from src.tagging.suggestions import TagSuggester
-from src.api.tags import incidents_router, router as tags_router
 
 
 @pytest.fixture
