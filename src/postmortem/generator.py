@@ -16,7 +16,6 @@ from .models import (
     ImpactAssessment,
     Postmortem,
     PostmortemStatus,
-    ResolutionStep,
     RootCauseAnalysis,
     TimelineEvent,
     TimelineEventType,
