@@ -12,8 +12,10 @@ from .api import (
     analytics_router,
     demo_router,
     health_router,
+    incident_tags_router,
     postmortem_router,
     runbooks_router,
+    tags_router,
     webhooks_router,
 )
 from .api.audit import router as audit_router
@@ -28,7 +30,6 @@ from .metrics import HEALTH_STATUS, set_app_info
 from .metrics.middleware import PrometheusMiddleware
 from .web import landing_router, web_router
 
-# Configure structured logging
 structlog.configure(
     processors=[
         structlog.stdlib.filter_by_level,
@@ -51,7 +52,6 @@ logger = structlog.get_logger()
 
 
 def create_app() -> FastAPI:
-    """Create and configure the FastAPI application."""
     settings = get_settings()
 
     app = FastAPI(
@@ -61,30 +61,12 @@ def create_app() -> FastAPI:
         debug=settings.debug,
     )
 
-    # Prometheus metrics middleware (add first for accurate timing)
-    app.add_middleware(
-        PrometheusMiddleware,
-        exclude_paths={"/metrics", "/", "/health"},
-    )
+    app.add_middleware(PrometheusMiddleware, exclude_paths={"/metrics", "/", "/health"})
+    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-    # CORS middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  # Tighten in production
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    # Audit logging middleware (if enabled)
     if settings.audit_enabled:
-        app.add_middleware(
-            AuditMiddleware,
-            log_all_requests=settings.audit_log_all_requests,
-            exclude_paths=settings.audit_exclude_paths,
-        )
+        app.add_middleware(AuditMiddleware, log_all_requests=settings.audit_log_all_requests, exclude_paths=settings.audit_exclude_paths)
 
-    # Include routers
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(sso_router)
@@ -95,26 +77,22 @@ def create_app() -> FastAPI:
     app.include_router(analytics_router)
     app.include_router(postmortem_router)
     app.include_router(audit_router)
+    app.include_router(tags_router)
+    app.include_router(incident_tags_router, prefix="/api/incidents")
     app.include_router(landing_router)
     app.include_router(web_router)
 
-    # Mount static files for web dashboard
     static_dir = Path(__file__).parent / "web" / "static"
-    app.mount(
-        "/dashboard/static", StaticFiles(directory=str(static_dir)), name="static"
-    )
+    app.mount("/dashboard/static", StaticFiles(directory=str(static_dir)), name="static")
 
     @app.on_event("startup")
     async def startup():
         logger.info("incident_copilot_starting", debug=settings.debug)
         set_app_start_time()
-
-        # Initialize metrics
         git_sha = os.environ.get("GIT_SHA")
         set_app_info(version="0.1.0", git_sha=git_sha)
         HEALTH_STATUS.labels(component="app").set(1)
 
-        # Initialize audit store
         if settings.audit_enabled:
             audit_store.database_url = settings.database_url
             audit_store.retention_days = settings.audit_retention_days
@@ -127,24 +105,16 @@ def create_app() -> FastAPI:
 
     @app.get("/")
     async def root():
-        return {
-            "name": "Incident Copilot",
-            "version": "0.1.0",
-            "status": "running",
-        }
+        return {"name": "Incident Copilot", "version": "0.1.0", "status": "running"}
 
     return app
 
 
-# Create app instance
 app = create_app()
 
 
 if __name__ == "__main__":
-    import os
-
     import uvicorn
-
     host = os.environ.get("HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", "8000"))
     uvicorn.run("src.main:app", host=host, port=port, reload=True)
