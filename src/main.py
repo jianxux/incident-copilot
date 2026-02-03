@@ -12,7 +12,6 @@ from .api import (
     analytics_router,
     demo_router,
     health_router,
-    plugins_router,
     postmortem_router,
     runbooks_router,
     webhooks_router,
@@ -27,6 +26,8 @@ from .billing.routes import router as billing_router
 from .config import get_settings
 from .metrics import HEALTH_STATUS, set_app_info
 from .metrics.middleware import PrometheusMiddleware
+from .ratelimit.middleware import RateLimitMiddleware
+from .ratelimit.routes import router as ratelimit_router
 from .web import landing_router, web_router
 
 # Configure structured logging
@@ -85,6 +86,13 @@ def create_app() -> FastAPI:
             exclude_paths=settings.audit_exclude_paths,
         )
 
+    # Rate limiting middleware (if enabled)
+    if settings.ratelimit_enabled:
+        app.add_middleware(
+            RateLimitMiddleware,
+            exclude_paths=settings.ratelimit_exclude_paths,
+        )
+
     # Include routers
     app.include_router(health_router)
     app.include_router(auth_router)
@@ -96,7 +104,7 @@ def create_app() -> FastAPI:
     app.include_router(analytics_router)
     app.include_router(postmortem_router)
     app.include_router(audit_router)
-    app.include_router(plugins_router)
+    app.include_router(ratelimit_router)
     app.include_router(landing_router)
     app.include_router(web_router)
 
