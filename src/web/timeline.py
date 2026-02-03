@@ -235,9 +235,7 @@ class TimelineBuilder:
         # Notification sent
         if incident_data.get("notification_sent"):
             self.add_event(
-                timestamp=incident_data.get(
-                    "notification_time", datetime.now(UTC)
-                ),
+                timestamp=incident_data.get("notification_time", datetime.now(UTC)),
                 event_type=TimelineEventType.NOTIFICATION_SENT,
                 title=f"Notification sent to {incident_data.get('notification_channel', 'Slack')}",
                 source="Incident Copilot",
