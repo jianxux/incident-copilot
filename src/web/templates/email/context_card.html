@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incident Alert - {{ card.title }}</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+    <style>
+        /* Reset styles */
+        body, table, td, p, a, li { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+        body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
+
+        /* Custom styles */
+        .email-wrapper { background-color: #f3f4f6; padding: 40px 20px; }
+        .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .header { background-color: {{ brand_color }}; padding: 24px; text-align: center; }
+        .header h1 { color: #ffffff; margin: 0; font-size: 20px; font-weight: 600; }
+        .severity-banner { padding: 16px 24px; background-color: {{ severity_color }}; color: #ffffff; }
+        .content { padding: 24px; }
+        .section { margin-bottom: 24px; }
+        .section-title { font-size: 14px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
+        .info-row { display: flex; margin-bottom: 8px; }
+        .info-label { font-weight: 500; color: #6b7280; min-width: 100px; }
+        .info-value { color: #111827; }
+        .deploy-item { background-color: #f9fafb; padding: 12px; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid {{ brand_color }}; }
+        .deploy-sha { font-family: monospace; font-size: 13px; color: {{ brand_color }}; }
+        .deploy-author { font-size: 13px; color: #6b7280; }
+        .deploy-message { font-size: 14px; color: #374151; margin-top: 4px; }
+        .issue-item { padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
+        .issue-item:last-child { border-bottom: none; }
+        .incident-card { background-color: #fffbeb; border: 1px solid #fcd34d; padding: 12px; border-radius: 6px; margin-bottom: 8px; }
+        .oncall-person { display: inline-block; background-color: #e0e7ff; color: #3730a3; padding: 4px 12px; border-radius: 16px; font-size: 13px; margin-right: 8px; margin-bottom: 8px; }
+        .btn { display: inline-block; padding: 10px 20px; background-color: {{ brand_color }}; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 500; margin-right: 8px; margin-bottom: 8px; }
+        .btn-secondary { background-color: #6b7280; }
+        .footer { background-color: #f9fafb; padding: 20px 24px; text-align: center; font-size: 12px; color: #6b7280; }
+        .meta { font-size: 12px; color: #9ca3af; margin-top: 16px; }
+
+        /* Responsive */
+        @media screen and (max-width: 600px) {
+            .email-wrapper { padding: 20px 10px; }
+            .content { padding: 16px; }
+            .header { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-wrapper">
+        <table class="email-container" cellpadding="0" cellspacing="0" width="100%">
+            <!-- Header -->
+            <tr>
+                <td class="header">
+                    {% if logo_url %}
+                    <img src="{{ logo_url }}" alt="Logo" style="max-height: 40px; margin-bottom: 12px;">
+                    {% endif %}
+                    <h1>Incident Alert</h1>
+                </td>
+            </tr>
+
+            <!-- Severity Banner -->
+            <tr>
+                <td class="severity-banner">
+                    <table cellpadding="0" cellspacing="0" width="100%">
+                        <tr>
+                            <td style="font-size: 28px; vertical-align: middle; width: 40px;">{{ severity_emoji }}</td>
+                            <td>
+                                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9;">{{ card.severity.value|upper }}</div>
+                                <div style="font-size: 18px; font-weight: 600; margin-top: 4px;">{{ card.title|truncate_text(80) }}</div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+
+            <!-- Content -->
+            <tr>
+                <td class="content">
+                    <!-- Basic Info -->
+                    <div class="section">
+                        <table cellpadding="0" cellspacing="0" width="100%">
+                            <tr>
+                                <td style="padding-right: 16px;">
+                                    <div style="color: #6b7280; font-size: 12px;">Service</div>
+                                    <div style="font-weight: 600; font-size: 16px;">{{ card.service_name }}</div>
+                                </td>
+                                <td style="padding-right: 16px;">
+                                    <div style="color: #6b7280; font-size: 12px;">Triggered</div>
+                                    <div style="font-weight: 500;">{{ triggered_at_formatted }}</div>
+                                </td>
+                                <td>
+                                    <div style="color: #6b7280; font-size: 12px;">ID</div>
+                                    <div style="font-family: monospace; font-size: 13px;">{{ card.incident_id|truncate_text(20) }}</div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    {% if card.alert_url %}
+                    <div style="margin-bottom: 24px;">
+                        <a href="{{ card.alert_url }}" class="btn">View in PagerDuty →</a>
+                    </div>
+                    {% endif %}
+
+                    <!-- Recent Deployments -->
+                    {% if has_github and card.github.recent_deploys %}
+                    <div class="section">
+                        <div class="section-title">🚀 Recent Deployments</div>
+                        {% for deploy in card.github.recent_deploys[:3] %}
+                        <div class="deploy-item">
+                            <div>
+                                {% if deploy.url %}
+                                <a href="{{ deploy.url }}" class="deploy-sha">{{ deploy.short_sha }}</a>
+                                {% else %}
+                                <span class="deploy-sha">{{ deploy.short_sha }}</span>
+                                {% endif %}
+                                <span class="deploy-author">by {{ deploy.author }}</span>
+                            </div>
+                            <div class="deploy-message">{{ deploy.message|truncate_text(80) }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    {% if has_gitlab and card.gitlab.recent_deploys %}
+                    <div class="section">
+                        <div class="section-title">🦊 Recent GitLab Deployments</div>
+                        {% for deploy in card.gitlab.recent_deploys[:3] %}
+                        <div class="deploy-item">
+                            <div>
+                                {% if deploy.url %}
+                                <a href="{{ deploy.url }}" class="deploy-sha">{{ deploy.short_sha }}</a>
+                                {% else %}
+                                <span class="deploy-sha">{{ deploy.short_sha }}</span>
+                                {% endif %}
+                                <span class="deploy-author">by {{ deploy.author }}</span>
+                            </div>
+                            <div class="deploy-message">{{ deploy.message|truncate_text(80) }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- AI Summary -->
+                    {% if has_ai_summary and card.ai_summary %}
+                    <div class="section">
+                        <div class="section-title">🤖 AI Analysis</div>
+                        <div style="background-color: #f0fdf4; border: 1px solid #86efac; padding: 16px; border-radius: 6px;">
+                            <div style="font-weight: 500; margin-bottom: 8px;">Top Issues:</div>
+                            <ul style="margin: 0; padding-left: 20px;">
+                                {% for issue in card.ai_summary.top_issues[:5] %}
+                                <li style="margin-bottom: 4px;">{{ issue }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% if card.ai_summary.explanation %}
+                            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #86efac; font-size: 14px; color: #166534;">
+                                {{ card.ai_summary.explanation|truncate_text(200) }}
+                            </div>
+                            {% endif %}
+                            {% if card.ai_summary.likely_cause %}
+                            <div style="margin-top: 8px; font-weight: 500;">
+                                <strong>Likely Cause:</strong> {{ card.ai_summary.likely_cause|truncate_text(150) }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Similar Past Incidents -->
+                    {% if has_similar_incidents and card.similar_incidents %}
+                    <div class="section">
+                        <div class="section-title">🔄 Similar Past Incidents</div>
+                        {% for inc in card.similar_incidents[:3] %}
+                        <div class="incident-card">
+                            <div style="font-weight: 500;">{{ inc.title|truncate_text(60) }}</div>
+                            <div style="font-size: 13px; color: #92400e; margin-top: 4px;">
+                                {{ inc.occurred_at|format_datetime('%Y-%m-%d') }}
+                                {% if inc.similarity_score %}
+                                • {{ (inc.similarity_score * 100)|int }}% match
+                                {% endif %}
+                            </div>
+                            {% if inc.resolution %}
+                            <div style="font-size: 13px; color: #78350f; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #fcd34d;">
+                                <strong>Resolution:</strong> {{ inc.resolution|truncate_text(100) }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Runbooks -->
+                    {% if has_runbooks and card.runbooks %}
+                    <div class="section">
+                        <div class="section-title">📖 Relevant Runbooks</div>
+                        {% for runbook in card.runbooks[:3] %}
+                        <div style="margin-bottom: 8px;">
+                            <a href="{{ runbook.url }}" style="color: {{ brand_color }}; font-weight: 500;">{{ runbook.title }}</a>
+                            <span style="font-size: 12px; color: #6b7280;">({{ (runbook.relevance_score * 100)|int }}% relevant)</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- On-Call -->
+                    {% if has_oncall and card.oncall %}
+                    <div class="section">
+                        <div class="section-title">👤 On-Call</div>
+                        <div>
+                            {% for person in card.oncall.oncall_persons[:3] %}
+                            <span class="oncall-person">
+                                {{ person.name }}
+                                {% if person.email %}<span style="opacity: 0.7;">({{ person.email }})</span>{% endif %}
+                            </span>
+                            {% endfor %}
+                        </div>
+                        {% if card.oncall.schedule_url %}
+                        <div style="margin-top: 8px;">
+                            <a href="{{ card.oncall.schedule_url }}" style="color: {{ brand_color }}; font-size: 13px;">View Schedule →</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Quick Links -->
+                    <div class="section">
+                        <div class="section-title">🔗 Quick Links</div>
+                        {% if card.runbook_url %}
+                        <a href="{{ card.runbook_url }}" class="btn">📖 Runbook</a>
+                        {% endif %}
+                        {% if card.dashboard_url %}
+                        <a href="{{ card.dashboard_url }}" class="btn btn-secondary">📊 Dashboard</a>
+                        {% endif %}
+                    </div>
+
+                    <!-- Metadata -->
+                    {% if card.assembly_time_ms %}
+                    <div class="meta">
+                        Context assembled in {{ card.assembly_time_ms }}ms
+                    </div>
+                    {% endif %}
+                </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+                <td class="footer">
+                    {% if footer %}
+                    <div style="margin-bottom: 12px;">{{ footer }}</div>
+                    {% endif %}
+                    <div>Powered by <strong>Incident Copilot</strong></div>
+                    <div style="margin-top: 8px; font-size: 11px;">
+                        You received this because you're subscribed to incident notifications.
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

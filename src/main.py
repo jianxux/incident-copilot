@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from .api import (
     analytics_router,
     demo_router,
+    email_router,
     health_router,
     postmortem_router,
     runbooks_router,
@@ -105,6 +106,7 @@ def create_app() -> FastAPI:
     app.include_router(postmortem_router)
     app.include_router(audit_router)
     app.include_router(ratelimit_router)
+    app.include_router(email_router, prefix="/api")
     app.include_router(landing_router)
     app.include_router(web_router)
 
