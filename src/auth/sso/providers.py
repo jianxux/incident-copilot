@@ -19,7 +19,7 @@ class BaseProvider(ABC):
 
     def __init__(self, idp: IdentityProvider, app_url: str):
         """Initialize the provider.
-        
+
         Args:
             idp: Identity provider configuration
             app_url: Base URL of the application (e.g., https://app.example.com)
@@ -30,10 +30,10 @@ class BaseProvider(ABC):
     @abstractmethod
     async def generate_auth_url(self, session: SSOSession) -> str:
         """Generate the authentication URL to redirect the user.
-        
+
         Args:
             session: SSO session containing state, nonce, etc.
-            
+
         Returns:
             URL to redirect the user to for authentication
         """
@@ -44,11 +44,11 @@ class BaseProvider(ABC):
         self, response_data: dict[str, Any], session: SSOSession
     ) -> SSOUserInfo:
         """Process the authentication response from the IdP.
-        
+
         Args:
             response_data: Response data from the IdP (SAML response, OIDC tokens, etc.)
             session: SSO session for validation
-            
+
         Returns:
             User information extracted from the response
         """
@@ -65,7 +65,7 @@ class BaseProvider(ABC):
 
 def generate_pkce_verifier() -> str:
     """Generate a PKCE code verifier (43-128 characters).
-    
+
     Returns:
         A URL-safe random string for use as a code verifier.
     """
@@ -74,17 +74,17 @@ def generate_pkce_verifier() -> str:
 
 def generate_pkce_challenge(verifier: str, method: str = "S256") -> str:
     """Generate a PKCE code challenge from a verifier.
-    
+
     Args:
         verifier: The code verifier string
         method: Challenge method ('S256' or 'plain')
-        
+
     Returns:
         The code challenge string
     """
     if method == "plain":
         return verifier
-    
+
     # S256: BASE64URL(SHA256(verifier))
     digest = hashlib.sha256(verifier.encode("ascii")).digest()
     challenge = base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
@@ -99,14 +99,14 @@ def create_sso_session(
     use_pkce: bool = True,
 ) -> SSOSession:
     """Create an SSO session for authentication.
-    
+
     Args:
         tenant_id: Tenant ID
         idp_id: Identity provider ID
         redirect_uri: OAuth redirect URI
         relay_state: URL to return to after authentication
         use_pkce: Whether to generate PKCE parameters
-        
+
     Returns:
         A new SSO session with all required parameters
     """
@@ -117,15 +117,15 @@ def create_sso_session(
         relay_state=relay_state,
         nonce=secrets.token_urlsafe(32),
     )
-    
+
     if use_pkce:
         session.code_verifier = generate_pkce_verifier()
-    
+
     logger.debug(
         "sso_session_created",
         session_id=session.id,
         tenant_id=tenant_id,
         idp_id=idp_id,
     )
-    
+
     return session
