@@ -287,9 +287,15 @@ class TestGitLabAdapterGetContext:
         now = datetime.now(timezone.utc)
 
         with patch.object(gitlab_adapter, "_fetch_recent_commits") as mock_commits:
-            with patch.object(gitlab_adapter, "_fetch_recent_merge_requests") as mock_mrs:
-                with patch.object(gitlab_adapter, "_fetch_recent_pipelines") as mock_pipelines:
-                    with patch.object(gitlab_adapter, "_fetch_codeowners") as mock_owners:
+            with patch.object(
+                gitlab_adapter, "_fetch_recent_merge_requests"
+            ) as mock_mrs:
+                with patch.object(
+                    gitlab_adapter, "_fetch_recent_pipelines"
+                ) as mock_pipelines:
+                    with patch.object(
+                        gitlab_adapter, "_fetch_codeowners"
+                    ) as mock_owners:
                         mock_commits.return_value = [
                             Deployment(
                                 sha="abc123",
