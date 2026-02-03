@@ -86,7 +86,7 @@ class WebhookExecutor:
                     delivery.error = f"HTTP {result['status']}: Non-retryable"
                     return delivery
                 last_error = f"HTTP {result['status']}"
-            except (asyncio.TimeoutError, aiohttp.ClientError, Exception) as e:
+            except (TimeoutError, aiohttp.ClientError, Exception) as e:
                 last_error = str(e)
             if attempt <= retry_config.max_retries:
                 await asyncio.sleep(

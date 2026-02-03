@@ -1,13 +1,11 @@
 """SAML 2.0 provider implementation."""
 
 import base64
-import secrets
 import uuid
 import zlib
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlencode
-from xml.etree import ElementTree as StdlibET
 
 import defusedxml.ElementTree as ET
 import structlog

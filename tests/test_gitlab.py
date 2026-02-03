@@ -1,14 +1,14 @@
 """Tests for GitLab integration."""
 
 import base64
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 
 from src.integrations.gitlab import GitLabAdapter
-from src.models import Deployment, GitLabContext, MergeRequest, Pipeline
+from src.models import Deployment, MergeRequest, Pipeline
 
 
 @pytest.fixture
@@ -197,7 +197,7 @@ class TestGitLabAdapterFetchPipelines:
     @pytest.mark.asyncio
     async def test_fetch_recent_pipelines_success(self, gitlab_adapter):
         """Should fetch and parse pipelines."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = [
@@ -284,7 +284,7 @@ class TestGitLabAdapterGetContext:
     @pytest.mark.asyncio
     async def test_get_context_success(self, gitlab_adapter):
         """Should return full GitLab context."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         with patch.object(gitlab_adapter, "_fetch_recent_commits") as mock_commits:
             with patch.object(

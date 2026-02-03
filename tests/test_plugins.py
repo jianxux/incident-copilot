@@ -8,7 +8,6 @@ import pytest
 
 from src.plugins import (
     PayloadTransformer,
-    PluginEvent,
     PluginRegistry,
     PluginStatus,
     PluginType,
