@@ -2,7 +2,9 @@
 
 from datetime import datetime, timedelta
 from typing import Any
+
 import structlog
+
 from .models import AlertGroup, AlertGroupStatus, CorrelationRule
 
 logger = structlog.get_logger()

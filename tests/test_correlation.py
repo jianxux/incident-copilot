@@ -1,7 +1,9 @@
 """Tests for the alert correlation engine."""
 
 from datetime import datetime
+
 import pytest
+
 from src.config import Settings
 from src.correlation import (
     AlertGroup,

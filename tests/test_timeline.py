@@ -1,23 +1,24 @@
 """Tests for incident timeline functionality."""
 
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
+import pytest
+
+from src.models import (
+    ContextCard,
+    Deployment,
+    GitHubContext,
+    LogEntry,
+    LogSummary,
+    Severity,
+)
 from src.web.timeline import (
     TimelineBuilder,
     TimelineEvent,
     TimelineEventType,
-    format_relative_time,
     format_duration,
-)
-from src.models import (
-    ContextCard,
-    GitHubContext,
-    Deployment,
-    LogSummary,
-    LogEntry,
-    Severity,
+    format_relative_time,
 )
 
 

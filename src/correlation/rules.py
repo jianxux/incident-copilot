@@ -4,7 +4,9 @@ import hashlib
 import re
 from datetime import datetime, timedelta
 from difflib import SequenceMatcher
+
 import structlog
+
 from .models import (
     AlertGroup,
     AlertGroupStatus,
