@@ -6,9 +6,9 @@ import zlib
 from datetime import datetime
 from typing import Any
 from urllib.parse import urlencode
+from xml.etree.ElementTree import Element
 
 import defusedxml.ElementTree as ET  # noqa: N817
-from xml.etree.ElementTree import Element
 import structlog
 
 from .models import IdentityProvider, SSOSession, SSOUserInfo
