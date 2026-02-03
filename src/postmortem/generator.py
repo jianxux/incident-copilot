@@ -407,7 +407,9 @@ class PostmortemGenerator:
 
             parts.append("## Log Summaries")
             for summary in context_card.datadog.log_summaries[:5]:
-                parts.append(f"- [{summary.level}] {summary.pattern} (count: {summary.count})")
+                parts.append(
+                    f"- [{summary.level}] {summary.pattern} (count: {summary.count})"
+                )
 
         # AI Summary
         if context_card.ai_summary:
@@ -505,7 +507,9 @@ class PostmortemGenerator:
             for event_data in data:
                 event_type = TimelineEventType.OTHER
                 try:
-                    event_type = TimelineEventType(event_data.get("event_type", "other"))
+                    event_type = TimelineEventType(
+                        event_data.get("event_type", "other")
+                    )
                 except ValueError:
                     pass
 
@@ -583,7 +587,9 @@ class PostmortemGenerator:
         try:
             duration_info = "Unknown duration"
             if context_card.datadog and context_card.datadog.metrics:
-                duration_info = f"{context_card.datadog.metrics.time_range_minutes} minutes of data"
+                duration_info = (
+                    f"{context_card.datadog.metrics.time_range_minutes} minutes of data"
+                )
 
             prompt = IMPACT_PROMPT.format(
                 title=context_card.title,
@@ -633,9 +639,7 @@ class PostmortemGenerator:
             return []
 
         try:
-            timeline_summary = "\n".join(
-                f"- {e.title}" for e in timeline[:10]
-            )
+            timeline_summary = "\n".join(f"- {e.title}" for e in timeline[:10])
 
             prompt = ACTION_ITEMS_PROMPT.format(
                 title=context_card.title,
@@ -692,8 +696,7 @@ class PostmortemGenerator:
 
         try:
             timeline_summary = "\n".join(
-                f"- {e.timestamp.strftime('%H:%M')}: {e.title}"
-                for e in timeline[:8]
+                f"- {e.timestamp.strftime('%H:%M')}: {e.title}" for e in timeline[:8]
             )
 
             duration_info = "Duration unknown"
@@ -734,9 +737,7 @@ class PostmortemGenerator:
             return {}
 
         try:
-            timeline_summary = "\n".join(
-                f"- {e.title}" for e in timeline[:10]
-            )
+            timeline_summary = "\n".join(f"- {e.title}" for e in timeline[:10])
 
             prompt = LESSONS_PROMPT.format(
                 title=context_card.title,
