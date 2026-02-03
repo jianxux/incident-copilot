@@ -21,27 +21,30 @@ from src.audit.store import AuditStore
 def create_test_app() -> FastAPI:
     """Create a minimal FastAPI app for testing."""
     app = FastAPI()
-    
+
     @app.get("/health")
     def health():
         return {"status": "ok"}
-    
+
     @app.get("/api/v1/audit/logs")
     def get_audit_logs():
         # Simulate auth required
         from fastapi import HTTPException
+
         raise HTTPException(status_code=401, detail="Not authenticated")
-    
+
     @app.get("/api/v1/audit/logs/export")
     def export_audit_logs():
         from fastapi import HTTPException
+
         raise HTTPException(status_code=401, detail="Not authenticated")
-    
+
     @app.get("/api/v1/audit/stats")
     def get_audit_stats():
         from fastapi import HTTPException
+
         raise HTTPException(status_code=401, detail="Not authenticated")
-    
+
     return app
 
 
