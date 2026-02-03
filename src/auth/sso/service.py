@@ -15,7 +15,6 @@ from .models import (
     OIDCSettings,
     SAMLSettings,
     SSOConfig,
-    SSOSession,
     SSOUserInfo,
 )
 from .oidc import OIDCProvider
