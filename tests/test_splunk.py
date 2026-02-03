@@ -1,8 +1,8 @@
 """Tests for Splunk integration."""
 
-import pytest
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from src.config import Settings
 from src.integrations.splunk import SplunkAdapter

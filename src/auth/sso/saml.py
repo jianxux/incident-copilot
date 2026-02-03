@@ -1,15 +1,13 @@
 """SAML 2.0 provider implementation."""
 
 import base64
-import secrets
 import uuid
 import zlib
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlencode
-from xml.etree import ElementTree as StdlibET
-import defusedxml.ElementTree as ET
 
+import defusedxml.ElementTree as ET  # noqa: N817
 import structlog
 
 from .models import IdentityProvider, SSOSession, SSOUserInfo
@@ -311,7 +309,7 @@ class SAMLProvider(BaseProvider):
             return name_id_elem.text
         return None
 
-    def process_response(
+    def _process_saml_response(
         self,
         saml_response: str,
         expected_request_id: str | None = None,
@@ -350,7 +348,7 @@ class SAMLProvider(BaseProvider):
         # Map attributes to user info
         return self._map_attributes_to_user(name_id, attributes)
 
-    async def process_response(
+    async def _process_saml_response(
         self,
         response_data: dict[str, Any],
         session: SSOSession,
@@ -369,7 +367,7 @@ class SAMLProvider(BaseProvider):
             raise ValueError("No SAMLResponse in response data")
 
         # Use the sync method
-        return self.process_response(
+        return self._process_saml_response(
             saml_response=saml_response,
             expected_request_id=session.saml_request_id,
         )
@@ -479,11 +477,6 @@ class SAMLProvider(BaseProvider):
             want_assertions_signed
             if want_assertions_signed is not None
             else self.settings.want_assertions_signed
-        )
-        want_msg_signed = (
-            want_messages_signed
-            if want_messages_signed is not None
-            else self.settings.want_messages_signed
         )
 
         # Build metadata XML
