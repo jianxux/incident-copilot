@@ -1,7 +1,6 @@
 """Tests for SSO (SAML and OIDC) authentication."""
 
 import base64
-import secrets
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
