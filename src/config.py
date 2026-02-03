@@ -120,6 +120,7 @@ class Settings(BaseSettings):
 
     # Slack
     slack_bot_token: str = Field(default="", description="Slack bot OAuth token")
+    slack_signing_secret: str = Field(default="", description="Slack app signing secret")
     slack_default_channel: str = Field(
         default="#incidents", description="Default Slack channel"
     )
