@@ -8,6 +8,7 @@ from typing import Any
 from urllib.parse import urlencode
 
 import defusedxml.ElementTree as ET  # noqa: N817
+from xml.etree.ElementTree import Element
 import structlog
 
 from .models import IdentityProvider, SSOSession, SSOUserInfo
@@ -203,7 +204,7 @@ class SAMLProvider(BaseProvider):
         """
         return self.generate_auth_request(session)
 
-    def _parse_saml_response(self, saml_response: str) -> ET.Element:
+    def _parse_saml_response(self, saml_response: str) -> Element:
         """Parse and decode a SAML response.
 
         Args:
@@ -229,7 +230,7 @@ class SAMLProvider(BaseProvider):
 
     def _validate_response(
         self,
-        root: ET.Element,
+        root: Element,
         expected_request_id: str | None = None,
     ) -> None:
         """Validate a SAML response.
@@ -264,7 +265,7 @@ class SAMLProvider(BaseProvider):
         # - Audience restriction
         # - Issuer matches expected IdP
 
-    def _extract_attributes(self, root: ET.Element) -> dict[str, Any]:
+    def _extract_attributes(self, root: Element) -> dict[str, Any]:
         """Extract attributes from a SAML assertion.
 
         Args:
@@ -295,7 +296,7 @@ class SAMLProvider(BaseProvider):
 
         return attributes
 
-    def _get_name_id(self, root: ET.Element) -> str | None:
+    def _get_name_id(self, root: Element) -> str | None:
         """Extract the NameID from a SAML assertion.
 
         Args:
@@ -477,11 +478,6 @@ class SAMLProvider(BaseProvider):
             want_assertions_signed
             if want_assertions_signed is not None
             else self.settings.want_assertions_signed
-        )
-        _ = (
-            want_messages_signed
-            if want_messages_signed is not None
-            else self.settings.want_messages_signed
         )
 
         # Build metadata XML
