@@ -12,7 +12,7 @@ from .store import AuditStore, audit_store as default_store
 
 class AuditLogger:
     """High-level audit logging interface.
-    
+
     Provides convenience methods for logging common audit events
     with proper categorization and metadata.
     """
@@ -66,7 +66,7 @@ class AuditLogger:
             metadata=metadata or {},
             timestamp=datetime.utcnow(),
         )
-        
+
         return await self.store.store_event(event)
 
     def log_event_sync(
@@ -102,7 +102,7 @@ class AuditLogger:
         **kwargs: Any,
     ):
         """Async context manager that automatically logs duration.
-        
+
         Usage:
             async with logger.timed_operation(
                 EventCategory.DATA_ACCESS,
@@ -112,7 +112,7 @@ class AuditLogger:
             ) as ctx:
                 # Do work
                 ctx["metadata"]["log_count"] = 150
-        
+
         The duration_ms will be automatically added to metadata.
         """
         start = time.perf_counter()
@@ -120,7 +120,7 @@ class AuditLogger:
             "metadata": kwargs.pop("metadata", None) or {},
             "outcome": Outcome.SUCCESS,
         }
-        
+
         try:
             yield context
         except Exception as e:
@@ -130,7 +130,7 @@ class AuditLogger:
         finally:
             duration_ms = (time.perf_counter() - start) * 1000
             context["metadata"]["duration_ms"] = round(duration_ms, 2)
-            
+
             await self.log_event(
                 category,
                 event_type,
@@ -154,7 +154,7 @@ class AuditLogger:
             "metadata": kwargs.pop("metadata", None) or {},
             "outcome": Outcome.SUCCESS,
         }
-        
+
         try:
             yield context
         except Exception as e:
@@ -164,7 +164,7 @@ class AuditLogger:
         finally:
             duration_ms = (time.perf_counter() - start) * 1000
             context["metadata"]["duration_ms"] = round(duration_ms, 2)
-            
+
             self.log_event_sync(
                 category,
                 event_type,
@@ -407,7 +407,7 @@ class AuditLogger:
         metadata: dict[str, Any] = {"service": service, "log_count": log_count}
         if duration_ms:
             metadata["duration_ms"] = duration_ms
-        
+
         return await self.log_event(
             EventCategory.DATA_ACCESS,
             EventType.LOGS_ACCESSED,
@@ -583,7 +583,7 @@ class AuditLogger:
         }
         if processing_time_ms:
             metadata["processing_time_ms"] = processing_time_ms
-        
+
         return await self.log_event(
             EventCategory.WEBHOOK,
             EventType.WEBHOOK_PROCESSED,

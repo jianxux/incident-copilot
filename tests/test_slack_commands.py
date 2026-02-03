@@ -1,4 +1,5 @@
 """Tests for Slack slash commands."""
+
 import hashlib
 import hmac
 import time
@@ -47,11 +48,16 @@ class TestSignatureVerification:
         timestamp = str(int(time.time()))
         body = b"token=test"
         sig_base = f"v0:{timestamp}:{body.decode()}"
-        sig = "v0=" + hmac.new(secret.encode(), sig_base.encode(), hashlib.sha256).hexdigest()
+        sig = (
+            "v0="
+            + hmac.new(secret.encode(), sig_base.encode(), hashlib.sha256).hexdigest()
+        )
         assert verify_slack_signature(body, timestamp, sig, secret)
 
     def test_invalid_signature(self):
-        assert not verify_slack_signature(b"test", str(int(time.time())), "v0=invalid", "secret")
+        assert not verify_slack_signature(
+            b"test", str(int(time.time())), "v0=invalid", "secret"
+        )
 
     def test_no_secret_allows_request(self):
         assert verify_slack_signature(b"test", str(int(time.time())), "any", "")
@@ -60,7 +66,14 @@ class TestSignatureVerification:
 class TestCommandHandler:
     @pytest.fixture
     def ctx(self):
-        return CommandContext(user_id="U123", channel_id="C123", team_id="T123", command="/incident", text="", response_url="https://test")
+        return CommandContext(
+            user_id="U123",
+            channel_id="C123",
+            team_id="T123",
+            command="/incident",
+            text="",
+            response_url="https://test",
+        )
 
     @pytest.mark.asyncio
     async def test_help_command(self, command_handler, ctx):
@@ -94,6 +107,10 @@ class TestSlackCommandsEndpoint:
 
     def test_command_help(self, client):
         form = "token=t&team_id=T&channel_id=C&user_id=U&command=/incident&text=help&response_url=http://test"
-        response = client.post("/slack/commands", content=form, headers={"Content-Type": "application/x-www-form-urlencoded"})
+        response = client.post(
+            "/slack/commands",
+            content=form,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
         assert response.status_code == 200
         assert response.json()["response_type"] == "ephemeral"
