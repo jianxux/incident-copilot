@@ -9,7 +9,7 @@ from typing import Any
 
 import httpx
 import structlog
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ..config import get_settings
 
@@ -19,14 +19,13 @@ logger = structlog.get_logger()
 class JiraIssue(BaseModel):
     """Jira issue model."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     key: str
     id: str
     self_url: str = Field(alias="self")
     summary: str | None = None
     status: str | None = None
-
-    class Config:
-        populate_by_name = True
 
 
 class JiraCreateIssueRequest(BaseModel):
