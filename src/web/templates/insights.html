@@ -1,0 +1,623 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="mb-8">
+    <h1 class="text-2xl font-bold text-white">AI Insights & Pattern Detection</h1>
+    <p class="text-gray-400 mt-1">Discover patterns, anomalies, and AI-powered insights from your incident data</p>
+</div>
+
+<!-- Quick Actions -->
+<div class="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-6">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <span class="text-gray-400 text-sm font-medium">Analysis Period:</span>
+            <div class="flex space-x-2">
+                <button onclick="setDays(7)" id="btn-7d" 
+                        class="period-btn px-4 py-2 rounded-lg text-sm font-medium transition bg-blue-600 text-white">
+                    7 Days
+                </button>
+                <button onclick="setDays(30)" id="btn-30d" 
+                        class="period-btn px-4 py-2 rounded-lg text-sm font-medium transition bg-slate-700 text-gray-300 hover:bg-slate-600">
+                    30 Days
+                </button>
+                <button onclick="setDays(90)" id="btn-90d" 
+                        class="period-btn px-4 py-2 rounded-lg text-sm font-medium transition bg-slate-700 text-gray-300 hover:bg-slate-600">
+                    90 Days
+                </button>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="runAnalysis()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center">
+                <i class="fas fa-brain mr-2"></i>Run Analysis
+            </button>
+            <button onclick="generateDigest()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center">
+                <i class="fas fa-file-alt mr-2"></i>Generate Digest
+            </button>
+            <button onclick="refreshData()" class="text-gray-400 hover:text-white transition">
+                <i class="fas fa-sync-alt mr-2"></i>Refresh
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+    <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 card-hover transition-all duration-200">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-400 text-sm font-medium">Total Insights</p>
+                <p class="text-3xl font-bold text-white mt-1" id="stat-total-insights">--</p>
+            </div>
+            <div class="bg-blue-500/20 p-3 rounded-lg">
+                <i class="fas fa-lightbulb text-blue-400 text-xl"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 card-hover transition-all duration-200">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-400 text-sm font-medium">Critical</p>
+                <p class="text-3xl font-bold text-red-400 mt-1" id="stat-critical">--</p>
+            </div>
+            <div class="bg-red-500/20 p-3 rounded-lg">
+                <i class="fas fa-exclamation-circle text-red-400 text-xl"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 card-hover transition-all duration-200">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-400 text-sm font-medium">Patterns</p>
+                <p class="text-3xl font-bold text-cyan-400 mt-1" id="stat-patterns">--</p>
+            </div>
+            <div class="bg-cyan-500/20 p-3 rounded-lg">
+                <i class="fas fa-chart-line text-cyan-400 text-xl"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 card-hover transition-all duration-200">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-400 text-sm font-medium">Anomalies</p>
+                <p class="text-3xl font-bold text-orange-400 mt-1" id="stat-anomalies">--</p>
+            </div>
+            <div class="bg-orange-500/20 p-3 rounded-lg">
+                <i class="fas fa-bolt text-orange-400 text-xl"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 card-hover transition-all duration-200">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-400 text-sm font-medium">Dependencies</p>
+                <p class="text-3xl font-bold text-purple-400 mt-1" id="stat-dependencies">--</p>
+            </div>
+            <div class="bg-purple-500/20 p-3 rounded-lg">
+                <i class="fas fa-project-diagram text-purple-400 text-xl"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    
+    <!-- Recent Insights -->
+    <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-white flex items-center">
+                <i class="fas fa-lightbulb mr-3 text-yellow-400"></i>
+                Recent Insights
+            </h3>
+            <span class="text-xs text-gray-500" id="insights-count">Loading...</span>
+        </div>
+        <div class="p-4 max-h-96 overflow-y-auto" id="insights-list">
+            <div class="flex items-center justify-center py-8 text-gray-500">
+                <i class="fas fa-spinner fa-spin mr-2"></i>Loading insights...
+            </div>
+        </div>
+    </div>
+    
+    <!-- Detected Patterns -->
+    <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-white flex items-center">
+                <i class="fas fa-chart-line mr-3 text-cyan-400"></i>
+                Detected Patterns
+            </h3>
+            <span class="text-xs text-gray-500" id="patterns-count">Loading...</span>
+        </div>
+        <div class="p-4 max-h-96 overflow-y-auto" id="patterns-list">
+            <div class="flex items-center justify-center py-8 text-gray-500">
+                <i class="fas fa-spinner fa-spin mr-2"></i>Loading patterns...
+            </div>
+        </div>
+    </div>
+    
+    <!-- Anomalies -->
+    <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-white flex items-center">
+                <i class="fas fa-bolt mr-3 text-orange-400"></i>
+                Detected Anomalies
+            </h3>
+            <span class="text-xs text-gray-500" id="anomalies-count">Loading...</span>
+        </div>
+        <div class="p-4 max-h-96 overflow-y-auto" id="anomalies-list">
+            <div class="flex items-center justify-center py-8 text-gray-500">
+                <i class="fas fa-spinner fa-spin mr-2"></i>Loading anomalies...
+            </div>
+        </div>
+    </div>
+    
+    <!-- Service Dependencies -->
+    <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-white flex items-center">
+                <i class="fas fa-project-diagram mr-3 text-purple-400"></i>
+                Service Dependencies
+            </h3>
+            <span class="text-xs text-gray-500" id="dependencies-count">Loading...</span>
+        </div>
+        <div class="p-4 max-h-96 overflow-y-auto" id="dependencies-list">
+            <div class="flex items-center justify-center py-8 text-gray-500">
+                <i class="fas fa-spinner fa-spin mr-2"></i>Loading dependencies...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Latest Digest Section -->
+<div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden mb-8">
+    <div class="px-6 py-4 border-b border-slate-700">
+        <h3 class="text-lg font-semibold text-white flex items-center">
+            <i class="fas fa-file-alt mr-3 text-green-400"></i>
+            Latest Digest
+        </h3>
+    </div>
+    <div class="p-6" id="digest-content">
+        <div class="flex items-center justify-center py-8 text-gray-500">
+            <i class="fas fa-spinner fa-spin mr-2"></i>Loading digest...
+        </div>
+    </div>
+</div>
+
+<!-- Analysis Results Modal -->
+<div id="analysis-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center">
+    <div class="bg-slate-800 rounded-xl border border-slate-700 w-full max-w-2xl max-h-[80vh] overflow-y-auto m-4">
+        <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between sticky top-0 bg-slate-800">
+            <h3 class="text-lg font-semibold text-white">Analysis Results</h3>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-white">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="p-6" id="analysis-results">
+            <!-- Results will be populated here -->
+        </div>
+    </div>
+</div>
+
+<script>
+let currentDays = 7;
+
+function setDays(days) {
+    currentDays = days;
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.classList.remove('bg-blue-600', 'text-white');
+        btn.classList.add('bg-slate-700', 'text-gray-300');
+    });
+    document.getElementById(`btn-${days}d`).classList.remove('bg-slate-700', 'text-gray-300');
+    document.getElementById(`btn-${days}d`).classList.add('bg-blue-600', 'text-white');
+    refreshData();
+}
+
+async function refreshData() {
+    await Promise.all([
+        loadSummary(),
+        loadInsights(),
+        loadPatterns(),
+        loadAnomalies(),
+        loadDependencies(),
+        loadDigest()
+    ]);
+}
+
+async function loadSummary() {
+    try {
+        const response = await fetch(`/api/insights/summary?days=${currentDays}`);
+        const data = await response.json();
+        
+        document.getElementById('stat-total-insights').textContent = data.total_insights || 0;
+        document.getElementById('stat-critical').textContent = data.critical_count || 0;
+    } catch (error) {
+        console.error('Failed to load summary:', error);
+    }
+}
+
+async function loadInsights() {
+    const container = document.getElementById('insights-list');
+    const countEl = document.getElementById('insights-count');
+    
+    try {
+        const response = await fetch(`/api/insights?limit=10`);
+        const data = await response.json();
+        
+        countEl.textContent = `${data.total} total`;
+        
+        if (data.insights.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-lightbulb text-4xl mb-3 opacity-30"></i>
+                    <p>No insights yet. Run an analysis to generate insights.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = data.insights.map(insight => `
+            <div class="bg-slate-700/50 rounded-lg p-4 mb-3 border border-slate-600">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center mb-2">
+                            <span class="px-2 py-1 rounded text-xs font-medium ${getSeverityClass(insight.severity)}">
+                                ${insight.severity.toUpperCase()}
+                            </span>
+                            <span class="text-xs text-gray-500 ml-2">${insight.insight_type}</span>
+                        </div>
+                        <h4 class="text-white font-medium mb-1">${escapeHtml(insight.title)}</h4>
+                        <p class="text-gray-400 text-sm">${escapeHtml(insight.description)}</p>
+                        ${insight.recommendations.length ? `
+                            <div class="mt-2">
+                                <p class="text-xs text-gray-500 mb-1">Recommendations:</p>
+                                <ul class="text-sm text-gray-400 list-disc list-inside">
+                                    ${insight.recommendations.slice(0, 2).map(r => `<li>${escapeHtml(r)}</li>`).join('')}
+                                </ul>
+                            </div>
+                        ` : ''}
+                    </div>
+                    ${!insight.is_acknowledged ? `
+                        <button onclick="acknowledgeInsight('${insight.insight_id}')" 
+                                class="ml-3 text-gray-400 hover:text-green-400 transition" title="Acknowledge">
+                            <i class="fas fa-check-circle"></i>
+                        </button>
+                    ` : '<span class="ml-3 text-green-400"><i class="fas fa-check-circle"></i></span>'}
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        container.innerHTML = `<div class="text-red-400 text-center py-4">Failed to load insights</div>`;
+    }
+}
+
+async function loadPatterns() {
+    const container = document.getElementById('patterns-list');
+    const countEl = document.getElementById('patterns-count');
+    
+    try {
+        const response = await fetch(`/api/insights/patterns?limit=10`);
+        const data = await response.json();
+        
+        countEl.textContent = `${data.total} total`;
+        document.getElementById('stat-patterns').textContent = data.total || 0;
+        
+        if (data.patterns.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-chart-line text-4xl mb-3 opacity-30"></i>
+                    <p>No recurring patterns detected yet.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = data.patterns.map(pattern => `
+            <div class="bg-slate-700/50 rounded-lg p-4 mb-3 border border-slate-600">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-cyan-400 font-medium">${escapeHtml(pattern.service_name)}</span>
+                    <span class="bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded text-xs">
+                        ${pattern.incident_count} occurrences
+                    </span>
+                </div>
+                <p class="text-white text-sm mb-2">${escapeHtml(pattern.title_pattern)}</p>
+                ${pattern.avg_time_between_hours ? `
+                    <p class="text-gray-500 text-xs">
+                        <i class="fas fa-clock mr-1"></i>
+                        Avg. ${pattern.avg_time_between_hours.toFixed(1)} hours between incidents
+                    </p>
+                ` : ''}
+                ${pattern.suggested_action ? `
+                    <p class="text-gray-400 text-xs mt-2 italic">${escapeHtml(pattern.suggested_action)}</p>
+                ` : ''}
+            </div>
+        `).join('');
+    } catch (error) {
+        container.innerHTML = `<div class="text-red-400 text-center py-4">Failed to load patterns</div>`;
+    }
+}
+
+async function loadAnomalies() {
+    const container = document.getElementById('anomalies-list');
+    const countEl = document.getElementById('anomalies-count');
+    
+    try {
+        const response = await fetch(`/api/insights/anomalies?limit=10`);
+        const data = await response.json();
+        
+        countEl.textContent = `${data.total} total`;
+        document.getElementById('stat-anomalies').textContent = data.total || 0;
+        
+        if (data.anomalies.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-bolt text-4xl mb-3 opacity-30"></i>
+                    <p>No anomalies detected.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = data.anomalies.map(anomaly => `
+            <div class="bg-slate-700/50 rounded-lg p-4 mb-3 border border-slate-600">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="px-2 py-1 rounded text-xs font-medium ${getSeverityClass(anomaly.severity)}">
+                        ${anomaly.anomaly_type.toUpperCase()}
+                    </span>
+                    <span class="text-gray-500 text-xs">${formatDate(anomaly.detected_at)}</span>
+                </div>
+                <p class="text-white text-sm mb-2">${escapeHtml(anomaly.description)}</p>
+                ${anomaly.affected_services.length ? `
+                    <div class="flex flex-wrap gap-1">
+                        ${anomaly.affected_services.map(s => `
+                            <span class="bg-slate-600 text-gray-300 px-2 py-0.5 rounded text-xs">${escapeHtml(s)}</span>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+    } catch (error) {
+        container.innerHTML = `<div class="text-red-400 text-center py-4">Failed to load anomalies</div>`;
+    }
+}
+
+async function loadDependencies() {
+    const container = document.getElementById('dependencies-list');
+    const countEl = document.getElementById('dependencies-count');
+    
+    try {
+        const response = await fetch(`/api/insights/dependencies`);
+        const data = await response.json();
+        
+        countEl.textContent = `${data.total} total`;
+        document.getElementById('stat-dependencies').textContent = data.total || 0;
+        
+        if (data.dependencies.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-project-diagram text-4xl mb-3 opacity-30"></i>
+                    <p>No service dependencies detected yet.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = data.dependencies.map(dep => `
+            <div class="bg-slate-700/50 rounded-lg p-4 mb-3 border border-slate-600">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <span class="text-purple-400 font-medium">${escapeHtml(dep.source_service)}</span>
+                        <i class="fas fa-arrow-right mx-2 text-gray-500"></i>
+                        <span class="text-purple-400 font-medium">${escapeHtml(dep.target_service)}</span>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-gray-400">${dep.co_occurrence_count} co-occurrences</div>
+                        <div class="w-24 bg-slate-600 rounded-full h-2 mt-1">
+                            <div class="bg-purple-500 h-2 rounded-full" style="width: ${dep.correlation_strength * 100}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        container.innerHTML = `<div class="text-red-400 text-center py-4">Failed to load dependencies</div>`;
+    }
+}
+
+async function loadDigest() {
+    const container = document.getElementById('digest-content');
+    
+    try {
+        const response = await fetch(`/api/insights/digest?period=weekly`);
+        const data = await response.json();
+        
+        if (!data) {
+            container.innerHTML = `
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-file-alt text-4xl mb-3 opacity-30"></i>
+                    <p>No digest available. Click "Generate Digest" to create one.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h4 class="text-gray-400 text-sm font-medium mb-3">Executive Summary</h4>
+                    <p class="text-white">${escapeHtml(data.executive_summary || 'No AI summary available.')}</p>
+                    
+                    ${data.key_findings && data.key_findings.length ? `
+                        <h4 class="text-gray-400 text-sm font-medium mt-4 mb-2">Key Findings</h4>
+                        <ul class="text-gray-300 text-sm space-y-1">
+                            ${data.key_findings.map(f => `<li class="flex items-start"><i class="fas fa-check text-green-400 mr-2 mt-1"></i>${escapeHtml(f)}</li>`).join('')}
+                        </ul>
+                    ` : ''}
+                    
+                    ${data.recommendations && data.recommendations.length ? `
+                        <h4 class="text-gray-400 text-sm font-medium mt-4 mb-2">Recommendations</h4>
+                        <ul class="text-gray-300 text-sm space-y-1">
+                            ${data.recommendations.map(r => `<li class="flex items-start"><i class="fas fa-arrow-right text-blue-400 mr-2 mt-1"></i>${escapeHtml(r)}</li>`).join('')}
+                        </ul>
+                    ` : ''}
+                </div>
+                <div>
+                    <h4 class="text-gray-400 text-sm font-medium mb-3">Period Statistics</h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-slate-700/50 p-3 rounded-lg">
+                            <p class="text-gray-500 text-xs">Total Incidents</p>
+                            <p class="text-xl font-bold text-white">${data.total_incidents}</p>
+                        </div>
+                        <div class="bg-slate-700/50 p-3 rounded-lg">
+                            <p class="text-gray-500 text-xs">Resolved</p>
+                            <p class="text-xl font-bold text-green-400">${data.resolved_incidents}</p>
+                        </div>
+                        <div class="bg-slate-700/50 p-3 rounded-lg">
+                            <p class="text-gray-500 text-xs">Avg MTTR</p>
+                            <p class="text-xl font-bold text-cyan-400">${data.avg_mttr_minutes ? data.avg_mttr_minutes.toFixed(1) + ' min' : 'N/A'}</p>
+                        </div>
+                        <div class="bg-slate-700/50 p-3 rounded-lg">
+                            <p class="text-gray-500 text-xs">Critical</p>
+                            <p class="text-xl font-bold text-red-400">${data.critical_count}</p>
+                        </div>
+                    </div>
+                    
+                    ${data.risk_assessment ? `
+                        <h4 class="text-gray-400 text-sm font-medium mt-4 mb-2">Risk Assessment</h4>
+                        <p class="text-gray-300 text-sm bg-slate-700/50 p-3 rounded-lg">${escapeHtml(data.risk_assessment)}</p>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        container.innerHTML = `<div class="text-red-400 text-center py-4">Failed to load digest</div>`;
+    }
+}
+
+async function runAnalysis() {
+    const modal = document.getElementById('analysis-modal');
+    const results = document.getElementById('analysis-results');
+    
+    modal.classList.remove('hidden');
+    results.innerHTML = `
+        <div class="flex items-center justify-center py-8 text-gray-400">
+            <i class="fas fa-spinner fa-spin mr-2 text-xl"></i>
+            <span>Running analysis...</span>
+        </div>
+    `;
+    
+    try {
+        const response = await fetch(`/api/insights/analyze?days=${currentDays}`, { method: 'POST' });
+        const data = await response.json();
+        
+        results.innerHTML = `
+            <div class="space-y-4">
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-slate-700/50 p-4 rounded-lg text-center">
+                        <p class="text-3xl font-bold text-white">${data.incidents_analyzed}</p>
+                        <p class="text-gray-400 text-sm">Incidents Analyzed</p>
+                    </div>
+                    <div class="bg-slate-700/50 p-4 rounded-lg text-center">
+                        <p class="text-3xl font-bold text-cyan-400">${data.patterns_found}</p>
+                        <p class="text-gray-400 text-sm">Patterns Found</p>
+                    </div>
+                    <div class="bg-slate-700/50 p-4 rounded-lg text-center">
+                        <p class="text-3xl font-bold text-orange-400">${data.anomalies_found}</p>
+                        <p class="text-gray-400 text-sm">Anomalies Detected</p>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <p class="text-gray-400 text-sm">
+                        Analysis completed in ${data.duration_ms}ms
+                    </p>
+                    <p class="text-green-400 text-sm mt-1">
+                        <i class="fas fa-check-circle mr-1"></i>
+                        ${data.insights_generated} new insights generated
+                    </p>
+                </div>
+                ${data.errors && data.errors.length ? `
+                    <div class="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                        <p class="text-red-400 text-sm font-medium mb-1">Errors:</p>
+                        <ul class="text-red-300 text-xs">
+                            ${data.errors.map(e => `<li>${escapeHtml(e)}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+        
+        // Refresh the main data
+        refreshData();
+    } catch (error) {
+        results.innerHTML = `
+            <div class="text-center text-red-400 py-8">
+                <i class="fas fa-exclamation-circle text-4xl mb-3"></i>
+                <p>Analysis failed. Please try again.</p>
+            </div>
+        `;
+    }
+}
+
+async function generateDigest() {
+    const container = document.getElementById('digest-content');
+    container.innerHTML = `
+        <div class="flex items-center justify-center py-8 text-gray-400">
+            <i class="fas fa-spinner fa-spin mr-2"></i>Generating digest...
+        </div>
+    `;
+    
+    try {
+        await fetch(`/api/insights/digest/generate?period=weekly`, { method: 'POST' });
+        await loadDigest();
+    } catch (error) {
+        container.innerHTML = `<div class="text-red-400 text-center py-4">Failed to generate digest</div>`;
+    }
+}
+
+async function acknowledgeInsight(insightId) {
+    try {
+        await fetch(`/api/insights/${insightId}/acknowledge`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ acknowledged_by: 'dashboard-user' })
+        });
+        await loadInsights();
+    } catch (error) {
+        console.error('Failed to acknowledge insight:', error);
+    }
+}
+
+function closeModal() {
+    document.getElementById('analysis-modal').classList.add('hidden');
+}
+
+function getSeverityClass(severity) {
+    const classes = {
+        critical: 'bg-red-500/20 text-red-300',
+        high: 'bg-orange-500/20 text-orange-300',
+        medium: 'bg-yellow-500/20 text-yellow-300',
+        low: 'bg-blue-500/20 text-blue-300',
+        info: 'bg-gray-500/20 text-gray-300'
+    };
+    return classes[severity] || classes.info;
+}
+
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Initial load
+document.addEventListener('DOMContentLoaded', refreshData);
+</script>
+{% endblock %}
