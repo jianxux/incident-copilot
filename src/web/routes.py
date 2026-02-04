@@ -671,7 +671,7 @@ async def insights_page(request: Request):
 
 @router.get("/analytics", response_class=HTMLResponse)
 async def analytics_page(request: Request):
-    """Analytics and MTTR dashboard."""
+    """Analytics dashboard showing MTTR and incident metrics."""
     return templates.TemplateResponse(
         "analytics.html",
         {
