@@ -1,0 +1,81 @@
+# Incident Copilot - Terraform Variables Example
+# Copy this file to terraform.tfvars and customize for your environment
+
+# =============================================================================
+# General Configuration
+# =============================================================================
+project_name = "incident-copilot"
+environment  = "dev"  # Options: dev, staging, prod
+aws_region   = "us-west-2"
+
+# =============================================================================
+# VPC Configuration
+# =============================================================================
+vpc_cidr             = "10.0.0.0/16"
+az_count             = 3
+enable_nat_gateway   = true
+single_nat_gateway   = true   # Set to false for prod (HA)
+enable_vpc_endpoints = true
+enable_flow_logs     = true
+
+# =============================================================================
+# ECS Configuration
+# =============================================================================
+# Container image (update with your ECR repository)
+container_image = "123456789012.dkr.ecr.us-west-2.amazonaws.com/incident-copilot:latest"
+container_port  = 8000
+
+# Task sizing
+task_cpu    = 512   # Options: 256, 512, 1024, 2048, 4096
+task_memory = 1024  # Options depend on CPU, see AWS docs
+
+# Scaling configuration
+desired_count      = 2
+enable_autoscaling = true
+min_capacity       = 1
+max_capacity       = 10
+cpu_target_value   = 70
+
+# SSL/TLS (optional - set to null for HTTP only)
+ssl_certificate_arn = null  # "arn:aws:acm:us-west-2:123456789012:certificate/xxx"
+
+# Logging and monitoring
+log_retention_days        = 30
+enable_container_insights = true
+enable_execute_command    = false  # Enable for debugging
+
+# =============================================================================
+# RDS Configuration
+# =============================================================================
+database_name            = "incident_copilot"
+db_instance_class        = "db.t3.medium"  # Options: db.t3.micro, db.t3.small, db.t3.medium, etc.
+db_allocated_storage     = 20
+db_max_allocated_storage = 100
+db_engine_version        = "15.4"
+db_multi_az              = false  # Set to true for prod
+db_backup_retention_period = 7
+db_performance_insights  = true
+db_monitoring_interval   = 60
+
+# =============================================================================
+# Redis Configuration
+# =============================================================================
+redis_node_type          = "cache.t3.micro"  # Options: cache.t3.micro, cache.t3.small, etc.
+redis_num_cache_nodes    = 2
+redis_engine_version     = "7.0"
+redis_multi_az           = true
+redis_transit_encryption = true
+redis_at_rest_encryption = true
+redis_snapshot_retention = 7
+
+# =============================================================================
+# Production Recommendations
+# =============================================================================
+# For production environments, consider:
+# - single_nat_gateway = false (high availability)
+# - task_cpu = 1024, task_memory = 2048 (more resources)
+# - db_instance_class = "db.r6g.large" or higher
+# - db_multi_az = true
+# - redis_node_type = "cache.r6g.large" or higher
+# - Set a valid ssl_certificate_arn
+# - enable_execute_command = false (security)
