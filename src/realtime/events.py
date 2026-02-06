@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EventType(str, Enum):
@@ -65,10 +65,7 @@ class RealtimeEvent(BaseModel):
     actor_id: str | None = Field(default=None, description="User who triggered the event")
     actor_name: str | None = Field(default=None, description="Display name of actor")
 
-    class Config:
-        """Pydantic configuration."""
-
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 # --- Payload Models ---

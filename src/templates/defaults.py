@@ -1,5 +1,7 @@
 """Built-in incident response templates."""
 
+from __future__ import annotations
+
 import structlog
 
 from .models import IncidentTemplate, TemplateCategory, TemplateStep

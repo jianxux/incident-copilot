@@ -101,6 +101,7 @@ class TestEventModels:
                 "status": {"old": "open", "new": "acknowledged"},
                 "severity": {"old": "high", "new": "critical"},
             },
+            updated_fields=["status", "severity"],
         )
 
         assert "status" in payload.changes
@@ -598,7 +599,8 @@ class TestBroadcaster:
         )
 
         assert count == 2
-        event = mock_manager.broadcast_to_incident.call_args[0][1]
+        # call_args[0] is positional args: (tenant_id, incident_id, event)
+        event = mock_manager.broadcast_to_incident.call_args[0][2]
         assert event.type == "timeline.event"
 
     @pytest.mark.asyncio
@@ -628,7 +630,8 @@ class TestBroadcaster:
         )
 
         assert count == 2
-        event = mock_manager.broadcast_to_incident.call_args[0][1]
+        # call_args[0] is positional args: (tenant_id, incident_id, event)
+        event = mock_manager.broadcast_to_incident.call_args[0][2]
         assert event.type == "user.typing"
 
     @pytest.mark.asyncio

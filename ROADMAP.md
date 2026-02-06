@@ -66,16 +66,24 @@ All core features complete. The platform supports multi-tenant SaaS deployment w
 | Custom integrations | 📋 Planned | Webhook + plugin system |
 | On-premise deployment | 📋 Planned | Air-gapped environments |
 
-## Phase 6: Growth & Scale (Planned) 📋
+## Phase 6: Growth & Scale (In Progress) 🔄
 
-| Feature | Priority | Description |
-|---------|----------|-------------|
-| Incident timeline UI | High | Visual incident progression in dashboard |
-| Mobile app | Medium | On-call notifications + context |
-| AI insights | Medium | Pattern detection across incidents |
-| Multi-region deployment | Medium | Global edge deployment |
-| Custom integration SDK | Low | Build your own integrations |
-| White-label | Low | Enterprise branding options |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| AI insights | ✅ Done | Pattern detection across incidents (PR #25) |
+| Scheduled reports | ✅ Done | Automated report generation |
+| Real-time WebSockets | ✅ Done | Live incident updates, room-based channels |
+| Service dependencies | ✅ Done | Blast radius, cycle detection, risk scoring |
+| Incident templates | ✅ Done | Auto-suggest, 10+ built-in defaults |
+| Team performance | ✅ Done | MTTR/MTTA, workload Gini, burnout indicators |
+| Escalation rules | ✅ Done | Multi-step policies, conditions, actions |
+| Maintenance windows | ✅ Done | Alert suppression, recurring schedules |
+| Incident costs | ✅ Done | Revenue impact, SLA penalties, ROI analysis |
+| Status page | ✅ Done | Atlassian Statuspage integration |
+| Mobile app | 📋 Planned | On-call notifications + context |
+| Multi-region deployment | 📋 Planned | Global edge deployment |
+| Custom integration SDK | 📋 Planned | Build your own integrations |
+| White-label | 📋 Planned | Enterprise branding options |
 
 ---
 
@@ -143,7 +151,7 @@ All core features complete. The platform supports multi-tenant SaaS deployment w
 12. PR #12: GitLab Integration
 13. PR #13: Enterprise Features (SSO, Audit, Postmortem, Splunk, ServiceNow)
 
-## PRs Open (Feb 2-3 Nightly Build)
+## PRs Open (Feb 2-5 Nightly Builds)
 
 14. PR #18: On-Call Roster Integration (+1,188 lines)
 15. PR #19: API Rate Limiting (+2,473 lines)
@@ -152,6 +160,15 @@ All core features complete. The platform supports multi-tenant SaaS deployment w
 18. PR #22: Slack Slash Commands (+306 lines)
 19. PR #23: Alert Correlation Engine (+1,205 lines)
 20. PR #24: Email Notifications (+38 tests)
+21. `feature/nightly-build-feb5-11pm`: Feb 5 Nightly Build (+18,065 lines)
+    - Real-time WebSockets
+    - Service Dependencies
+    - Incident Templates
+    - Team Performance Dashboard
+    - Escalation Rules Engine
+    - Maintenance Windows
+    - Incident Cost Tracking
+    - Status Page Integration
 
 ---
 
@@ -168,4 +185,4 @@ Building something you'd use? Have feature requests? Open an issue or reach out!
 
 ---
 
-*Last updated: 2026-02-02*
+*Last updated: 2026-02-05*
