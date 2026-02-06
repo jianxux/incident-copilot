@@ -1,7 +1,5 @@
 """API routes for AI Insights and Pattern Detection."""
 
-from datetime import datetime
-
 import structlog
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
@@ -68,7 +66,9 @@ class AcknowledgeRequest(BaseModel):
 
 @router.get("", response_model=InsightsListResponse)
 async def list_insights(
-    insight_type: InsightType | None = Query(None, description="Filter by insight type"),
+    insight_type: InsightType | None = Query(
+        None, description="Filter by insight type"
+    ),
     severity: Severity | None = Query(None, description="Filter by severity"),
     service: str | None = Query(None, description="Filter by service name"),
     limit: int = Query(50, ge=1, le=200, description="Maximum insights to return"),
@@ -126,9 +126,7 @@ async def list_patterns(
     """
     logger.info("api_list_patterns", service=service, limit=limit)
 
-    patterns = await insights_service.get_patterns(
-        service_name=service, limit=limit
-    )
+    patterns = await insights_service.get_patterns(service_name=service, limit=limit)
 
     return PatternsListResponse(total=len(patterns), patterns=patterns)
 
@@ -165,9 +163,7 @@ async def list_dependencies(
     """
     logger.info("api_list_dependencies", service=service)
 
-    dependencies = await insights_service.get_service_dependencies(
-        service_name=service
-    )
+    dependencies = await insights_service.get_service_dependencies(service_name=service)
 
     return DependenciesListResponse(total=len(dependencies), dependencies=dependencies)
 
@@ -177,12 +173,8 @@ async def get_digest(
     period: DigestPeriod = Query(
         DigestPeriod.WEEKLY, description="Digest period (daily, weekly, monthly)"
     ),
-    generate: bool = Query(
-        False, description="Generate new digest if none exists"
-    ),
-    include_ai: bool = Query(
-        True, description="Include AI-generated summary"
-    ),
+    generate: bool = Query(False, description="Generate new digest if none exists"),
+    include_ai: bool = Query(True, description="Include AI-generated summary"),
 ):
     """
     Get the latest incident digest.
@@ -190,7 +182,9 @@ async def get_digest(
     Returns a comprehensive digest including statistics, patterns,
     anomalies, and AI-generated insights.
     """
-    logger.info("api_get_digest", period=period, generate=generate, include_ai=include_ai)
+    logger.info(
+        "api_get_digest", period=period, generate=generate, include_ai=include_ai
+    )
 
     # Try to get existing digest
     digest = await insights_service.get_latest_digest(period=period.value)
@@ -209,9 +203,7 @@ async def generate_digest(
     period: DigestPeriod = Query(
         DigestPeriod.WEEKLY, description="Digest period (daily, weekly, monthly)"
     ),
-    include_ai: bool = Query(
-        True, description="Include AI-generated summary"
-    ),
+    include_ai: bool = Query(True, description="Include AI-generated summary"),
 ):
     """
     Generate a new incident digest.
@@ -229,7 +221,9 @@ async def generate_digest(
 
 @router.post("/analyze", response_model=AnalysisResult)
 async def trigger_analysis(
-    service: str | None = Query(None, description="Service to analyze (all if not specified)"),
+    service: str | None = Query(
+        None, description="Service to analyze (all if not specified)"
+    ),
     days: int = Query(30, ge=1, le=365, description="Days of data to analyze"),
     include_patterns: bool = Query(True, description="Detect patterns"),
     include_anomalies: bool = Query(True, description="Detect anomalies"),

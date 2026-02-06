@@ -3,25 +3,25 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
 
-class PluginType(str, Enum):
+class PluginType(StrEnum):
     WEBHOOK = "webhook"
     ENRICHMENT = "enrichment"
     FILTER = "filter"
 
 
-class PluginStatus(str, Enum):
+class PluginStatus(StrEnum):
     ACTIVE = "active"
     DISABLED = "disabled"
     ERROR = "error"
 
 
-class PluginEvent(str, Enum):
+class PluginEvent(StrEnum):
     INCIDENT_TRIGGERED = "incident.triggered"
     INCIDENT_RESOLVED = "incident.resolved"
     INCIDENT_UPDATED = "incident.updated"

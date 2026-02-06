@@ -1,0 +1,111 @@
+# Example terraform.tfvars for incident-copilot AWS infrastructure
+# Copy this file to terraform.tfvars and customize for your environment
+
+################################################################################
+# General Configuration
+################################################################################
+
+project_name = "incident-copilot"
+environment  = "prod"
+aws_region   = "us-west-2"
+
+################################################################################
+# VPC Configuration
+################################################################################
+
+vpc_cidr           = "10.0.0.0/16"
+availability_zones = ["us-west-2a", "us-west-2b", "us-west-2c"]
+
+# Subnet CIDRs
+public_subnet_cidrs   = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+private_subnet_cidrs  = ["10.0.11.0/24", "10.0.12.0/24", "10.0.13.0/24"]
+database_subnet_cidrs = ["10.0.21.0/24", "10.0.22.0/24", "10.0.23.0/24"]
+
+# NAT Gateway (set single_nat_gateway = false for production HA)
+enable_nat_gateway = true
+single_nat_gateway = true # Set to false for production (one NAT per AZ)
+
+################################################################################
+# ECS Configuration
+################################################################################
+
+# Task sizing (adjust based on workload)
+ecs_task_cpu    = 512   # 0.5 vCPU
+ecs_task_memory = 1024  # 1 GB
+
+# Scaling configuration
+ecs_desired_count = 2
+ecs_min_count     = 1
+ecs_max_count     = 10
+
+# Container configuration
+container_port    = 8000
+container_image   = "123456789012.dkr.ecr.us-west-2.amazonaws.com/incident-copilot:latest"
+health_check_path = "/health"
+
+################################################################################
+# RDS Configuration
+################################################################################
+
+# Instance configuration
+db_instance_class        = "db.t3.medium"
+db_allocated_storage     = 20
+db_max_allocated_storage = 100
+
+# Database settings
+db_name           = "incident_copilot"
+db_username       = "postgres"
+db_engine_version = "16.1"
+
+# High availability (set to true for production)
+db_multi_az = true
+
+# Backup configuration
+db_backup_retention_period = 7
+
+# Protection (set to true for production)
+db_deletion_protection = true
+db_skip_final_snapshot = false
+
+################################################################################
+# ElastiCache Redis Configuration
+################################################################################
+
+redis_node_type        = "cache.t3.medium"
+redis_num_cache_nodes  = 2
+redis_engine_version   = "7.1"
+redis_port             = 6379
+redis_parameter_family = "redis7"
+
+# Security (enable for production)
+redis_automatic_failover = true
+redis_at_rest_encryption = true
+redis_transit_encryption = true
+
+################################################################################
+# ALB Configuration
+################################################################################
+
+# For HTTPS, provide SSL certificate ARN from ACM
+# alb_ssl_certificate_arn = "arn:aws:acm:us-west-2:123456789012:certificate/12345678-1234-1234-1234-123456789012"
+alb_ssl_certificate_arn = ""
+
+# Set to true for internal-only access
+alb_internal = false
+
+################################################################################
+# Logging & Monitoring
+################################################################################
+
+log_retention_days        = 30
+enable_container_insights = true
+
+################################################################################
+# Additional Tags
+################################################################################
+
+additional_tags = {
+  Team        = "platform"
+  CostCenter  = "engineering"
+  Application = "incident-copilot"
+}

@@ -7,7 +7,7 @@ Commands for validating configuration, testing integrations, and managing the se
 import asyncio
 import sys
 from collections.abc import Callable
-from enum import Enum
+from enum import StrEnum
 
 import typer
 from rich import print as rprint
@@ -25,7 +25,7 @@ app = typer.Typer(
 console = Console()
 
 
-class CheckStatus(str, Enum):
+class CheckStatus(StrEnum):
     """Status of a configuration check."""
 
     OK = "ok"

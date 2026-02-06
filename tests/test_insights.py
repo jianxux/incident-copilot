@@ -9,7 +9,6 @@ from src.analytics.models import IncidentMetrics
 from src.insights import (
     AnomalyDetector,
     AnomalyType,
-    DigestPeriod,
     IncidentAnalyzer,
     Insight,
     InsightsService,
@@ -18,7 +17,6 @@ from src.insights import (
     PatternDetector,
     RecurringPattern,
     Severity,
-    TimeBasedPattern,
 )
 from src.main import app
 
@@ -56,7 +54,9 @@ def sample_incidents():
 
     # Create incidents for cascade detection (within 15 minutes)
     base_time = now - timedelta(days=5)
-    for j, service in enumerate(["api-gateway", "user-service", "order-service", "payment-service"]):
+    for j, service in enumerate(
+        ["api-gateway", "user-service", "order-service", "payment-service"]
+    ):
         incidents.append(
             IncidentMetrics(
                 incident_id=f"cascade-{j}",
@@ -73,7 +73,9 @@ def sample_incidents():
             IncidentMetrics(
                 incident_id=f"varied-{k}",
                 triggered_at=now.replace(hour=hour) - timedelta(days=k),
-                resolved_at=now.replace(hour=hour) - timedelta(days=k) + timedelta(minutes=45),
+                resolved_at=now.replace(hour=hour)
+                - timedelta(days=k)
+                + timedelta(minutes=45),
                 service_name=f"service-{k % 3}",
                 severity=["low", "medium", "high"][k % 3],
             )
@@ -112,9 +114,7 @@ class TestPatternDetector:
         """Test detection of severity trends."""
         detector = PatternDetector()
 
-        trend = await detector.detect_severity_trends(
-            sample_incidents, period_days=30
-        )
+        trend = await detector.detect_severity_trends(sample_incidents, period_days=30)
 
         if trend:
             assert trend.trend_direction in ("increasing", "decreasing", "stable")

@@ -1,12 +1,12 @@
 """Data models for Incident Copilot."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     """Incident severity levels."""
 
     CRITICAL = "critical"
@@ -16,7 +16,7 @@ class Severity(str, Enum):
     INFO = "info"
 
 
-class AlertSource(str, Enum):
+class AlertSource(StrEnum):
     """Alert source systems."""
 
     PAGERDUTY = "pagerduty"
