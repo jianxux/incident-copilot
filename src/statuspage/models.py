@@ -7,7 +7,7 @@ following Atlassian Statuspage API conventions.
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ComponentStatus(str, Enum):
@@ -72,8 +72,7 @@ class StatusComponent(BaseModel):
         None, description="Mapped internal service name"
     )
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class StatusUpdate(BaseModel):
@@ -95,8 +94,7 @@ class StatusUpdate(BaseModel):
         False, description="Whether this was auto-generated"
     )
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class StatusIncident(BaseModel):
@@ -139,8 +137,7 @@ class StatusIncident(BaseModel):
         False, description="Whether manual messaging override is enabled"
     )
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class StatusPage(BaseModel):
@@ -168,8 +165,7 @@ class StatusPage(BaseModel):
     # Components on this page
     components: list[StatusComponent] = Field(default_factory=list)
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ComponentMapping(BaseModel):
