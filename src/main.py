@@ -17,6 +17,7 @@ from .api import (
     runbooks_router,
     webhooks_router,
 )
+from .costs.routes import router as costs_router
 from .realtime import connection_manager, realtime_router
 from .api.audit import router as audit_router
 from .api.health import set_app_start_time
@@ -108,6 +109,7 @@ def create_app() -> FastAPI:
     app.include_router(postmortem_router)
     app.include_router(audit_router)
     app.include_router(ratelimit_router)
+    app.include_router(costs_router)
     app.include_router(landing_router)
     app.include_router(web_router)
     app.include_router(realtime_router)
