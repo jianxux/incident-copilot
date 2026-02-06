@@ -577,7 +577,7 @@ class TestRateLimitMiddleware:
                     response = client.get("/api/test")
                     assert (
                         response.status_code == 200
-                    ), f"Request {i+1} failed unexpectedly"
+                    ), f"Request {i + 1} failed unexpectedly"
 
                 # 4th request should be rate limited
                 response = client.get("/api/test")
