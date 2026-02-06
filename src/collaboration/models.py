@@ -1,13 +1,13 @@
 """Data models for incident collaboration."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class IncidentStatus(str, Enum):
+class IncidentStatus(StrEnum):
     """Incident status levels."""
 
     INVESTIGATING = "investigating"
@@ -16,7 +16,7 @@ class IncidentStatus(str, Enum):
     RESOLVED = "resolved"
 
 
-class ActivityType(str, Enum):
+class ActivityType(StrEnum):
     """Types of activity events."""
 
     COMMENT_ADDED = "comment_added"
@@ -32,7 +32,7 @@ class ActivityType(str, Enum):
     ASSIGNMENT = "assignment"
 
 
-class WarRoomType(str, Enum):
+class WarRoomType(StrEnum):
     """Types of war room links."""
 
     ZOOM = "zoom"
