@@ -21,8 +21,8 @@ from .models import (
     InsightSummary,
     InsightType,
     RecurringPattern,
-    Severity,
     ServiceDependencyMap,
+    Severity,
     TimeBasedPattern,
 )
 from .store import insights_store
