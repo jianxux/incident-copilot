@@ -17,6 +17,7 @@ from .api import (
     runbooks_router,
     webhooks_router,
 )
+from .realtime import connection_manager, realtime_router
 from .api.audit import router as audit_router
 from .api.health import set_app_start_time
 from .audit.middleware import AuditMiddleware
@@ -109,6 +110,7 @@ def create_app() -> FastAPI:
     app.include_router(ratelimit_router)
     app.include_router(landing_router)
     app.include_router(web_router)
+    app.include_router(realtime_router)
 
     # Mount static files for web dashboard
     static_dir = Path(__file__).parent / "web" / "static"
@@ -135,9 +137,16 @@ def create_app() -> FastAPI:
                 "audit_store_initialized", retention_days=settings.audit_retention_days
             )
 
+        # Start WebSocket connection manager
+        await connection_manager.start()
+        logger.info("realtime_connection_manager_started")
+
     @app.on_event("shutdown")
     async def shutdown():
         logger.info("incident_copilot_shutting_down")
+        # Stop WebSocket connection manager
+        await connection_manager.stop()
+        logger.info("realtime_connection_manager_stopped")
 
     @app.get("/")
     async def root():
