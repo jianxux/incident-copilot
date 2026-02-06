@@ -655,3 +655,27 @@ async def demo_page(request: Request):
             "page_title": "Demo Mode",
         },
     )
+
+
+@router.get("/insights", response_class=HTMLResponse)
+async def insights_page(request: Request):
+    """AI Insights and Pattern Detection dashboard."""
+    return templates.TemplateResponse(
+        "insights.html",
+        {
+            "request": request,
+            "page_title": "Insights",
+        },
+    )
+
+
+@router.get("/analytics", response_class=HTMLResponse)
+async def analytics_page(request: Request):
+    """Analytics dashboard showing MTTR and incident metrics."""
+    return templates.TemplateResponse(
+        "analytics.html",
+        {
+            "request": request,
+            "page_title": "Analytics",
+        },
+    )
