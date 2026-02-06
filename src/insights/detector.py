@@ -125,9 +125,7 @@ class PatternDetector:
             if count >= self.min_occurrences and count > expected * 2:
                 confidence = min(1.0, count / (expected * 3))
                 affected = [
-                    i.incident_id
-                    for i in incidents
-                    if i.triggered_at.hour == hour
+                    i.incident_id for i in incidents if i.triggered_at.hour == hour
                 ]
 
                 pattern = TimeBasedPattern(
@@ -158,9 +156,7 @@ class PatternDetector:
             if count >= self.min_occurrences and count > expected * 1.5:
                 confidence = min(1.0, count / (expected * 2))
                 affected = [
-                    i.incident_id
-                    for i in incidents
-                    if i.triggered_at.weekday() == day
+                    i.incident_id for i in incidents if i.triggered_at.weekday() == day
                 ]
 
                 pattern = TimeBasedPattern(
@@ -225,7 +221,9 @@ class PatternDetector:
         first_avg = avg_severity(first_half)
         second_avg = avg_severity(second_half)
 
-        change_percent = ((second_avg - first_avg) / first_avg) * 100 if first_avg else 0
+        change_percent = (
+            ((second_avg - first_avg) / first_avg) * 100 if first_avg else 0
+        )
 
         if change_percent > 10:
             trend = "increasing"
@@ -276,7 +274,7 @@ class PatternDetector:
 
     def _generate_pattern_id(self, base: str) -> str:
         """Generate a deterministic pattern ID."""
-        return hashlib.md5(base.encode()).hexdigest()[:12]
+        return hashlib.md5(base.encode(), usedforsecurity=False).hexdigest()[:12]
 
     def _suggest_action_for_pattern(self, pattern: str, count: int) -> str:
         """Generate action suggestion based on pattern."""

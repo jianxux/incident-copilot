@@ -78,9 +78,7 @@ class AnomalyDetector:
                             set(i.service_name for i in current_window_incidents)
                         )
                         spike = IncidentSpike(
-                            spike_id=self._generate_id(
-                                f"spike_{current_window_start}"
-                            ),
+                            spike_id=self._generate_id(f"spike_{current_window_start}"),
                             detected_at=current_window_start,
                             window_hours=window_hours,
                             incident_count=len(current_window_incidents),
@@ -101,9 +99,7 @@ class AnomalyDetector:
         if current_window_incidents:
             spike_factor = len(current_window_incidents) / baseline
             if spike_factor >= self.spike_threshold:
-                services = list(
-                    set(i.service_name for i in current_window_incidents)
-                )
+                services = list(set(i.service_name for i in current_window_incidents))
                 spike = IncidentSpike(
                     spike_id=self._generate_id(f"spike_{current_window_start}"),
                     detected_at=current_window_start,
@@ -217,12 +213,18 @@ class AnomalyDetector:
             # Calculate how unusual this time is
             hour_frequency = hour_counts[hour] / total if total else 0
 
-            if is_unusual_hour or (is_weekend and hour_frequency < self.unusual_hour_threshold):
+            if is_unusual_hour or (
+                is_weekend and hour_frequency < self.unusual_hour_threshold
+            ):
                 severity = Severity.INFO
                 if is_unusual_hour and is_weekend:
                     severity = Severity.MEDIUM
 
-                anomaly_type = AnomalyType.UNUSUAL_HOUR if is_unusual_hour else AnomalyType.UNUSUAL_DAY
+                anomaly_type = (
+                    AnomalyType.UNUSUAL_HOUR
+                    if is_unusual_hour
+                    else AnomalyType.UNUSUAL_DAY
+                )
 
                 time_str = incident.triggered_at.strftime("%H:%M")
                 day_str = incident.triggered_at.strftime("%A")
@@ -280,7 +282,11 @@ class AnomalyDetector:
                 anomaly_id=cascade.cascade_id,
                 anomaly_type=AnomalyType.CASCADING,
                 detected_at=cascade.detected_at,
-                severity=Severity.CRITICAL if len(cascade.affected_services) > 4 else Severity.HIGH,
+                severity=(
+                    Severity.CRITICAL
+                    if len(cascade.affected_services) > 4
+                    else Severity.HIGH
+                ),
                 description=f"Cascading failure: {len(cascade.affected_services)} services affected "
                 f"starting from {cascade.trigger_service}",
                 affected_services=cascade.affected_services,
@@ -299,4 +305,4 @@ class AnomalyDetector:
 
     def _generate_id(self, base: str) -> str:
         """Generate a deterministic ID."""
-        return hashlib.md5(base.encode()).hexdigest()[:12]
+        return hashlib.md5(base.encode(), usedforsecurity=False).hexdigest()[:12]
