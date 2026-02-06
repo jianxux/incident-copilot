@@ -66,6 +66,303 @@ class ConfigResponse(BaseModel):
     message: str
 
 
+# --- Config Endpoints (MUST be before parameterized routes) ---
+
+
+@router.get("/config", response_model=ConfigResponse)
+async def get_cost_config_endpoint() -> ConfigResponse:
+    """
+    Get the current cost factor configuration.
+
+    Returns hourly rates, revenue factors, SLA factors, and custom factors.
+    """
+    config = get_cost_config()
+    return ConfigResponse(
+        config=config,
+        message="Current cost configuration",
+    )
+
+
+@router.put("/config", response_model=ConfigResponse)
+async def update_cost_config(
+    config: CostFactorConfig,
+) -> ConfigResponse:
+    """
+    Update the cost factor configuration.
+
+    Allows customizing hourly rates, revenue factors, and SLA penalties.
+    Changes take effect immediately for new calculations.
+    """
+    set_cost_config(config)
+
+    logger.info(
+        "cost_config_updated",
+        config_id=config.config_id,
+        name=config.name,
+    )
+
+    return ConfigResponse(
+        config=config,
+        message="Cost configuration updated successfully",
+    )
+
+
+@router.post("/config/reset", response_model=ConfigResponse)
+async def reset_cost_config() -> ConfigResponse:
+    """
+    Reset cost configuration to defaults.
+
+    Restores all hourly rates, revenue factors, and SLA penalties
+    to their default values.
+    """
+    from .factors import DefaultCostFactors
+
+    config = DefaultCostFactors.get_default_config()
+    set_cost_config(config)
+
+    logger.info("cost_config_reset_to_defaults")
+
+    return ConfigResponse(
+        config=config,
+        message="Cost configuration reset to defaults",
+    )
+
+
+# --- Report Endpoints ---
+
+
+@router.post("/reports/generate", response_model=ReportResponse)
+async def generate_cost_report(
+    request: GenerateReportRequest,
+) -> ReportResponse:
+    """
+    Generate a cost report for a specified period.
+
+    Supports daily, weekly, monthly, quarterly, and yearly reports.
+    Optionally filter by services or teams.
+
+    Example request:
+    ```json
+    {
+        "period": "monthly",
+        "services": ["payments-api", "checkout-service"],
+        "include_roi": true,
+        "compare_previous": true,
+        "top_incidents_limit": 10
+    }
+    ```
+    """
+    generator = CostReportGenerator()
+
+    try:
+        report = await generator.generate_report(request)
+
+        logger.info(
+            "cost_report_generated",
+            report_id=report.report_id,
+            period=request.period.value,
+            total_cost=str(report.total_cost),
+        )
+
+        return ReportResponse(
+            report=report,
+            message="Cost report generated successfully",
+        )
+
+    except Exception as e:
+        logger.error(
+            "report_generation_failed",
+            period=request.period.value,
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate report: {str(e)}",
+        )
+
+
+@router.get("/reports/summary")
+async def get_cost_summary(
+    period: Annotated[
+        ReportPeriod,
+        Query(description="Report period"),
+    ] = ReportPeriod.MONTHLY,
+) -> dict:
+    """
+    Get a quick cost summary for the specified period.
+
+    Returns key metrics without full report details.
+    """
+    generator = CostReportGenerator()
+    request = GenerateReportRequest(
+        period=period,
+        include_roi=False,
+        compare_previous=True,
+        top_incidents_limit=5,
+    )
+
+    report = await generator.generate_report(request)
+
+    return {
+        "period": period.value,
+        "period_start": report.period_start.isoformat(),
+        "period_end": report.period_end.isoformat(),
+        "total_incidents": report.total_incidents,
+        "total_cost": float(report.total_cost),
+        "average_cost": float(report.average_cost_per_incident),
+        "cost_change_percent": report.cost_change_percent,
+        "top_services": [
+            {"name": s.service_name, "cost": float(s.total_cost)}
+            for s in report.service_summaries[:5]
+        ],
+        "cost_by_severity": {
+            k: float(v) for k, v in report.cost_by_severity.items()
+        },
+    }
+
+
+@router.get("/reports/export/csv")
+async def export_current_report_csv(
+    period: Annotated[
+        ReportPeriod,
+        Query(description="Report period"),
+    ] = ReportPeriod.MONTHLY,
+) -> PlainTextResponse:
+    """
+    Export the current period's cost report as CSV.
+
+    Returns raw CSV content for download.
+    """
+    generator = CostReportGenerator()
+    request = GenerateReportRequest(period=period)
+    report = await generator.generate_report(request)
+
+    content = await generator.export_to_csv(report)
+
+    return PlainTextResponse(
+        content=content,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename=cost-report-{period.value}.csv"
+        },
+    )
+
+
+@router.get("/reports/finance-export")
+async def export_for_finance(
+    period: Annotated[
+        ReportPeriod,
+        Query(description="Report period"),
+    ] = ReportPeriod.MONTHLY,
+) -> dict:
+    """
+    Export cost data formatted for finance systems.
+
+    Returns structured data suitable for integration with accounting
+    and financial reporting systems.
+    """
+    generator = CostReportGenerator()
+    request = GenerateReportRequest(period=period, include_roi=True)
+    report = await generator.generate_report(request)
+
+    return await generator.export_for_finance(report)
+
+
+@router.post("/reports/{report_id}/export", response_model=ExportResponse)
+async def export_cost_report(
+    report_id: str,
+    request: ExportReportRequest,
+) -> ExportResponse:
+    """
+    Export a cost report in the specified format.
+
+    Supported formats: csv, json
+    """
+    # For now, regenerate the report (in production, would fetch from storage)
+    generator = CostReportGenerator()
+
+    # Generate a fresh report for export
+    report_request = GenerateReportRequest(
+        period=ReportPeriod.MONTHLY,
+        include_roi=request.include_roi,
+    )
+    report = await generator.generate_report(report_request)
+
+    try:
+        if request.format == "csv":
+            content = await generator.export_to_csv(report)
+        elif request.format == "json":
+            content = await generator.export_to_json(
+                report,
+                include_details=request.include_details,
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported format: {request.format}",
+            )
+
+        return ExportResponse(
+            format=request.format,
+            content=content,
+            report_id=report.report_id,
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to export report: {str(e)}",
+        )
+
+
+# --- ROI Endpoints ---
+
+
+@router.get("/roi/analysis", response_model=ROIAnalysis)
+async def get_roi_analysis(
+    start_date: Annotated[
+        datetime | None,
+        Query(description="Analysis period start"),
+    ] = None,
+    end_date: Annotated[
+        datetime | None,
+        Query(description="Analysis period end"),
+    ] = None,
+    investment_cost: Annotated[
+        float | None,
+        Query(description="Total investment cost for ROI calculation"),
+    ] = None,
+) -> ROIAnalysis:
+    """
+    Get ROI analysis for incident management improvements.
+
+    Calculates savings from reduced MTTR, revenue protection,
+    and overall return on investment.
+    """
+    # Default to last 30 days
+    if not end_date:
+        end_date = datetime.utcnow()
+    if not start_date:
+        from datetime import timedelta
+        start_date = end_date - timedelta(days=30)
+
+    incidents = await cost_store.list(
+        start_date=start_date,
+        end_date=end_date,
+        limit=10000,
+    )
+
+    calculator = CostCalculator()
+    analysis = await calculator.calculate_roi_analysis(
+        incidents=incidents,
+        period_start=start_date,
+        period_end=end_date,
+        investment_cost=Decimal(str(investment_cost)) if investment_cost else None,
+    )
+
+    return analysis
+
+
 # --- Cost Calculation Endpoints ---
 
 
@@ -124,6 +421,61 @@ async def calculate_incident_cost(
             status_code=500,
             detail=f"Failed to calculate cost: {str(e)}",
         )
+
+
+@router.get("", response_model=CostListResponse)
+async def list_incident_costs(
+    start_date: Annotated[
+        datetime | None,
+        Query(description="Filter by start date"),
+    ] = None,
+    end_date: Annotated[
+        datetime | None,
+        Query(description="Filter by end date"),
+    ] = None,
+    service: Annotated[
+        str | None,
+        Query(description="Filter by service name"),
+    ] = None,
+    team: Annotated[
+        str | None,
+        Query(description="Filter by team"),
+    ] = None,
+    severity: Annotated[
+        str | None,
+        Query(description="Filter by severity"),
+    ] = None,
+    finalized: Annotated[
+        bool | None,
+        Query(description="Filter by finalized status"),
+    ] = None,
+    limit: Annotated[
+        int,
+        Query(ge=1, le=500, description="Maximum results to return"),
+    ] = 100,
+) -> CostListResponse:
+    """
+    List incident cost records with optional filters.
+
+    Returns costs sorted by incident start date (most recent first).
+    """
+    costs = await cost_store.list(
+        start_date=start_date,
+        end_date=end_date,
+        service_name=service,
+        team=team,
+        severity=severity,
+        is_finalized=finalized,
+        limit=limit,
+    )
+
+    return CostListResponse(
+        costs=costs,
+        total=len(costs),
+    )
+
+
+# --- Parameterized incident routes (MUST be last) ---
 
 
 @router.get("/{incident_id}", response_model=IncidentCost)
@@ -302,352 +654,3 @@ async def delete_incident_cost(incident_id: str) -> dict:
     logger.info("incident_cost_deleted", incident_id=incident_id)
 
     return {"message": f"Cost record for incident {incident_id} deleted"}
-
-
-@router.get("", response_model=CostListResponse)
-async def list_incident_costs(
-    start_date: Annotated[
-        datetime | None,
-        Query(description="Filter by start date"),
-    ] = None,
-    end_date: Annotated[
-        datetime | None,
-        Query(description="Filter by end date"),
-    ] = None,
-    service: Annotated[
-        str | None,
-        Query(description="Filter by service name"),
-    ] = None,
-    team: Annotated[
-        str | None,
-        Query(description="Filter by team"),
-    ] = None,
-    severity: Annotated[
-        str | None,
-        Query(description="Filter by severity"),
-    ] = None,
-    finalized: Annotated[
-        bool | None,
-        Query(description="Filter by finalized status"),
-    ] = None,
-    limit: Annotated[
-        int,
-        Query(ge=1, le=500, description="Maximum results to return"),
-    ] = 100,
-) -> CostListResponse:
-    """
-    List incident cost records with optional filters.
-
-    Returns costs sorted by incident start date (most recent first).
-    """
-    costs = await cost_store.list(
-        start_date=start_date,
-        end_date=end_date,
-        service_name=service,
-        team=team,
-        severity=severity,
-        is_finalized=finalized,
-        limit=limit,
-    )
-
-    return CostListResponse(
-        costs=costs,
-        total=len(costs),
-    )
-
-
-# --- Report Endpoints ---
-
-
-@router.post("/reports/generate", response_model=ReportResponse)
-async def generate_cost_report(
-    request: GenerateReportRequest,
-) -> ReportResponse:
-    """
-    Generate a cost report for a specified period.
-
-    Supports daily, weekly, monthly, quarterly, and yearly reports.
-    Optionally filter by services or teams.
-
-    Example request:
-    ```json
-    {
-        "period": "monthly",
-        "services": ["payments-api", "checkout-service"],
-        "include_roi": true,
-        "compare_previous": true,
-        "top_incidents_limit": 10
-    }
-    ```
-    """
-    generator = CostReportGenerator()
-
-    try:
-        report = await generator.generate_report(request)
-
-        logger.info(
-            "cost_report_generated",
-            report_id=report.report_id,
-            period=request.period.value,
-            total_cost=str(report.total_cost),
-        )
-
-        return ReportResponse(
-            report=report,
-            message="Cost report generated successfully",
-        )
-
-    except Exception as e:
-        logger.error(
-            "report_generation_failed",
-            period=request.period.value,
-            error=str(e),
-        )
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to generate report: {str(e)}",
-        )
-
-
-@router.get("/reports/summary")
-async def get_cost_summary(
-    period: Annotated[
-        ReportPeriod,
-        Query(description="Report period"),
-    ] = ReportPeriod.MONTHLY,
-) -> dict:
-    """
-    Get a quick cost summary for the specified period.
-
-    Returns key metrics without full report details.
-    """
-    generator = CostReportGenerator()
-    request = GenerateReportRequest(
-        period=period,
-        include_roi=False,
-        compare_previous=True,
-        top_incidents_limit=5,
-    )
-
-    report = await generator.generate_report(request)
-
-    return {
-        "period": period.value,
-        "period_start": report.period_start.isoformat(),
-        "period_end": report.period_end.isoformat(),
-        "total_incidents": report.total_incidents,
-        "total_cost": float(report.total_cost),
-        "average_cost": float(report.average_cost_per_incident),
-        "cost_change_percent": report.cost_change_percent,
-        "top_services": [
-            {"name": s.service_name, "cost": float(s.total_cost)}
-            for s in report.service_summaries[:5]
-        ],
-        "cost_by_severity": {
-            k: float(v) for k, v in report.cost_by_severity.items()
-        },
-    }
-
-
-@router.post("/reports/{report_id}/export", response_model=ExportResponse)
-async def export_cost_report(
-    report_id: str,
-    request: ExportReportRequest,
-) -> ExportResponse:
-    """
-    Export a cost report in the specified format.
-
-    Supported formats: csv, json
-    """
-    # For now, regenerate the report (in production, would fetch from storage)
-    generator = CostReportGenerator()
-
-    # Generate a fresh report for export
-    report_request = GenerateReportRequest(
-        period=ReportPeriod.MONTHLY,
-        include_roi=request.include_roi,
-    )
-    report = await generator.generate_report(report_request)
-
-    try:
-        if request.format == "csv":
-            content = await generator.export_to_csv(report)
-        elif request.format == "json":
-            content = await generator.export_to_json(
-                report,
-                include_details=request.include_details,
-            )
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unsupported format: {request.format}",
-            )
-
-        return ExportResponse(
-            format=request.format,
-            content=content,
-            report_id=report.report_id,
-        )
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to export report: {str(e)}",
-        )
-
-
-@router.get("/reports/export/csv")
-async def export_current_report_csv(
-    period: Annotated[
-        ReportPeriod,
-        Query(description="Report period"),
-    ] = ReportPeriod.MONTHLY,
-) -> PlainTextResponse:
-    """
-    Export the current period's cost report as CSV.
-
-    Returns raw CSV content for download.
-    """
-    generator = CostReportGenerator()
-    request = GenerateReportRequest(period=period)
-    report = await generator.generate_report(request)
-
-    content = await generator.export_to_csv(report)
-
-    return PlainTextResponse(
-        content=content,
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": f"attachment; filename=cost-report-{period.value}.csv"
-        },
-    )
-
-
-@router.get("/reports/finance-export")
-async def export_for_finance(
-    period: Annotated[
-        ReportPeriod,
-        Query(description="Report period"),
-    ] = ReportPeriod.MONTHLY,
-) -> dict:
-    """
-    Export cost data formatted for finance systems.
-
-    Returns structured data suitable for integration with accounting
-    and financial reporting systems.
-    """
-    generator = CostReportGenerator()
-    request = GenerateReportRequest(period=period, include_roi=True)
-    report = await generator.generate_report(request)
-
-    return await generator.export_for_finance(report)
-
-
-# --- ROI Endpoints ---
-
-
-@router.get("/roi/analysis", response_model=ROIAnalysis)
-async def get_roi_analysis(
-    start_date: Annotated[
-        datetime | None,
-        Query(description="Analysis period start"),
-    ] = None,
-    end_date: Annotated[
-        datetime | None,
-        Query(description="Analysis period end"),
-    ] = None,
-    investment_cost: Annotated[
-        float | None,
-        Query(description="Total investment cost for ROI calculation"),
-    ] = None,
-) -> ROIAnalysis:
-    """
-    Get ROI analysis for incident management improvements.
-
-    Calculates savings from reduced MTTR, revenue protection,
-    and overall return on investment.
-    """
-    # Default to last 30 days
-    if not end_date:
-        end_date = datetime.utcnow()
-    if not start_date:
-        from datetime import timedelta
-        start_date = end_date - timedelta(days=30)
-
-    incidents = await cost_store.list(
-        start_date=start_date,
-        end_date=end_date,
-        limit=10000,
-    )
-
-    calculator = CostCalculator()
-    analysis = await calculator.calculate_roi_analysis(
-        incidents=incidents,
-        period_start=start_date,
-        period_end=end_date,
-        investment_cost=Decimal(str(investment_cost)) if investment_cost else None,
-    )
-
-    return analysis
-
-
-# --- Config Endpoints ---
-
-
-@router.get("/config", response_model=ConfigResponse)
-async def get_cost_config_endpoint() -> ConfigResponse:
-    """
-    Get the current cost factor configuration.
-
-    Returns hourly rates, revenue factors, SLA factors, and custom factors.
-    """
-    config = get_cost_config()
-    return ConfigResponse(
-        config=config,
-        message="Current cost configuration",
-    )
-
-
-@router.put("/config", response_model=ConfigResponse)
-async def update_cost_config(
-    config: CostFactorConfig,
-) -> ConfigResponse:
-    """
-    Update the cost factor configuration.
-
-    Allows customizing hourly rates, revenue factors, and SLA penalties.
-    Changes take effect immediately for new calculations.
-    """
-    set_cost_config(config)
-
-    logger.info(
-        "cost_config_updated",
-        config_id=config.config_id,
-        name=config.name,
-    )
-
-    return ConfigResponse(
-        config=config,
-        message="Cost configuration updated successfully",
-    )
-
-
-@router.post("/config/reset", response_model=ConfigResponse)
-async def reset_cost_config() -> ConfigResponse:
-    """
-    Reset cost configuration to defaults.
-
-    Restores all hourly rates, revenue factors, and SLA penalties
-    to their default values.
-    """
-    from .factors import DefaultCostFactors
-
-    config = DefaultCostFactors.get_default_config()
-    set_cost_config(config)
-
-    logger.info("cost_config_reset_to_defaults")
-
-    return ConfigResponse(
-        config=config,
-        message="Cost configuration reset to defaults",
-    )

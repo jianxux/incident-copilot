@@ -251,9 +251,12 @@ DEFAULT_TEMPLATES: dict[TemplateCategory, list[UpdateTemplate]] = {
 
 # Issue type suggestions based on alert characteristics
 ISSUE_TYPE_MAP: dict[str, str] = {
+    "error": "increased error rates",
     "error_rate": "increased error rates",
     "latency": "elevated response times",
+    "slow": "elevated response times",
     "availability": "availability issues",
+    "unavailable": "availability issues",
     "timeout": "timeout errors",
     "5xx": "server errors",
     "4xx": "request failures",

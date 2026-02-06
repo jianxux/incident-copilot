@@ -536,13 +536,13 @@ class StatusPageAutomation:
             resolved_at=resolved_at or datetime.utcnow(),
         )
 
+        # Clean up manual override before syncing (so it happens regardless of result)
+        self.clear_manual_override(incident_id)
+
         result = await self.sync.sync_incident_resolved(
             internal_incident,
             resolution_message=resolution_message,
         )
-
-        # Clean up manual override
-        self.clear_manual_override(incident_id)
 
         return result
 
