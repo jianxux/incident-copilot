@@ -1,6 +1,7 @@
 """API routes for Incident Copilot."""
 
 from ..postmortem import postmortem_router
+from ..statuspage import statuspage_router
 from .analytics import router as analytics_router
 from .correlation import router as correlation_router
 from .demo import router as demo_router
@@ -20,4 +21,5 @@ __all__ = [
     "postmortem_router",
     "plugins_router",
     "insights_router",
+    "statuspage_router",
 ]

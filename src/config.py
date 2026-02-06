@@ -415,6 +415,32 @@ class Settings(BaseSettings):
         description="Paths to exclude from audit logging",
     )
 
+    # Statuspage (Atlassian)
+    statuspage_api_key: str = Field(
+        default="",
+        description="Atlassian Statuspage API key (OAuth token)",
+    )
+    statuspage_default_page_id: str = Field(
+        default="",
+        description="Default status page ID for operations",
+    )
+    statuspage_component_mappings: dict[str, str] = Field(
+        default_factory=dict,
+        description="Service to Statuspage component ID mapping (e.g., payments-api=abc123)",
+    )
+    statuspage_auto_create: bool = Field(
+        default=True,
+        description="Auto-create status incidents for P1/P2 alerts",
+    )
+    statuspage_auto_resolve: bool = Field(
+        default=True,
+        description="Auto-resolve status incidents when internal incidents resolve",
+    )
+    statuspage_notification_delay_seconds: int = Field(
+        default=60,
+        description="Delay before sending status notifications (for grouping)",
+    )
+
 
 @lru_cache
 def get_settings() -> Settings:
