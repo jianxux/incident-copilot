@@ -183,9 +183,7 @@ class InsightsService:
         all_insights = await self.store.get_all_insights(limit=1000)
 
         # Filter to period
-        period_insights = [
-            i for i in all_insights if i.created_at >= cutoff
-        ]
+        period_insights = [i for i in all_insights if i.created_at >= cutoff]
 
         # Count by severity
         severity_counts = {
@@ -227,9 +225,7 @@ class InsightsService:
         limit: int = 50,
     ) -> list[RecurringPattern]:
         """Get detected patterns."""
-        return await self.store.get_all_patterns(
-            service_name=service_name, limit=limit
-        )
+        return await self.store.get_all_patterns(service_name=service_name, limit=limit)
 
     async def get_anomalies(
         self,
@@ -305,7 +301,9 @@ class InsightsService:
             f"Last seen: {pattern.last_seen.strftime('%Y-%m-%d')}.",
             affected_services=[pattern.service_name],
             affected_incident_ids=pattern.affected_incident_ids,
-            recommendations=[pattern.suggested_action] if pattern.suggested_action else [],
+            recommendations=(
+                [pattern.suggested_action] if pattern.suggested_action else []
+            ),
             confidence=min(1.0, pattern.incident_count / 20),
             metadata={"pattern_id": pattern.pattern_id},
         )
@@ -369,7 +367,7 @@ class InsightsService:
 
     def _generate_id(self, base: str) -> str:
         """Generate a deterministic ID."""
-        return hashlib.md5(base.encode()).hexdigest()[:12]
+        return hashlib.md5(base.encode(), usedforsecurity=False).hexdigest()[:12]
 
 
 # Global service instance
