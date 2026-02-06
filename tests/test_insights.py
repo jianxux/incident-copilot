@@ -9,7 +9,6 @@ from src.analytics.models import IncidentMetrics
 from src.insights import (
     AnomalyDetector,
     AnomalyType,
-    DigestPeriod,
     IncidentAnalyzer,
     Insight,
     InsightsService,
@@ -18,7 +17,6 @@ from src.insights import (
     PatternDetector,
     RecurringPattern,
     Severity,
-    TimeBasedPattern,
 )
 from src.main import app
 

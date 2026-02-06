@@ -1,314 +1,432 @@
-# 🔧 Troubleshooting Guide
+# Troubleshooting Guide
 
-This guide covers common issues and their solutions when using Incident Copilot.
+This guide helps you diagnose and fix common issues with Incident Copilot.
+
+## Table of Contents
+
+1. [Quick Diagnostics](#quick-diagnostics)
+2. [Webhook Issues](#webhook-issues)
+3. [Notification Issues](#notification-issues)
+4. [Integration Issues](#integration-issues)
+5. [Performance Issues](#performance-issues)
+6. [Database Issues](#database-issues)
+7. [Debug Mode](#debug-mode)
+8. [Getting Help](#getting-help)
 
 ---
 
-## 🚨 Quick Diagnostics
+## Quick Diagnostics
 
-### Health Check Endpoints
+Start here to quickly identify the issue.
 
-Check system health before investigating specific issues:
+### Health Check
 
 ```bash
-# Basic health check
+# Check overall health
 curl http://localhost:8000/health
 
-# Full health check (checks all integrations)
-curl 'http://localhost:8000/health?full=true'
-
-# Webhook health
-curl http://localhost:8000/webhooks/health
-
-# Kubernetes probes
-curl http://localhost:8000/health/live    # Liveness
-curl http://localhost:8000/health/ready   # Readiness
-```
-
-### CLI Validation
-
-Use the CLI for quick diagnostics:
-
-```bash
-# Validate all configuration
-incident-copilot validate -v
-
-# Test specific integration
-incident-copilot test-integration github
-
-# Test all integrations
-incident-copilot test-all
-```
-
-See [CLI Reference](./cli.md) for more commands.
-
-### Expected Health Response
-
-```json
+# Expected response
 {
   "status": "healthy",
-  "timestamp": "2025-01-15T10:00:00Z",
-  "version": "0.1.0",
-  "uptime_seconds": 3600.5,
-  "components": [
-    {"name": "redis", "status": "healthy", "latency_ms": 1.2},
-    {"name": "database", "status": "healthy", "latency_ms": 5.4},
-    {"name": "pagerduty", "status": "healthy", "latency_ms": 150.3},
-    {"name": "github", "status": "healthy", "latency_ms": 89.2},
-    {"name": "datadog", "status": "healthy", "latency_ms": 120.5},
-    {"name": "slack", "status": "healthy", "latency_ms": 95.1},
-    {"name": "anthropic", "status": "healthy", "latency_ms": 200.8}
-  ]
+  "checks": {
+    "api": "ok",
+    "database": "ok",
+    "redis": "ok"
+  }
 }
 ```
 
+### View Logs
+
+```bash
+# Docker
+docker-compose logs -f incident-copilot
+
+# Local development
+uvicorn src.main:app --reload --log-level debug
+```
+
+### Common Quick Fixes
+
+| Symptom | Quick Fix |
+|---------|-----------|
+| No context cards | Check webhook URL is correct and publicly accessible |
+| 401 errors | Verify API keys are correct, no extra whitespace |
+| Timeout errors | Check network connectivity to external APIs |
+| Missing data in cards | Some integrations may be misconfigured |
+
 ---
 
-## 🔔 Webhook Issues
+## Webhook Issues
 
 ### Webhooks Not Arriving
 
 **Symptoms:**
-- No context cards generated
-- No webhook logs in application
+- No context cards appearing
+- No webhook entries in logs
+- PagerDuty/Opsgenie shows successful delivery, but nothing happens
 
-**Checklist:**
+**Diagnosis:**
 
-| Check | Command/Action |
-|-------|----------------|
-| Server accessible | `curl -I https://your-domain.com/webhooks/health` |
-| SSL certificate valid | `openssl s_client -connect your-domain.com:443` |
-| Webhook URL correct | Verify in PagerDuty/Opsgenie |
-| Firewall allows traffic | Check cloud provider security groups |
-| Webhook enabled | Check integration status in alert source |
+1. **Check if URL is accessible:**
+   ```bash
+   curl -I https://your-domain.com/webhooks/pagerduty
+   # Should return 200 OK or 405 Method Not Allowed (GET not allowed)
+   ```
+
+2. **Check SSL certificate:**
+   ```bash
+   openssl s_client -connect your-domain.com:443 -servername your-domain.com
+   ```
+
+3. **Check firewall/ingress rules:**
+   - PagerDuty IPs: See [PagerDuty IP Safelist](https://support.pagerduty.com/docs/safelist-ips)
+   - Opsgenie IPs: See [Opsgenie IP Addresses](https://support.atlassian.com/opsgenie/docs/opsgenie-ip-addresses/)
 
 **Solutions:**
 
-1. **For local testing:** Use ngrok to expose local server
-   ```bash
-   ngrok http 8000
-   # Use the HTTPS URL: https://abc123.ngrok.io
-   ```
+| Issue | Solution |
+|-------|----------|
+| URL not accessible | Ensure HTTPS is configured, check DNS |
+| SSL errors | Fix certificate chain, ensure cert is valid |
+| Firewall blocking | Add alerting provider IPs to allowlist |
+| Wrong URL | Verify `/webhooks/pagerduty` or `/webhooks/opsgenie` |
 
-2. **Check webhook delivery logs:**
-   - PagerDuty: Integrations → Webhook → Recent Deliveries
-   - Opsgenie: Settings → Integration → Logs
-
-3. **Verify endpoint returns 200:**
-   ```bash
-   curl -X POST https://your-domain.com/webhooks/pagerduty \
-     -H "Content-Type: application/json" \
-     -d '{"test": true}'
-   ```
+---
 
 ### Invalid Signature Errors
 
 **Symptoms:**
-- HTTP 401 responses
-- "Invalid signature" in logs
+- 401 Unauthorized responses in webhook logs
+- "Invalid signature" in application logs
 
-**Checks:**
-```bash
-# Verify secret is set (don't expose the actual value)
-echo ${PAGERDUTY_WEBHOOK_SECRET:+Set}
+**Diagnosis:**
 
-# Check for whitespace
-cat -A .env | grep WEBHOOK_SECRET
-# Should show no trailing spaces or ^M characters
-```
+1. **Check for whitespace in secret:**
+   ```bash
+   # Show hidden characters
+   cat -A .env | grep WEBHOOK_SECRET
+   # Should be a single line without trailing $ or ^M
+   ```
+
+2. **Verify secret matches:**
+   - Go to PagerDuty/Opsgenie integration settings
+   - Compare signing secret with your `.env` value exactly
 
 **Solutions:**
-1. Re-copy the signing secret from PagerDuty/Opsgenie
-2. Ensure no extra whitespace or quotes
-3. Restart the application after changes
+
+```bash
+# Remove any quotes or whitespace
+PAGERDUTY_WEBHOOK_SECRET=abc123def456  # Correct
+PAGERDUTY_WEBHOOK_SECRET="abc123def456"  # Wrong - has quotes
+PAGERDUTY_WEBHOOK_SECRET= abc123def456   # Wrong - leading space
+```
+
+**Tip:** Copy the secret again from the source, paste directly without modification.
 
 ---
 
-## 💬 Notification Issues
-
-### Slack Messages Not Posting
+### Duplicate Webhooks
 
 **Symptoms:**
-- Webhooks received but no Slack messages
-- "channel_not_found" or "not_in_channel" errors
+- Multiple context cards for the same incident
+- Duplicate entries in logs
 
-**Checks:**
+**Causes:**
+- Multiple webhook integrations configured
+- Retry after temporary failure
+
+**Solutions:**
+
+1. Check for duplicate webhook integrations in PagerDuty/Opsgenie
+2. Enable idempotency (built-in deduplication based on incident ID)
+3. Configure alert correlation:
+   ```bash
+   CORRELATION_ENABLED=true
+   CORRELATION_SUPPRESS_DUPLICATES=true
+   ```
+
+---
+
+## Notification Issues
+
+### Context Cards Not Posting to Slack
+
+**Symptoms:**
+- Webhooks received (in logs)
+- No messages in Slack channel
+
+**Diagnosis:**
+
+1. **Test Slack token:**
+   ```bash
+   curl -X POST https://slack.com/api/auth.test \
+     -H "Authorization: Bearer $SLACK_BOT_TOKEN"
+   ```
+   
+   Expected response:
+   ```json
+   {"ok": true, "team": "Your Team", "user": "incident-copilot"}
+   ```
+
+2. **Check bot permissions:**
+   ```bash
+   curl https://slack.com/api/auth.test \
+     -H "Authorization: Bearer $SLACK_BOT_TOKEN" | jq .
+   ```
+
+3. **Test posting a message:**
+   ```bash
+   curl -X POST https://slack.com/api/chat.postMessage \
+     -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"channel": "#incidents", "text": "Test message"}'
+   ```
+
+**Solutions:**
+
+| Error | Solution |
+|-------|----------|
+| `invalid_auth` | Token is wrong or expired - regenerate |
+| `channel_not_found` | Channel name wrong or bot not invited |
+| `not_in_channel` | Invite bot: `/invite @Incident Copilot` |
+| `missing_scope` | Add `chat:write` and `chat:write.public` scopes |
+
+---
+
+### Teams Webhook Failures
+
+**Symptoms:**
+- No messages in Teams channel
+- Errors in logs mentioning Teams
+
+**Diagnosis:**
+
 ```bash
-# Verify bot token
-curl -X POST https://slack.com/api/auth.test \
-  -H "Authorization: Bearer $SLACK_BOT_TOKEN"
-
-# Test posting
-curl -X POST https://slack.com/api/chat.postMessage \
-  -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+# Test webhook directly
+curl -X POST "$TEAMS_WEBHOOK_URL" \
   -H "Content-Type: application/json" \
-  -d '{"channel": "#incidents", "text": "Test"}'
+  -d '{"text": "Test message from Incident Copilot"}'
 ```
 
 **Solutions:**
 
 | Error | Solution |
 |-------|----------|
-| `invalid_auth` | Regenerate bot token |
-| `channel_not_found` | Check channel name/ID |
-| `not_in_channel` | Invite bot: `/invite @Incident Copilot` |
-| `missing_scope` | Add required scopes in Slack app settings |
-
-### Teams Messages Not Posting
-
-**Symptoms:**
-- No messages in Teams channel
-- HTTP errors when posting
-
-**Checks:**
-```bash
-# Test webhook URL
-curl -X POST "$TEAMS_WEBHOOK_URL" \
-  -H "Content-Type: application/json" \
-  -d '{"@type":"MessageCard","text":"Test"}'
-```
-
-**Solutions:**
-1. Verify webhook URL is complete (very long)
-2. Check webhook hasn't been deleted in Teams
-3. Recreate the webhook connector if needed
+| 400 Bad Request | Check JSON payload format |
+| 401 Unauthorized | Webhook URL may have expired - recreate |
+| 404 Not Found | Webhook was deleted - recreate in Teams |
 
 ---
 
-## 🐙 GitHub/GitLab Issues
+## Integration Issues
 
-### No Deployments Shown
-
-**Symptoms:**
-- Context cards missing deployment information
-- "No recent deployments" message
-
-**Checks:**
-```bash
-# Test GitHub API
-curl -H "Authorization: Bearer $GITHUB_TOKEN" \
-  "https://api.github.com/repos/$GITHUB_ORG/service-name/commits?per_page=5"
-
-# Test GitLab API
-curl -H "PRIVATE-TOKEN: $GITLAB_TOKEN" \
-  "https://gitlab.com/api/v4/projects/group%2Fproject/repository/commits?per_page=5"
-```
-
-**Solutions:**
-
-1. **Check service name mapping:**
-   ```bash
-   SERVICE_REPO_MAP='{"alert-service-name": "org/actual-repo"}'
-   ```
-
-2. **Verify token permissions:**
-   - GitHub: `repo` scope for private repos
-   - GitLab: `read_api`, `read_repository` scopes
-
-3. **Check project path (GitLab):**
-   - Must be URL-encoded: `group/subgroup/project` → `group%2Fsubgroup%2Fproject`
-
-### Rate Limit Exceeded
+### Missing GitHub Context
 
 **Symptoms:**
-- HTTP 403 with rate limit message
-- Incomplete data in context cards
+- No recent deployments shown in context card
+- "GitHub: error" in card errors section
 
-**Solutions:**
-1. Use GitHub App instead of PAT (15,000 vs 5,000 req/hour)
-2. Enable caching (built-in)
-3. Check rate limit status:
+**Diagnosis:**
+
+1. **Test GitHub token:**
    ```bash
    curl -H "Authorization: Bearer $GITHUB_TOKEN" \
      https://api.github.com/rate_limit
    ```
 
+2. **Test repository access:**
+   ```bash
+   curl -H "Authorization: Bearer $GITHUB_TOKEN" \
+     https://api.github.com/repos/YOUR_ORG/YOUR_REPO
+   ```
+
+3. **Test commits:**
+   ```bash
+   curl -H "Authorization: Bearer $GITHUB_TOKEN" \
+     "https://api.github.com/repos/YOUR_ORG/YOUR_REPO/commits?per_page=5"
+   ```
+
+**Solutions:**
+
+| Error | Solution |
+|-------|----------|
+| 401 Unauthorized | Token invalid or expired |
+| 404 Not Found | Repository doesn't exist or no access |
+| Wrong repo | Configure `SERVICE_REPO_MAP` |
+| Rate limited | Use GitHub App instead of PAT |
+
+**Service mapping:**
+```bash
+# If service name doesn't match repo name
+SERVICE_REPO_MAP='{"payments-api": "my-org/payment-service"}'
+```
+
 ---
 
-## 📊 Log Provider Issues
-
-### No Logs Found
+### Missing Log Context
 
 **Symptoms:**
-- Context cards show no error logs
-- AI summary unavailable
+- No log analysis in context card
+- No AI summary
+- "Datadog: error" or "CloudWatch: error" message
 
-**Checks by Provider:**
+**Diagnosis:**
 
-**Datadog:**
+#### Datadog
+
 ```bash
+# Validate credentials
+curl -X GET "https://api.datadoghq.com/api/v1/validate" \
+  -H "DD-API-KEY: $DATADOG_API_KEY" \
+  -H "DD-APPLICATION-KEY: $DATADOG_APP_KEY"
+
+# Test log search
 curl -X POST "https://api.datadoghq.com/api/v2/logs/events/search" \
   -H "DD-API-KEY: $DATADOG_API_KEY" \
   -H "DD-APPLICATION-KEY: $DATADOG_APP_KEY" \
-  -d '{"filter":{"query":"service:your-service status:error"}}'
+  -H "Content-Type: application/json" \
+  -d '{
+    "filter": {
+      "query": "service:YOUR_SERVICE status:error",
+      "from": "now-15m",
+      "to": "now"
+    }
+  }'
 ```
 
-**CloudWatch:**
+#### CloudWatch
+
 ```bash
+# Test AWS credentials
+aws sts get-caller-identity
+
+# List log groups
+aws logs describe-log-groups
+
+# Test log query
 aws logs filter-log-events \
-  --log-group-name "/aws/lambda/your-service" \
-  --filter-pattern "ERROR" \
-  --limit 10
+  --log-group-name "/aws/lambda/YOUR_SERVICE" \
+  --filter-pattern "ERROR"
 ```
 
 **Solutions:**
-1. Verify service name matches log tags
-2. Check log provider credentials
-3. Ensure logs exist in the time range
-4. Configure explicit service mapping
 
-### Wrong Log Provider
-
-**Symptoms:**
-- Trying to fetch from Datadog when using CloudWatch
-
-**Solution:**
-```bash
-# Set correct provider
-LOG_PROVIDER=cloudwatch  # or datadog, loki, splunk
-```
+| Issue | Solution |
+|-------|----------|
+| Wrong Datadog site | Set `DATADOG_SITE=datadoghq.eu` for EU |
+| No logs for service | Ensure `service` tag is set correctly in logs |
+| CloudWatch no access | Check IAM policy has `logs:FilterLogEvents` |
+| Wrong log group | Configure `CLOUDWATCH_LOG_GROUP_MAP` |
 
 ---
 
-## 🤖 AI Issues
-
-### AI Summary Unavailable
+### AI Summary Not Appearing
 
 **Symptoms:**
-- "AI summary unavailable" in context cards
-- No analysis section
+- Logs shown but no AI summary
+- "AI: error" in card
 
-**Checks:**
+**Diagnosis:**
+
 ```bash
-# Verify API key format (don't expose full key)
-echo ${ANTHROPIC_API_KEY:0:10}...
+# Check if API key is set
+echo $ANTHROPIC_API_KEY | head -c 20
 
-# Test API access
-curl https://api.anthropic.com/v1/models \
+# Test API directly
+curl https://api.anthropic.com/v1/messages \
   -H "x-api-key: $ANTHROPIC_API_KEY" \
-  -H "anthropic-version: 2023-06-01"
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-3-haiku-20240307",
+    "max_tokens": 100,
+    "messages": [{"role": "user", "content": "Say hello"}]
+  }'
 ```
 
 **Solutions:**
-1. Configure `ANTHROPIC_API_KEY`
-2. Verify key hasn't expired
-3. Check account has API access
-4. Ensure logs are being fetched (AI needs input)
 
-### Slow AI Responses
-
-**Symptoms:**
-- Context cards taking >10 seconds
-- AI section appears last
-
-**Solutions:**
-1. Use faster model: `AI_MODEL=claude-3-haiku-20240307`
-2. Reduce log volume sent to AI
-3. Check Anthropic status page
+| Error | Solution |
+|-------|----------|
+| 401 Unauthorized | API key invalid |
+| 429 Rate limited | Reduce request frequency or upgrade plan |
+| No logs available | AI summary only runs when logs are fetched |
+| Timeout | Increase timeout or use faster model (Haiku) |
 
 ---
 
-## 🗄️ Database Issues
+## Performance Issues
+
+### Slow Context Assembly
+
+**Symptoms:**
+- Context cards take >10 seconds to appear
+- Timeout warnings in logs
+
+**Diagnosis:**
+
+Check which step is slow:
+```bash
+# Look for timing info in logs
+docker-compose logs incident-copilot | grep -E "(elapsed|timeout|slow)"
+```
+
+**Common causes and solutions:**
+
+| Slow Step | Cause | Solution |
+|-----------|-------|----------|
+| GitHub | Rate limited | Use GitHub App, enable caching |
+| Datadog | Large log volume | Narrow time range, filter query |
+| AI Summary | Large log payload | Truncate logs, use Haiku model |
+| Slack | Network latency | Check connectivity |
+
+**Optimization settings:**
+```bash
+# Use faster AI model
+AI_MODEL=claude-3-haiku-20240307
+
+# Enable caching (if using Redis)
+REDIS_URL=redis://localhost:6379/0
+```
+
+---
+
+### High Memory Usage
+
+**Symptoms:**
+- Container being OOM killed
+- Slow response times
+
+**Solutions:**
+
+1. **Increase container memory:**
+   ```yaml
+   # docker-compose.yml
+   services:
+     incident-copilot:
+       deploy:
+         resources:
+           limits:
+             memory: 1G
+   ```
+
+2. **Limit log fetch size:**
+   - Configure log providers to fetch fewer entries
+   - Use more specific log queries
+
+3. **Enable log rotation:**
+   ```yaml
+   logging:
+     driver: "json-file"
+     options:
+       max-size: "10m"
+       max-file: "3"
+   ```
+
+---
+
+## Database Issues
 
 ### Connection Errors
 
@@ -316,163 +434,184 @@ curl https://api.anthropic.com/v1/models \
 - Health check shows database unhealthy
 - "Connection refused" errors
 
-**Checks:**
-```bash
-# PostgreSQL
-psql $DATABASE_URL -c "SELECT 1"
+**Diagnosis:**
 
-# Redis
+```bash
+# Check if database is running
+docker-compose ps postgres
+
+# Test connection
+psql $DATABASE_URL -c "SELECT 1"
+```
+
+**Solutions:**
+
+| Error | Solution |
+|-------|----------|
+| Connection refused | Database not running or wrong host |
+| Authentication failed | Check username/password |
+| Database doesn't exist | Create database: `CREATE DATABASE incident_copilot;` |
+
+---
+
+### Redis Connection Issues
+
+**Symptoms:**
+- Caching not working
+- Rate limiting not working
+
+**Diagnosis:**
+
+```bash
+# Test Redis connection
 redis-cli -u $REDIS_URL ping
 ```
 
 **Solutions:**
-1. Verify database is running
-2. Check connection string format
-3. Verify network connectivity
-4. Check credentials
 
-### Migration Errors
-
-**Symptoms:**
-- Application fails to start
-- "Relation does not exist" errors
-
-**Solutions:**
 ```bash
-# Run migrations
-alembic upgrade head
-
-# Check current version
-alembic current
+# Common fixes
+REDIS_URL=redis://localhost:6379/0  # Ensure correct format
+REDIS_URL=redis://:password@host:6379/0  # With password
 ```
 
 ---
 
-## 📈 Performance Issues
+## Debug Mode
 
-### Slow Context Cards (>10 seconds)
+Enable detailed logging for troubleshooting:
 
-**Symptoms:**
-- Cards taking too long to deliver
-- Timeout errors
-
-**Diagnostic Steps:**
-1. Check health endpoint for slow components
-2. Review timing in card footer
-3. Check external API response times
-
-**Solutions:**
-
-| Slow Component | Solution |
-|----------------|----------|
-| GitHub API | Enable caching, use App |
-| Datadog/CloudWatch | Reduce query scope |
-| AI | Use Haiku model |
-| Network | Check connectivity |
-
-### High Memory Usage
-
-**Symptoms:**
-- OOM errors
-- Container restarts
-
-**Solutions:**
-1. Increase memory limits
-2. Review log volume being processed
-3. Check for memory leaks (report if found)
-
----
-
-## 🐛 Debug Logging
-
-### Enable Debug Mode
+### Enable Debug Logging
 
 ```bash
-# In .env
 DEBUG=true
 LOG_LEVEL=debug
 ```
 
-### View Logs
+### View Detailed Logs
 
 ```bash
 # Docker
-docker-compose logs -f
-
-# Kubernetes
-kubectl logs -f deployment/incident-copilot
+docker-compose logs -f incident-copilot 2>&1 | tee debug.log
 
 # Local
-uvicorn src.main:app --reload --log-level debug
+LOG_LEVEL=debug uvicorn src.main:app --reload
 ```
 
-### Log Format
+### What to Look For
 
 ```
-2025-01-15 10:30:00 INFO  [webhook] Received PagerDuty webhook
-2025-01-15 10:30:00 DEBUG [webhook] Payload: {"event_type": "incident.triggered"...}
-2025-01-15 10:30:01 INFO  [github] Fetching commits for payments-api
-2025-01-15 10:30:02 INFO  [datadog] Fetching logs for payments-api
-2025-01-15 10:30:03 INFO  [ai] Generating summary
-2025-01-15 10:30:05 INFO  [slack] Sending context card
-2025-01-15 10:30:05 INFO  [orchestrator] Context card delivered in 5000ms
+# Successful webhook
+INFO: webhook_received source=pagerduty incident_id=P123
+
+# Successful context assembly
+INFO: context_assembled incident_id=P123 elapsed_ms=2450
+
+# Errors to investigate
+ERROR: github_context_failed error="401 Unauthorized"
+ERROR: slack_send_failed error="channel_not_found"
 ```
 
 ---
 
-## 🆘 Getting Support
+## Getting Help
 
-### Before Contacting Support
+If you're still stuck:
 
-1. ✅ Check this troubleshooting guide
-2. ✅ Review integration-specific docs
-3. ✅ Enable debug logging and collect logs
-4. ✅ Note error messages exactly
+### 1. Collect Information
 
-### Information to Include
+Before asking for help, gather:
 
-When reporting issues, provide:
+- Application logs (last 100 lines around the issue)
+- Configuration (sanitized - remove secrets!)
+- Steps to reproduce
+- Expected vs actual behavior
+
+### 2. Check GitHub Issues
+
+Search existing issues: [GitHub Issues](https://github.com/your-org/incident-copilot/issues)
+
+### 3. Open a New Issue
+
+Include:
+- **Environment**: Docker/K8s/Local, OS, versions
+- **Configuration**: Sanitized `.env` (no secrets)
+- **Logs**: Relevant error messages
+- **Steps**: How to reproduce
+- **Expected**: What should happen
+- **Actual**: What actually happens
+
+### Template
 
 ```markdown
-**Environment:**
-- Deployment: Docker/Kubernetes/Local
+## Environment
+- Deployment: Docker Compose
 - Version: 0.1.0
-- Log provider: Datadog/CloudWatch/etc
+- OS: Ubuntu 22.04
 
-**Issue:**
-- What happened
-- What you expected
-- Steps to reproduce
-
-**Logs:**
-```
-[paste relevant log excerpts]
+## Configuration
+```env
+LOG_PROVIDER=datadog
+NOTIFICATION_PROVIDER=slack
+# (redacted secrets)
 ```
 
-**Configuration:**
-- Integrations configured: PagerDuty, GitHub, Datadog, Slack
-- (Don't include API keys!)
+## Issue
+Context cards are not appearing in Slack.
+
+## Logs
+```
+ERROR: slack_send_failed channel=#incidents error="channel_not_found"
 ```
 
-### Support Channels
+## Steps to Reproduce
+1. Trigger incident in PagerDuty
+2. Wait for context card
+3. Nothing appears
 
-| Channel | Best For |
-|---------|----------|
-| GitHub Issues | Bug reports, feature requests |
-| Documentation | Guides and reference |
-| Email Support | Pro/Enterprise customers |
+## Expected
+Context card should appear in #incidents channel.
+```
 
 ---
 
-## 📚 Related Documentation
+## Quick Reference
 
-- [Getting Started](./getting-started.md) - Initial setup
-- [CLI Reference](./cli.md) - Command line tools
-- [FAQ](./faq.md) - Common questions
-- [Integration Guides](./integrations/) - Per-integration help
-- [Feature Documentation](./features/) - Feature-specific help
-- [Admin Guides](./admin/) - Administrative help
+### Common Error Messages
+
+| Error Message | Likely Cause | Solution |
+|---------------|--------------|----------|
+| `Invalid signature` | Wrong webhook secret | Re-copy secret from source |
+| `channel_not_found` | Wrong channel name or bot not invited | Check channel, invite bot |
+| `invalid_auth` | Bad Slack token | Regenerate token |
+| `401 Unauthorized` (GitHub) | Bad token or expired | Regenerate PAT |
+| `Connection timeout` | Network issue | Check connectivity |
+| `Rate limit exceeded` | Too many API calls | Implement caching, use App |
+
+### Useful Commands
+
+```bash
+# Health check
+curl http://localhost:8000/health
+
+# View logs
+docker-compose logs -f incident-copilot
+
+# Restart after config change
+docker-compose restart
+
+# Test Slack
+curl https://slack.com/api/auth.test -H "Authorization: Bearer $SLACK_BOT_TOKEN"
+
+# Test GitHub
+curl -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/rate_limit
+
+# Test Datadog
+curl "https://api.datadoghq.com/api/v1/validate" \
+  -H "DD-API-KEY: $DATADOG_API_KEY" \
+  -H "DD-APPLICATION-KEY: $DATADOG_APP_KEY"
+```
 
 ---
 
-*Can't find your issue? Open a GitHub issue with debug logs and configuration details.*
+*← [Configuration Reference](./configuration.md) | [Best Practices](./best-practices.md) →*

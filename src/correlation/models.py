@@ -1,13 +1,13 @@
 """Data models for alert correlation."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class CorrelationStrategy(str, Enum):
+class CorrelationStrategy(StrEnum):
     TIME_BASED = "time_based"
     SERVICE_BASED = "service"
     TAG_BASED = "tag"
@@ -15,7 +15,7 @@ class CorrelationStrategy(str, Enum):
     COMPOSITE = "composite"
 
 
-class AlertGroupStatus(str, Enum):
+class AlertGroupStatus(StrEnum):
     ACTIVE = "active"
     STALE = "stale"
     CLOSED = "closed"

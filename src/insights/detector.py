@@ -3,14 +3,12 @@
 import hashlib
 import re
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta
 
 import structlog
 
 from ..analytics.models import IncidentMetrics
 from .models import (
     RecurringPattern,
-    Severity,
     SeverityTrend,
     TimeBasedPattern,
 )

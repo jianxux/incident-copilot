@@ -1,13 +1,13 @@
 """Data models for rate limiting."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class RateLimitScope(str, Enum):
+class RateLimitScope(StrEnum):
     """Scope for rate limiting."""
 
     IP = "ip"  # Per IP address
