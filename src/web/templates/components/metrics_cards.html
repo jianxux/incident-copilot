@@ -1,0 +1,442 @@
+{# 
+  Metrics Cards Component
+  Usage: {% include "components/metrics_cards.html" %}
+  Required context: metrics (dict with mttr, active_incidents, response_time, etc.)
+#}
+
+<div class="metrics-cards-container" id="metrics-cards-container">
+    <style>
+        @keyframes counter-up {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .metric-card-loading {
+            background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        .metric-value-animate {
+            animation: counter-up 0.4s ease-out;
+        }
+        .metric-trend-up { color: #22c55e; }
+        .metric-trend-down { color: #ef4444; }
+        .metric-trend-neutral { color: #64748b; }
+        .metric-card {
+            transition: all 0.3s ease;
+        }
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        .metric-spark {
+            height: 40px;
+        }
+    </style>
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="metrics-grid">
+        {# MTTR (Mean Time To Resolve) #}
+        <div class="metric-card bg-slate-800 rounded-xl p-5 border border-slate-700" id="metric-mttr">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                        <p class="text-gray-400 text-sm font-medium">MTTR</p>
+                        <span class="text-xs text-gray-500" title="Mean Time To Resolve">
+                            <i class="fas fa-info-circle"></i>
+                        </span>
+                    </div>
+                    <div class="flex items-baseline gap-2 mt-2">
+                        <p class="text-3xl font-bold text-white metric-value" data-metric="mttr">
+                            {{ metrics.mttr.value if metrics and metrics.mttr else '--' }}
+                        </p>
+                        <span class="text-gray-400 text-sm">{{ metrics.mttr.unit if metrics and metrics.mttr else 'min' }}</span>
+                    </div>
+                    {# Trend indicator #}
+                    {% if metrics and metrics.mttr and metrics.mttr.trend is defined %}
+                    <div class="flex items-center gap-1 mt-2 text-sm 
+                        {% if metrics.mttr.trend < 0 %}metric-trend-up
+                        {% elif metrics.mttr.trend > 0 %}metric-trend-down
+                        {% else %}metric-trend-neutral{% endif %}">
+                        <i class="fas {% if metrics.mttr.trend < 0 %}fa-arrow-down{% elif metrics.mttr.trend > 0 %}fa-arrow-up{% else %}fa-minus{% endif %}"></i>
+                        <span>{{ metrics.mttr.trend | abs }}% vs last period</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="bg-blue-500/20 p-3 rounded-lg">
+                    <i class="fas fa-clock text-blue-400 text-xl"></i>
+                </div>
+            </div>
+            {# Mini sparkline #}
+            <div class="metric-spark mt-3" id="mttr-spark"></div>
+        </div>
+        
+        {# Active Incidents #}
+        <div class="metric-card bg-slate-800 rounded-xl p-5 border border-slate-700" id="metric-active">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <p class="text-gray-400 text-sm font-medium">Active Incidents</p>
+                    <div class="flex items-baseline gap-2 mt-2">
+                        <p class="text-3xl font-bold metric-value
+                            {% if metrics and metrics.active_incidents and metrics.active_incidents.value > 0 %}text-red-400{% else %}text-green-400{% endif %}" 
+                            data-metric="active_incidents">
+                            {{ metrics.active_incidents.value if metrics and metrics.active_incidents else '0' }}
+                        </p>
+                    </div>
+                    {# Breakdown by severity #}
+                    {% if metrics and metrics.active_incidents and metrics.active_incidents.breakdown %}
+                    <div class="flex items-center gap-3 mt-2 text-xs">
+                        {% if metrics.active_incidents.breakdown.critical %}
+                        <span class="flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                            {{ metrics.active_incidents.breakdown.critical }} critical
+                        </span>
+                        {% endif %}
+                        {% if metrics.active_incidents.breakdown.high %}
+                        <span class="flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-orange-500"></span>
+                            {{ metrics.active_incidents.breakdown.high }} high
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="bg-red-500/20 p-3 rounded-lg">
+                    <i class="fas fa-fire text-red-400 text-xl"></i>
+                </div>
+            </div>
+            <div class="metric-spark mt-3" id="active-spark"></div>
+        </div>
+        
+        {# Average Response Time #}
+        <div class="metric-card bg-slate-800 rounded-xl p-5 border border-slate-700" id="metric-response">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                        <p class="text-gray-400 text-sm font-medium">Avg Response Time</p>
+                    </div>
+                    <div class="flex items-baseline gap-2 mt-2">
+                        <p class="text-3xl font-bold text-white metric-value" data-metric="response_time">
+                            {{ metrics.response_time.value if metrics and metrics.response_time else '--' }}
+                        </p>
+                        <span class="text-gray-400 text-sm">{{ metrics.response_time.unit if metrics and metrics.response_time else 'min' }}</span>
+                    </div>
+                    {% if metrics and metrics.response_time and metrics.response_time.trend is defined %}
+                    <div class="flex items-center gap-1 mt-2 text-sm 
+                        {% if metrics.response_time.trend < 0 %}metric-trend-up
+                        {% elif metrics.response_time.trend > 0 %}metric-trend-down
+                        {% else %}metric-trend-neutral{% endif %}">
+                        <i class="fas {% if metrics.response_time.trend < 0 %}fa-arrow-down{% elif metrics.response_time.trend > 0 %}fa-arrow-up{% else %}fa-minus{% endif %}"></i>
+                        <span>{{ metrics.response_time.trend | abs }}% vs last period</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="bg-yellow-500/20 p-3 rounded-lg">
+                    <i class="fas fa-bolt text-yellow-400 text-xl"></i>
+                </div>
+            </div>
+            <div class="metric-spark mt-3" id="response-spark"></div>
+        </div>
+        
+        {# Incidents Resolved Today #}
+        <div class="metric-card bg-slate-800 rounded-xl p-5 border border-slate-700" id="metric-resolved">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <p class="text-gray-400 text-sm font-medium">Resolved Today</p>
+                    <div class="flex items-baseline gap-2 mt-2">
+                        <p class="text-3xl font-bold text-green-400 metric-value" data-metric="resolved_today">
+                            {{ metrics.resolved_today.value if metrics and metrics.resolved_today else '0' }}
+                        </p>
+                    </div>
+                    {% if metrics and metrics.resolved_today and metrics.resolved_today.success_rate %}
+                    <div class="flex items-center gap-1 mt-2 text-sm text-green-400">
+                        <i class="fas fa-check-circle"></i>
+                        <span>{{ metrics.resolved_today.success_rate }}% success rate</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="bg-green-500/20 p-3 rounded-lg">
+                    <i class="fas fa-check-double text-green-400 text-xl"></i>
+                </div>
+            </div>
+            <div class="metric-spark mt-3" id="resolved-spark"></div>
+        </div>
+    </div>
+    
+    {# Extended metrics row (optional) #}
+    {% if metrics and metrics.show_extended %}
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+        {# SLA Compliance #}
+        <div class="metric-card bg-slate-800 rounded-xl p-5 border border-slate-700">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-sm font-medium">SLA Compliance</p>
+                    <p class="text-2xl font-bold mt-1
+                        {% if metrics.sla_compliance >= 99 %}text-green-400
+                        {% elif metrics.sla_compliance >= 95 %}text-yellow-400
+                        {% else %}text-red-400{% endif %}" data-metric="sla">
+                        {{ metrics.sla_compliance }}%
+                    </p>
+                </div>
+                <div class="w-16 h-16">
+                    <svg viewBox="0 0 36 36" class="circular-chart">
+                        <path class="circle-bg" stroke="#334155" stroke-width="3" fill="none"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                        <path class="circle" 
+                            stroke="{% if metrics.sla_compliance >= 99 %}#22c55e{% elif metrics.sla_compliance >= 95 %}#eab308{% else %}#ef4444{% endif %}"
+                            stroke-width="3" stroke-linecap="round" fill="none"
+                            stroke-dasharray="{{ metrics.sla_compliance }}, 100"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        {# On-Call Engineers #}
+        <div class="metric-card bg-slate-800 rounded-xl p-5 border border-slate-700">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-sm font-medium">On-Call Now</p>
+                    <p class="text-2xl font-bold text-white mt-1" data-metric="oncall">
+                        {{ metrics.oncall_count }}
+                    </p>
+                </div>
+                <div class="flex -space-x-2">
+                    {% for engineer in metrics.oncall_engineers[:3] %}
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-medium border-2 border-slate-800" title="{{ engineer.name }}">
+                        {{ engineer.initials }}
+                    </div>
+                    {% endfor %}
+                    {% if metrics.oncall_engineers | length > 3 %}
+                    <div class="w-10 h-10 rounded-full bg-slate-600 flex items-center justify-center text-white text-sm border-2 border-slate-800">
+                        +{{ metrics.oncall_engineers | length - 3 }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        {# System Health Score #}
+        <div class="metric-card bg-slate-800 rounded-xl p-5 border border-slate-700">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-sm font-medium">System Health</p>
+                    <p class="text-2xl font-bold mt-1
+                        {% if metrics.health_score >= 90 %}text-green-400
+                        {% elif metrics.health_score >= 70 %}text-yellow-400
+                        {% else %}text-red-400{% endif %}" data-metric="health">
+                        {{ metrics.health_score }}/100
+                    </p>
+                </div>
+                <div class="text-4xl">
+                    {% if metrics.health_score >= 90 %}😊
+                    {% elif metrics.health_score >= 70 %}😐
+                    {% else %}😰{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+class MetricsCards {
+    constructor() {
+        this.metrics = {};
+        this.sparklines = {};
+        this.wsConnected = false;
+    }
+    
+    // Update a single metric with animation
+    updateMetric(metricId, value, unit = null, trend = null) {
+        const el = document.querySelector(`[data-metric="${metricId}"]`);
+        if (!el) return;
+        
+        // Store old value for animation
+        const oldValue = parseFloat(el.textContent) || 0;
+        const newValue = parseFloat(value) || 0;
+        
+        // Animate the counter
+        this.animateValue(el, oldValue, newValue, 500);
+        
+        // Update trend if provided
+        if (trend !== null) {
+            this.updateTrend(metricId, trend);
+        }
+        
+        // Add visual feedback
+        el.classList.add('metric-value-animate');
+        setTimeout(() => el.classList.remove('metric-value-animate'), 400);
+        
+        // Store for history
+        this.metrics[metricId] = this.metrics[metricId] || [];
+        this.metrics[metricId].push({ value: newValue, timestamp: Date.now() });
+        
+        // Keep only last 20 values
+        if (this.metrics[metricId].length > 20) {
+            this.metrics[metricId].shift();
+        }
+        
+        // Update sparkline
+        this.updateSparkline(metricId);
+    }
+    
+    // Animate number counting
+    animateValue(el, start, end, duration) {
+        const startTime = performance.now();
+        const isInteger = Number.isInteger(end);
+        
+        const update = (currentTime) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // Easing function
+            const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+            const current = start + (end - start) * easeOutQuart;
+            
+            el.textContent = isInteger ? Math.round(current) : current.toFixed(1);
+            
+            if (progress < 1) {
+                requestAnimationFrame(update);
+            }
+        };
+        
+        requestAnimationFrame(update);
+    }
+    
+    // Update trend indicator
+    updateTrend(metricId, trend) {
+        const card = document.getElementById(`metric-${metricId}`);
+        if (!card) return;
+        
+        let trendEl = card.querySelector('.metric-trend');
+        if (!trendEl) {
+            trendEl = document.createElement('div');
+            trendEl.className = 'flex items-center gap-1 mt-2 text-sm metric-trend';
+            card.querySelector('.flex-1').appendChild(trendEl);
+        }
+        
+        const isNegativeBetter = ['mttr', 'response_time'].includes(metricId);
+        const isGood = isNegativeBetter ? trend < 0 : trend > 0;
+        
+        trendEl.className = `flex items-center gap-1 mt-2 text-sm ${isGood ? 'metric-trend-up' : trend === 0 ? 'metric-trend-neutral' : 'metric-trend-down'}`;
+        trendEl.innerHTML = `
+            <i class="fas ${trend < 0 ? 'fa-arrow-down' : trend > 0 ? 'fa-arrow-up' : 'fa-minus'}"></i>
+            <span>${Math.abs(trend)}% vs last period</span>
+        `;
+    }
+    
+    // Draw sparkline chart
+    updateSparkline(metricId) {
+        const containerId = `${metricId}-spark`;
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        
+        const data = this.metrics[metricId] || [];
+        if (data.length < 2) return;
+        
+        const values = data.map(d => d.value);
+        const max = Math.max(...values);
+        const min = Math.min(...values);
+        const range = max - min || 1;
+        
+        const width = container.offsetWidth || 200;
+        const height = 40;
+        const padding = 4;
+        
+        const points = values.map((v, i) => {
+            const x = padding + (i / (values.length - 1)) * (width - 2 * padding);
+            const y = height - padding - ((v - min) / range) * (height - 2 * padding);
+            return `${x},${y}`;
+        }).join(' ');
+        
+        const isIncreasing = values[values.length - 1] > values[0];
+        const color = metricId === 'active_incidents' 
+            ? (isIncreasing ? '#ef4444' : '#22c55e')
+            : (isIncreasing ? '#22c55e' : '#ef4444');
+        
+        container.innerHTML = `
+            <svg width="100%" height="${height}" class="overflow-visible">
+                <defs>
+                    <linearGradient id="grad-${metricId}" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:${color};stop-opacity:0.3"/>
+                        <stop offset="100%" style="stop-color:${color};stop-opacity:0"/>
+                    </linearGradient>
+                </defs>
+                <polygon 
+                    points="${padding},${height - padding} ${points} ${width - padding},${height - padding}"
+                    fill="url(#grad-${metricId})"
+                />
+                <polyline 
+                    points="${points}"
+                    fill="none"
+                    stroke="${color}"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                />
+                <circle cx="${width - padding}" cy="${points.split(' ').pop().split(',')[1]}" r="3" fill="${color}"/>
+            </svg>
+        `;
+    }
+    
+    // Batch update multiple metrics
+    updateAll(metricsData) {
+        Object.entries(metricsData).forEach(([key, data]) => {
+            if (typeof data === 'object' && data !== null) {
+                this.updateMetric(key, data.value, data.unit, data.trend);
+            } else {
+                this.updateMetric(key, data);
+            }
+        });
+    }
+    
+    // Set loading state
+    setLoading(metricId, loading = true) {
+        const card = document.getElementById(`metric-${metricId}`);
+        if (!card) return;
+        
+        if (loading) {
+            card.classList.add('metric-card-loading');
+        } else {
+            card.classList.remove('metric-card-loading');
+        }
+    }
+    
+    // Flash card on update (visual feedback)
+    flashCard(metricId, type = 'info') {
+        const card = document.getElementById(`metric-${metricId}`);
+        if (!card) return;
+        
+        const colors = {
+            info: 'ring-blue-500',
+            success: 'ring-green-500',
+            warning: 'ring-yellow-500',
+            error: 'ring-red-500'
+        };
+        
+        card.classList.add('ring-2', colors[type]);
+        setTimeout(() => {
+            card.classList.remove('ring-2', colors[type]);
+        }, 1000);
+    }
+}
+
+// Initialize metrics cards
+const metricsCards = new MetricsCards();
+
+// Expose globally for real-time updates
+window.metricsCards = metricsCards;
+
+// Initialize with server data if available
+{% if metrics %}
+document.addEventListener('DOMContentLoaded', () => {
+    const initialMetrics = {{ metrics | tojson | safe }};
+    if (initialMetrics) {
+        metricsCards.updateAll(initialMetrics);
+    }
+});
+{% endif %}
+</script>
