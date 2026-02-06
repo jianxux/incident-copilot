@@ -1,56 +1,66 @@
-"""AI Insights & Pattern Detection for Incident Copilot.
+"""AI Insights and Pattern Detection module."""
 
-This module provides intelligent analysis of incidents to detect:
-- Recurring patterns (same service, time of day, error type)
-- Service dependency chains (cascading failures)
-- Temporal patterns (deploy days, weekends, etc.)
-- Root cause clustering
-- Anomaly detection (unusual spikes)
-"""
-
-from .analyzer import InsightsAnalyzer
+from .analyzer import IncidentAnalyzer
+from .anomaly import AnomalyDetector
 from .detector import PatternDetector
+from .digest import DigestGenerator
 from .models import (
-    Anomaly,
-    AnomalySeverity,
+    AnalysisRequest,
+    AnalysisResult,
+    AnomalyDetection,
     AnomalyType,
-    DependencyChain,
+    CascadingFailure,
+    DigestPeriod,
+    IncidentDigest,
+    IncidentSpike,
     Insight,
-    InsightCategory,
-    InsightPriority,
-    Pattern,
+    InsightSummary,
+    InsightType,
     PatternType,
-    Recommendation,
-    RootCauseCluster,
-    ServiceInsight,
-    TemporalPattern,
-    Trend,
-    TrendDirection,
-    WeeklyDigest,
+    RecurringPattern,
+    ServiceDependency,
+    ServiceDependencyMap,
+    Severity,
+    SeverityTrend,
+    TimeBasedPattern,
 )
+from .service import InsightsService, insights_service
 from .store import InsightsStore, insights_store
 
 __all__ = [
-    # Core classes
-    "PatternDetector",
-    "InsightsAnalyzer",
+    # Service
+    "InsightsService",
+    "insights_service",
+    # Store
     "InsightsStore",
     "insights_store",
-    # Models
-    "Pattern",
-    "PatternType",
+    # Detectors
+    "PatternDetector",
+    "AnomalyDetector",
+    "IncidentAnalyzer",
+    "DigestGenerator",
+    # Models - Core
     "Insight",
-    "InsightCategory",
-    "InsightPriority",
-    "Trend",
-    "TrendDirection",
-    "Anomaly",
+    "InsightSummary",
+    "InsightType",
+    "Severity",
+    # Models - Patterns
+    "RecurringPattern",
+    "TimeBasedPattern",
+    "PatternType",
+    "SeverityTrend",
+    # Models - Anomalies
+    "AnomalyDetection",
     "AnomalyType",
-    "AnomalySeverity",
-    "DependencyChain",
-    "TemporalPattern",
-    "RootCauseCluster",
-    "ServiceInsight",
-    "Recommendation",
-    "WeeklyDigest",
+    "IncidentSpike",
+    "CascadingFailure",
+    # Models - Dependencies
+    "ServiceDependency",
+    "ServiceDependencyMap",
+    # Models - Digest
+    "DigestPeriod",
+    "IncidentDigest",
+    # Models - Analysis
+    "AnalysisRequest",
+    "AnalysisResult",
 ]

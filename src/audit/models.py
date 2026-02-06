@@ -2,13 +2,13 @@
 
 import secrets
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class EventCategory(str, Enum):
+class EventCategory(StrEnum):
     """High-level categories for audit events."""
 
     AUTHENTICATION = "authentication"
@@ -23,7 +23,7 @@ class EventCategory(str, Enum):
     SYSTEM = "system"
 
 
-class EventType(str, Enum):
+class EventType(StrEnum):
     """Specific event types for audit logging."""
 
     # Authentication events
@@ -109,7 +109,7 @@ class EventType(str, Enum):
     RATE_LIMIT_EXCEEDED = "rate_limit_exceeded"
 
 
-class Outcome(str, Enum):
+class Outcome(StrEnum):
     """Outcome of an audited action."""
 
     SUCCESS = "success"
