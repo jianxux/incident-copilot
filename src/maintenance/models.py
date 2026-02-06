@@ -1,5 +1,7 @@
 """Data models for maintenance windows."""
 
+from __future__ import annotations
+
 import secrets
 from datetime import datetime, timedelta
 from enum import Enum
