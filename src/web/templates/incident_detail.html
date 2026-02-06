@@ -2,21 +2,21 @@
 
 {% block content %}
 <!-- Back Link -->
-<a href="/dashboard" class="inline-flex items-center text-gray-400 hover:text-white transition mb-6">
+<a href="/dashboard" class="inline-flex items-center text-muted hover:text-slate-900 transition mb-6">
     <i class="fas fa-arrow-left mr-2"></i>
     Back to Dashboard
 </a>
 
 <!-- Incident Header -->
-<div class="bg-slate-800 rounded-xl border border-slate-700 p-6 mb-6">
+<div class="bg-white rounded-xl border border-slate-200 p-6 mb-6">
     <div class="flex items-start justify-between">
         <div class="flex items-start space-x-4">
             <div class="p-3 rounded-lg {{ incident.severity | severity_color }}">
-                <i class="fas fa-exclamation-circle text-white text-xl"></i>
+                <i class="fas fa-exclamation-circle text-slate-900 text-xl"></i>
             </div>
             <div>
-                <h1 class="text-2xl font-bold text-white">{{ incident.title }}</h1>
-                <div class="flex items-center space-x-4 mt-2 text-gray-400">
+                <h1 class="text-2xl font-bold text-slate-900">{{ incident.title }}</h1>
+                <div class="flex items-center space-x-4 mt-2 text-muted">
                     <span class="flex items-center">
                         <i class="fas fa-fingerprint mr-2"></i>
                         {{ incident.incident_id[:12] }}...
@@ -25,7 +25,7 @@
                         <i class="fas fa-server mr-2"></i>
                         {{ incident.service_name }}
                     </span>
-                    <span class="px-2 py-0.5 text-xs rounded-full {{ incident.status | status_color }} text-white font-medium">
+                    <span class="px-2 py-0.5 text-xs rounded-full {{ incident.status | status_color }} text-slate-900 font-medium">
                         {{ incident.status }}
                     </span>
                 </div>
@@ -33,7 +33,7 @@
         </div>
         {% if card and card.alert_url %}
         <a href="{{ card.alert_url }}" target="_blank" 
-           class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition flex items-center">
+           class="bg-slate-100 hover:bg-slate-100 text-slate-900 px-4 py-2 rounded-lg transition flex items-center">
             <i class="fas fa-external-link-alt mr-2"></i>
             View in PagerDuty
         </a>
@@ -42,9 +42,9 @@
 </div>
 
 <!-- Timeline -->
-<div class="bg-slate-800 rounded-xl border border-slate-700 p-6 mb-6">
+<div class="bg-white rounded-xl border border-slate-200 p-6 mb-6">
     <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold text-white flex items-center">
+        <h2 class="text-lg font-semibold text-slate-900 flex items-center">
             <i class="fas fa-clock mr-3 text-blue-400"></i>
             Timeline
         </h2>
@@ -58,18 +58,18 @@
         <div class="flex items-center space-x-4">
             <div class="w-3 h-3 rounded-full bg-red-500"></div>
             <div>
-                <span class="text-white font-medium">Triggered</span>
-                <span class="text-gray-400 ml-2">{{ incident.triggered_at | format_datetime }}</span>
+                <span class="text-slate-900 font-medium">Triggered</span>
+                <span class="text-muted ml-2">{{ incident.triggered_at | format_datetime }}</span>
             </div>
         </div>
         {% if incident.processed_at %}
         <div class="flex items-center space-x-4">
             <div class="w-3 h-3 rounded-full {% if incident.status == 'completed' %}bg-green-500{% else %}bg-red-500{% endif %}"></div>
             <div>
-                <span class="text-white font-medium">{% if incident.status == 'completed' %}Processed{% else %}Failed{% endif %}</span>
-                <span class="text-gray-400 ml-2">{{ incident.processed_at | format_datetime }}</span>
+                <span class="text-slate-900 font-medium">{% if incident.status == 'completed' %}Processed{% else %}Failed{% endif %}</span>
+                <span class="text-muted ml-2">{{ incident.processed_at | format_datetime }}</span>
                 {% if card and card.assembly_time_ms %}
-                <span class="text-gray-500 ml-2">({{ card.assembly_time_ms }}ms)</span>
+                <span class="text-muted ml-2">({{ card.assembly_time_ms }}ms)</span>
                 {% endif %}
             </div>
         </div>
@@ -83,8 +83,8 @@
     
     <!-- AI Summary -->
     {% if card.ai_summary %}
-    <div class="bg-slate-800 rounded-xl border border-slate-700 p-6 lg:col-span-2">
-        <h2 class="text-lg font-semibold text-white mb-4 flex items-center">
+    <div class="bg-white rounded-xl border border-slate-200 p-6 lg:col-span-2">
+        <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center">
             <i class="fas fa-robot mr-3 text-purple-400"></i>
             AI Analysis
         </h2>
@@ -92,20 +92,20 @@
             <p class="text-gray-200 leading-relaxed">{{ card.ai_summary.explanation }}</p>
             
             {% if card.ai_summary.likely_cause %}
-            <div class="mt-4 pt-4 border-t border-slate-700">
+            <div class="mt-4 pt-4 border-t border-slate-200">
                 <h4 class="text-sm font-semibold text-purple-400 uppercase tracking-wide mb-2">Likely Cause</h4>
-                <p class="text-gray-300">{{ card.ai_summary.likely_cause }}</p>
+                <p class="text-slate-700">{{ card.ai_summary.likely_cause }}</p>
             </div>
             {% endif %}
             
             {% if card.ai_summary.top_issues %}
-            <div class="mt-4 pt-4 border-t border-slate-700">
+            <div class="mt-4 pt-4 border-t border-slate-200">
                 <h4 class="text-sm font-semibold text-purple-400 uppercase tracking-wide mb-2">Top Issues</h4>
                 <ul class="space-y-2">
                     {% for issue in card.ai_summary.top_issues %}
                     <li class="flex items-start">
                         <i class="fas fa-chevron-right text-purple-400 mr-2 mt-1 text-xs"></i>
-                        <span class="text-gray-300">{{ issue }}</span>
+                        <span class="text-slate-700">{{ issue }}</span>
                     </li>
                     {% endfor %}
                 </ul>
@@ -113,13 +113,13 @@
             {% endif %}
             
             {% if card.ai_summary.suggested_actions %}
-            <div class="mt-4 pt-4 border-t border-slate-700">
+            <div class="mt-4 pt-4 border-t border-slate-200">
                 <h4 class="text-sm font-semibold text-green-400 uppercase tracking-wide mb-2">Suggested Actions</h4>
                 <ul class="space-y-2">
                     {% for action in card.ai_summary.suggested_actions %}
                     <li class="flex items-start">
                         <i class="fas fa-check text-green-400 mr-2 mt-1 text-xs"></i>
-                        <span class="text-gray-300">{{ action }}</span>
+                        <span class="text-slate-700">{{ action }}</span>
                     </li>
                     {% endfor %}
                 </ul>
@@ -131,13 +131,13 @@
     
     <!-- GitHub Context -->
     {% if card.github %}
-    <div class="bg-slate-800 rounded-xl border border-slate-700 p-6">
-        <h2 class="text-lg font-semibold text-white mb-4 flex items-center">
-            <i class="fab fa-github mr-3 text-gray-400"></i>
+    <div class="bg-white rounded-xl border border-slate-200 p-6">
+        <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center">
+            <i class="fab fa-github mr-3 text-muted"></i>
             Recent Deployments
         </h2>
         
-        <div class="text-sm text-gray-400 mb-4">
+        <div class="text-sm text-muted mb-4">
             <i class="fas fa-code-branch mr-2"></i>
             {{ card.github.repo }}
         </div>
@@ -145,13 +145,13 @@
         {% if card.github.recent_deploys %}
         <div class="space-y-3">
             {% for deploy in card.github.recent_deploys[:5] %}
-            <div class="bg-slate-700/50 rounded-lg p-3">
+            <div class="bg-slate-100/50 rounded-lg p-3">
                 <div class="flex items-center justify-between">
                     <code class="text-blue-400 font-mono text-sm">{{ deploy.short_sha }}</code>
-                    <span class="text-gray-500 text-sm">{{ deploy.timestamp | format_datetime }}</span>
+                    <span class="text-muted text-sm">{{ deploy.timestamp | format_datetime }}</span>
                 </div>
-                <p class="text-gray-300 text-sm mt-1 truncate">{{ deploy.message }}</p>
-                <div class="flex items-center space-x-3 mt-2 text-xs text-gray-500">
+                <p class="text-slate-700 text-sm mt-1 truncate">{{ deploy.message }}</p>
+                <div class="flex items-center space-x-3 mt-2 text-xs text-muted">
                     <span><i class="fas fa-user mr-1"></i>{{ deploy.author }}</span>
                     <span class="text-green-400">+{{ deploy.additions }}</span>
                     <span class="text-red-400">-{{ deploy.deletions }}</span>
@@ -160,15 +160,15 @@
             {% endfor %}
         </div>
         {% else %}
-        <p class="text-gray-500">No recent deployments found</p>
+        <p class="text-muted">No recent deployments found</p>
         {% endif %}
         
         {% if card.github.codeowners %}
-        <div class="mt-4 pt-4 border-t border-slate-700">
-            <h4 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">Code Owners</h4>
+        <div class="mt-4 pt-4 border-t border-slate-200">
+            <h4 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">Code Owners</h4>
             <div class="flex flex-wrap gap-2">
                 {% for owner in card.github.codeowners %}
-                <span class="bg-slate-700 text-gray-300 px-2 py-1 rounded text-sm">{{ owner }}</span>
+                <span class="bg-slate-100 text-slate-700 px-2 py-1 rounded text-sm">{{ owner }}</span>
                 {% endfor %}
             </div>
         </div>
@@ -178,8 +178,8 @@
     
     <!-- Datadog Context -->
     {% if card.datadog %}
-    <div class="bg-slate-800 rounded-xl border border-slate-700 p-6">
-        <h2 class="text-lg font-semibold text-white mb-4 flex items-center">
+    <div class="bg-white rounded-xl border border-slate-200 p-6">
+        <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center">
             <i class="fas fa-chart-area mr-3 text-violet-400"></i>
             Observability Data
         </h2>
@@ -187,17 +187,17 @@
         {% if card.datadog.metrics %}
         <div class="grid grid-cols-2 gap-4 mb-4">
             {% if card.datadog.metrics.error_rate is not none %}
-            <div class="bg-slate-700/50 rounded-lg p-3">
-                <p class="text-gray-500 text-xs uppercase">Error Rate</p>
+            <div class="bg-slate-100/50 rounded-lg p-3">
+                <p class="text-muted text-xs uppercase">Error Rate</p>
                 <p class="text-2xl font-bold {% if card.datadog.metrics.error_rate > 5 %}text-red-400{% else %}text-green-400{% endif %}">
                     {{ "%.2f" | format(card.datadog.metrics.error_rate) }}%
                 </p>
             </div>
             {% endif %}
             {% if card.datadog.metrics.latency_p99_ms is not none %}
-            <div class="bg-slate-700/50 rounded-lg p-3">
-                <p class="text-gray-500 text-xs uppercase">P99 Latency</p>
-                <p class="text-2xl font-bold text-white">{{ "%.0f" | format(card.datadog.metrics.latency_p99_ms) }}ms</p>
+            <div class="bg-slate-100/50 rounded-lg p-3">
+                <p class="text-muted text-xs uppercase">P99 Latency</p>
+                <p class="text-2xl font-bold text-slate-900">{{ "%.0f" | format(card.datadog.metrics.latency_p99_ms) }}ms</p>
             </div>
             {% endif %}
         </div>
@@ -205,17 +205,17 @@
         
         {% if card.datadog.log_summaries %}
         <div class="mt-4">
-            <h4 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">Log Patterns</h4>
+            <h4 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">Log Patterns</h4>
             <div class="space-y-2">
                 {% for summary in card.datadog.log_summaries[:5] %}
-                <div class="bg-slate-700/50 rounded-lg p-3">
+                <div class="bg-slate-100/50 rounded-lg p-3">
                     <div class="flex items-center justify-between">
-                        <span class="px-2 py-0.5 text-xs rounded {% if summary.level == 'ERROR' %}bg-red-500{% elif summary.level == 'WARN' %}bg-yellow-500{% else %}bg-blue-500{% endif %} text-white">
+                        <span class="px-2 py-0.5 text-xs rounded {% if summary.level == 'ERROR' %}bg-red-500{% elif summary.level == 'WARN' %}bg-yellow-500{% else %}bg-blue-500{% endif %} text-slate-900">
                             {{ summary.level }}
                         </span>
-                        <span class="text-gray-500 text-sm">{{ summary.count }}x</span>
+                        <span class="text-muted text-sm">{{ summary.count }}x</span>
                     </div>
-                    <p class="text-gray-300 text-sm mt-2 truncate">{{ summary.pattern }}</p>
+                    <p class="text-slate-700 text-sm mt-2 truncate">{{ summary.pattern }}</p>
                 </div>
                 {% endfor %}
             </div>
@@ -226,14 +226,14 @@
     
     <!-- Similar Incidents -->
     {% if card.similar_incidents %}
-    <div class="bg-slate-800 rounded-xl border border-slate-700 p-6">
-        <h2 class="text-lg font-semibold text-white mb-4 flex items-center">
+    <div class="bg-white rounded-xl border border-slate-200 p-6">
+        <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center">
             <i class="fas fa-history mr-3 text-amber-400"></i>
             Similar Past Incidents
         </h2>
         <div class="space-y-3">
             {% for past in card.similar_incidents %}
-            <div class="bg-slate-700/50 rounded-lg p-3">
+            <div class="bg-slate-100/50 rounded-lg p-3">
                 <div class="flex items-center justify-between">
                     <h4 class="text-gray-200 font-medium">{{ past.title | truncate(40) }}</h4>
                     {% if past.similarity_score %}
@@ -241,7 +241,7 @@
                     {% endif %}
                 </div>
                 {% if past.root_cause %}
-                <p class="text-gray-400 text-sm mt-1">Root cause: {{ past.root_cause | truncate(60) }}</p>
+                <p class="text-muted text-sm mt-1">Root cause: {{ past.root_cause | truncate(60) }}</p>
                 {% endif %}
                 {% if past.resolution %}
                 <p class="text-green-400 text-sm mt-1">Resolution: {{ past.resolution | truncate(60) }}</p>
@@ -253,35 +253,35 @@
     {% endif %}
     
     <!-- Service Info -->
-    <div class="bg-slate-800 rounded-xl border border-slate-700 p-6">
-        <h2 class="text-lg font-semibold text-white mb-4 flex items-center">
+    <div class="bg-white rounded-xl border border-slate-200 p-6">
+        <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center">
             <i class="fas fa-info-circle mr-3 text-blue-400"></i>
             Service Information
         </h2>
         
         <dl class="space-y-3">
             <div class="flex justify-between">
-                <dt class="text-gray-400">Service</dt>
-                <dd class="text-white font-medium">{{ card.service_name }}</dd>
+                <dt class="text-muted">Service</dt>
+                <dd class="text-slate-900 font-medium">{{ card.service_name }}</dd>
             </div>
             <div class="flex justify-between">
-                <dt class="text-gray-400">Severity</dt>
+                <dt class="text-muted">Severity</dt>
                 <dd class="capitalize">
-                    <span class="px-2 py-0.5 text-xs rounded {{ card.severity | severity_color }} text-white">
+                    <span class="px-2 py-0.5 text-xs rounded {{ card.severity | severity_color }} text-slate-900">
                         {{ card.severity.value }}
                     </span>
                 </dd>
             </div>
             {% if card.owners %}
             <div class="flex justify-between">
-                <dt class="text-gray-400">Owners</dt>
-                <dd class="text-white">{{ card.owners | join(', ') }}</dd>
+                <dt class="text-muted">Owners</dt>
+                <dd class="text-slate-900">{{ card.owners | join(', ') }}</dd>
             </div>
             {% endif %}
         </dl>
         
         {% if card.runbook_url or card.dashboard_url %}
-        <div class="mt-4 pt-4 border-t border-slate-700 space-y-2">
+        <div class="mt-4 pt-4 border-t border-slate-200 space-y-2">
             {% if card.runbook_url %}
             <a href="{{ card.runbook_url }}" target="_blank" 
                class="flex items-center text-blue-400 hover:text-blue-300 transition">
@@ -304,7 +304,7 @@
     
     <!-- Errors (if any) -->
     {% if card.errors %}
-    <div class="bg-slate-800 rounded-xl border border-red-700/50 p-6">
+    <div class="bg-white rounded-xl border border-red-700/50 p-6">
         <h2 class="text-lg font-semibold text-red-400 mb-4 flex items-center">
             <i class="fas fa-exclamation-triangle mr-3"></i>
             Assembly Errors
@@ -313,7 +313,7 @@
             {% for error in card.errors %}
             <li class="flex items-start">
                 <i class="fas fa-times text-red-400 mr-2 mt-1"></i>
-                <span class="text-gray-300">{{ error }}</span>
+                <span class="text-slate-700">{{ error }}</span>
             </li>
             {% endfor %}
         </ul>
@@ -323,22 +323,22 @@
 
 {% elif incident.status == 'processing' %}
 <!-- Processing State -->
-<div class="bg-slate-800 rounded-xl border border-slate-700 p-12 text-center">
+<div class="bg-white rounded-xl border border-slate-200 p-12 text-center">
     <div class="inline-flex items-center justify-center w-20 h-20 bg-yellow-500/20 rounded-full mb-6">
         <i class="fas fa-spinner fa-spin text-yellow-400 text-3xl"></i>
     </div>
-    <h2 class="text-xl font-semibold text-white mb-2">Processing Incident</h2>
-    <p class="text-gray-400">Gathering context from GitHub, Datadog, and more...</p>
+    <h2 class="text-xl font-semibold text-slate-900 mb-2">Processing Incident</h2>
+    <p class="text-muted">Gathering context from GitHub, Datadog, and more...</p>
 </div>
 
 {% elif incident.status == 'error' %}
 <!-- Error State -->
-<div class="bg-slate-800 rounded-xl border border-red-700/50 p-12 text-center">
+<div class="bg-white rounded-xl border border-red-700/50 p-12 text-center">
     <div class="inline-flex items-center justify-center w-20 h-20 bg-red-500/20 rounded-full mb-6">
         <i class="fas fa-exclamation-circle text-red-400 text-3xl"></i>
     </div>
     <h2 class="text-xl font-semibold text-red-400 mb-2">Processing Failed</h2>
-    <p class="text-gray-400">{{ incident.error_message or 'An unknown error occurred' }}</p>
+    <p class="text-muted">{{ incident.error_message or 'An unknown error occurred' }}</p>
 </div>
 {% endif %}
 
