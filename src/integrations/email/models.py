@@ -1,13 +1,13 @@
 """Email notification models."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
-class EmailProvider(str, Enum):
+class EmailProvider(StrEnum):
     """Supported email providers."""
 
     SMTP = "smtp"
@@ -15,7 +15,7 @@ class EmailProvider(str, Enum):
     SES = "ses"
 
 
-class EmailTemplateType(str, Enum):
+class EmailTemplateType(StrEnum):
     """Email template types."""
 
     CONTEXT_CARD = "context_card"
@@ -25,7 +25,7 @@ class EmailTemplateType(str, Enum):
     CUSTOM = "custom"
 
 
-class DigestFrequency(str, Enum):
+class DigestFrequency(StrEnum):
     """Digest email frequency."""
 
     DAILY = "daily"
