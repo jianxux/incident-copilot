@@ -143,6 +143,16 @@ All core features complete. The platform supports multi-tenant SaaS deployment w
 12. PR #12: GitLab Integration
 13. PR #13: Enterprise Features (SSO, Audit, Postmortem, Splunk, ServiceNow)
 
+## PRs Open (Feb 2-3 Nightly Build)
+
+14. PR #18: On-Call Roster Integration (+1,188 lines)
+15. PR #19: API Rate Limiting (+2,473 lines)
+16. PR #20: Incident Tagging System (+2,638 lines)
+17. PR #21: Webhook Plugin Framework (+775 lines)
+18. PR #22: Slack Slash Commands (+306 lines)
+19. PR #23: Alert Correlation Engine (+1,205 lines)
+20. PR #24: Email Notifications (+38 tests)
+
 ---
 
 ## How to Contribute

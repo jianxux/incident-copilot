@@ -13,6 +13,7 @@ from .api import (
     demo_router,
     email_router,
     health_router,
+    insights_router,
     postmortem_router,
     runbooks_router,
     webhooks_router,
@@ -103,6 +104,7 @@ def create_app() -> FastAPI:
     app.include_router(runbooks_router)
     app.include_router(demo_router)
     app.include_router(analytics_router)
+    app.include_router(insights_router)
     app.include_router(postmortem_router)
     app.include_router(audit_router)
     app.include_router(ratelimit_router)
