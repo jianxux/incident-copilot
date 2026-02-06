@@ -54,10 +54,15 @@ packages = ["src"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+preview = true
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
 ignore = ["E501", "E741"]  # Ignore line length (handled by black) and ambiguous variable names
+
+[tool.ruff.lint.isort]
+force-single-line = false
+known-first-party = ["src"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
