@@ -1,13 +1,13 @@
 """Data models for scheduled reports."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class ReportType(str, Enum):
+class ReportType(StrEnum):
     """Types of scheduled reports."""
 
     DAILY_SUMMARY = "daily_summary"
@@ -16,7 +16,7 @@ class ReportType(str, Enum):
     ON_DEMAND = "on_demand"
 
 
-class ReportStatus(str, Enum):
+class ReportStatus(StrEnum):
     """Status of a report schedule."""
 
     ACTIVE = "active"
@@ -24,7 +24,7 @@ class ReportStatus(str, Enum):
     DISABLED = "disabled"
 
 
-class ReportRunStatus(str, Enum):
+class ReportRunStatus(StrEnum):
     """Status of a report run."""
 
     PENDING = "pending"
@@ -35,7 +35,7 @@ class ReportRunStatus(str, Enum):
     DELIVERY_FAILED = "delivery_failed"
 
 
-class DeliveryChannel(str, Enum):
+class DeliveryChannel(StrEnum):
     """Delivery channels for reports."""
 
     EMAIL = "email"

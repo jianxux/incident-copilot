@@ -1,12 +1,12 @@
 """Data models for incident tagging system."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class TagColor(str, Enum):
+class TagColor(StrEnum):
     """Predefined tag colors for UI consistency."""
 
     RED = "red"
@@ -65,7 +65,7 @@ class IncidentTag(BaseModel):
     confidence: float | None = None
 
 
-class AutoTagRuleType(str, Enum):
+class AutoTagRuleType(StrEnum):
     """Types of auto-tagging rules."""
 
     SERVICE_NAME = "service_name"

@@ -52,6 +52,7 @@ build-backend = "hatchling.build"
 packages = ["src"]
 
 [tool.ruff]
+preview = true
 line-length = 100
 target-version = "py311"
 
