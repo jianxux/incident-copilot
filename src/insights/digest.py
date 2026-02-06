@@ -279,7 +279,7 @@ class DigestGenerator:
     def _generate_digest_id(self, period: DigestPeriod, start: datetime) -> str:
         """Generate a deterministic digest ID."""
         base = f"{period.value}_{start.isoformat()}"
-        return hashlib.md5(base.encode()).hexdigest()[:12]
+        return hashlib.md5(base.encode(), usedforsecurity=False).hexdigest()[:12]
 
     async def generate_quick_summary(
         self,

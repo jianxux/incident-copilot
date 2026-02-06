@@ -367,7 +367,7 @@ class InsightsService:
 
     def _generate_id(self, base: str) -> str:
         """Generate a deterministic ID."""
-        return hashlib.md5(base.encode()).hexdigest()[:12]
+        return hashlib.md5(base.encode(), usedforsecurity=False).hexdigest()[:12]
 
 
 # Global service instance

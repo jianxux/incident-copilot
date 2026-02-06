@@ -274,7 +274,7 @@ class PatternDetector:
 
     def _generate_pattern_id(self, base: str) -> str:
         """Generate a deterministic pattern ID."""
-        return hashlib.md5(base.encode()).hexdigest()[:12]
+        return hashlib.md5(base.encode(), usedforsecurity=False).hexdigest()[:12]
 
     def _suggest_action_for_pattern(self, pattern: str, count: int) -> str:
         """Generate action suggestion based on pattern."""
