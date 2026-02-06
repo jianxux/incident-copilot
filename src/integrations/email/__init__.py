@@ -1,6 +1,6 @@
 """Email notification integration for incident-copilot."""
 
-from .client import EmailClient, SMTPClient, SendGridClient, SESClient
+from .client import EmailClient, SendGridClient, SESClient, SMTPClient
 from .models import (
     DigestConfig,
     DigestFrequency,

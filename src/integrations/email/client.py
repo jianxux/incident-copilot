@@ -14,9 +14,6 @@ from .models import (
     EmailMessage,
     EmailProvider,
     SendResult,
-    SESConfig,
-    SendGridConfig,
-    SMTPConfig,
 )
 
 logger = structlog.get_logger()
