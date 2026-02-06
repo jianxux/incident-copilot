@@ -7,9 +7,7 @@ import structlog
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 
-from ..config import get_settings
 from ..integrations.email import (
-    DigestConfig,
     DigestFrequency,
     EmailConfig,
     EmailNotificationService,
@@ -423,9 +421,7 @@ async def preview_template(template_id: str):
         html_body, text_body = renderer.render_test(config)
         return {
             "template_id": template_id,
-            "subject": renderer.get_subject(
-                renderer._infer_template_type(template_id)
-            ),
+            "subject": renderer.get_subject(renderer._infer_template_type(template_id)),
             "html": html_body,
             "text": text_body,
         }

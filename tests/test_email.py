@@ -1,7 +1,6 @@
 """Tests for email notification integration."""
 
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -17,9 +16,9 @@ from src.integrations.email import (
     SendResult,
 )
 from src.integrations.email.client import (
-    SMTPClient,
     SendGridClient,
     SESClient,
+    SMTPClient,
     get_email_client,
 )
 from src.integrations.email.models import (
@@ -278,7 +277,10 @@ class TestEmailTemplateRenderer:
 
     def test_truncate_text(self):
         assert EmailTemplateRenderer._truncate_text("short", 10) == "short"
-        assert EmailTemplateRenderer._truncate_text("this is a long text", 10) == "this is..."
+        assert (
+            EmailTemplateRenderer._truncate_text("this is a long text", 10)
+            == "this is..."
+        )
 
     def test_get_subject_context_card(self, sample_context_card):
         renderer = EmailTemplateRenderer()
@@ -330,7 +332,9 @@ class TestEmailNotificationService:
     """Tests for EmailNotificationService."""
 
     @pytest.mark.asyncio
-    async def test_send_context_card_disabled(self, sample_email_config, sample_context_card):
+    async def test_send_context_card_disabled(
+        self, sample_email_config, sample_context_card
+    ):
         """Test sending when disabled."""
         sample_email_config.enabled = False
         service = EmailNotificationService(sample_email_config)
@@ -341,7 +345,9 @@ class TestEmailNotificationService:
         assert "disabled" in result.error.lower()
 
     @pytest.mark.asyncio
-    async def test_send_context_card_no_recipients(self, sample_email_config, sample_context_card):
+    async def test_send_context_card_no_recipients(
+        self, sample_email_config, sample_context_card
+    ):
         """Test sending with no recipients."""
         sample_email_config.default_recipients = []
         service = EmailNotificationService(sample_email_config)
@@ -452,6 +458,7 @@ class TestEmailAPI:
         """Test getting config when none exists."""
         # Clear any existing config
         from src.api.email import _config_store
+
         _config_store.clear()
 
         response = client.get("/api/notifications/email/config")
@@ -460,6 +467,7 @@ class TestEmailAPI:
     def test_create_config(self, client):
         """Test creating email configuration."""
         from src.api.email import _config_store
+
         _config_store.clear()
 
         config_data = {
@@ -490,6 +498,7 @@ class TestEmailAPI:
     def test_create_config_missing_smtp(self, client):
         """Test creating SMTP config without SMTP settings."""
         from src.api.email import _config_store
+
         _config_store.clear()
 
         config_data = {
@@ -516,6 +525,7 @@ class TestEmailAPI:
         """Test previewing test template."""
         # First create a config
         from src.api.email import _config_store
+
         _config_store.clear()
 
         config_data = {
@@ -537,6 +547,7 @@ class TestEmailAPI:
     def test_delete_config(self, client):
         """Test deleting email configuration."""
         from src.api.email import _config_store
+
         _config_store.clear()
 
         # First create a config
@@ -559,6 +570,7 @@ class TestEmailAPI:
     def test_connection_test_no_config(self, client):
         """Test connection test without config."""
         from src.api.email import _config_store
+
         _config_store.clear()
 
         response = client.post("/api/notifications/email/connection-test")

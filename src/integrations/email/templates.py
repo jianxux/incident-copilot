@@ -1,6 +1,5 @@
 """Email template rendering."""
 
-import html
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -163,9 +162,7 @@ class EmailTemplateRenderer:
             template = self.env.get_template(template_name)
             return template.render(**context)
         except Exception as e:
-            logger.error(
-                "template_render_error", template=template_name, error=str(e)
-            )
+            logger.error("template_render_error", template=template_name, error=str(e))
             # Return a basic fallback
             return self._fallback_html(context)
 
@@ -203,9 +200,9 @@ class EmailTemplateRenderer:
             "period_type": "Week" if weekly else "Day",
             "period_start": data.period_start.strftime("%Y-%m-%d"),
             "period_end": data.period_end.strftime("%Y-%m-%d"),
-            "mttr_formatted": self._format_duration(data.mttr_minutes)
-            if data.mttr_minutes
-            else "N/A",
+            "mttr_formatted": (
+                self._format_duration(data.mttr_minutes) if data.mttr_minutes else "N/A"
+            ),
         }
 
     def _render_text_context_card(self, card: ContextCard, config: EmailConfig) -> str:
@@ -251,7 +248,9 @@ class EmailTemplateRenderer:
             lines.append("SIMILAR PAST INCIDENTS:")
             lines.append("-" * 40)
             for inc in card.similar_incidents[:3]:
-                lines.append(f"  • {inc.title[:50]} ({inc.occurred_at.strftime('%Y-%m-%d')})")
+                lines.append(
+                    f"  • {inc.title[:50]} ({inc.occurred_at.strftime('%Y-%m-%d')})"
+                )
                 if inc.resolution:
                     lines.append(f"    Resolution: {inc.resolution[:80]}")
             lines.append("")
@@ -303,7 +302,9 @@ class EmailTemplateRenderer:
         ]
 
         if data.mttr_minutes:
-            lines.append(f"  Mean Time to Resolve: {self._format_duration(data.mttr_minutes)}")
+            lines.append(
+                f"  Mean Time to Resolve: {self._format_duration(data.mttr_minutes)}"
+            )
             lines.append("")
 
         if data.services_affected:
@@ -318,8 +319,12 @@ class EmailTemplateRenderer:
             lines.append("-" * 40)
             for inc in data.incidents[:20]:
                 status_icon = "✓" if inc.status == "resolved" else "○"
-                lines.append(f"  {status_icon} [{inc.severity.upper()}] {inc.title[:50]}")
-                lines.append(f"    Service: {inc.service_name} | {inc.triggered_at.strftime('%m/%d %H:%M')}")
+                lines.append(
+                    f"  {status_icon} [{inc.severity.upper()}] {inc.title[:50]}"
+                )
+                lines.append(
+                    f"    Service: {inc.service_name} | {inc.triggered_at.strftime('%m/%d %H:%M')}"
+                )
             lines.append("")
 
         # Footer
