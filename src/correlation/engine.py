@@ -130,7 +130,7 @@ class CorrelationEngine:
                     should_notify = True
                 else:
                     suppression_reason = (
-                        f"Correlated with {group.alert_count-1} other alerts"
+                        f"Correlated with {group.alert_count - 1} other alerts"
                     )
                     group.suppressed_count += 1
             else:
