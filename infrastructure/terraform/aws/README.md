@@ -154,11 +154,15 @@ Pre-configured environments are available:
 | Environment | File | Description |
 |-------------|------|-------------|
 | Development | `environments/dev.tfvars` | Cost-optimized, single NAT, smaller instances |
-| Production | `environments/prod.tfvars` | HA setup, Multi-AZ, larger instances |
+| Staging | `environments/staging.tfvars` | Pre-production testing, Multi-AZ RDS, 2-node Redis |
+| Production | `environments/prod.tfvars` | Full HA setup, Multi-AZ everywhere, larger instances |
 
 ```bash
 # Deploy development
 terraform apply -var-file=environments/dev.tfvars
+
+# Deploy staging
+terraform apply -var-file=environments/staging.tfvars
 
 # Deploy production
 terraform apply -var-file=environments/prod.tfvars
