@@ -1,0 +1,416 @@
+{# 
+  Responder Card Component
+  Usage: {% include "components/responder_card.html" %}
+  Required context: responders (list of responder dicts with id, name, role, status, avatar_url)
+#}
+
+<div class="responder-cards-container" id="responder-cards-container">
+    <style>
+        @keyframes responder-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+        }
+        @keyframes responder-join {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .responder-card { transition: all 0.3s ease; }
+        .responder-card:hover { transform: translateY(-2px); }
+        .responder-active { animation: responder-pulse 2s infinite; }
+        .responder-new { animation: responder-join 0.4s ease-out; }
+        .status-online { background-color: #22c55e; }
+        .status-busy { background-color: #f59e0b; }
+        .status-away { background-color: #64748b; }
+        .status-offline { background-color: #6b7280; }
+        .avatar-ring-online { ring-color: #22c55e; }
+        .avatar-ring-busy { ring-color: #f59e0b; }
+        .avatar-ring-investigating { ring-color: #3b82f6; }
+    </style>
+    
+    <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-white flex items-center">
+                <i class="fas fa-users mr-3 text-blue-400"></i>
+                Assigned Responders
+            </h3>
+            <span class="text-sm text-gray-400" id="responder-count">
+                {{ responders | length if responders else 0 }} assigned
+            </span>
+        </div>
+        
+        <div class="space-y-3" id="responder-list">
+            {% if responders %}
+                {% for responder in responders %}
+                <div class="responder-card bg-slate-700/50 rounded-lg p-4 border border-slate-600 hover:border-slate-500"
+                     data-responder-id="{{ responder.id }}"
+                     data-responder-status="{{ responder.status }}">
+                    <div class="flex items-center gap-4">
+                        {# Avatar with status indicator #}
+                        <div class="relative flex-shrink-0">
+                            {% if responder.avatar_url %}
+                            <img src="{{ responder.avatar_url }}" 
+                                 alt="{{ responder.name }}"
+                                 class="w-12 h-12 rounded-full ring-2 
+                                     {% if responder.status == 'investigating' %}avatar-ring-investigating
+                                     {% elif responder.status == 'online' %}avatar-ring-online
+                                     {% elif responder.status == 'busy' %}avatar-ring-busy
+                                     {% else %}ring-slate-500{% endif %}">
+                            {% else %}
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg ring-2
+                                {% if responder.status == 'investigating' %}avatar-ring-investigating
+                                {% elif responder.status == 'online' %}avatar-ring-online
+                                {% elif responder.status == 'busy' %}avatar-ring-busy
+                                {% else %}ring-slate-500{% endif %}">
+                                {{ responder.name[:2] | upper }}
+                            </div>
+                            {% endif %}
+                            
+                            {# Status dot #}
+                            <span class="absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-slate-700
+                                {% if responder.status == 'investigating' %}bg-blue-500 responder-active
+                                {% elif responder.status == 'online' %}status-online
+                                {% elif responder.status == 'busy' %}status-busy
+                                {% elif responder.status == 'away' %}status-away
+                                {% else %}status-offline{% endif %}">
+                            </span>
+                        </div>
+                        
+                        {# Responder info #}
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <h4 class="text-white font-medium truncate">{{ responder.name }}</h4>
+                                {% if responder.is_lead %}
+                                <span class="px-2 py-0.5 text-xs rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                    Lead
+                                </span>
+                                {% endif %}
+                                {% if responder.is_primary %}
+                                <span class="px-2 py-0.5 text-xs rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                    Primary
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="flex items-center gap-3 mt-1">
+                                <span class="text-gray-400 text-sm">{{ responder.role or 'Engineer' }}</span>
+                                {% if responder.team %}
+                                <span class="text-gray-500 text-sm flex items-center gap-1">
+                                    <i class="fas fa-users text-xs"></i>
+                                    {{ responder.team }}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        {# Status and actions #}
+                        <div class="flex items-center gap-3 flex-shrink-0">
+                            {# Status badge #}
+                            <span class="px-3 py-1 text-xs rounded-full capitalize
+                                {% if responder.status == 'investigating' %}bg-blue-500/20 text-blue-300
+                                {% elif responder.status == 'online' %}bg-green-500/20 text-green-300
+                                {% elif responder.status == 'busy' %}bg-yellow-500/20 text-yellow-300
+                                {% elif responder.status == 'away' %}bg-gray-500/20 text-gray-300
+                                {% else %}bg-slate-500/20 text-slate-300{% endif %}">
+                                {{ responder.status or 'offline' }}
+                            </span>
+                            
+                            {# Quick actions #}
+                            <div class="flex items-center gap-1">
+                                {% if responder.slack_handle %}
+                                <a href="https://slack.com/app_redirect?channel={{ responder.slack_handle }}" 
+                                   target="_blank"
+                                   class="p-2 text-gray-400 hover:text-white hover:bg-slate-600 rounded-lg transition"
+                                   title="Message on Slack">
+                                    <i class="fab fa-slack"></i>
+                                </a>
+                                {% endif %}
+                                {% if responder.phone %}
+                                <a href="tel:{{ responder.phone }}"
+                                   class="p-2 text-gray-400 hover:text-white hover:bg-slate-600 rounded-lg transition"
+                                   title="Call">
+                                    <i class="fas fa-phone"></i>
+                                </a>
+                                {% endif %}
+                                {% if responder.email %}
+                                <a href="mailto:{{ responder.email }}"
+                                   class="p-2 text-gray-400 hover:text-white hover:bg-slate-600 rounded-lg transition"
+                                   title="Email">
+                                    <i class="fas fa-envelope"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {# Additional info row (optional) #}
+                    {% if responder.current_task or responder.last_activity %}
+                    <div class="mt-3 pt-3 border-t border-slate-600 flex items-center justify-between text-sm">
+                        {% if responder.current_task %}
+                        <span class="text-gray-400 flex items-center gap-2">
+                            <i class="fas fa-tasks text-blue-400"></i>
+                            {{ responder.current_task | truncate(40) }}
+                        </span>
+                        {% endif %}
+                        {% if responder.last_activity %}
+                        <span class="text-gray-500 text-xs">
+                            <i class="fas fa-clock mr-1"></i>
+                            Last active {{ responder.last_activity }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                {# Empty state #}
+                <div class="text-center py-8" id="responder-empty-state">
+                    <div class="bg-slate-700/50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-user-plus text-2xl text-gray-500"></i>
+                    </div>
+                    <h4 class="text-gray-300 font-medium">No responders assigned</h4>
+                    <p class="text-gray-500 text-sm mt-1">Responders will appear here when assigned to the incident</p>
+                </div>
+            {% endif %}
+        </div>
+        
+        {# Add responder button (optional) #}
+        {% if show_add_button %}
+        <button onclick="responderCards.showAddModal()" 
+                class="w-full mt-4 py-3 border-2 border-dashed border-slate-600 rounded-lg text-gray-400 hover:text-white hover:border-slate-500 transition flex items-center justify-center gap-2">
+            <i class="fas fa-plus"></i>
+            Add Responder
+        </button>
+        {% endif %}
+    </div>
+    
+    {# Responder summary (compact view for lists) #}
+    {% if show_compact %}
+    <div class="responder-compact hidden" id="responder-compact">
+        <div class="flex items-center gap-2">
+            <div class="flex -space-x-2">
+                {% for responder in responders[:4] %}
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold border-2 border-slate-800" 
+                     title="{{ responder.name }}">
+                    {{ responder.name[:2] | upper }}
+                </div>
+                {% endfor %}
+                {% if responders | length > 4 %}
+                <div class="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-white text-xs border-2 border-slate-800">
+                    +{{ responders | length - 4 }}
+                </div>
+                {% endif %}
+            </div>
+            <span class="text-gray-400 text-sm ml-2">{{ responders | length }} responder{{ 's' if responders | length != 1 else '' }}</span>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+class ResponderCards {
+    constructor() {
+        this.container = document.getElementById('responder-list');
+        this.responders = new Map();
+    }
+    
+    // Add a new responder to the list
+    addResponder(responder) {
+        // Remove empty state if present
+        const emptyState = document.getElementById('responder-empty-state');
+        if (emptyState) emptyState.remove();
+        
+        // Check if already exists
+        if (this.responders.has(responder.id)) {
+            this.updateResponder(responder.id, responder);
+            return;
+        }
+        
+        const card = this.createResponderCard(responder);
+        card.classList.add('responder-new');
+        this.container.appendChild(card);
+        this.responders.set(responder.id, responder);
+        this.updateCount();
+    }
+    
+    // Remove a responder from the list
+    removeResponder(responderId) {
+        const card = this.container.querySelector(`[data-responder-id="${responderId}"]`);
+        if (card) {
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.8)';
+            setTimeout(() => {
+                card.remove();
+                this.responders.delete(responderId);
+                this.updateCount();
+                
+                // Show empty state if no responders left
+                if (this.responders.size === 0) {
+                    this.showEmptyState();
+                }
+            }, 300);
+        }
+    }
+    
+    // Update an existing responder's info
+    updateResponder(responderId, updates) {
+        const card = this.container.querySelector(`[data-responder-id="${responderId}"]`);
+        if (!card) return;
+        
+        // Update status
+        if (updates.status) {
+            card.dataset.responderStatus = updates.status;
+            
+            // Update status badge
+            const badge = card.querySelector('.rounded-full.capitalize');
+            if (badge) {
+                badge.className = this.getStatusBadgeClasses(updates.status);
+                badge.textContent = updates.status;
+            }
+            
+            // Update status dot
+            const dot = card.querySelector('.absolute.bottom-0.right-0');
+            if (dot) {
+                dot.className = this.getStatusDotClasses(updates.status);
+            }
+        }
+        
+        // Update current task
+        if (updates.current_task !== undefined) {
+            let taskEl = card.querySelector('.fa-tasks')?.parentElement;
+            if (updates.current_task && taskEl) {
+                taskEl.innerHTML = `<i class="fas fa-tasks text-blue-400"></i>${this.escapeHtml(updates.current_task)}`;
+            }
+        }
+        
+        this.responders.set(responderId, { ...this.responders.get(responderId), ...updates });
+    }
+    
+    // Update responder status only
+    updateStatus(responderId, status) {
+        this.updateResponder(responderId, { status });
+    }
+    
+    // Create a responder card element
+    createResponderCard(responder) {
+        const card = document.createElement('div');
+        card.className = 'responder-card bg-slate-700/50 rounded-lg p-4 border border-slate-600 hover:border-slate-500';
+        card.dataset.responderId = responder.id;
+        card.dataset.responderStatus = responder.status || 'offline';
+        
+        const initials = responder.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+        const avatarRingClass = this.getAvatarRingClass(responder.status);
+        const statusDotClass = this.getStatusDotClasses(responder.status);
+        const statusBadgeClass = this.getStatusBadgeClasses(responder.status);
+        
+        card.innerHTML = `
+            <div class="flex items-center gap-4">
+                <div class="relative flex-shrink-0">
+                    ${responder.avatar_url 
+                        ? `<img src="${responder.avatar_url}" alt="${this.escapeHtml(responder.name)}" class="w-12 h-12 rounded-full ring-2 ${avatarRingClass}">`
+                        : `<div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg ring-2 ${avatarRingClass}">${initials}</div>`
+                    }
+                    <span class="${statusDotClass}"></span>
+                </div>
+                
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <h4 class="text-white font-medium truncate">${this.escapeHtml(responder.name)}</h4>
+                        ${responder.is_lead ? '<span class="px-2 py-0.5 text-xs rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">Lead</span>' : ''}
+                        ${responder.is_primary ? '<span class="px-2 py-0.5 text-xs rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">Primary</span>' : ''}
+                    </div>
+                    <div class="flex items-center gap-3 mt-1">
+                        <span class="text-gray-400 text-sm">${this.escapeHtml(responder.role || 'Engineer')}</span>
+                        ${responder.team ? `<span class="text-gray-500 text-sm flex items-center gap-1"><i class="fas fa-users text-xs"></i>${this.escapeHtml(responder.team)}</span>` : ''}
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-3 flex-shrink-0">
+                    <span class="${statusBadgeClass}">${responder.status || 'offline'}</span>
+                    <div class="flex items-center gap-1">
+                        ${responder.slack_handle ? `<a href="https://slack.com/app_redirect?channel=${responder.slack_handle}" target="_blank" class="p-2 text-gray-400 hover:text-white hover:bg-slate-600 rounded-lg transition" title="Message on Slack"><i class="fab fa-slack"></i></a>` : ''}
+                        ${responder.phone ? `<a href="tel:${responder.phone}" class="p-2 text-gray-400 hover:text-white hover:bg-slate-600 rounded-lg transition" title="Call"><i class="fas fa-phone"></i></a>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        return card;
+    }
+    
+    getAvatarRingClass(status) {
+        const classes = {
+            investigating: 'avatar-ring-investigating',
+            online: 'avatar-ring-online',
+            busy: 'avatar-ring-busy'
+        };
+        return classes[status] || 'ring-slate-500';
+    }
+    
+    getStatusDotClasses(status) {
+        const base = 'absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-slate-700';
+        const classes = {
+            investigating: `${base} bg-blue-500 responder-active`,
+            online: `${base} status-online`,
+            busy: `${base} status-busy`,
+            away: `${base} status-away`
+        };
+        return classes[status] || `${base} status-offline`;
+    }
+    
+    getStatusBadgeClasses(status) {
+        const base = 'px-3 py-1 text-xs rounded-full capitalize';
+        const classes = {
+            investigating: `${base} bg-blue-500/20 text-blue-300`,
+            online: `${base} bg-green-500/20 text-green-300`,
+            busy: `${base} bg-yellow-500/20 text-yellow-300`,
+            away: `${base} bg-gray-500/20 text-gray-300`
+        };
+        return classes[status] || `${base} bg-slate-500/20 text-slate-300`;
+    }
+    
+    updateCount() {
+        const countEl = document.getElementById('responder-count');
+        if (countEl) {
+            countEl.textContent = `${this.responders.size} assigned`;
+        }
+    }
+    
+    showEmptyState() {
+        const emptyState = document.createElement('div');
+        emptyState.className = 'text-center py-8';
+        emptyState.id = 'responder-empty-state';
+        emptyState.innerHTML = `
+            <div class="bg-slate-700/50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-user-plus text-2xl text-gray-500"></i>
+            </div>
+            <h4 class="text-gray-300 font-medium">No responders assigned</h4>
+            <p class="text-gray-500 text-sm mt-1">Responders will appear here when assigned to the incident</p>
+        `;
+        this.container.appendChild(emptyState);
+    }
+    
+    showAddModal() {
+        // Implement add responder modal if needed
+        console.log('Show add responder modal');
+    }
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+    }
+}
+
+// Initialize responder cards
+const responderCards = new ResponderCards();
+
+// Initialize with existing responders
+{% if responders %}
+document.addEventListener('DOMContentLoaded', () => {
+    const responders = {{ responders | tojson | safe }};
+    responders.forEach(r => responderCards.responders.set(r.id, r));
+});
+{% endif %}
+
+// Expose globally for real-time updates
+window.responderCards = responderCards;
+</script>
