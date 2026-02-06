@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ period_type }} Incident Report</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+    <style>
+        body, table, td, p, a, li { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+        body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+
+        .email-wrapper { background-color: #f3f4f6; padding: 40px 20px; }
+        .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .header { background-color: {{ brand_color }}; padding: 24px; text-align: center; }
+        .header h1 { color: #ffffff; margin: 0; font-size: 20px; font-weight: 600; }
+        .header-subtitle { color: rgba(255,255,255,0.9); font-size: 14px; margin-top: 8px; }
+        .content { padding: 24px; }
+        .section { margin-bottom: 24px; }
+        .section-title { font-size: 14px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
+
+        .stats-grid { display: table; width: 100%; margin-bottom: 24px; }
+        .stat-cell { display: table-cell; text-align: center; padding: 16px; background-color: #f9fafb; }
+        .stat-cell:first-child { border-radius: 6px 0 0 6px; }
+        .stat-cell:last-child { border-radius: 0 6px 6px 0; }
+        .stat-value { font-size: 28px; font-weight: 700; color: #111827; }
+        .stat-label { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+        .severity-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 16px; background-color: #e5e7eb; }
+        .severity-critical { background-color: #dc2626; }
+        .severity-high { background-color: #ea580c; }
+        .severity-medium { background-color: #ca8a04; }
+        .severity-low { background-color: #16a34a; }
+
+        .severity-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px; margin-bottom: 24px; }
+        .severity-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+
+        .incident-row { padding: 12px 0; border-bottom: 1px solid #f3f4f6; }
+        .incident-row:last-child { border-bottom: none; }
+        .incident-severity { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+        .incident-title { font-weight: 500; color: #111827; }
+        .incident-meta { font-size: 13px; color: #6b7280; margin-top: 4px; }
+        .incident-status { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; text-transform: uppercase; }
+        .status-resolved { background-color: #dcfce7; color: #166534; }
+        .status-open { background-color: #fef3c7; color: #92400e; }
+
+        .service-tag { display: inline-block; background-color: #e5e7eb; padding: 4px 12px; border-radius: 16px; font-size: 13px; margin: 4px 4px 4px 0; }
+
+        .footer { background-color: #f9fafb; padding: 20px 24px; text-align: center; font-size: 12px; color: #6b7280; }
+
+        @media screen and (max-width: 600px) {
+            .email-wrapper { padding: 20px 10px; }
+            .content { padding: 16px; }
+            .stat-cell { display: block; margin-bottom: 8px; border-radius: 6px !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-wrapper">
+        <table class="email-container" cellpadding="0" cellspacing="0" width="100%">
+            <!-- Header -->
+            <tr>
+                <td class="header">
+                    {% if logo_url %}
+                    <img src="{{ logo_url }}" alt="Logo" style="max-height: 40px; margin-bottom: 12px;">
+                    {% endif %}
+                    <h1>📊 {{ period_type }} Incident Report</h1>
+                    <div class="header-subtitle">{{ period_start }} — {{ period_end }}</div>
+                </td>
+            </tr>
+
+            <!-- Content -->
+            <tr>
+                <td class="content">
+                    <!-- Stats Overview -->
+                    <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
+                        <tr>
+                            <td style="text-align: center; padding: 16px; background-color: #f9fafb; border-radius: 6px 0 0 6px;">
+                                <div class="stat-value">{{ data.total_incidents }}</div>
+                                <div class="stat-label">Total Incidents</div>
+                            </td>
+                            <td style="text-align: center; padding: 16px; background-color: #f9fafb;">
+                                <div class="stat-value">{{ data.critical_count + data.high_count }}</div>
+                                <div class="stat-label">Critical/High</div>
+                            </td>
+                            <td style="text-align: center; padding: 16px; background-color: #f9fafb; border-radius: 0 6px 6px 0;">
+                                <div class="stat-value">{{ mttr_formatted }}</div>
+                                <div class="stat-label">Avg MTTR</div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Severity Distribution -->
+                    {% if data.total_incidents > 0 %}
+                    <div class="section">
+                        <div class="section-title">Severity Distribution</div>
+                        <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 16px;">
+                            <tr style="height: 8px;">
+                                {% set total = data.total_incidents %}
+                                {% if data.critical_count > 0 %}
+                                <td style="background-color: #dc2626; width: {{ (data.critical_count / total * 100)|int }}%; border-radius: 4px 0 0 4px;"></td>
+                                {% endif %}
+                                {% if data.high_count > 0 %}
+                                <td style="background-color: #ea580c; width: {{ (data.high_count / total * 100)|int }}%;"></td>
+                                {% endif %}
+                                {% if data.medium_count > 0 %}
+                                <td style="background-color: #ca8a04; width: {{ (data.medium_count / total * 100)|int }}%;"></td>
+                                {% endif %}
+                                {% if data.low_count > 0 %}
+                                <td style="background-color: #16a34a; width: {{ (data.low_count / total * 100)|int }}%; border-radius: 0 4px 4px 0;"></td>
+                                {% endif %}
+                            </tr>
+                        </table>
+                        <div class="severity-legend">
+                            <span><span class="severity-dot" style="background-color: #dc2626;"></span> Critical: {{ data.critical_count }}</span>
+                            <span><span class="severity-dot" style="background-color: #ea580c;"></span> High: {{ data.high_count }}</span>
+                            <span><span class="severity-dot" style="background-color: #ca8a04;"></span> Medium: {{ data.medium_count }}</span>
+                            <span><span class="severity-dot" style="background-color: #16a34a;"></span> Low: {{ data.low_count }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Services Affected -->
+                    {% if data.services_affected %}
+                    <div class="section">
+                        <div class="section-title">Services Affected ({{ data.services_affected|length }})</div>
+                        <div>
+                            {% for service in data.services_affected[:10] %}
+                            <span class="service-tag">{{ service }}</span>
+                            {% endfor %}
+                            {% if data.services_affected|length > 10 %}
+                            <span class="service-tag">+{{ data.services_affected|length - 10 }} more</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Incident List -->
+                    {% if data.incidents %}
+                    <div class="section">
+                        <div class="section-title">Incidents ({{ data.incidents|length }})</div>
+                        {% for inc in data.incidents[:15] %}
+                        <div class="incident-row">
+                            <div>
+                                {% if inc.severity == 'critical' %}
+                                <span class="incident-severity" style="background-color: #dc2626;"></span>
+                                {% elif inc.severity == 'high' %}
+                                <span class="incident-severity" style="background-color: #ea580c;"></span>
+                                {% elif inc.severity == 'medium' %}
+                                <span class="incident-severity" style="background-color: #ca8a04;"></span>
+                                {% else %}
+                                <span class="incident-severity" style="background-color: #16a34a;"></span>
+                                {% endif %}
+                                <span class="incident-title">
+                                    {% if inc.url %}
+                                    <a href="{{ inc.url }}" style="color: #111827; text-decoration: none;">{{ inc.title|truncate(50) }}</a>
+                                    {% else %}
+                                    {{ inc.title|truncate(50) }}
+                                    {% endif %}
+                                </span>
+                                {% if inc.status == 'resolved' %}
+                                <span class="incident-status status-resolved">Resolved</span>
+                                {% else %}
+                                <span class="incident-status status-open">Open</span>
+                                {% endif %}
+                            </div>
+                            <div class="incident-meta">
+                                {{ inc.service_name }} • {{ inc.triggered_at|format_datetime('%m/%d %H:%M') }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% if data.incidents|length > 15 %}
+                        <div style="padding: 12px 0; text-align: center; color: #6b7280; font-size: 13px;">
+                            + {{ data.incidents|length - 15 }} more incidents
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div style="text-align: center; padding: 40px 20px; color: #6b7280;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">🎉</div>
+                        <div style="font-size: 18px; font-weight: 500; margin-bottom: 8px;">No incidents this period!</div>
+                        <div>Great job keeping things stable.</div>
+                    </div>
+                    {% endif %}
+                </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+                <td class="footer">
+                    {% if footer %}
+                    <div style="margin-bottom: 12px;">{{ footer }}</div>
+                    {% endif %}
+                    <div>Powered by <strong>Incident Copilot</strong></div>
+                    <div style="margin-top: 8px; font-size: 11px;">
+                        You received this {{ period_type|lower }} digest because you're subscribed to incident reports.
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>
