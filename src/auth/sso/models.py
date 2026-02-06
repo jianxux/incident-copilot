@@ -2,13 +2,13 @@
 
 import secrets
 from datetime import datetime, timedelta
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class IdentityProviderType(str, Enum):
+class IdentityProviderType(StrEnum):
     """Supported identity provider types."""
 
     SAML = "saml"

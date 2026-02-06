@@ -2,12 +2,12 @@
 
 import secrets
 from datetime import datetime, timedelta
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class PlanTier(str, Enum):
+class PlanTier(StrEnum):
     """Subscription plan tiers."""
 
     FREE = "free"
@@ -66,7 +66,7 @@ class Tenant(BaseModel):
         self.updated_at = datetime.utcnow()
 
 
-class UserRole(str, Enum):
+class UserRole(StrEnum):
     """User roles within a tenant."""
 
     OWNER = "owner"

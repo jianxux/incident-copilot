@@ -11,8 +11,8 @@ from .models import (
     Insight,
     InsightType,
     RecurringPattern,
-    Severity,
     ServiceDependency,
+    Severity,
     TimeBasedPattern,
 )
 

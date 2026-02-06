@@ -1,7 +1,5 @@
 """API routes for AI Insights and Pattern Detection."""
 
-from datetime import datetime
-
 import structlog
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
