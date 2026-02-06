@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 
 import structlog
 
-from ..analytics.models import IncidentMetrics
 from ..analytics.store import analytics_store
 from ..config import Settings, get_settings
 from .analyzer import IncidentAnalyzer
