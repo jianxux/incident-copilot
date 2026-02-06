@@ -6,7 +6,7 @@ Provides unified access to on-call schedules from:
 """
 
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 import httpx
@@ -25,7 +25,7 @@ OPSGENIE_API_URLS = {
 }
 
 
-class OnCallProvider(str, Enum):
+class OnCallProvider(StrEnum):
     """On-call provider types."""
 
     PAGERDUTY = "pagerduty"

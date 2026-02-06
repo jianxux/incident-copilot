@@ -1,12 +1,12 @@
 """Data models for runbook auto-linking."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class RunbookSourceType(str, Enum):
+class RunbookSourceType(StrEnum):
     """Types of runbook sources."""
 
     GITHUB = "github"

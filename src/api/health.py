@@ -5,7 +5,7 @@ Provides comprehensive health status for the application and its dependencies.
 
 import asyncio
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 import httpx
@@ -19,7 +19,7 @@ logger = structlog.get_logger()
 router = APIRouter(tags=["health"])
 
 
-class HealthStatus(str, Enum):
+class HealthStatus(StrEnum):
     """Health status enum."""
 
     HEALTHY = "healthy"

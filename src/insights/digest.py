@@ -99,8 +99,7 @@ class DigestGenerator:
 
         # Filter incidents to period
         period_incidents = [
-            i for i in incidents
-            if period_start <= i.triggered_at <= period_end
+            i for i in incidents if period_start <= i.triggered_at <= period_end
         ]
 
         # Calculate basic stats
@@ -133,9 +132,9 @@ class DigestGenerator:
         for i in period_incidents:
             service_counts[i.service_name] = service_counts.get(i.service_name, 0) + 1
 
-        top_services = sorted(
-            service_counts.items(), key=lambda x: x[1], reverse=True
-        )[:5]
+        top_services = sorted(service_counts.items(), key=lambda x: x[1], reverse=True)[
+            :5
+        ]
 
         # Detect patterns
         patterns = await self.pattern_detector.detect_recurring_patterns(
@@ -220,17 +219,25 @@ class DigestGenerator:
                 f"- {service}: {count} incidents" for service, count in top_services
             )
 
-            patterns_str = "\n".join(
-                f"- {p.title_pattern}: {p.incident_count} occurrences"
-                for p in patterns[:5]
-            ) or "No significant patterns detected"
+            patterns_str = (
+                "\n".join(
+                    f"- {p.title_pattern}: {p.incident_count} occurrences"
+                    for p in patterns[:5]
+                )
+                or "No significant patterns detected"
+            )
 
-            anomalies_str = "\n".join(
-                f"- {a.description}" for a in anomalies[:5]
-            ) or "No anomalies detected"
+            anomalies_str = (
+                "\n".join(f"- {a.description}" for a in anomalies[:5])
+                or "No anomalies detected"
+            )
 
-            severity_trend_str = "Not enough data" if not severity_trend else (
-                f"{severity_trend.trend_direction} ({severity_trend.change_percent:+.1f}% change)"
+            severity_trend_str = (
+                "Not enough data"
+                if not severity_trend
+                else (
+                    f"{severity_trend.trend_direction} ({severity_trend.change_percent:+.1f}% change)"
+                )
             )
 
             prompt = DIGEST_PROMPT.format(
@@ -272,7 +279,7 @@ class DigestGenerator:
     def _generate_digest_id(self, period: DigestPeriod, start: datetime) -> str:
         """Generate a deterministic digest ID."""
         base = f"{period.value}_{start.isoformat()}"
-        return hashlib.md5(base.encode()).hexdigest()[:12]
+        return hashlib.md5(base.encode(), usedforsecurity=False).hexdigest()[:12]
 
     async def generate_quick_summary(
         self,

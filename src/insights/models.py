@@ -1,12 +1,12 @@
 """Data models for AI Insights and Pattern Detection."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class InsightType(str, Enum):
+class InsightType(StrEnum):
     """Types of insights detected."""
 
     RECURRING_INCIDENT = "recurring_incident"
@@ -19,7 +19,7 @@ class InsightType(str, Enum):
     CORRELATION = "correlation"
 
 
-class PatternType(str, Enum):
+class PatternType(StrEnum):
     """Types of patterns detected."""
 
     RECURRING = "recurring"
@@ -28,7 +28,7 @@ class PatternType(str, Enum):
     FREQUENCY_CHANGE = "frequency_change"
 
 
-class AnomalyType(str, Enum):
+class AnomalyType(StrEnum):
     """Types of anomalies detected."""
 
     SPIKE = "spike"
@@ -38,7 +38,7 @@ class AnomalyType(str, Enum):
     OUTLIER = "outlier"
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     """Insight severity levels."""
 
     CRITICAL = "critical"
@@ -197,7 +197,7 @@ class ServiceDependencyMap(BaseModel):
 # --- Digest Models ---
 
 
-class DigestPeriod(str, Enum):
+class DigestPeriod(StrEnum):
     """Digest time periods."""
 
     DAILY = "daily"
