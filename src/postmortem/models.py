@@ -1,13 +1,13 @@
 """Data models for postmortem generation."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class PostmortemFormat(str, Enum):
+class PostmortemFormat(StrEnum):
     """Output formats for postmortems."""
 
     MARKDOWN = "markdown"
@@ -16,7 +16,7 @@ class PostmortemFormat(str, Enum):
     SLACK = "slack"
 
 
-class PostmortemStatus(str, Enum):
+class PostmortemStatus(StrEnum):
     """Status of a postmortem."""
 
     DRAFT = "draft"
@@ -25,7 +25,7 @@ class PostmortemStatus(str, Enum):
     PUBLISHED = "published"
 
 
-class TimelineEventType(str, Enum):
+class TimelineEventType(StrEnum):
     """Types of timeline events."""
 
     ALERT_TRIGGERED = "alert_triggered"
@@ -82,7 +82,7 @@ class ImpactAssessment(BaseModel):
     summary: str | None = None
 
 
-class ActionItemPriority(str, Enum):
+class ActionItemPriority(StrEnum):
     """Priority levels for action items."""
 
     CRITICAL = "critical"
@@ -91,7 +91,7 @@ class ActionItemPriority(str, Enum):
     LOW = "low"
 
 
-class ActionItemStatus(str, Enum):
+class ActionItemStatus(StrEnum):
     """Status of action items."""
 
     TODO = "todo"

@@ -1,7 +1,7 @@
 """Incident Timeline API and utilities."""
 
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 import structlog
@@ -12,7 +12,7 @@ from ..models import ContextCard
 logger = structlog.get_logger()
 
 
-class TimelineEventType(str, Enum):
+class TimelineEventType(StrEnum):
     """Types of events that appear on the timeline."""
 
     ALERT_TRIGGERED = "alert_triggered"
