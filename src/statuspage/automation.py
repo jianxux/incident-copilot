@@ -497,6 +497,10 @@ class StatusPageAutomation:
         Returns:
             Sync result
         """
+        # Always clear manual override on resolution - incident is done
+        had_override = self.has_manual_override(incident_id)
+        self.clear_manual_override(incident_id)
+
         if not self.config.auto_resolve_enabled:
             return SyncResult(
                 success=True,
@@ -505,12 +509,12 @@ class StatusPageAutomation:
                 message="Auto-resolve disabled",
             )
 
-        if self.has_manual_override(incident_id):
+        if had_override:
             return SyncResult(
                 success=True,
                 incident_id=incident_id,
                 action="skipped",
-                message="Manual override enabled - resolve manually",
+                message="Manual override was enabled - resolve manually",
             )
 
         # Check if we have a pending incident that hasn't been created yet
@@ -535,9 +539,6 @@ class StatusPageAutomation:
             triggered_at=triggered_at or datetime.utcnow(),
             resolved_at=resolved_at or datetime.utcnow(),
         )
-
-        # Clean up manual override before syncing (so it happens regardless of result)
-        self.clear_manual_override(incident_id)
 
         result = await self.sync.sync_incident_resolved(
             internal_incident,

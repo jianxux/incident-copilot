@@ -1,0 +1,240 @@
+{# 
+  Timeline Visual Component
+  Usage: {% include "components/timeline_visual.html" %}
+  Required context: timeline_events (list of event dicts with type, timestamp, title, description)
+#}
+
+<div class="timeline-visual relative" id="timeline-visual">
+    <style>
+        @keyframes timeline-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+            50% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+        }
+        @keyframes timeline-slide-in {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .timeline-item { animation: timeline-slide-in 0.4s ease-out forwards; }
+        .timeline-item:nth-child(1) { animation-delay: 0.1s; }
+        .timeline-item:nth-child(2) { animation-delay: 0.2s; }
+        .timeline-item:nth-child(3) { animation-delay: 0.3s; }
+        .timeline-item:nth-child(4) { animation-delay: 0.4s; }
+        .timeline-item:nth-child(5) { animation-delay: 0.5s; }
+        .timeline-active { animation: timeline-pulse 2s infinite; }
+        .dark .timeline-line { background: linear-gradient(to bottom, #3b82f6, #1e293b); }
+        .timeline-line { background: linear-gradient(to bottom, #3b82f6, #e2e8f0); }
+    </style>
+    
+    {# Event type icons and colors mapping #}
+    {% set event_icons = {
+        'triggered': {'icon': 'fa-bell', 'color': 'bg-red-500', 'ring': 'ring-red-500/30'},
+        'alert': {'icon': 'fa-exclamation-triangle', 'color': 'bg-orange-500', 'ring': 'ring-orange-500/30'},
+        'acknowledged': {'icon': 'fa-user-check', 'color': 'bg-blue-500', 'ring': 'ring-blue-500/30'},
+        'assigned': {'icon': 'fa-user-plus', 'color': 'bg-indigo-500', 'ring': 'ring-indigo-500/30'},
+        'escalated': {'icon': 'fa-level-up-alt', 'color': 'bg-purple-500', 'ring': 'ring-purple-500/30'},
+        'investigating': {'icon': 'fa-search', 'color': 'bg-yellow-500', 'ring': 'ring-yellow-500/30'},
+        'identified': {'icon': 'fa-lightbulb', 'color': 'bg-amber-500', 'ring': 'ring-amber-500/30'},
+        'mitigating': {'icon': 'fa-wrench', 'color': 'bg-cyan-500', 'ring': 'ring-cyan-500/30'},
+        'resolved': {'icon': 'fa-check-circle', 'color': 'bg-green-500', 'ring': 'ring-green-500/30'},
+        'closed': {'icon': 'fa-times-circle', 'color': 'bg-gray-500', 'ring': 'ring-gray-500/30'},
+        'note': {'icon': 'fa-sticky-note', 'color': 'bg-slate-500', 'ring': 'ring-slate-500/30'},
+        'status_update': {'icon': 'fa-sync-alt', 'color': 'bg-teal-500', 'ring': 'ring-teal-500/30'},
+        'runbook': {'icon': 'fa-book', 'color': 'bg-violet-500', 'ring': 'ring-violet-500/30'},
+        'automation': {'icon': 'fa-robot', 'color': 'bg-pink-500', 'ring': 'ring-pink-500/30'},
+        'default': {'icon': 'fa-circle', 'color': 'bg-slate-400', 'ring': 'ring-slate-400/30'}
+    } %}
+    
+    <div class="relative">
+        {# Vertical timeline line #}
+        <div class="absolute left-6 top-0 bottom-0 w-0.5 timeline-line"></div>
+        
+        {# Timeline events #}
+        <div class="space-y-6" id="timeline-events">
+            {% if timeline_events %}
+                {% for event in timeline_events %}
+                    {% set event_style = event_icons.get(event.type, event_icons.default) %}
+                    <div class="timeline-item relative flex items-start gap-4 opacity-0 group" 
+                         data-event-id="{{ event.id }}"
+                         data-event-type="{{ event.type }}">
+                        {# Event icon node #}
+                        <div class="relative z-10 flex-shrink-0">
+                            <div class="w-12 h-12 rounded-full {{ event_style.color }} flex items-center justify-center ring-4 {{ event_style.ring }} shadow-lg transition-transform group-hover:scale-110 {% if loop.first and event.type in ['triggered', 'investigating', 'mitigating'] %}timeline-active{% endif %}">
+                                <i class="fas {{ event_style.icon }} text-white text-lg"></i>
+                            </div>
+                        </div>
+                        
+                        {# Event content card #}
+                        <div class="flex-1 bg-slate-800 dark:bg-slate-800 rounded-xl border border-slate-700 dark:border-slate-700 p-4 shadow-md hover:shadow-lg transition-all hover:border-slate-600 dark:hover:border-slate-600 group-hover:translate-x-1">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <h4 class="text-white font-semibold capitalize">
+                                            {{ event.type | replace('_', ' ') }}
+                                        </h4>
+                                        {% if event.severity %}
+                                        <span class="px-2 py-0.5 text-xs rounded-full 
+                                            {% if event.severity == 'critical' %}bg-red-500
+                                            {% elif event.severity == 'high' %}bg-orange-500
+                                            {% elif event.severity == 'medium' %}bg-yellow-500
+                                            {% elif event.severity == 'low' %}bg-blue-500
+                                            {% else %}bg-gray-500{% endif %} text-white">
+                                            {{ event.severity }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    {% if event.title %}
+                                    <p class="text-gray-200 mt-1">{{ event.title }}</p>
+                                    {% endif %}
+                                    
+                                    {% if event.description %}
+                                    <p class="text-gray-400 text-sm mt-2">{{ event.description }}</p>
+                                    {% endif %}
+                                    
+                                    {% if event.actor %}
+                                    <div class="flex items-center gap-2 mt-3 text-sm text-gray-500">
+                                        <i class="fas fa-user"></i>
+                                        <span>{{ event.actor }}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                
+                                {# Timestamp #}
+                                <div class="text-right ml-4 flex-shrink-0">
+                                    <p class="text-gray-400 text-sm whitespace-nowrap">
+                                        {{ event.timestamp | format_datetime if event.timestamp else 'Unknown' }}
+                                    </p>
+                                    {% if event.duration %}
+                                    <p class="text-gray-500 text-xs mt-1">
+                                        <i class="fas fa-stopwatch mr-1"></i>{{ event.duration }}
+                                    </p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            {# Optional action buttons #}
+                            {% if event.actions %}
+                            <div class="flex items-center gap-2 mt-3 pt-3 border-t border-slate-700">
+                                {% for action in event.actions %}
+                                <a href="{{ action.url }}" 
+                                   class="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1 transition">
+                                    <i class="fas {{ action.icon }}"></i>
+                                    {{ action.label }}
+                                </a>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-12">
+                    <div class="bg-slate-700/50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-clock text-2xl text-gray-500"></i>
+                    </div>
+                    <h3 class="text-gray-300 font-medium">No timeline events</h3>
+                    <p class="text-gray-500 text-sm mt-1">Events will appear here as they occur</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Timeline component functionality
+class TimelineVisual {
+    constructor(containerId = 'timeline-visual') {
+        this.container = document.getElementById(containerId);
+        this.eventsContainer = document.getElementById('timeline-events');
+    }
+    
+    // Add a new event to the timeline
+    addEvent(event) {
+        const eventIcons = {
+            triggered: { icon: 'fa-bell', color: 'bg-red-500', ring: 'ring-red-500/30' },
+            alert: { icon: 'fa-exclamation-triangle', color: 'bg-orange-500', ring: 'ring-orange-500/30' },
+            acknowledged: { icon: 'fa-user-check', color: 'bg-blue-500', ring: 'ring-blue-500/30' },
+            assigned: { icon: 'fa-user-plus', color: 'bg-indigo-500', ring: 'ring-indigo-500/30' },
+            escalated: { icon: 'fa-level-up-alt', color: 'bg-purple-500', ring: 'ring-purple-500/30' },
+            investigating: { icon: 'fa-search', color: 'bg-yellow-500', ring: 'ring-yellow-500/30' },
+            identified: { icon: 'fa-lightbulb', color: 'bg-amber-500', ring: 'ring-amber-500/30' },
+            mitigating: { icon: 'fa-wrench', color: 'bg-cyan-500', ring: 'ring-cyan-500/30' },
+            resolved: { icon: 'fa-check-circle', color: 'bg-green-500', ring: 'ring-green-500/30' },
+            closed: { icon: 'fa-times-circle', color: 'bg-gray-500', ring: 'ring-gray-500/30' },
+            note: { icon: 'fa-sticky-note', color: 'bg-slate-500', ring: 'ring-slate-500/30' },
+            status_update: { icon: 'fa-sync-alt', color: 'bg-teal-500', ring: 'ring-teal-500/30' },
+            runbook: { icon: 'fa-book', color: 'bg-violet-500', ring: 'ring-violet-500/30' },
+            automation: { icon: 'fa-robot', color: 'bg-pink-500', ring: 'ring-pink-500/30' },
+            default: { icon: 'fa-circle', color: 'bg-slate-400', ring: 'ring-slate-400/30' }
+        };
+        
+        const style = eventIcons[event.type] || eventIcons.default;
+        const isActive = ['triggered', 'investigating', 'mitigating'].includes(event.type);
+        
+        const eventEl = document.createElement('div');
+        eventEl.className = 'timeline-item relative flex items-start gap-4 opacity-0 group';
+        eventEl.dataset.eventId = event.id;
+        eventEl.dataset.eventType = event.type;
+        
+        eventEl.innerHTML = `
+            <div class="relative z-10 flex-shrink-0">
+                <div class="w-12 h-12 rounded-full ${style.color} flex items-center justify-center ring-4 ${style.ring} shadow-lg transition-transform group-hover:scale-110 ${isActive ? 'timeline-active' : ''}">
+                    <i class="fas ${style.icon} text-white text-lg"></i>
+                </div>
+            </div>
+            <div class="flex-1 bg-slate-800 rounded-xl border border-slate-700 p-4 shadow-md hover:shadow-lg transition-all hover:border-slate-600 group-hover:translate-x-1">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <h4 class="text-white font-semibold capitalize">${event.type.replace('_', ' ')}</h4>
+                        ${event.title ? `<p class="text-gray-200 mt-1">${this.escapeHtml(event.title)}</p>` : ''}
+                        ${event.description ? `<p class="text-gray-400 text-sm mt-2">${this.escapeHtml(event.description)}</p>` : ''}
+                        ${event.actor ? `<div class="flex items-center gap-2 mt-3 text-sm text-gray-500"><i class="fas fa-user"></i><span>${this.escapeHtml(event.actor)}</span></div>` : ''}
+                    </div>
+                    <div class="text-right ml-4 flex-shrink-0">
+                        <p class="text-gray-400 text-sm whitespace-nowrap">${event.timestamp || 'Just now'}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove empty state if present
+        const emptyState = this.eventsContainer.querySelector('.text-center');
+        if (emptyState) emptyState.remove();
+        
+        // Insert at the beginning (newest first) or end based on config
+        this.eventsContainer.insertBefore(eventEl, this.eventsContainer.firstChild);
+        
+        // Trigger animation
+        requestAnimationFrame(() => {
+            eventEl.style.opacity = '1';
+        });
+    }
+    
+    // Update an existing event
+    updateEvent(eventId, updates) {
+        const eventEl = this.eventsContainer.querySelector(`[data-event-id="${eventId}"]`);
+        if (!eventEl) return;
+        
+        // Update title/description if provided
+        if (updates.title) {
+            const titleEl = eventEl.querySelector('.text-gray-200');
+            if (titleEl) titleEl.textContent = updates.title;
+        }
+        if (updates.description) {
+            const descEl = eventEl.querySelector('.text-gray-400.text-sm');
+            if (descEl) descEl.textContent = updates.description;
+        }
+    }
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+}
+
+// Initialize timeline if container exists
+if (document.getElementById('timeline-visual')) {
+    window.timelineVisual = new TimelineVisual();
+}
+</script>

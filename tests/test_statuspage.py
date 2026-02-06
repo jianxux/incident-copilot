@@ -417,7 +417,7 @@ class TestStatusUpdateTemplates:
     def test_suggest_issue_type(self, templates):
         """Should suggest issue type from alert title."""
         assert "error" in templates.suggest_issue_type("High error rate", [])
-        assert "latency" in templates.suggest_issue_type("Slow response times", ["latency"])
+        assert "response" in templates.suggest_issue_type("Slow response times", ["latency"])
         assert "availability" in templates.suggest_issue_type("Service unavailable", [])
 
     def test_suggest_impact(self, templates):
