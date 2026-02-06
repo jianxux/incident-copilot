@@ -1,0 +1,388 @@
+{# 
+  Service Map Component
+  Usage: {% include "components/service_map.html" %}
+  Required context: 
+    - services (list of service dicts with id, name, status, type)
+    - dependencies (list of dicts with source, target, type)
+    - affected_service (optional - service_id of the incident's service)
+#}
+
+<div class="service-map-container" id="service-map-container">
+    <style>
+        #service-map {
+            width: 100%;
+            height: 400px;
+            background: #0f172a;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+        .service-map-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            padding: 12px;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 8px;
+            margin-top: 12px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        .vis-network .vis-manipulation {
+            background: #1e293b !important;
+            border-bottom: 1px solid #334155 !important;
+        }
+        .vis-network .vis-manipulation button {
+            color: #e2e8f0 !important;
+        }
+    </style>
+    
+    {# Service map canvas #}
+    <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-white flex items-center">
+                <i class="fas fa-project-diagram mr-3 text-blue-400"></i>
+                Service Dependencies
+            </h3>
+            <div class="flex items-center gap-2">
+                <button onclick="serviceMap.fit()" class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-slate-700 transition" title="Fit to view">
+                    <i class="fas fa-expand"></i>
+                </button>
+                <button onclick="serviceMap.togglePhysics()" class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-slate-700 transition" title="Toggle physics">
+                    <i class="fas fa-atom"></i>
+                </button>
+                <button onclick="serviceMap.resetView()" class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-slate-700 transition" title="Reset view">
+                    <i class="fas fa-redo"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div id="service-map"></div>
+        
+        {# Legend #}
+        <div class="service-map-legend">
+            <div class="legend-item">
+                <span class="legend-dot bg-green-500"></span>
+                <span>Healthy</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot bg-yellow-500"></span>
+                <span>Degraded</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot bg-red-500"></span>
+                <span>Down/Critical</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot bg-blue-500"></span>
+                <span>Selected</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-dot bg-purple-500"></span>
+                <span>Affected</span>
+            </div>
+        </div>
+        
+        {# Service details panel (shown on click) #}
+        <div id="service-details-panel" class="hidden mt-4 p-4 bg-slate-700/50 rounded-lg border border-slate-600">
+            <div class="flex items-center justify-between">
+                <h4 class="text-white font-semibold" id="service-detail-name">-</h4>
+                <button onclick="document.getElementById('service-details-panel').classList.add('hidden')" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mt-3 text-sm">
+                <div>
+                    <span class="text-gray-400">Status:</span>
+                    <span id="service-detail-status" class="ml-2 text-white">-</span>
+                </div>
+                <div>
+                    <span class="text-gray-400">Type:</span>
+                    <span id="service-detail-type" class="ml-2 text-white">-</span>
+                </div>
+                <div>
+                    <span class="text-gray-400">Dependencies:</span>
+                    <span id="service-detail-deps" class="ml-2 text-white">-</span>
+                </div>
+                <div>
+                    <span class="text-gray-400">Dependents:</span>
+                    <span id="service-detail-dependents" class="ml-2 text-white">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# vis.js CDN #}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/vis-network.min.js"></script>
+
+<script>
+class ServiceMap {
+    constructor(containerId = 'service-map') {
+        this.containerId = containerId;
+        this.network = null;
+        this.nodes = null;
+        this.edges = null;
+        this.physicsEnabled = true;
+        
+        // Status colors
+        this.statusColors = {
+            healthy: '#22c55e',
+            degraded: '#eab308',
+            down: '#ef4444',
+            critical: '#ef4444',
+            unknown: '#64748b',
+            affected: '#a855f7'
+        };
+        
+        // Service type icons (Font Awesome unicode)
+        this.typeIcons = {
+            api: '\uf1c0',         // database
+            database: '\uf1c0',
+            cache: '\uf538',       // memory
+            queue: '\uf0e8',       // sitemap
+            web: '\uf0ac',         // globe
+            service: '\uf013',     // cog
+            external: '\uf35d',    // external-link
+            default: '\uf013'
+        };
+    }
+    
+    // Initialize the service map with data
+    init(services, dependencies, affectedServiceId = null) {
+        // Prepare nodes
+        const nodesData = services.map(service => {
+            const isAffected = service.id === affectedServiceId;
+            const status = isAffected ? 'affected' : (service.status || 'healthy');
+            const color = this.statusColors[status] || this.statusColors.unknown;
+            
+            return {
+                id: service.id,
+                label: service.name || service.id,
+                title: `${service.name}\nStatus: ${service.status}\nType: ${service.type || 'service'}`,
+                color: {
+                    background: color,
+                    border: isAffected ? '#7c3aed' : color,
+                    highlight: { background: '#3b82f6', border: '#2563eb' },
+                    hover: { background: color, border: '#3b82f6' }
+                },
+                borderWidth: isAffected ? 3 : 2,
+                font: { color: '#e2e8f0', size: 12 },
+                shape: 'dot',
+                size: isAffected ? 25 : 20,
+                shadow: true,
+                data: service
+            };
+        });
+        
+        // Prepare edges
+        const edgesData = dependencies.map((dep, idx) => ({
+            id: `edge-${idx}`,
+            from: dep.source,
+            to: dep.target,
+            arrows: { to: { enabled: true, scaleFactor: 0.5 } },
+            color: {
+                color: '#475569',
+                highlight: '#3b82f6',
+                hover: '#64748b'
+            },
+            smooth: { type: 'curvedCW', roundness: 0.2 },
+            title: dep.type || 'depends on',
+            width: 2
+        }));
+        
+        this.nodes = new vis.DataSet(nodesData);
+        this.edges = new vis.DataSet(edgesData);
+        
+        const container = document.getElementById(this.containerId);
+        const data = { nodes: this.nodes, edges: this.edges };
+        
+        const options = {
+            nodes: {
+                borderWidth: 2,
+                shadow: { enabled: true, color: 'rgba(0,0,0,0.3)', size: 10 }
+            },
+            edges: {
+                width: 2,
+                shadow: { enabled: true, color: 'rgba(0,0,0,0.2)', size: 5 }
+            },
+            physics: {
+                enabled: true,
+                solver: 'forceAtlas2Based',
+                forceAtlas2Based: {
+                    gravitationalConstant: -50,
+                    centralGravity: 0.01,
+                    springLength: 150,
+                    springConstant: 0.08
+                },
+                stabilization: { iterations: 100 }
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 200,
+                zoomView: true,
+                dragView: true
+            },
+            layout: {
+                improvedLayout: true
+            }
+        };
+        
+        this.network = new vis.Network(container, data, options);
+        
+        // Event handlers
+        this.network.on('click', (params) => this.handleClick(params));
+        this.network.on('doubleClick', (params) => this.handleDoubleClick(params));
+        
+        // Stabilization callback
+        this.network.on('stabilizationIterationsDone', () => {
+            this.network.setOptions({ physics: { enabled: this.physicsEnabled } });
+        });
+    }
+    
+    handleClick(params) {
+        if (params.nodes.length > 0) {
+            const nodeId = params.nodes[0];
+            const node = this.nodes.get(nodeId);
+            this.showServiceDetails(node);
+        }
+    }
+    
+    handleDoubleClick(params) {
+        if (params.nodes.length > 0) {
+            this.network.focus(params.nodes[0], {
+                scale: 1.5,
+                animation: { duration: 500, easingFunction: 'easeInOutQuad' }
+            });
+        }
+    }
+    
+    showServiceDetails(node) {
+        const panel = document.getElementById('service-details-panel');
+        const service = node.data;
+        
+        // Count dependencies and dependents
+        const deps = this.edges.get().filter(e => e.from === node.id).length;
+        const dependents = this.edges.get().filter(e => e.to === node.id).length;
+        
+        document.getElementById('service-detail-name').textContent = service.name || service.id;
+        document.getElementById('service-detail-status').textContent = service.status || 'unknown';
+        document.getElementById('service-detail-type').textContent = service.type || 'service';
+        document.getElementById('service-detail-deps').textContent = deps;
+        document.getElementById('service-detail-dependents').textContent = dependents;
+        
+        panel.classList.remove('hidden');
+    }
+    
+    // Update service status
+    updateServiceStatus(serviceId, status) {
+        const color = this.statusColors[status] || this.statusColors.unknown;
+        this.nodes.update({
+            id: serviceId,
+            color: { background: color, border: color }
+        });
+    }
+    
+    // Highlight a service and its connections
+    highlightService(serviceId) {
+        const connectedNodes = this.network.getConnectedNodes(serviceId);
+        const connectedEdges = this.network.getConnectedEdges(serviceId);
+        
+        // Dim all nodes
+        this.nodes.forEach(node => {
+            if (node.id !== serviceId && !connectedNodes.includes(node.id)) {
+                this.nodes.update({ id: node.id, opacity: 0.3 });
+            }
+        });
+        
+        // Highlight selected node
+        this.nodes.update({
+            id: serviceId,
+            color: { background: '#3b82f6', border: '#2563eb' },
+            size: 30
+        });
+    }
+    
+    // Clear highlights
+    clearHighlight() {
+        this.nodes.forEach(node => {
+            this.nodes.update({ id: node.id, opacity: 1 });
+        });
+    }
+    
+    // Fit network to view
+    fit() {
+        this.network.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } });
+    }
+    
+    // Toggle physics simulation
+    togglePhysics() {
+        this.physicsEnabled = !this.physicsEnabled;
+        this.network.setOptions({ physics: { enabled: this.physicsEnabled } });
+    }
+    
+    // Reset view
+    resetView() {
+        this.fit();
+        this.clearHighlight();
+    }
+    
+    // Add a new service dynamically
+    addService(service) {
+        const color = this.statusColors[service.status] || this.statusColors.unknown;
+        this.nodes.add({
+            id: service.id,
+            label: service.name || service.id,
+            color: { background: color, border: color },
+            font: { color: '#e2e8f0', size: 12 },
+            shape: 'dot',
+            size: 20,
+            shadow: true,
+            data: service
+        });
+    }
+    
+    // Add a new dependency dynamically
+    addDependency(source, target, type = 'depends on') {
+        const edgeId = `edge-${Date.now()}`;
+        this.edges.add({
+            id: edgeId,
+            from: source,
+            to: target,
+            arrows: { to: { enabled: true, scaleFactor: 0.5 } },
+            color: { color: '#475569' },
+            smooth: { type: 'curvedCW', roundness: 0.2 },
+            title: type,
+            width: 2
+        });
+    }
+}
+
+// Initialize service map with Jinja data if available
+const serviceMap = new ServiceMap();
+
+{% if services and dependencies %}
+document.addEventListener('DOMContentLoaded', () => {
+    const services = {{ services | tojson | safe }};
+    const dependencies = {{ dependencies | tojson | safe }};
+    const affectedService = {{ affected_service | tojson | safe if affected_service else 'null' }};
+    serviceMap.init(services, dependencies, affectedService);
+});
+{% endif %}
+
+// Expose globally for real-time updates
+window.serviceMap = serviceMap;
+</script>

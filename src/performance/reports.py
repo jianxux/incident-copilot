@@ -697,7 +697,7 @@ class ReportGenerator:
 
     <h2>Key Insights</h2>
     <ul>
-        {"".join(f"<li>{insight}</li>" for insight in summary.key_insights)}
+        {"".join(f"<li>{insight}</li>" for insight in summary.key_insights) if summary.key_insights else "<li>No insights available</li>"}
     </ul>
 
     <h2>Top Responders</h2>
