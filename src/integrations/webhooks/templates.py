@@ -6,7 +6,6 @@ from uuid import UUID
 
 from .models import WebhookEvent, WebhookEventType
 
-
 # Built-in templates for each event type
 BUILTIN_TEMPLATES: dict[WebhookEventType, dict[str, Any]] = {
     WebhookEventType.INCIDENT_CREATED: {

@@ -54,7 +54,6 @@ from .collectors import (
 
 from .routes import router
 
-
 __all__ = [
     # Enums
     "ChangeType",

@@ -20,7 +20,6 @@ from .models import (
 )
 from .service import ChangeTrackingService, get_change_service
 
-
 router = APIRouter(prefix="/changes", tags=["changes"])
 
 
