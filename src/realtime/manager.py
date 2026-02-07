@@ -12,6 +12,7 @@ from uuid import uuid4
 
 from fastapi import WebSocket, WebSocketDisconnect
 
+from .events import BaseEvent, UserJoined, UserLeft
 from .models import (
     ConnectionInfo,
     MessageType,
@@ -21,7 +22,6 @@ from .models import (
     RoomType,
     WebSocketMessage,
 )
-from .events import BaseEvent, UserJoined, UserLeft
 
 logger = logging.getLogger(__name__)
 

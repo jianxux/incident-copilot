@@ -48,6 +48,20 @@ Usage:
     app.include_router(router)
 """
 
+from .engine import (
+    ElasticsearchBackend,
+    InMemorySearchBackend,
+    SearchBackend,
+    SearchEngine,
+)
+from .indexer import (
+    IncidentAdapter,
+    IndexingService,
+    InMemoryDocumentSource,
+    PostmortemAdapter,
+    RunbookAdapter,
+    WebhookIndexer,
+)
 from .models import (
     FacetValue,
     IndexedDocument,
@@ -64,20 +78,6 @@ from .models import (
     SearchSuggestion,
     SortField,
     SortOrder,
-)
-from .engine import (
-    ElasticsearchBackend,
-    InMemorySearchBackend,
-    SearchBackend,
-    SearchEngine,
-)
-from .indexer import (
-    IncidentAdapter,
-    IndexingService,
-    InMemoryDocumentSource,
-    PostmortemAdapter,
-    RunbookAdapter,
-    WebhookIndexer,
 )
 from .routes import configure_search, router
 

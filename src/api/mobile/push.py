@@ -6,8 +6,10 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
+
 import httpx
-from .models import Platform, Severity, DeviceRegistration
+
+from .models import DeviceRegistration, Platform, Severity
 
 logger = logging.getLogger(__name__)
 

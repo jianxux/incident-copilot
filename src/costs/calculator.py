@@ -9,9 +9,9 @@ from .models import (
     CostEntry,
     Currency,
     EngineerRate,
-    SLAConfig,
     ServiceCriticality,
     ServiceRevenueConfig,
+    SLAConfig,
 )
 
 

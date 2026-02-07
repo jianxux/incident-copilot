@@ -7,7 +7,9 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
+from .channels import ChannelError, ChannelManager, create_channel
 from .models import (
+    ROLE_DEFAULTS,
     ChannelType,
     DigestFrequency,
     NotificationChannel,
@@ -15,11 +17,9 @@ from .models import (
     NotificationPreference,
     NotificationRule,
     NotificationType,
-    ROLE_DEFAULTS,
     Severity,
     UserRole,
 )
-from .channels import ChannelManager, create_channel, ChannelError
 from .templates import TemplateRenderer
 
 logger = logging.getLogger(__name__)

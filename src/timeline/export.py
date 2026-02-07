@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from enum import Enum
 
-from .models import TimelineExport, TimelineEntry, TimelineGap
+from .models import TimelineEntry, TimelineExport, TimelineGap
 
 
 class ExportFormat(str, Enum):

@@ -1,25 +1,25 @@
 """On-Call Service - Core business logic for schedule management."""
 
 import asyncio
+import uuid
 from datetime import datetime, timedelta
 from typing import Optional
 from zoneinfo import ZoneInfo
-import uuid
 
 from .models import (
+    HandoffNotification,
+    OnCallHistoryEntry,
+    OnCallOverride,
     OnCallSchedule,
     OnCallShift,
     OnCallUser,
-    OnCallOverride,
-    Rotation,
-    ProviderType,
     OverrideStatus,
-    HandoffNotification,
-    OnCallHistoryEntry,
+    ProviderType,
+    Rotation,
     ScheduleSyncResult,
 )
-from .providers.pagerduty import PagerDutyProvider
 from .providers.opsgenie import OpsgenieProvider
+from .providers.pagerduty import PagerDutyProvider
 
 
 class OnCallService:

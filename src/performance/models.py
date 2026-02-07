@@ -4,11 +4,12 @@ Provides Pydantic v2 models for team and engineer performance tracking,
 including DORA-style metrics, burnout indicators, and industry benchmarks.
 """
 
+import statistics
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional
+
 from pydantic import BaseModel, Field, computed_field
-import statistics
 
 
 class PerformanceTier(str, Enum):

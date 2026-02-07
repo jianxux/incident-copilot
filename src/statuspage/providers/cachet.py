@@ -1,7 +1,9 @@
 """Cachet (Self-Hosted) Provider."""
 
 from datetime import datetime
+
 import httpx
+
 from ..models import (
     Component,
     ComponentStatus,

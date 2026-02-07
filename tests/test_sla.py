@@ -8,8 +8,8 @@ from fastapi.testclient import TestClient
 
 from src.main import app
 from src.sla.models import (
-    BusinessHours,
     DEFAULT_SLA_TARGETS,
+    BusinessHours,
     EscalationLevel,
     SLABreach,
     SLAIncidentStatus,

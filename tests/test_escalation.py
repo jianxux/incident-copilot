@@ -7,7 +7,6 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from src.main import app
 from src.escalation.models import (
     ActionType,
     ConditionOperator,
@@ -29,6 +28,7 @@ from src.escalation.models import (
     TriggerEscalationRequest,
     UpdatePolicyRequest,
 )
+from src.main import app
 
 
 @pytest.fixture

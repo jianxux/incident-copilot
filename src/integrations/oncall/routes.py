@@ -2,18 +2,19 @@
 
 from datetime import datetime, timedelta
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from .models import (
+    OnCallOverride,
     OnCallSchedule,
     OnCallShift,
     OnCallUser,
-    OnCallOverride,
-    ProviderType,
     OverrideStatus,
-    ScheduleSyncResult,
+    ProviderType,
     Rotation,
+    ScheduleSyncResult,
 )
 from .service import OnCallService
 

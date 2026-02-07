@@ -3,6 +3,7 @@
 import secrets
 from datetime import datetime
 from uuid import UUID, uuid4
+
 from .models import (
     Dashboard,
     DashboardCreate,

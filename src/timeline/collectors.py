@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
-from .models import TimelineEvent, EventType, EventSource, EventSeverity
+from .models import EventSeverity, EventSource, EventType, TimelineEvent
 
 
 class EventCollector(ABC):

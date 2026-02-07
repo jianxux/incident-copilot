@@ -1,7 +1,9 @@
 """Atlassian Statuspage Provider."""
 
 from datetime import datetime
+
 import httpx
+
 from ..models import (
     Component,
     ComponentStatus,

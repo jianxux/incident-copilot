@@ -1,16 +1,16 @@
 """Performance report generation."""
 
+from .benchmarks import classify_team
 from .models import (
-    PerformanceReport,
-    PerformancePeriod,
-    TeamMetrics,
-    EngineerMetrics,
-    PeriodComparison,
-    PerformanceTier,
     BurnoutRisk,
+    EngineerMetrics,
+    PerformancePeriod,
+    PerformanceReport,
+    PerformanceTier,
+    PeriodComparison,
+    TeamMetrics,
 )
 from .service import PerformanceService
-from .benchmarks import classify_team
 
 
 class ReportGenerator:

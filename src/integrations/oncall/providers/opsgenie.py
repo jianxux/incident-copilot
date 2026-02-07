@@ -2,18 +2,19 @@
 
 from datetime import datetime, timedelta
 from typing import Optional
+
 import httpx
 
 from ..models import (
+    OnCallOverride,
     OnCallSchedule,
     OnCallShift,
     OnCallUser,
-    OnCallOverride,
+    OverrideStatus,
+    ProviderType,
     Rotation,
     RotationType,
-    ProviderType,
     ScheduleSyncResult,
-    OverrideStatus,
 )
 
 

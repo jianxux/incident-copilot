@@ -11,6 +11,7 @@ from typing import Optional
 from uuid import UUID
 
 from .models import (
+    SYSTEM_ROLES,
     Action,
     Permission,
     PermissionCheck,
@@ -20,7 +21,6 @@ from .models import (
     RoleAssignment,
     RolePermission,
     ScopeType,
-    SYSTEM_ROLES,
     UserPermissions,
 )
 

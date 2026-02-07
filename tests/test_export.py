@@ -6,12 +6,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from src.main import app
 from src.export.models import (
+    DEFAULT_INCIDENT_COLUMNS,
     ColumnConfig,
     CSVOptions,
     DateRangeFilter,
-    DEFAULT_INCIDENT_COLUMNS,
     ExportFilter,
     ExportFormat,
     ExportJob,
@@ -27,6 +26,7 @@ from src.export.models import (
     RelatedDataConfig,
     ScheduledExport,
 )
+from src.main import app
 
 
 @pytest.fixture

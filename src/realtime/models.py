@@ -7,6 +7,7 @@ Pydantic models for WebSocket messages, subscriptions, presence tracking, and ro
 from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
+
 from pydantic import BaseModel, Field
 
 
