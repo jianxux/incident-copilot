@@ -287,7 +287,4 @@ class PatternDetector:
                 "and consider documenting a standard operating procedure."
             )
         else:
-            return (
-                "Monitor this pattern. If it continues, investigate for "
-                "systemic issues."
-            )
+            return "Monitor this pattern. If it continues, investigate for systemic issues."

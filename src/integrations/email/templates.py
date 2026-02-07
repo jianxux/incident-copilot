@@ -366,7 +366,7 @@ class EmailTemplateRenderer:
         <body style="font-family: sans-serif; padding: 20px;">
             <h1>Incident Notification</h1>
             <p>Template rendering failed. Please check your email templates.</p>
-            <p>Context keys: {', '.join(context.keys())}</p>
+            <p>Context keys: {", ".join(context.keys())}</p>
         </body>
         </html>
         """
