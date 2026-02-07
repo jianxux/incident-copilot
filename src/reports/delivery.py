@@ -190,7 +190,7 @@ class EmailDeliveryAdapter(DeliveryAdapter):
     ) -> dict[str, Any]:
         """Send email via AWS SES."""
         try:
-            import boto3
+            import boto3  # noqa: F401
         except ImportError:
             return {
                 "success": False,
@@ -632,7 +632,7 @@ class S3DeliveryAdapter(DeliveryAdapter):
             }
 
         try:
-            import boto3
+            import boto3  # noqa: F401
         except ImportError:
             return {
                 "success": False,

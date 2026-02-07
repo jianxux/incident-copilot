@@ -11,7 +11,6 @@ from ..analytics.store import analytics_store
 from ..config import Settings, get_settings
 from .delivery import ReportDeliveryService
 from .models import (
-    DeliveryChannel,
     IncidentSummary,
     MetricsSummary,
     ReportConfig,
@@ -259,7 +258,6 @@ class ReportGenerator:
         severity_counts: dict[str, int] = {}
         service_counts: dict[str, int] = {}
         mttr_values = []
-        tta_values = []
 
         for incident in incidents:
             # Severity counts

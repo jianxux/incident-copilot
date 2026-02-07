@@ -1,14 +1,13 @@
 """Report scheduler with cron expression support."""
 
 import asyncio
-import re
+from collections.abc import Callable
 from datetime import datetime, timedelta
-from typing import Callable
 from zoneinfo import ZoneInfo
 
 import structlog
 
-from .models import ReportConfig, ReportSchedule, ReportStatus
+from .models import ReportConfig, ReportStatus
 from .store import report_store
 
 logger = structlog.get_logger()

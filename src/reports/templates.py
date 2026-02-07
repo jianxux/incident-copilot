@@ -764,7 +764,7 @@ class ReportTemplates:
                         <td>{{ sla.actual_mttr | format_duration }}</td>
                         <td>
                             <div class="progress-bar">
-                                <div class="progress-fill {% if sla.compliance >= 95 %}good{% elif sla.compliance >= 80 %}warning{% else %}danger{% endif %}" 
+                                <div class="progress-fill {% if sla.compliance >= 95 %}good{% elif sla.compliance >= 80 %}warning{% else %}danger{% endif %}"
                                      style="width: {{ sla.compliance }}%"></div>
                             </div>
                             {{ sla.compliance }}%

@@ -1,6 +1,5 @@
 """Unit tests for the scheduled reports module."""
 
-import asyncio
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -31,7 +30,6 @@ from src.reports import (
     get_cron_preset,
 )
 from src.reports.delivery import (
-    EmailDeliveryAdapter,
     ReportDeliveryService,
     SlackDeliveryAdapter,
     WebhookDeliveryAdapter,
