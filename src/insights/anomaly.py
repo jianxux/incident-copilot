@@ -49,9 +49,7 @@ class AnomalyDetector:
         sorted_incidents = sorted(incidents, key=lambda x: x.triggered_at)
 
         # Calculate baseline (average incidents per window)
-        total_duration = (
-            sorted_incidents[-1].triggered_at - sorted_incidents[0].triggered_at
-        )
+        total_duration = sorted_incidents[-1].triggered_at - sorted_incidents[0].triggered_at
         total_windows = max(1, total_duration.total_seconds() / (window_hours * 3600))
         baseline = len(incidents) / total_windows
 
@@ -74,9 +72,7 @@ class AnomalyDetector:
                 if current_window_incidents:
                     spike_factor = len(current_window_incidents) / baseline
                     if spike_factor >= self.spike_threshold:
-                        services = list(
-                            set(i.service_name for i in current_window_incidents)
-                        )
+                        services = list(set(i.service_name for i in current_window_incidents))
                         spike = IncidentSpike(
                             spike_id=self._generate_id(f"spike_{current_window_start}"),
                             detected_at=current_window_start,
@@ -85,9 +81,7 @@ class AnomalyDetector:
                             baseline_count=baseline,
                             spike_factor=spike_factor,
                             affected_services=services,
-                            affected_incident_ids=[
-                                i.incident_id for i in current_window_incidents
-                            ],
+                            affected_incident_ids=[i.incident_id for i in current_window_incidents],
                         )
                         spikes.append(spike)
 
@@ -108,9 +102,7 @@ class AnomalyDetector:
                     baseline_count=baseline,
                     spike_factor=spike_factor,
                     affected_services=services,
-                    affected_incident_ids=[
-                        i.incident_id for i in current_window_incidents
-                    ],
+                    affected_incident_ids=[i.incident_id for i in current_window_incidents],
                 )
                 spikes.append(spike)
 
@@ -158,9 +150,7 @@ class AnomalyDetector:
             # If we have multiple services affected, it might be a cascade
             if len(cascade_services) >= 3:
                 cascade = CascadingFailure(
-                    cascade_id=self._generate_id(
-                        f"cascade_{trigger_incident.incident_id}"
-                    ),
+                    cascade_id=self._generate_id(f"cascade_{trigger_incident.incident_id}"),
                     detected_at=trigger_incident.triggered_at,
                     trigger_service=trigger_incident.service_name,
                     trigger_incident_id=trigger_incident.incident_id,
@@ -213,17 +203,13 @@ class AnomalyDetector:
             # Calculate how unusual this time is
             hour_frequency = hour_counts[hour] / total if total else 0
 
-            if is_unusual_hour or (
-                is_weekend and hour_frequency < self.unusual_hour_threshold
-            ):
+            if is_unusual_hour or (is_weekend and hour_frequency < self.unusual_hour_threshold):
                 severity = Severity.INFO
                 if is_unusual_hour and is_weekend:
                     severity = Severity.MEDIUM
 
                 anomaly_type = (
-                    AnomalyType.UNUSUAL_HOUR
-                    if is_unusual_hour
-                    else AnomalyType.UNUSUAL_DAY
+                    AnomalyType.UNUSUAL_HOUR if is_unusual_hour else AnomalyType.UNUSUAL_DAY
                 )
 
                 time_str = incident.triggered_at.strftime("%H:%M")
@@ -283,9 +269,7 @@ class AnomalyDetector:
                 anomaly_type=AnomalyType.CASCADING,
                 detected_at=cascade.detected_at,
                 severity=(
-                    Severity.CRITICAL
-                    if len(cascade.affected_services) > 4
-                    else Severity.HIGH
+                    Severity.CRITICAL if len(cascade.affected_services) > 4 else Severity.HIGH
                 ),
                 description=f"Cascading failure: {len(cascade.affected_services)} services affected "
                 f"starting from {cascade.trigger_service}",
@@ -296,9 +280,9 @@ class AnomalyDetector:
             anomalies.append(anomaly)
 
         # Detect unusual times (sample only critical/high severity)
-        unusual = await self.detect_unusual_times(
-            [i for i in incidents if i.severity in ("critical", "high")]
-        )
+        unusual = await self.detect_unusual_times([
+            i for i in incidents if i.severity in ("critical", "high")
+        ])
         anomalies.extend(unusual)
 
         return sorted(anomalies, key=lambda x: x.detected_at, reverse=True)

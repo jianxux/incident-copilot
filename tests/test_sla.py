@@ -152,7 +152,8 @@ class TestSLAPolicy:
         """Test getting a nonexistent target returns None."""
         # Remove P1 response target
         sample_policy.targets = [
-            t for t in sample_policy.targets
+            t
+            for t in sample_policy.targets
             if not (t.severity == SLASeverity.P1 and t.sla_type == SLAType.RESPONSE)
         ]
         target = sample_policy.get_target(SLASeverity.P1, SLAType.RESPONSE)
@@ -166,8 +167,12 @@ class TestSLAPolicy:
                 name="Duplicate Test",
                 organization_id="org-123",
                 targets=[
-                    SLATarget(severity=SLASeverity.P1, sla_type=SLAType.RESPONSE, target_minutes=15),
-                    SLATarget(severity=SLASeverity.P1, sla_type=SLAType.RESPONSE, target_minutes=30),
+                    SLATarget(
+                        severity=SLASeverity.P1, sla_type=SLAType.RESPONSE, target_minutes=15
+                    ),
+                    SLATarget(
+                        severity=SLASeverity.P1, sla_type=SLAType.RESPONSE, target_minutes=30
+                    ),
                 ],
             )
 
@@ -334,7 +339,7 @@ class TestSLAMetrics:
             resolution_sla_breached=4,
         )
         metrics.calculate_compliance()
-        
+
         assert metrics.response_compliance_percent == 90.0
         assert metrics.resolution_compliance_percent == 80.0
         assert metrics.overall_compliance_percent == 85.0
@@ -348,7 +353,7 @@ class TestSLAMetrics:
             total_incidents=0,
         )
         metrics.calculate_compliance()
-        
+
         assert metrics.response_compliance_percent == 0.0
         assert metrics.resolution_compliance_percent == 0.0
         assert metrics.overall_compliance_percent == 0.0

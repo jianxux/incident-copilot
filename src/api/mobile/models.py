@@ -40,8 +40,10 @@ class MobileBaseModel(BaseModel):
 
 # === Incident Models ===
 
+
 class IncidentMinimal(MobileBaseModel):
     """Minimal incident for list views."""
+
     id: str
     title: str = Field(max_length=100)
     severity: Severity
@@ -52,6 +54,7 @@ class IncidentMinimal(MobileBaseModel):
 
 class IncidentCompact(IncidentMinimal):
     """Compact incident with more fields."""
+
     service: str | None = None
     assignee: str | None = None
     ack_by: str | None = Field(None, alias="ackBy")
@@ -60,6 +63,7 @@ class IncidentCompact(IncidentMinimal):
 
 class IncidentFull(IncidentCompact):
     """Full incident details."""
+
     description: str | None = None
     created_at: datetime = Field(alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt")
@@ -82,6 +86,7 @@ class IncidentListResponse(MobileBaseModel):
 
 
 # === Actions ===
+
 
 class QuickActionRequest(MobileBaseModel):
     action: QuickActionType
@@ -112,6 +117,7 @@ class BulkActionResponse(MobileBaseModel):
 
 # === Dashboard ===
 
+
 class SeverityCount(MobileBaseModel):
     critical: int = 0
     high: int = 0
@@ -129,6 +135,7 @@ class DashboardSummary(MobileBaseModel):
 
 
 # === Auth ===
+
 
 class TokenRefreshRequest(MobileBaseModel):
     refresh_token: str = Field(alias="refreshToken")
@@ -149,6 +156,7 @@ class BiometricAuthRequest(MobileBaseModel):
 
 
 # === Push ===
+
 
 class DeviceRegistration(MobileBaseModel):
     device_id: str = Field(alias="deviceId")
@@ -175,6 +183,7 @@ class NotificationPreferences(MobileBaseModel):
 
 # === Comments ===
 
+
 class CommentCreate(MobileBaseModel):
     text: str = Field(min_length=1, max_length=2000)
     is_internal: bool = Field(False, alias="isInternal")
@@ -189,6 +198,7 @@ class CommentMinimal(MobileBaseModel):
 
 
 # === Sync ===
+
 
 class SyncCheckRequest(MobileBaseModel):
     last_sync: int = Field(alias="lastSync")

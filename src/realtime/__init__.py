@@ -15,10 +15,10 @@ Usage:
     from fastapi import FastAPI
     from realtime import router, publish
     from realtime.events import CommentAdded
-    
+
     app = FastAPI()
     app.include_router(router)
-    
+
     # Publish events from your application code
     await publish(CommentAdded(
         incident_id="inc-123",
@@ -30,13 +30,13 @@ Usage:
 
 WebSocket Protocol:
     Connect: ws://host/ws/connect?token=YOUR_TOKEN
-    
+
     Client -> Server:
         {"type": "subscribe", "payload": {"room_type": "incident", "room_id": "inc-123"}}
         {"type": "unsubscribe", "payload": {"room_key": "incident:inc-123"}}
         {"type": "ping", "payload": {"echo": "data"}}
         {"type": "presence_update", "payload": {"room_key": "incident:inc-123", "status": "editing"}}
-    
+
     Server -> Client:
         {"type": "connected", "payload": {"connection_id": "abc123", "user_id": "user-1"}}
         {"type": "subscribed", "payload": {"room_key": "incident:inc-123", "presence": [...]}}
@@ -84,15 +84,12 @@ __all__ = [
     # Routes
     "router",
     "publish",
-    
     # Manager
     "manager",
     "ConnectionManager",
-    
     # Handlers
     "MessageHandler",
     "create_handler",
-    
     # Models
     "MessageType",
     "RoomType",
@@ -103,7 +100,6 @@ __all__ = [
     "Room",
     "ConnectionInfo",
     "AuthPayload",
-    
     # Events
     "EventType",
     "BaseEvent",

@@ -68,6 +68,7 @@ def configure_search(engine: SearchEngine) -> None:
 # Request/Response models
 class SearchRequest(BaseModel):
     """Search request body."""
+
     query: str = ""
     filters: SearchFilter = Field(default_factory=SearchFilter)
     sort_by: SortField = SortField.RELEVANCE
@@ -79,6 +80,7 @@ class SearchRequest(BaseModel):
 
 class QuickSearchParams(BaseModel):
     """Query parameters for quick search."""
+
     q: str = ""
     status: list[str] | None = None
     severity: list[str] | None = None
@@ -95,6 +97,7 @@ class QuickSearchParams(BaseModel):
 
 class WebhookEvent(BaseModel):
     """Webhook event payload."""
+
     event_type: str
     payload: dict[str, Any]
     timestamp: datetime = Field(default_factory=datetime.utcnow)
@@ -102,18 +105,21 @@ class WebhookEvent(BaseModel):
 
 class IndexRequest(BaseModel):
     """Request to index a document."""
+
     doc_type: SearchableType
     data: dict[str, Any]
 
 
 class ReindexRequest(BaseModel):
     """Request to trigger reindexing."""
+
     doc_types: list[SearchableType] | None = None
     batch_size: int = Field(default=100, ge=1, le=1000)
 
 
 class AnalyticsResponse(BaseModel):
     """Search analytics response."""
+
     popular_queries: list[tuple[str, int]]
     zero_result_queries: list[tuple[str, int]]
     avg_results_per_query: float
@@ -129,7 +135,7 @@ async def search(
 ) -> SearchResult:
     """
     Execute a full-text search with filters.
-    
+
     Supports:
     - Full-text search across incidents, runbooks, and postmortems
     - Faceted filtering by status, severity, service, tags, date range
@@ -166,7 +172,7 @@ async def quick_search(
 ) -> SearchResult:
     """
     Quick search with query parameters.
-    
+
     Example: /search?q=database&severity=critical&service=api&page=1
     """
     filters = SearchFilter(
@@ -197,7 +203,7 @@ async def get_suggestions(
 ) -> list[SearchSuggestion]:
     """
     Get autocomplete suggestions for search.
-    
+
     Returns matching document titles based on the prefix.
     """
     return await engine.suggest(q, limit)
@@ -213,7 +219,7 @@ async def get_facets(
 ) -> SearchFacets:
     """
     Get available facet values and counts.
-    
+
     Useful for building filter UIs without executing a full search.
     """
     filters = SearchFilter(
@@ -232,7 +238,7 @@ async def get_analytics(
 ) -> AnalyticsResponse:
     """
     Get search analytics for monitoring and optimization.
-    
+
     Returns popular queries, zero-result queries, and search statistics.
     """
     analytics = engine.get_analytics(hours)
@@ -260,15 +266,15 @@ async def create_saved_search(
         is_default=request.is_default,
         notify_on_new=request.notify_on_new,
     )
-    
+
     if user_id not in _saved_searches:
         _saved_searches[user_id] = {}
-    
+
     # If this is default, unset other defaults
     if saved.is_default:
         for existing in _saved_searches[user_id].values():
             existing.is_default = False
-    
+
     _saved_searches[user_id][saved.id] = saved
     return saved
 
@@ -310,18 +316,18 @@ async def update_saved_search(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Saved search not found",
         )
-    
+
     saved = user_searches[search_id]
     update_data = request.model_dump(exclude_unset=True)
-    
+
     # Handle default flag
     if update_data.get("is_default"):
         for existing in user_searches.values():
             existing.is_default = False
-    
+
     for field, value in update_data.items():
         setattr(saved, field, value)
-    
+
     saved.updated_at = datetime.utcnow()
     return saved
 
@@ -355,17 +361,17 @@ async def run_saved_search(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Saved search not found",
         )
-    
+
     saved = user_searches[search_id]
     query = saved.query.model_copy()
     query.page = page
-    
+
     result = await engine.search(query)
-    
+
     # Update run stats
     saved.last_run_at = datetime.utcnow()
     saved.run_count += 1
-    
+
     return result
 
 
@@ -404,9 +410,7 @@ async def trigger_reindex(
     if request.doc_types:
         results = {}
         for doc_type in request.doc_types:
-            results[doc_type.value] = await indexer.reindex_type(
-                doc_type, request.batch_size
-            )
+            results[doc_type.value] = await indexer.reindex_type(doc_type, request.batch_size)
         return {"status": "completed", "results": results}
     else:
         results = await indexer.reindex_all(request.batch_size)
@@ -429,7 +433,7 @@ async def handle_webhook(
 ) -> dict[str, Any]:
     """
     Handle webhook events to keep the index in sync.
-    
+
     Supported events:
     - incident.created, incident.updated, incident.deleted
     - runbook.created, runbook.updated, runbook.deleted
@@ -440,7 +444,7 @@ async def handle_webhook(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unknown event type: {event.event_type}. "
-                   f"Supported: {webhook_indexer.get_supported_events()}",
+            f"Supported: {webhook_indexer.get_supported_events()}",
         )
     return {"status": "processed", "event_type": event.event_type}
 

@@ -34,7 +34,7 @@ router = APIRouter(prefix="/sla", tags=["SLA Tracking"])
 
 async def get_sla_service() -> SLAService:
     """Get SLA service instance.
-    
+
     Override this dependency in your app to provide configured service.
     """
     from .store import SLAStore
@@ -58,9 +58,7 @@ class CreatePolicyRequest(BaseModel):
     organization_id: str
     team_id: str | None = None
     service_id: str | None = None
-    targets: list[SLATarget] = Field(
-        default_factory=lambda: DEFAULT_SLA_TARGETS.copy()
-    )
+    targets: list[SLATarget] = Field(default_factory=lambda: DEFAULT_SLA_TARGETS.copy())
     business_hours: BusinessHours = Field(default_factory=BusinessHours)
     escalation_enabled: bool = True
     escalation_contacts: list[str] = Field(default_factory=list)
@@ -177,7 +175,7 @@ async def create_policy(
     service: SLAServiceDep,
 ) -> PolicyResponse:
     """Create a new SLA policy.
-    
+
     Creates an SLA policy with targets for different severities.
     Default targets are provided if not specified.
     """
@@ -209,7 +207,7 @@ async def list_policies(
     active_only: bool = Query(True, description="Only return active policies"),
 ) -> PoliciesListResponse:
     """List SLA policies for an organization.
-    
+
     Optionally filter by team, service, or active status.
     """
     policies = await service.store.get_policies(
@@ -243,7 +241,7 @@ async def update_policy(
     service: SLAServiceDep,
 ) -> PolicyResponse:
     """Update an existing SLA policy.
-    
+
     Only provided fields will be updated.
     """
     policy = await service.store.get_policy(policy_id)
@@ -281,7 +279,7 @@ async def delete_policy(
     service: SLAServiceDep,
 ) -> None:
     """Delete an SLA policy.
-    
+
     Note: This will not affect existing timers using this policy.
     Consider deactivating instead of deleting.
     """
@@ -303,7 +301,7 @@ async def start_timers(
     service: SLAServiceDep,
 ) -> dict[str, Any]:
     """Start SLA timers for an incident.
-    
+
     Starts response and/or resolution timers based on the policy.
     """
     policy = await service.store.get_policy(request.policy_id)
@@ -443,7 +441,7 @@ async def get_incident_sla_status(
     service: SLAServiceDep = None,
 ) -> IncidentStatusResponse:
     """Get complete SLA status for an incident.
-    
+
     Returns both response and resolution timer status, plus any breaches.
     """
     policy = await service.store.get_policy(policy_id)
@@ -465,7 +463,7 @@ async def get_remaining_time(
     service: SLAServiceDep = None,
 ) -> dict[str, Any]:
     """Get remaining time until SLA breach.
-    
+
     Accounts for business hours if configured in the policy.
     """
     policy = await service.store.get_policy(policy_id)
@@ -475,9 +473,7 @@ async def get_remaining_time(
             detail=f"Policy not found: {policy_id}",
         )
 
-    result = await service.calculate_remaining_time(
-        incident_id, sla_type, policy
-    )
+    result = await service.calculate_remaining_time(incident_id, sla_type, policy)
     if "error" in result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -499,7 +495,7 @@ async def list_breaches(
     sla_type: SLAType | None = Query(None, description="Filter by SLA type"),
 ) -> BreachListResponse:
     """List SLA breaches for an organization.
-    
+
     Returns breaches within the specified time period.
     """
     period_end = datetime.utcnow()
@@ -532,7 +528,7 @@ async def acknowledge_breach(
     service: SLAServiceDep,
 ) -> dict[str, Any]:
     """Acknowledge an SLA breach.
-    
+
     Records who acknowledged the breach and any notes.
     """
     breach = await service.store.acknowledge_breach(breach_id, request.user)
@@ -564,7 +560,7 @@ async def get_sla_metrics(
     policy_id: str | None = Query(None, description="Filter by policy"),
 ) -> MetricsResponse:
     """Get SLA compliance metrics.
-    
+
     Returns aggregated metrics including:
     - Response and resolution SLA compliance percentages
     - Average response and resolution times
@@ -591,7 +587,7 @@ async def get_metrics_summary(
     organization_id: str = Query(..., description="Organization ID"),
 ) -> dict[str, Any]:
     """Get a quick SLA summary for dashboards.
-    
+
     Returns high-level stats for the last 7 and 30 days.
     """
     now = datetime.utcnow()
@@ -641,7 +637,7 @@ async def get_compliance_report(
     group_by: str = Query("day", pattern="^(day|week|month)$", description="Grouping"),
 ) -> dict[str, Any]:
     """Generate an SLA compliance report.
-    
+
     Groups data by day, week, or month for trend analysis.
     """
     metrics = await service.calculate_metrics(

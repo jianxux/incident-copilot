@@ -27,9 +27,7 @@ class OpsgenieAdapter:
         self.settings = settings
         self.api_key = settings.opsgenie_api_key
         self.webhook_secret = settings.opsgenie_webhook_secret
-        self.api_base = OPSGENIE_API_URLS.get(
-            settings.opsgenie_region, OPSGENIE_API_URLS["us"]
-        )
+        self.api_base = OPSGENIE_API_URLS.get(settings.opsgenie_region, OPSGENIE_API_URLS["us"])
 
     def verify_webhook_signature(self, payload: bytes, signature: str) -> bool:
         """
@@ -39,9 +37,7 @@ class OpsgenieAdapter:
         The signature is sent in the X-OpsGenie-Signature header.
         """
         if not self.webhook_secret:
-            logger.warning(
-                "opsgenie_webhook_secret not configured, skipping verification"
-            )
+            logger.warning("opsgenie_webhook_secret not configured, skipping verification")
             return True
 
         expected = hmac.new(

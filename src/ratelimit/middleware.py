@@ -44,9 +44,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.exclude_paths = exclude_paths or settings.ratelimit_exclude_paths
 
         # Compile exclude patterns for performance
-        self._exclude_patterns = [
-            re.compile(p.replace("*", ".*")) for p in self.exclude_paths
-        ]
+        self._exclude_patterns = [re.compile(p.replace("*", ".*")) for p in self.exclude_paths]
 
         logger.info(
             "rate_limit_middleware_initialized",

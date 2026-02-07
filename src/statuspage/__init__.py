@@ -18,14 +18,47 @@ Example:
 """
 
 from .automation import StatusPageAutomation, get_statuspage_automation
-from .models import (Component, ComponentStatus, ConfigCreateRequest, IncidentCreateRequest,
-    IncidentImpact, IncidentStatus, MaintenanceWindow, SEVERITY_TO_COMPONENT_STATUS,
-    SEVERITY_TO_IMPACT, StatusPageConfig, StatusPageCredentials, StatusPageIncident,
-    StatusPageMetrics, StatusPageProvider, StatusUpdate, SyncResult)
+from .models import (
+    Component,
+    ComponentStatus,
+    ConfigCreateRequest,
+    IncidentCreateRequest,
+    IncidentImpact,
+    IncidentStatus,
+    MaintenanceWindow,
+    SEVERITY_TO_COMPONENT_STATUS,
+    SEVERITY_TO_IMPACT,
+    StatusPageConfig,
+    StatusPageCredentials,
+    StatusPageIncident,
+    StatusPageMetrics,
+    StatusPageProvider,
+    StatusUpdate,
+    SyncResult,
+)
 from .routes import router
 from .service import StatusPageService, get_statuspage_service
 
-__all__ = ["StatusPageService", "get_statuspage_service", "StatusPageAutomation", "get_statuspage_automation",
-    "StatusPageConfig", "StatusPageCredentials", "StatusPageProvider", "StatusPageIncident", "StatusUpdate",
-    "Component", "ComponentStatus", "IncidentStatus", "IncidentImpact", "MaintenanceWindow", "StatusPageMetrics",
-    "SyncResult", "ConfigCreateRequest", "IncidentCreateRequest", "SEVERITY_TO_IMPACT", "SEVERITY_TO_COMPONENT_STATUS", "router"]
+__all__ = [
+    "StatusPageService",
+    "get_statuspage_service",
+    "StatusPageAutomation",
+    "get_statuspage_automation",
+    "StatusPageConfig",
+    "StatusPageCredentials",
+    "StatusPageProvider",
+    "StatusPageIncident",
+    "StatusUpdate",
+    "Component",
+    "ComponentStatus",
+    "IncidentStatus",
+    "IncidentImpact",
+    "MaintenanceWindow",
+    "StatusPageMetrics",
+    "SyncResult",
+    "ConfigCreateRequest",
+    "IncidentCreateRequest",
+    "SEVERITY_TO_IMPACT",
+    "SEVERITY_TO_COMPONENT_STATUS",
+    "router",
+]

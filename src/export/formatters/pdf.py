@@ -51,52 +51,66 @@ class PDFFormatter:
 
     def _setup_custom_styles(self) -> None:
         """Set up custom paragraph styles."""
-        self.styles.add(ParagraphStyle(
-            name="CustomTitle",
-            parent=self.styles["Title"],
-            fontSize=24,
-            spaceAfter=30,
-            alignment=TA_CENTER,
-        ))
-        self.styles.add(ParagraphStyle(
-            name="CustomHeading1",
-            parent=self.styles["Heading1"],
-            fontSize=18,
-            spaceAfter=12,
-            spaceBefore=20,
-        ))
-        self.styles.add(ParagraphStyle(
-            name="CustomHeading2",
-            parent=self.styles["Heading2"],
-            fontSize=14,
-            spaceAfter=8,
-            spaceBefore=15,
-        ))
-        self.styles.add(ParagraphStyle(
-            name="CustomHeading3",
-            parent=self.styles["Heading3"],
-            fontSize=12,
-            spaceAfter=6,
-            spaceBefore=10,
-        ))
-        self.styles.add(ParagraphStyle(
-            name="CustomBody",
-            parent=self.styles["Normal"],
-            fontSize=self.options.font_size,
-            spaceAfter=6,
-        ))
-        self.styles.add(ParagraphStyle(
-            name="TableCell",
-            parent=self.styles["Normal"],
-            fontSize=self.options.font_size - 1,
-        ))
-        self.styles.add(ParagraphStyle(
-            name="Footer",
-            parent=self.styles["Normal"],
-            fontSize=8,
-            alignment=TA_CENTER,
-            textColor=colors.grey,
-        ))
+        self.styles.add(
+            ParagraphStyle(
+                name="CustomTitle",
+                parent=self.styles["Title"],
+                fontSize=24,
+                spaceAfter=30,
+                alignment=TA_CENTER,
+            )
+        )
+        self.styles.add(
+            ParagraphStyle(
+                name="CustomHeading1",
+                parent=self.styles["Heading1"],
+                fontSize=18,
+                spaceAfter=12,
+                spaceBefore=20,
+            )
+        )
+        self.styles.add(
+            ParagraphStyle(
+                name="CustomHeading2",
+                parent=self.styles["Heading2"],
+                fontSize=14,
+                spaceAfter=8,
+                spaceBefore=15,
+            )
+        )
+        self.styles.add(
+            ParagraphStyle(
+                name="CustomHeading3",
+                parent=self.styles["Heading3"],
+                fontSize=12,
+                spaceAfter=6,
+                spaceBefore=10,
+            )
+        )
+        self.styles.add(
+            ParagraphStyle(
+                name="CustomBody",
+                parent=self.styles["Normal"],
+                fontSize=self.options.font_size,
+                spaceAfter=6,
+            )
+        )
+        self.styles.add(
+            ParagraphStyle(
+                name="TableCell",
+                parent=self.styles["Normal"],
+                fontSize=self.options.font_size - 1,
+            )
+        )
+        self.styles.add(
+            ParagraphStyle(
+                name="Footer",
+                parent=self.styles["Normal"],
+                fontSize=8,
+                alignment=TA_CENTER,
+                textColor=colors.grey,
+            )
+        )
 
     def _get_page_size(self) -> tuple:
         """Get page size based on options."""
@@ -133,21 +147,15 @@ class PDFFormatter:
 
         # Main content
         if self.export_type == ExportType.INCIDENTS:
-            story.extend(self._build_incidents_content(
-                data if isinstance(data, list) else [data]
-            ))
+            story.extend(self._build_incidents_content(data if isinstance(data, list) else [data]))
         elif self.export_type == ExportType.POSTMORTEMS:
-            story.extend(self._build_postmortems_content(
-                data if isinstance(data, list) else [data]
-            ))
+            story.extend(
+                self._build_postmortems_content(data if isinstance(data, list) else [data])
+            )
         elif self.export_type == ExportType.ANALYTICS:
-            story.extend(self._build_analytics_content(
-                data if isinstance(data, dict) else {}
-            ))
+            story.extend(self._build_analytics_content(data if isinstance(data, dict) else {}))
         else:
-            story.extend(self._build_generic_content(
-                data if isinstance(data, list) else [data]
-            ))
+            story.extend(self._build_generic_content(data if isinstance(data, list) else [data]))
 
         # Build with custom header/footer
         doc.build(
@@ -216,15 +224,19 @@ class PDFFormatter:
 
         elements.append(Paragraph(title, self.styles["CustomTitle"]))
         elements.append(Spacer(1, 0.5 * inch))
-        elements.append(Paragraph(
-            f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
-            self.styles["CustomBody"],
-        ))
+        elements.append(
+            Paragraph(
+                f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
+                self.styles["CustomBody"],
+            )
+        )
         elements.append(Spacer(1, 0.25 * inch))
-        elements.append(Paragraph(
-            "Incident Copilot",
-            self.styles["CustomBody"],
-        ))
+        elements.append(
+            Paragraph(
+                "Incident Copilot",
+                self.styles["CustomBody"],
+            )
+        )
         elements.append(PageBreak())
 
         return elements
@@ -268,10 +280,12 @@ class PDFFormatter:
         inc_id = incident.get("incident_id", "Unknown")
         title = incident.get("title", "Untitled")
 
-        elements.append(Paragraph(
-            f"{inc_id}: {title}",
-            self.styles["CustomHeading2"],
-        ))
+        elements.append(
+            Paragraph(
+                f"{inc_id}: {title}",
+                self.styles["CustomHeading2"],
+            )
+        )
 
         # Overview table
         overview_data = [
@@ -303,12 +317,14 @@ class PDFFormatter:
                     ])
 
                 elements.append(self._create_table(timeline_data))
-                
+
                 if max_events and len(timeline) > max_events:
-                    elements.append(Paragraph(
-                        f"... and {len(timeline) - max_events} more events",
-                        self.styles["CustomBody"],
-                    ))
+                    elements.append(
+                        Paragraph(
+                            f"... and {len(timeline) - max_events} more events",
+                            self.styles["CustomBody"],
+                        )
+                    )
                 elements.append(Spacer(1, 0.2 * inch))
 
         # Action Items
@@ -347,10 +363,12 @@ class PDFFormatter:
         pm_id = pm.get("id", "Unknown")
         title = pm.get("title", "Untitled")
 
-        elements.append(Paragraph(
-            f"{pm_id}: {title}",
-            self.styles["CustomHeading2"],
-        ))
+        elements.append(
+            Paragraph(
+                f"{pm_id}: {title}",
+                self.styles["CustomHeading2"],
+            )
+        )
 
         # Overview
         overview_data = [
@@ -377,26 +395,34 @@ class PDFFormatter:
             root_cause = pm.get("root_cause", {})
             if root_cause:
                 elements.append(Paragraph("Root Cause Analysis", self.styles["CustomHeading3"]))
-                elements.append(Paragraph(
-                    f"<b>Primary Cause:</b> {root_cause.get('primary_cause', 'N/A')}",
-                    self.styles["CustomBody"],
-                ))
-                if root_cause.get("trigger"):
-                    elements.append(Paragraph(
-                        f"<b>Trigger:</b> {root_cause['trigger']}",
+                elements.append(
+                    Paragraph(
+                        f"<b>Primary Cause:</b> {root_cause.get('primary_cause', 'N/A')}",
                         self.styles["CustomBody"],
-                    ))
+                    )
+                )
+                if root_cause.get("trigger"):
+                    elements.append(
+                        Paragraph(
+                            f"<b>Trigger:</b> {root_cause['trigger']}",
+                            self.styles["CustomBody"],
+                        )
+                    )
                 factors = root_cause.get("contributing_factors", [])
                 if factors:
-                    elements.append(Paragraph(
-                        "<b>Contributing Factors:</b>",
-                        self.styles["CustomBody"],
-                    ))
-                    for factor in factors:
-                        elements.append(Paragraph(
-                            f"• {factor}",
+                    elements.append(
+                        Paragraph(
+                            "<b>Contributing Factors:</b>",
                             self.styles["CustomBody"],
-                        ))
+                        )
+                    )
+                    for factor in factors:
+                        elements.append(
+                            Paragraph(
+                                f"• {factor}",
+                                self.styles["CustomBody"],
+                            )
+                        )
                 elements.append(Spacer(1, 0.2 * inch))
 
         # Impact
@@ -450,19 +476,33 @@ class PDFFormatter:
         if "mttr_stats" in analytics:
             stats = analytics["mttr_stats"]
             elements.append(Paragraph("MTTR Statistics", self.styles["CustomHeading2"]))
-            elements.append(Paragraph(
-                f"Period: {stats.get('period', 'N/A')}",
-                self.styles["CustomBody"],
-            ))
+            elements.append(
+                Paragraph(
+                    f"Period: {stats.get('period', 'N/A')}",
+                    self.styles["CustomBody"],
+                )
+            )
 
             mttr_data = [
                 ["Metric", "Value"],
-                ["Mean MTTR", f"{stats.get('mean_mttr_minutes', 'N/A'):.1f} min"
-                 if stats.get('mean_mttr_minutes') else "N/A"],
-                ["Median MTTR", f"{stats.get('median_mttr_minutes', 'N/A'):.1f} min"
-                 if stats.get('median_mttr_minutes') else "N/A"],
-                ["P90 MTTR", f"{stats.get('p90_mttr_minutes', 'N/A'):.1f} min"
-                 if stats.get('p90_mttr_minutes') else "N/A"],
+                [
+                    "Mean MTTR",
+                    f"{stats.get('mean_mttr_minutes', 'N/A'):.1f} min"
+                    if stats.get("mean_mttr_minutes")
+                    else "N/A",
+                ],
+                [
+                    "Median MTTR",
+                    f"{stats.get('median_mttr_minutes', 'N/A'):.1f} min"
+                    if stats.get("median_mttr_minutes")
+                    else "N/A",
+                ],
+                [
+                    "P90 MTTR",
+                    f"{stats.get('p90_mttr_minutes', 'N/A'):.1f} min"
+                    if stats.get("p90_mttr_minutes")
+                    else "N/A",
+                ],
                 ["Total Incidents", str(stats.get("incidents_count", 0))],
                 ["Resolved", str(stats.get("resolved_count", 0))],
             ]
@@ -516,6 +556,7 @@ class PDFFormatter:
                     value = self._format_datetime(value)
                 elif isinstance(value, (list, dict)):
                     import json
+
                     value = json.dumps(value)[:50]
                 row.append(str(value) if value is not None else "")
             table_data.append(row)
@@ -529,7 +570,7 @@ class PDFFormatter:
             return Table([[""]])
 
         table = Table(data)
-        
+
         style = TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#4a5568")),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -546,7 +587,7 @@ class PDFFormatter:
             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f7fafc")]),
         ])
         table.setStyle(style)
-        
+
         return table
 
     def _format_datetime(self, dt: datetime | str | None) -> str:

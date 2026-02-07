@@ -26,7 +26,9 @@ class CostStore(Protocol):
     async def save_entry(self, entry: CostEntry) -> str: ...
     async def get_entry(self, entry_id: str) -> CostEntry | None: ...
     async def get_entries_for_incident(self, incident_id: str) -> list[CostEntry]: ...
-    async def get_entries_by_date_range(self, start: datetime, end: datetime) -> list[CostEntry]: ...
+    async def get_entries_by_date_range(
+        self, start: datetime, end: datetime
+    ) -> list[CostEntry]: ...
     async def delete_entry(self, entry_id: str) -> bool: ...
 
 
@@ -65,10 +67,7 @@ class InMemoryCostStore:
         end: datetime,
     ) -> list[CostEntry]:
         """Get entries within a date range."""
-        return [
-            e for e in self._entries.values()
-            if start <= e.created_at <= end
-        ]
+        return [e for e in self._entries.values() if start <= e.created_at <= end]
 
     async def get_entries_by_category(
         self,
@@ -294,8 +293,7 @@ class FileCostStore(InMemoryCostStore):
                     item["end_date"] = datetime.fromisoformat(item["end_date"])
                     item["generated_at"] = datetime.fromisoformat(item["generated_at"])
                     item["by_category"] = {
-                        CostCategory(k): Decimal(v)
-                        for k, v in item.get("by_category", {}).items()
+                        CostCategory(k): Decimal(v) for k, v in item.get("by_category", {}).items()
                     }
                     item["by_severity"] = {
                         k: Decimal(v) for k, v in item.get("by_severity", {}).items()
@@ -303,9 +301,7 @@ class FileCostStore(InMemoryCostStore):
                     item["by_service"] = {
                         k: Decimal(v) for k, v in item.get("by_service", {}).items()
                     }
-                    item["by_team"] = {
-                        k: Decimal(v) for k, v in item.get("by_team", {}).items()
-                    }
+                    item["by_team"] = {k: Decimal(v) for k, v in item.get("by_team", {}).items()}
                     item["by_department"] = {
                         k: Decimal(v) for k, v in item.get("by_department", {}).items()
                     }

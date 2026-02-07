@@ -409,9 +409,7 @@ async def refresh_postmortem(
     postmortem_id: str,
     sections: Annotated[
         list[str] | None,
-        Query(
-            description="Sections to refresh: timeline, root_cause, impact, action_items"
-        ),
+        Query(description="Sections to refresh: timeline, root_cause, impact, action_items"),
     ] = None,
 ) -> Postmortem:
     """
@@ -437,8 +435,7 @@ async def refresh_postmortem(
         title=postmortem.title.replace("Postmortem: ", ""),
         severity=Severity(postmortem.severity),
         service_name=postmortem.service_name,
-        triggered_at=postmortem.incident_started_at
-        or __import__("datetime").datetime.utcnow(),
+        triggered_at=postmortem.incident_started_at or __import__("datetime").datetime.utcnow(),
         alert_url=postmortem.alert_url,
         dashboard_url=postmortem.dashboard_url,
     )

@@ -11,18 +11,18 @@ Provides full-text search across incidents, runbooks, and postmortems with:
 
 Usage:
     from search import SearchEngine, IndexingService, router
-    
+
     # Create engine with in-memory backend (default)
     engine = SearchEngine()
-    
+
     # Or with Elasticsearch
     from search.engine import ElasticsearchBackend
     es_backend = ElasticsearchBackend(hosts=["http://localhost:9200"])
     engine = SearchEngine(es_backend)
-    
+
     # Create indexer
     indexer = IndexingService(engine)
-    
+
     # Index documents
     await indexer.index_incident({
         "id": "inc-123",
@@ -33,7 +33,7 @@ Usage:
         "service": "api",
         "tags": ["database", "performance"],
     })
-    
+
     # Search
     from search.models import SearchQuery, SearchFilter
     query = SearchQuery(
@@ -41,7 +41,7 @@ Usage:
         filters=SearchFilter(severities=["high", "critical"]),
     )
     results = await engine.search(query)
-    
+
     # Add routes to FastAPI app
     from fastapi import FastAPI
     app = FastAPI()

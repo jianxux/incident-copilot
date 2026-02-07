@@ -18,17 +18,17 @@ Usage:
         ChannelType,
         router,
     )
-    
+
     # Get service singleton
     service = get_notification_service()
-    
+
     # Check if user should be notified
     should_send, channels, frequency = await service.should_notify(
         user_id="user-123",
         notification_type=NotificationType.INCIDENT_CREATED,
         severity=Severity.P1,
     )
-    
+
     # Send a notification
     payload = NotificationPayload(
         id="notif-001",
@@ -38,7 +38,7 @@ Usage:
         message="Production database is unreachable",
     )
     result = await service.send_notification("user-123", payload)
-    
+
     # Include router in FastAPI app
     from fastapi import FastAPI
     app = FastAPI()

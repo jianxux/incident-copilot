@@ -156,7 +156,7 @@ async def create_export(
     service: Annotated[ExportService, Depends(get_service)],
 ) -> ExportJobResponse:
     """Create a new export job.
-    
+
     If async_processing is True (default), the export will be processed in the background
     and you should poll the status endpoint to check for completion.
     """
@@ -302,7 +302,7 @@ async def quick_export_incidents(
 
     job = await service.create_export(request)
     result = await service.download(job.id)
-    
+
     if not result:
         raise HTTPException(status_code=500, detail="Export failed")
 
@@ -341,7 +341,7 @@ async def quick_export_postmortems(
 
     job = await service.create_export(request)
     result = await service.download(job.id)
-    
+
     if not result:
         raise HTTPException(status_code=500, detail="Export failed")
 
@@ -370,7 +370,7 @@ async def quick_export_analytics(
 
     job = await service.create_export(request)
     result = await service.download(job.id)
-    
+
     if not result:
         raise HTTPException(status_code=500, detail="Export failed")
 

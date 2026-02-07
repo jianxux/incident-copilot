@@ -71,9 +71,7 @@ class InsightsStore:
         results.sort(key=lambda x: x.created_at, reverse=True)
         return results[:limit]
 
-    async def acknowledge_insight(
-        self, insight_id: str, acknowledged_by: str
-    ) -> Insight | None:
+    async def acknowledge_insight(self, insight_id: str, acknowledged_by: str) -> Insight | None:
         """Acknowledge an insight."""
         async with self._lock:
             if insight_id in self._insights:
@@ -208,8 +206,7 @@ class InsightsStore:
         results = []
         for dep in self._dependencies.values():
             if service_name and (
-                dep.source_service != service_name
-                and dep.target_service != service_name
+                dep.source_service != service_name and dep.target_service != service_name
             ):
                 continue
             results.append(dep)
@@ -230,9 +227,7 @@ class InsightsStore:
         """Get a digest by ID."""
         return self._digests.get(digest_id)
 
-    async def get_latest_digest(
-        self, period: str | None = None
-    ) -> IncidentDigest | None:
+    async def get_latest_digest(self, period: str | None = None) -> IncidentDigest | None:
         """Get the latest digest, optionally filtered by period."""
         digests = list(self._digests.values())
         if period:

@@ -35,9 +35,7 @@ class TagStore:
         """Initialize the store."""
         pass
 
-    async def create_tag(
-        self, request: TagCreate, created_by: str | None = None
-    ) -> Tag:
+    async def create_tag(self, request: TagCreate, created_by: str | None = None) -> Tag:
         """Create a new tag."""
         async with self._lock:
             tag_id = f"tag-{uuid.uuid4().hex[:12]}"
@@ -86,9 +84,7 @@ class TagStore:
             for incident_id in list(self._tag_incidents.get(tag_id, [])):
                 if incident_id in self._incident_tags:
                     self._incident_tags[incident_id] = [
-                        it
-                        for it in self._incident_tags[incident_id]
-                        if it.tag_id != tag_id
+                        it for it in self._incident_tags[incident_id] if it.tag_id != tag_id
                     ]
             del self._tags[tag_id]
             self._tag_incidents.pop(tag_id, None)
@@ -176,9 +172,7 @@ class TagStore:
     async def get_incident_tags(self, incident_id: str) -> list[Tag]:
         """Get all tags for an incident."""
         incident_tags = self._incident_tags.get(incident_id, [])
-        return [
-            self._tags[it.tag_id] for it in incident_tags if it.tag_id in self._tags
-        ]
+        return [self._tags[it.tag_id] for it in incident_tags if it.tag_id in self._tags]
 
     async def get_incidents_by_tag(
         self,
@@ -210,13 +204,9 @@ class TagStore:
         if include_children:
             for tag_id in tag_ids:
                 expanded_tag_ids.update(await self.get_all_descendants(tag_id))
-        tag_incident_sets = [
-            self._tag_incidents.get(tid, set()) for tid in expanded_tag_ids
-        ]
+        tag_incident_sets = [self._tag_incidents.get(tid, set()) for tid in expanded_tag_ids]
         if match_all:
-            result = (
-                set.intersection(*tag_incident_sets) if tag_incident_sets else set()
-            )
+            result = set.intersection(*tag_incident_sets) if tag_incident_sets else set()
         else:
             result = set.union(*tag_incident_sets) if tag_incident_sets else set()
         return sorted(result)

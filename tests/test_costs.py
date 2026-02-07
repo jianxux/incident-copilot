@@ -219,7 +219,7 @@ class TestIncidentCost:
             amount=Decimal("500.00"),
         )
         cost.add_entry(entry)
-        
+
         assert len(cost.entries) == 1
         assert cost.total_cost == Decimal("500.00")
         assert cost.totals_by_category[CostCategory.ENGINEER_TIME] == Decimal("500.00")

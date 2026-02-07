@@ -72,9 +72,7 @@ class TestPluginRegistry:
     async def test_register_webhook_without_config(self, registry):
         with pytest.raises(ValueError, match="webhook_config"):
             await registry.register(
-                PluginCreateRequest(
-                    id="bad-webhook", name="Bad", type=PluginType.WEBHOOK
-                )
+                PluginCreateRequest(id="bad-webhook", name="Bad", type=PluginType.WEBHOOK)
             )
 
     @pytest.mark.asyncio
@@ -112,9 +110,7 @@ class TestPluginRegistry:
 
 class TestWebhookExecutor:
     def test_compute_signature_sha256(self):
-        sig = WebhookExecutor()._compute_signature(
-            b'{"test": "data"}', "secret", "sha256"
-        )
+        sig = WebhookExecutor()._compute_signature(b'{"test": "data"}', "secret", "sha256")
         assert sig.startswith("sha256=") and len(sig) == len("sha256=") + 64
 
     def test_verify_signature(self):
@@ -131,9 +127,7 @@ class TestWebhookExecutor:
     @pytest.mark.asyncio
     async def test_send_webhook_success(self):
         executor = WebhookExecutor()
-        with patch.object(
-            executor, "_attempt_delivery", new_callable=AsyncMock
-        ) as mock:
+        with patch.object(executor, "_attempt_delivery", new_callable=AsyncMock) as mock:
             mock.return_value = {"status": 200, "body": '{"ok": true}'}
             delivery = await executor.send(
                 url="https://example.com", method="POST", payload={}, plugin_id="test"
@@ -143,9 +137,7 @@ class TestWebhookExecutor:
 
 class TestPayloadTransformer:
     def test_transform_simple(self, sample_context_card):
-        result = PayloadTransformer().transform(
-            '{"id": "{{ incident_id }}"}', sample_context_card
-        )
+        result = PayloadTransformer().transform('{"id": "{{ incident_id }}"}', sample_context_card)
         assert result["id"] == "INC-12345"
 
     def test_transform_with_filters(self, sample_context_card):
@@ -160,9 +152,7 @@ class TestPayloadTransformer:
 
     def test_render_string(self, sample_context_card):
         assert (
-            PayloadTransformer().render_string(
-                "ID: {{ incident_id }}", sample_context_card
-            )
+            PayloadTransformer().render_string("ID: {{ incident_id }}", sample_context_card)
             == "ID: INC-12345"
         )
 
@@ -176,15 +166,11 @@ class TestFilterPlugin:
                 name="Filter",
                 type=PluginType.FILTER,
                 filter_config=FilterConfig(
-                    conditions=[
-                        FilterCondition(field="severity", operator="eq", value="high")
-                    ]
+                    conditions=[FilterCondition(field="severity", operator="eq", value="high")]
                 ),
             )
         )
-        result = await registry.test_plugin(
-            "filter-test", sample_context_card, dry_run=False
-        )
+        result = await registry.test_plugin("filter-test", sample_context_card, dry_run=False)
         assert result.success and result.details["conditions_matched"]
 
     @pytest.mark.asyncio
@@ -195,17 +181,13 @@ class TestFilterPlugin:
                 name="Modify",
                 type=PluginType.FILTER,
                 filter_config=FilterConfig(
-                    conditions=[
-                        FilterCondition(field="severity", operator="eq", value="high")
-                    ],
+                    conditions=[FilterCondition(field="severity", operator="eq", value="high")],
                     action="modify",
                     modifications={"priority": "P1"},
                 ),
             )
         )
-        result = await registry.test_plugin(
-            "filter-mod", sample_context_card, dry_run=False
-        )
+        result = await registry.test_plugin("filter-mod", sample_context_card, dry_run=False)
         assert (
             result.details["action_taken"] == "modified"
             and result.details["result_data"]["priority"] == "P1"

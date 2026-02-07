@@ -22,12 +22,12 @@ logger = logging.getLogger(__name__)
 
 class SLAStore:
     """Storage layer for SLA data.
-    
+
     Uses Redis for:
     - Active timers (hot data, needs fast access)
     - Timer caching
     - Policy caching
-    
+
     Uses PostgreSQL for:
     - SLA policies (persistent)
     - Breach history (persistent)
@@ -46,7 +46,7 @@ class SLAStore:
         db_pool: Any = None,
     ) -> None:
         """Initialize SLA store.
-        
+
         Args:
             redis_client: Redis async client (aioredis)
             db_pool: PostgreSQL connection pool (asyncpg)
@@ -60,7 +60,7 @@ class SLAStore:
 
     async def save_timer(self, timer: SLATimer) -> None:
         """Save or update an SLA timer.
-        
+
         Args:
             timer: Timer to save
         """
@@ -84,15 +84,13 @@ class SLAStore:
         if self._use_db:
             await self._upsert_timer_db(timer)
 
-    async def get_timer(
-        self, incident_id: str, sla_type: SLAType
-    ) -> SLATimer | None:
+    async def get_timer(self, incident_id: str, sla_type: SLAType) -> SLATimer | None:
         """Get an SLA timer.
-        
+
         Args:
             incident_id: Incident identifier
             sla_type: Response or resolution
-            
+
         Returns:
             Timer if found, None otherwise
         """
@@ -112,25 +110,25 @@ class SLAStore:
 
     async def get_incident_timers(self, incident_id: str) -> list[SLATimer]:
         """Get all timers for an incident.
-        
+
         Args:
             incident_id: Incident identifier
-            
+
         Returns:
             List of timers (response and/or resolution)
         """
         timers: list[SLATimer] = []
-        
+
         for sla_type in SLAType:
             timer = await self.get_timer(incident_id, sla_type)
             if timer:
                 timers.append(timer)
-        
+
         return timers
 
     async def get_active_timers(self) -> list[SLATimer]:
         """Get all active (non-completed) timers.
-        
+
         Returns:
             List of active timers
         """
@@ -162,7 +160,7 @@ class SLAStore:
         policy_id: str | None = None,
     ) -> list[SLATimer]:
         """Get timers within a time period for metrics.
-        
+
         Args:
             organization_id: Organization scope
             period_start: Start of period
@@ -170,7 +168,7 @@ class SLAStore:
             team_id: Optional team filter
             service_id: Optional service filter
             policy_id: Optional policy filter
-            
+
         Returns:
             List of timers in the period
         """
@@ -179,19 +177,16 @@ class SLAStore:
             return []
 
         return await self._get_timers_in_period_db(
-            organization_id, period_start, period_end,
-            team_id, service_id, policy_id
+            organization_id, period_start, period_end, team_id, service_id, policy_id
         )
 
-    async def delete_timer(
-        self, incident_id: str, sla_type: SLAType
-    ) -> bool:
+    async def delete_timer(self, incident_id: str, sla_type: SLAType) -> bool:
         """Delete an SLA timer.
-        
+
         Args:
             incident_id: Incident identifier
             sla_type: Timer type to delete
-            
+
         Returns:
             True if deleted, False if not found
         """
@@ -215,7 +210,7 @@ class SLAStore:
 
     async def save_policy(self, policy: SLAPolicy) -> None:
         """Save or update an SLA policy.
-        
+
         Args:
             policy: Policy to save
         """
@@ -231,10 +226,10 @@ class SLAStore:
 
     async def get_policy(self, policy_id: str) -> SLAPolicy | None:
         """Get an SLA policy by ID.
-        
+
         Args:
             policy_id: Policy identifier
-            
+
         Returns:
             Policy if found, None otherwise
         """
@@ -251,9 +246,7 @@ class SLAStore:
             if policy and self._use_redis:
                 # Cache for next time
                 key = f"{self.POLICY_PREFIX}:{policy_id}"
-                await self.redis.set(
-                    key, json.dumps(policy.model_dump(mode="json")), ex=3600
-                )
+                await self.redis.set(key, json.dumps(policy.model_dump(mode="json")), ex=3600)
             return policy
 
         return None
@@ -266,29 +259,27 @@ class SLAStore:
         active_only: bool = True,
     ) -> list[SLAPolicy]:
         """Get SLA policies with optional filters.
-        
+
         Args:
             organization_id: Organization scope
             team_id: Optional team filter
             service_id: Optional service filter
             active_only: Only return active policies
-            
+
         Returns:
             List of matching policies
         """
         if not self._use_db:
             return []
 
-        return await self._get_policies_db(
-            organization_id, team_id, service_id, active_only
-        )
+        return await self._get_policies_db(organization_id, team_id, service_id, active_only)
 
     async def delete_policy(self, policy_id: str) -> bool:
         """Delete an SLA policy.
-        
+
         Args:
             policy_id: Policy to delete
-            
+
         Returns:
             True if deleted
         """
@@ -305,7 +296,7 @@ class SLAStore:
 
     async def save_breach(self, breach: SLABreach) -> None:
         """Save an SLA breach record.
-        
+
         Args:
             breach: Breach to save
         """
@@ -322,15 +313,13 @@ class SLAStore:
         if self._use_db:
             await self._insert_breach_db(breach)
 
-    async def get_breach(
-        self, incident_id: str, sla_type: SLAType
-    ) -> SLABreach | None:
+    async def get_breach(self, incident_id: str, sla_type: SLAType) -> SLABreach | None:
         """Get a breach record for an incident/type.
-        
+
         Args:
             incident_id: Incident identifier
             sla_type: Response or resolution
-            
+
         Returns:
             Breach if found
         """
@@ -342,10 +331,10 @@ class SLAStore:
 
     async def get_incident_breaches(self, incident_id: str) -> list[SLABreach]:
         """Get all breaches for an incident.
-        
+
         Args:
             incident_id: Incident identifier
-            
+
         Returns:
             List of breaches
         """
@@ -354,7 +343,7 @@ class SLAStore:
         if self._use_redis:
             incident_key = f"{self.BREACH_PREFIX}:incident:{incident_id}"
             breach_ids = await self.redis.smembers(incident_key)
-            
+
             for bid in breach_ids:
                 if isinstance(bid, bytes):
                     bid = bid.decode()
@@ -377,14 +366,14 @@ class SLAStore:
         sla_type: SLAType | None = None,
     ) -> list[SLABreach]:
         """Get breaches in a time period.
-        
+
         Args:
             organization_id: Organization scope
             period_start: Start of period
             period_end: End of period
             severity: Optional severity filter
             sla_type: Optional type filter
-            
+
         Returns:
             List of breaches
         """
@@ -395,15 +384,13 @@ class SLAStore:
             organization_id, period_start, period_end, severity, sla_type
         )
 
-    async def acknowledge_breach(
-        self, breach_id: str, user: str
-    ) -> SLABreach | None:
+    async def acknowledge_breach(self, breach_id: str, user: str) -> SLABreach | None:
         """Acknowledge a breach.
-        
+
         Args:
             breach_id: Breach to acknowledge
             user: User acknowledging
-            
+
         Returns:
             Updated breach
         """
@@ -414,9 +401,7 @@ class SLAStore:
                 breach = SLABreach.model_validate(json.loads(data))
                 breach.acknowledged_at = datetime.utcnow()
                 breach.acknowledged_by = user
-                await self.redis.set(
-                    key, json.dumps(breach.model_dump(mode="json"))
-                )
+                await self.redis.set(key, json.dumps(breach.model_dump(mode="json")))
                 if self._use_db:
                     await self._update_breach_db(breach)
                 return breach
@@ -451,16 +436,22 @@ class SLAStore:
                     breached_at = EXCLUDED.breached_at,
                     completed_at = EXCLUDED.completed_at
                 """,
-                timer.incident_id, timer.policy_id, timer.severity.value,
-                timer.sla_type.value, timer.started_at, timer.target_minutes,
-                timer.elapsed_minutes, timer.paused, timer.paused_at,
-                timer.total_paused_minutes, timer.status.value,
-                timer.breached_at, timer.completed_at,
+                timer.incident_id,
+                timer.policy_id,
+                timer.severity.value,
+                timer.sla_type.value,
+                timer.started_at,
+                timer.target_minutes,
+                timer.elapsed_minutes,
+                timer.paused,
+                timer.paused_at,
+                timer.total_paused_minutes,
+                timer.status.value,
+                timer.breached_at,
+                timer.completed_at,
             )
 
-    async def _get_timer_db(
-        self, incident_id: str, sla_type: SLAType
-    ) -> SLATimer | None:
+    async def _get_timer_db(self, incident_id: str, sla_type: SLAType) -> SLATimer | None:
         """Get timer from PostgreSQL."""
         if not self.db:
             return None
@@ -471,7 +462,8 @@ class SLAStore:
                 SELECT * FROM sla_timers
                 WHERE incident_id = $1 AND sla_type = $2
                 """,
-                incident_id, sla_type.value,
+                incident_id,
+                sla_type.value,
             )
             if row:
                 return self._row_to_timer(row)
@@ -530,9 +522,7 @@ class SLAStore:
             rows = await conn.fetch(query, *params)
             return [self._row_to_timer(row) for row in rows]
 
-    async def _delete_timer_db(
-        self, incident_id: str, sla_type: SLAType
-    ) -> bool:
+    async def _delete_timer_db(self, incident_id: str, sla_type: SLAType) -> bool:
         """Delete timer from PostgreSQL."""
         if not self.db:
             return False
@@ -543,7 +533,8 @@ class SLAStore:
                 DELETE FROM sla_timers
                 WHERE incident_id = $1 AND sla_type = $2
                 """,
-                incident_id, sla_type.value,
+                incident_id,
+                sla_type.value,
             )
             return "DELETE 1" in result
 
@@ -570,13 +561,19 @@ class SLAStore:
                     is_active = EXCLUDED.is_active,
                     updated_at = EXCLUDED.updated_at
                 """,
-                policy.id, policy.name, policy.description,
-                policy.organization_id, policy.team_id, policy.service_id,
+                policy.id,
+                policy.name,
+                policy.description,
+                policy.organization_id,
+                policy.team_id,
+                policy.service_id,
                 json.dumps([t.model_dump(mode="json") for t in policy.targets]),
                 json.dumps(policy.business_hours.model_dump(mode="json")),
                 policy.escalation_enabled,
                 json.dumps(policy.escalation_contacts),
-                policy.is_active, policy.created_at, policy.updated_at,
+                policy.is_active,
+                policy.created_at,
+                policy.updated_at,
                 policy.created_by,
             )
 
@@ -654,20 +651,27 @@ class SLAStore:
                     acknowledged_at, acknowledged_by, notes, root_cause
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
                 """,
-                breach.id, breach.incident_id, breach.policy_id,
-                breach.severity.value, breach.sla_type.value,
-                breach.target_minutes, breach.actual_minutes,
-                breach.breach_amount_minutes, breach.breach_percent,
+                breach.id,
+                breach.incident_id,
+                breach.policy_id,
+                breach.severity.value,
+                breach.sla_type.value,
+                breach.target_minutes,
+                breach.actual_minutes,
+                breach.breach_amount_minutes,
+                breach.breach_percent,
                 breach.escalation_level.value,
                 json.dumps(breach.escalated_to),
-                breach.escalation_sent_at, breach.breached_at,
-                breach.resolved_at, breach.acknowledged_at,
-                breach.acknowledged_by, breach.notes, breach.root_cause,
+                breach.escalation_sent_at,
+                breach.breached_at,
+                breach.resolved_at,
+                breach.acknowledged_at,
+                breach.acknowledged_by,
+                breach.notes,
+                breach.root_cause,
             )
 
-    async def _get_incident_breaches_db(
-        self, incident_id: str
-    ) -> list[SLABreach]:
+    async def _get_incident_breaches_db(self, incident_id: str) -> list[SLABreach]:
         """Get breaches for an incident from PostgreSQL."""
         if not self.db:
             return []
@@ -714,9 +718,7 @@ class SLAStore:
             rows = await conn.fetch(query, *params)
             return [self._row_to_breach(row) for row in rows]
 
-    async def _acknowledge_breach_db(
-        self, breach_id: str, user: str
-    ) -> SLABreach | None:
+    async def _acknowledge_breach_db(self, breach_id: str, user: str) -> SLABreach | None:
         """Acknowledge breach in PostgreSQL."""
         if not self.db:
             return None
@@ -728,7 +730,9 @@ class SLAStore:
                 SET acknowledged_at = $1, acknowledged_by = $2
                 WHERE id = $3
                 """,
-                datetime.utcnow(), user, breach_id,
+                datetime.utcnow(),
+                user,
+                breach_id,
             )
             row = await conn.fetchrow(
                 "SELECT * FROM sla_breaches WHERE id = $1",
@@ -751,8 +755,11 @@ class SLAStore:
                     acknowledged_by = $3, notes = $4, root_cause = $5
                 WHERE id = $6
                 """,
-                breach.resolved_at, breach.acknowledged_at,
-                breach.acknowledged_by, breach.notes, breach.root_cause,
+                breach.resolved_at,
+                breach.acknowledged_at,
+                breach.acknowledged_by,
+                breach.notes,
+                breach.root_cause,
                 breach.id,
             )
 

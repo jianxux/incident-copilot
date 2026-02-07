@@ -240,16 +240,12 @@ class TestMaintenanceWindow:
 
     def test_is_approved_with_approvals(self, sample_window):
         """Test approval check with approvals."""
-        sample_window.approvals.append(
-            ApprovalRecord(approver_id="manager-1", approved=True)
-        )
+        sample_window.approvals.append(ApprovalRecord(approver_id="manager-1", approved=True))
         assert sample_window.is_approved()
 
     def test_is_approved_missing_required(self, sample_window):
         """Test approval check missing required approver."""
-        sample_window.approvals.append(
-            ApprovalRecord(approver_id="other-manager", approved=True)
-        )
+        sample_window.approvals.append(ApprovalRecord(approver_id="other-manager", approved=True))
         assert not sample_window.is_approved()
 
     def test_is_active_before_start(self, sample_window):

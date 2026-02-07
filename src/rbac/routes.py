@@ -33,19 +33,21 @@ router = APIRouter(prefix="/rbac", tags=["rbac"])
 
 # ==================== Request/Response Models ====================
 
+
 class CreateRoleRequest(BaseModel):
     """Request to create a custom role."""
+
     name: str = Field(..., min_length=1, max_length=100)
     description: str = Field("", max_length=500)
     permissions: list[dict] = Field(
-        default_factory=list,
-        description="List of permission objects with resource_type and action"
+        default_factory=list, description="List of permission objects with resource_type and action"
     )
     inherits_from: list[UUID] = Field(default_factory=list)
 
 
 class UpdateRoleRequest(BaseModel):
     """Request to update a role."""
+
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     permissions: Optional[list[dict]] = None
@@ -53,6 +55,7 @@ class UpdateRoleRequest(BaseModel):
 
 class AssignRoleRequest(BaseModel):
     """Request to assign a role to a user."""
+
     user_id: UUID
     role_id: UUID
     scope_type: Optional[ScopeType] = None
@@ -63,12 +66,14 @@ class AssignRoleRequest(BaseModel):
 
 class RevokeRoleRequest(BaseModel):
     """Request to revoke a role from a user."""
+
     user_id: UUID
     role_id: UUID
 
 
 class CheckPermissionRequest(BaseModel):
     """Request to check a permission."""
+
     user_id: UUID
     resource_type: ResourceType
     action: Action
@@ -81,6 +86,7 @@ class CheckPermissionRequest(BaseModel):
 
 class RoleResponse(BaseModel):
     """Role response with permission details."""
+
     id: UUID
     name: str
     description: str
@@ -95,6 +101,7 @@ class RoleResponse(BaseModel):
 
 # ==================== Role Routes ====================
 
+
 @router.get("/roles", response_model=list[RoleResponse])
 async def list_roles(
     organization_id: Optional[UUID] = None,
@@ -103,14 +110,14 @@ async def list_roles(
 ) -> list[RoleResponse]:
     """
     List all available roles.
-    
+
     Requires Admin role.
     """
     roles = await rbac_service.list_roles(
         organization_id=organization_id,
         include_system=include_system,
     )
-    
+
     return [
         RoleResponse(
             id=r.id,
@@ -142,13 +149,13 @@ async def get_role(
 ) -> RoleResponse:
     """
     Get role details by ID.
-    
+
     Requires Admin role.
     """
     role = await rbac_service.get_role(role_id)
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
-    
+
     return RoleResponse(
         id=role.id,
         name=role.name,
@@ -178,7 +185,7 @@ async def create_role(
 ) -> RoleResponse:
     """
     Create a custom role.
-    
+
     Requires Admin role.
     """
     # Parse permissions
@@ -191,7 +198,7 @@ async def create_role(
         scope_type = ScopeType(perm_dict.get("scope_type", "global"))
         scope = ResourceScope(scope_type=scope_type)
         permissions.append(RolePermission(permission=perm, scope=scope))
-    
+
     role = await rbac_service.create_role(
         name=request.name,
         description=request.description,
@@ -199,7 +206,7 @@ async def create_role(
         permissions=permissions,
         inherits_from=request.inherits_from,
     )
-    
+
     return RoleResponse(
         id=role.id,
         name=role.name,
@@ -229,7 +236,7 @@ async def update_role(
 ) -> RoleResponse:
     """
     Update a custom role.
-    
+
     System roles cannot be modified.
     Requires Admin role.
     """
@@ -245,20 +252,20 @@ async def update_role(
             scope_type = ScopeType(perm_dict.get("scope_type", "global"))
             scope = ResourceScope(scope_type=scope_type)
             permissions.append(RolePermission(permission=perm, scope=scope))
-    
+
     role = await rbac_service.update_role(
         role_id=role_id,
         name=request.name,
         description=request.description,
         permissions=permissions,
     )
-    
+
     if not role:
         raise HTTPException(
             status_code=400,
             detail="Role not found or cannot be modified (system role)",
         )
-    
+
     return RoleResponse(
         id=role.id,
         name=role.name,
@@ -287,7 +294,7 @@ async def delete_role(
 ):
     """
     Delete a custom role.
-    
+
     System roles cannot be deleted.
     Requires Super Admin role.
     """
@@ -301,6 +308,7 @@ async def delete_role(
 
 # ==================== Assignment Routes ====================
 
+
 @router.post("/assignments", response_model=RoleAssignment, status_code=201)
 async def assign_role(
     request: AssignRoleRequest,
@@ -309,7 +317,7 @@ async def assign_role(
 ) -> RoleAssignment:
     """
     Assign a role to a user.
-    
+
     Optionally scope the assignment to a team or service.
     Requires Admin role.
     """
@@ -320,7 +328,7 @@ async def assign_role(
             team_id=request.team_id,
             service_id=request.service_id,
         )
-    
+
     return await rbac_service.assign_role(
         user_id=request.user_id,
         role_id=request.role_id,
@@ -337,7 +345,7 @@ async def revoke_role(
 ):
     """
     Revoke a role from a user.
-    
+
     Requires Admin role.
     """
     success = await rbac_service.revoke_role(
@@ -358,7 +366,7 @@ async def get_user_roles(
 ) -> list[RoleAssignment]:
     """
     Get all role assignments for a user.
-    
+
     Requires Admin role.
     """
     return await rbac_service.get_user_roles(user_id)
@@ -371,7 +379,7 @@ async def get_role_users(
 ) -> list[UUID]:
     """
     Get all users with a specific role.
-    
+
     Requires Admin role.
     """
     return await rbac_service.get_users_with_role(role_id)
@@ -379,11 +387,12 @@ async def get_role_users(
 
 # ==================== Permission Check Routes ====================
 
+
 @router.post("/check", response_model=PermissionCheck)
 async def check_permission(request: CheckPermissionRequest) -> PermissionCheck:
     """
     Check if a user has a specific permission.
-    
+
     Returns detailed result including which permission/role matched.
     """
     return await rbac_service.check_permission(
@@ -405,7 +414,7 @@ async def get_user_permissions(
 ) -> UserPermissions:
     """
     Get aggregated permissions for a user.
-    
+
     Returns all effective permissions from all assigned roles.
     """
     return await rbac_service.get_user_permissions(
@@ -448,28 +457,20 @@ async def get_allowed_resources(
 
 # ==================== Reference Routes ====================
 
+
 @router.get("/resource-types")
 async def list_resource_types() -> list[dict]:
     """List all resource types."""
-    return [
-        {"type": rt.value, "name": rt.value.replace("_", " ").title()}
-        for rt in ResourceType
-    ]
+    return [{"type": rt.value, "name": rt.value.replace("_", " ").title()} for rt in ResourceType]
 
 
 @router.get("/actions")
 async def list_actions() -> list[dict]:
     """List all actions."""
-    return [
-        {"action": a.value, "name": a.value.title()}
-        for a in Action
-    ]
+    return [{"action": a.value, "name": a.value.title()} for a in Action]
 
 
 @router.get("/scope-types")
 async def list_scope_types() -> list[dict]:
     """List all scope types."""
-    return [
-        {"scope": s.value, "name": s.value.replace("_", " ").title()}
-        for s in ScopeType
-    ]
+    return [{"scope": s.value, "name": s.value.replace("_", " ").title()} for s in ScopeType]

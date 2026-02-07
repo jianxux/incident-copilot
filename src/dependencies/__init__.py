@@ -9,10 +9,10 @@ Usage:
         get_dependency_service,
         router,
     )
-    
+
     # Add routes to FastAPI app
     app.include_router(router)
-    
+
     # Use service directly
     service = get_dependency_service()
     blast = await service.calculate_blast_radius("payment-service")

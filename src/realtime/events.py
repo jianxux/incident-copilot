@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 class EventType(str, Enum):
     """Types of realtime events."""
+
     # Incident events
     INCIDENT_CREATED = "incident.created"
     INCIDENT_UPDATED = "incident.updated"
@@ -19,23 +20,23 @@ class EventType(str, Enum):
     INCIDENT_ESCALATED = "incident.escalated"
     INCIDENT_ASSIGNED = "incident.assigned"
     INCIDENT_ACKNOWLEDGED = "incident.acknowledged"
-    
+
     # Comment events
     COMMENT_ADDED = "comment.added"
     COMMENT_UPDATED = "comment.updated"
     COMMENT_DELETED = "comment.deleted"
-    
+
     # Status events
     STATUS_CHANGED = "status.changed"
     SEVERITY_CHANGED = "severity.changed"
-    
+
     # SLA events
     SLA_WARNING = "sla.warning"
     SLA_BREACHED = "sla.breached"
-    
+
     # Timeline events
     TIMELINE_ENTRY = "timeline.entry"
-    
+
     # Presence events
     USER_JOINED = "presence.joined"
     USER_LEFT = "presence.left"
@@ -44,16 +45,17 @@ class EventType(str, Enum):
 
 class BaseEvent(BaseModel):
     """Base event structure."""
+
     event_type: EventType
-    event_id: str = Field(default_factory=lambda: __import__('uuid').uuid4().hex)
+    event_id: str = Field(default_factory=lambda: __import__("uuid").uuid4().hex)
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     source: str = "system"  # Who triggered the event
-    
+
     # Routing info
     incident_id: Optional[str] = None
     service_id: Optional[str] = None
     team_id: Optional[str] = None
-    
+
     def get_room_keys(self) -> list[str]:
         """Get all room keys this event should be broadcast to."""
         keys = ["global:all"]
@@ -64,7 +66,7 @@ class BaseEvent(BaseModel):
         if self.team_id:
             keys.append(f"team:{self.team_id}")
         return keys
-    
+
     def to_message(self) -> dict[str, Any]:
         """Convert event to WebSocket message payload."""
         return {
@@ -74,7 +76,7 @@ class BaseEvent(BaseModel):
             "source": self.source,
             "data": self.get_event_data(),
         }
-    
+
     def get_event_data(self) -> dict[str, Any]:
         """Get event-specific data. Override in subclasses."""
         return {}
@@ -82,12 +84,13 @@ class BaseEvent(BaseModel):
 
 class IncidentCreated(BaseEvent):
     """Event when a new incident is created."""
+
     event_type: EventType = EventType.INCIDENT_CREATED
     title: str
     severity: str
     description: Optional[str] = None
     created_by: str
-    
+
     def get_event_data(self) -> dict[str, Any]:
         return {
             "incident_id": self.incident_id,
@@ -100,10 +103,11 @@ class IncidentCreated(BaseEvent):
 
 class IncidentUpdated(BaseEvent):
     """Event when an incident is updated."""
+
     event_type: EventType = EventType.INCIDENT_UPDATED
     changes: dict[str, Any] = Field(default_factory=dict)
     updated_by: str
-    
+
     def get_event_data(self) -> dict[str, Any]:
         return {
             "incident_id": self.incident_id,
@@ -114,11 +118,12 @@ class IncidentUpdated(BaseEvent):
 
 class IncidentResolved(BaseEvent):
     """Event when an incident is resolved."""
+
     event_type: EventType = EventType.INCIDENT_RESOLVED
     resolution_summary: Optional[str] = None
     resolved_by: str
     resolution_time_minutes: Optional[int] = None
-    
+
     def get_event_data(self) -> dict[str, Any]:
         return {
             "incident_id": self.incident_id,
@@ -130,12 +135,13 @@ class IncidentResolved(BaseEvent):
 
 class IncidentAssigned(BaseEvent):
     """Event when an incident is assigned."""
+
     event_type: EventType = EventType.INCIDENT_ASSIGNED
     assignee_id: str
     assignee_name: str
     assigned_by: str
     previous_assignee_id: Optional[str] = None
-    
+
     def get_event_data(self) -> dict[str, Any]:
         return {
             "incident_id": self.incident_id,
@@ -148,9 +154,10 @@ class IncidentAssigned(BaseEvent):
 
 class IncidentAcknowledged(BaseEvent):
     """Event when an incident is acknowledged."""
+
     event_type: EventType = EventType.INCIDENT_ACKNOWLEDGED
     acknowledged_by: str
-    
+
     def get_event_data(self) -> dict[str, Any]:
         return {
             "incident_id": self.incident_id,
@@ -160,11 +167,12 @@ class IncidentAcknowledged(BaseEvent):
 
 class IncidentEscalated(BaseEvent):
     """Event when an incident is escalated."""
+
     event_type: EventType = EventType.INCIDENT_ESCALATED
     escalated_by: str
     escalation_level: int
     reason: Optional[str] = None
-    
+
     def get_event_data(self) -> dict[str, Any]:
         return {
             "incident_id": self.incident_id,
@@ -176,13 +184,14 @@ class IncidentEscalated(BaseEvent):
 
 class CommentAdded(BaseEvent):
     """Event when a comment is added to an incident."""
+
     event_type: EventType = EventType.COMMENT_ADDED
     comment_id: str
     content: str
     author_id: str
     author_name: str
     is_internal: bool = False
-    
+
     def get_event_data(self) -> dict[str, Any]:
         return {
             "incident_id": self.incident_id,
@@ -196,11 +205,12 @@ class CommentAdded(BaseEvent):
 
 class CommentUpdated(BaseEvent):
     """Event when a comment is updated."""
+
     event_type: EventType = EventType.COMMENT_UPDATED
     comment_id: str
     content: str
     edited_by: str
-    
+
     def get_event_data(self) -> dict[str, Any]:
         return {
             "incident_id": self.incident_id,
@@ -212,10 +222,11 @@ class CommentUpdated(BaseEvent):
 
 class CommentDeleted(BaseEvent):
     """Event when a comment is deleted."""
+
     event_type: EventType = EventType.COMMENT_DELETED
     comment_id: str
     deleted_by: str
-    
+
     def get_event_data(self) -> dict[str, Any]:
         return {
             "incident_id": self.incident_id,
@@ -226,11 +237,12 @@ class CommentDeleted(BaseEvent):
 
 class StatusChanged(BaseEvent):
     """Event when incident status changes."""
+
     event_type: EventType = EventType.STATUS_CHANGED
     old_status: str
     new_status: str
     changed_by: str
-    
+
     def get_event_data(self) -> dict[str, Any]:
         return {
             "incident_id": self.incident_id,
@@ -242,12 +254,13 @@ class StatusChanged(BaseEvent):
 
 class SeverityChanged(BaseEvent):
     """Event when incident severity changes."""
+
     event_type: EventType = EventType.SEVERITY_CHANGED
     old_severity: str
     new_severity: str
     changed_by: str
     reason: Optional[str] = None
-    
+
     def get_event_data(self) -> dict[str, Any]:
         return {
             "incident_id": self.incident_id,
@@ -260,11 +273,12 @@ class SeverityChanged(BaseEvent):
 
 class SLAWarning(BaseEvent):
     """Event when SLA is approaching breach."""
+
     event_type: EventType = EventType.SLA_WARNING
     sla_type: str  # "response", "acknowledgement", "resolution"
     deadline: datetime
     time_remaining_minutes: int
-    
+
     def get_event_data(self) -> dict[str, Any]:
         return {
             "incident_id": self.incident_id,
@@ -276,11 +290,12 @@ class SLAWarning(BaseEvent):
 
 class SLABreached(BaseEvent):
     """Event when SLA is breached."""
+
     event_type: EventType = EventType.SLA_BREACHED
     sla_type: str
     deadline: datetime
     breach_time: datetime = Field(default_factory=datetime.utcnow)
-    
+
     def get_event_data(self) -> dict[str, Any]:
         return {
             "incident_id": self.incident_id,
@@ -292,13 +307,14 @@ class SLABreached(BaseEvent):
 
 class TimelineEntry(BaseEvent):
     """Generic timeline entry event."""
+
     event_type: EventType = EventType.TIMELINE_ENTRY
     entry_type: str
     content: str
     actor_id: Optional[str] = None
     actor_name: Optional[str] = None
     metadata: dict[str, Any] = Field(default_factory=dict)
-    
+
     def get_event_data(self) -> dict[str, Any]:
         return {
             "incident_id": self.incident_id,
@@ -312,14 +328,15 @@ class TimelineEntry(BaseEvent):
 
 class PresenceEvent(BaseEvent):
     """Presence change event."""
+
     user_id: str
     user_name: str
     room_key: str
-    
+
     def get_room_keys(self) -> list[str]:
         # Presence events only go to the specific room
         return [self.room_key]
-    
+
     def get_event_data(self) -> dict[str, Any]:
         return {
             "user_id": self.user_id,
@@ -330,16 +347,19 @@ class PresenceEvent(BaseEvent):
 
 class UserJoined(PresenceEvent):
     """Event when user joins a room."""
+
     event_type: EventType = EventType.USER_JOINED
 
 
 class UserLeft(PresenceEvent):
     """Event when user leaves a room."""
+
     event_type: EventType = EventType.USER_LEFT
 
 
 class UserTyping(PresenceEvent):
     """Event when user is typing."""
+
     event_type: EventType = EventType.USER_TYPING
 
 

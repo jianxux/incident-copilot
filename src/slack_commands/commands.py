@@ -39,9 +39,7 @@ class CommandHandler:
             return await self._handle_help(ctx)
         match = self.COMMAND_PATTERN.match(text)
         if not match:
-            return BlockKitBuilder.error_response(
-                "Invalid command", "Use /incident help"
-            )
+            return BlockKitBuilder.error_response("Invalid command", "Use /incident help")
         subcommand = match.group(1).lower()
         args = match.group(2) or ""
         handlers = {
@@ -53,9 +51,7 @@ class CommandHandler:
         }
         handler = handlers.get(subcommand)
         if not handler:
-            return BlockKitBuilder.error_response(
-                f"Unknown: {subcommand}", "Use /incident help"
-            )
+            return BlockKitBuilder.error_response(f"Unknown: {subcommand}", "Use /incident help")
         try:
             response = await handler(ctx, args)
             if ctx.public:
@@ -95,8 +91,7 @@ class CommandHandler:
                 "severity": inc.severity.value,
             }
             for inc in incidents
-            if query.lower() in inc.title.lower()
-            or query.lower() in inc.service_name.lower()
+            if query.lower() in inc.title.lower() or query.lower() in inc.service_name.lower()
         ]
         return BlockKitBuilder.search_response(query, results, len(results))
 
@@ -106,9 +101,7 @@ class CommandHandler:
             try:
                 count = max(1, min(int(args.strip()), 20))
             except ValueError:
-                return BlockKitBuilder.error_response(
-                    "Invalid count", "Use a number 1-20"
-                )
+                return BlockKitBuilder.error_response("Invalid count", "Use a number 1-20")
         incidents = await incident_store.get_all_incidents()
         incident_dicts = [
             {

@@ -34,6 +34,7 @@ ServiceDep = Annotated[DependencyService, Depends(get_service)]
 
 # --- Service Endpoints ---
 
+
 @router.post("/services", response_model=Service, status_code=201)
 async def create_service(
     request: ServiceCreate,
@@ -106,6 +107,7 @@ async def get_service_dependencies(
 
 # --- Dependency Endpoints ---
 
+
 @router.post("/edges", response_model=Dependency, status_code=201)
 async def create_dependency(
     request: DependencyCreate,
@@ -114,10 +116,7 @@ async def create_dependency(
     """Create a dependency between two services."""
     result = await service.create_dependency(request)
     if not result:
-        raise HTTPException(
-            400,
-            f"Could not create dependency: ensure both services exist"
-        )
+        raise HTTPException(400, f"Could not create dependency: ensure both services exist")
     return result
 
 
@@ -172,6 +171,7 @@ async def delete_dependency(
 
 # --- Analysis Endpoints ---
 
+
 @router.get("/blast-radius/{service_id}", response_model=BlastRadius)
 async def get_blast_radius(
     service_id: str,
@@ -198,7 +198,7 @@ async def find_path(
 @router.get("/deployment-order", response_model=list[str] | None)
 async def get_deployment_order(service: ServiceDep) -> list[str] | None:
     """Get recommended deployment order (topological sort).
-    
+
     Returns None if the graph has cycles.
     """
     return await service.get_deployment_order()
@@ -215,6 +215,7 @@ async def get_high_risk_services(
 
 # --- Graph Endpoints ---
 
+
 @router.get("/graph", response_model=DependencyGraph)
 async def get_full_graph(service: ServiceDep) -> DependencyGraph:
     """Get the complete dependency graph."""
@@ -228,6 +229,7 @@ async def get_graph_stats(service: ServiceDep) -> GraphStats:
 
 
 # --- Visualization Endpoints ---
+
 
 @router.get("/visualization/dot")
 async def export_dot(
@@ -278,6 +280,7 @@ async def export_adjacency_matrix(service: ServiceDep) -> dict[str, Any]:
 
 
 # --- Discovery Endpoints ---
+
 
 @router.post("/discovery/traces")
 async def discover_from_traces(

@@ -137,21 +137,17 @@ async def get_rate_limit_status(
     # Get overrides
     overrides = []
     for key, override in rate_limiter._overrides.items():
-        overrides.append(
-            {
-                "key": override.key,
-                "scope": override.scope.value,
-                "capacity": override.capacity,
-                "refill_rate": override.refill_rate,
-                "enabled": override.enabled,
-                "expires_at": (
-                    override.expires_at.isoformat() if override.expires_at else None
-                ),
-                "reason": override.reason,
-                "created_at": override.created_at.isoformat(),
-                "created_by": override.created_by,
-            }
-        )
+        overrides.append({
+            "key": override.key,
+            "scope": override.scope.value,
+            "capacity": override.capacity,
+            "refill_rate": override.refill_rate,
+            "enabled": override.enabled,
+            "expires_at": (override.expires_at.isoformat() if override.expires_at else None),
+            "reason": override.reason,
+            "created_at": override.created_at.isoformat(),
+            "created_by": override.created_by,
+        })
 
     from src.config import get_settings
 
@@ -308,9 +304,7 @@ async def set_override(
             "scope": override.scope.value,
             "capacity": override.capacity,
             "refill_rate": override.refill_rate,
-            "expires_at": (
-                override.expires_at.isoformat() if override.expires_at else None
-            ),
+            "expires_at": (override.expires_at.isoformat() if override.expires_at else None),
         },
     }
 
@@ -380,9 +374,7 @@ async def test_rate_limit(
         "cost": request.cost,
         "would_allow": would_allow,
         "current_tokens": round(status.current_tokens, 2),
-        "tokens_after_request": (
-            round(tokens_after, 2) if would_allow else status.current_tokens
-        ),
+        "tokens_after_request": (round(tokens_after, 2) if would_allow else status.current_tokens),
         "capacity": status.capacity,
         "refill_rate": status.refill_rate,
         "utilization": round(status.utilization, 2),

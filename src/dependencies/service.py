@@ -53,24 +53,22 @@ class DependencyService:
     ) -> list[Service]:
         """List services with optional filters."""
         services = self._analyzer.get_all_services()
-        
+
         if criticality:
             services = [s for s in services if s.criticality == criticality]
         if health:
             services = [s for s in services if s.health == health]
         if team:
             services = [s for s in services if s.team == team]
-        
+
         return services
 
-    async def update_service_health(
-        self, service_id: str, health: HealthStatus
-    ) -> Service | None:
+    async def update_service_health(self, service_id: str, health: HealthStatus) -> Service | None:
         """Update a service's health status."""
         service = self._analyzer.get_service(service_id)
         if not service:
             return None
-        
+
         service.health = health
         service.updated_at = datetime.utcnow()
         return service
@@ -88,7 +86,7 @@ class DependencyService:
             return None
         if not self._analyzer.get_service(request.target_id):
             return None
-        
+
         dependency = Dependency(
             id=str(uuid.uuid4()),
             source_id=request.source_id,
@@ -111,12 +109,12 @@ class DependencyService:
     ) -> list[Dependency]:
         """List dependencies with optional filters."""
         dependencies = self._analyzer.get_all_dependencies()
-        
+
         if source_id:
             dependencies = [d for d in dependencies if d.source_id == source_id]
         if target_id:
             dependencies = [d for d in dependencies if d.target_id == target_id]
-        
+
         return dependencies
 
     async def update_dependency_metrics(
@@ -130,7 +128,7 @@ class DependencyService:
         dependency = self._analyzer.get_dependency(dependency_id)
         if not dependency:
             return None
-        
+
         if latency_p99_ms is not None:
             dependency.latency_p99_ms = latency_p99_ms
         if error_rate is not None:
@@ -144,7 +142,7 @@ class DependencyService:
                 dependency.health = HealthStatus.HEALTHY
         if requests_per_min is not None:
             dependency.requests_per_min = requests_per_min
-        
+
         dependency.last_seen = datetime.utcnow()
         return dependency
 
@@ -163,29 +161,30 @@ class DependencyService:
         service = self._analyzer.get_service(service_id)
         if not service:
             return None
-        
+
         affected = self._analyzer.get_downstream(service_id, max_depth)
-        
+
         # Get critical services affected
         critical_affected = [
-            svc_id for svc_id in affected
+            svc_id
+            for svc_id in affected
             if (svc := self._analyzer.get_service(svc_id))
             and svc.criticality == CriticalityLevel.CRITICAL
         ]
-        
+
         # Build impact paths
         impact_paths = []
         for affected_id in affected:
             path = self._analyzer.find_path(affected_id, service_id)
             if path:
                 impact_paths.append(path)
-        
+
         # Calculate max depth
         max_impact_depth = max((p.length for p in impact_paths), default=0)
-        
+
         # Calculate risk score
         risk_score = self._analyzer.calculate_risk_score(service_id)
-        
+
         return BlastRadius(
             failed_service_id=service_id,
             affected_services=list(affected),
@@ -196,18 +195,14 @@ class DependencyService:
             max_depth=max_impact_depth,
         )
 
-    async def get_service_dependencies(
-        self, service_id: str
-    ) -> dict[str, list[str]]:
+    async def get_service_dependencies(self, service_id: str) -> dict[str, list[str]]:
         """Get upstream and downstream dependencies for a service."""
         return {
             "upstream": list(self._analyzer.get_upstream(service_id)),
             "downstream": list(self._analyzer.get_downstream(service_id)),
         }
 
-    async def find_path(
-        self, source_id: str, target_id: str
-    ) -> DependencyPath | None:
+    async def find_path(self, source_id: str, target_id: str) -> DependencyPath | None:
         """Find the shortest path between two services."""
         return self._analyzer.find_path(source_id, target_id)
 
@@ -222,7 +217,7 @@ class DependencyService:
         services = self._analyzer.get_all_services()
         dependencies = self._analyzer.get_all_dependencies()
         cycles = self._analyzer.detect_cycles()
-        
+
         # Calculate max depth
         max_depth = 0
         for service in services:
@@ -231,7 +226,7 @@ class DependencyService:
                 path = self._analyzer.find_path(affected_id, service.id)
                 if path:
                     max_depth = max(max_depth, path.length)
-        
+
         return DependencyGraph(
             services=services,
             dependencies=dependencies,
@@ -246,22 +241,17 @@ class DependencyService:
         """Get statistics about the dependency graph."""
         services = self._analyzer.get_all_services()
         stats = self._analyzer.get_graph_stats()
-        
-        critical_count = sum(
-            1 for s in services if s.criticality == CriticalityLevel.CRITICAL
-        )
-        healthy_count = sum(
-            1 for s in services if s.health == HealthStatus.HEALTHY
-        )
-        unhealthy_count = sum(
-            1 for s in services if s.health == HealthStatus.UNHEALTHY
-        )
-        
+
+        critical_count = sum(1 for s in services if s.criticality == CriticalityLevel.CRITICAL)
+        healthy_count = sum(1 for s in services if s.health == HealthStatus.HEALTHY)
+        unhealthy_count = sum(1 for s in services if s.health == HealthStatus.UNHEALTHY)
+
         avg_deps = (
             stats["total_dependencies"] / stats["total_services"]
-            if stats["total_services"] > 0 else 0
+            if stats["total_services"] > 0
+            else 0
         )
-        
+
         return GraphStats(
             total_services=stats["total_services"],
             total_dependencies=stats["total_dependencies"],
@@ -287,7 +277,7 @@ class DependencyService:
                     "fan_in": self._analyzer.get_fan_in(service.id),
                     "fan_out": self._analyzer.get_fan_out(service.id),
                 })
-        
+
         return sorted(result, key=lambda x: x["risk_score"], reverse=True)
 
     def get_analyzer(self) -> DependencyGraphAnalyzer:

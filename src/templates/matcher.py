@@ -65,7 +65,9 @@ class TemplateMatcher:
 
         return pattern.weight if matched else 0.0
 
-    def _calculate_score(self, template: IncidentTemplate, alert: AlertData) -> tuple[float, list[str]]:
+    def _calculate_score(
+        self, template: IncidentTemplate, alert: AlertData
+    ) -> tuple[float, list[str]]:
         """Calculate match score for a template against alert."""
         if not template.match_patterns:
             return 0.0, []
@@ -91,13 +93,15 @@ class TemplateMatcher:
         for template in self.templates:
             score, matched_patterns = self._calculate_score(template, alert)
             if score >= template.match_threshold:
-                matches.append(TemplateMatch(
-                    template_id=template.id,
-                    template_name=template.name,
-                    score=round(score, 3),
-                    matched_patterns=matched_patterns,
-                    category=template.category,
-                ))
+                matches.append(
+                    TemplateMatch(
+                        template_id=template.id,
+                        template_name=template.name,
+                        score=round(score, 3),
+                        matched_patterns=matched_patterns,
+                        category=template.category,
+                    )
+                )
 
         # Sort by score descending
         matches.sort(key=lambda m: m.score, reverse=True)

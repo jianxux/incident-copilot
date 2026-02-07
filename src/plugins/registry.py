@@ -153,9 +153,7 @@ class PluginRegistry:
         else:
             raise ValueError(f"Unknown plugin type: {plugin.type}")
         result.execution_time_ms = int((time.monotonic() - start) * 1000)
-        self._update_metrics(
-            plugin, result.success, result.execution_time_ms, result.error
-        )
+        self._update_metrics(plugin, result.success, result.execution_time_ms, result.error)
         return result
 
     async def _execute_webhook(
@@ -201,18 +199,12 @@ class PluginRegistry:
             plugin_type=PluginType.WEBHOOK,
             execution_time_ms=delivery.latency_ms,
             request_payload=payload,
-            response=(
-                {"status": delivery.response_status}
-                if delivery.response_status
-                else None
-            ),
+            response=({"status": delivery.response_status} if delivery.response_status else None),
             error=delivery.error,
             details={"attempts": delivery.attempt_number, "url": config.url},
         )
 
-    async def _execute_enrichment(
-        self, plugin: Plugin, data: dict[str, Any]
-    ) -> PluginTestResult:
+    async def _execute_enrichment(self, plugin: Plugin, data: dict[str, Any]) -> PluginTestResult:
         config = plugin.enrichment_config
         if not config:
             raise ValueError(f"Plugin {plugin.id} missing enrichment_config")
@@ -242,9 +234,7 @@ class PluginRegistry:
                 error=str(e),
             )
 
-    async def _execute_filter(
-        self, plugin: Plugin, data: dict[str, Any]
-    ) -> PluginTestResult:
+    async def _execute_filter(self, plugin: Plugin, data: dict[str, Any]) -> PluginTestResult:
         config = plugin.filter_config
         if not config:
             raise ValueError(f"Plugin {plugin.id} missing filter_config")
@@ -272,9 +262,7 @@ class PluginRegistry:
             },
         )
 
-    def _evaluate_conditions(
-        self, conditions: list, data: dict[str, Any], match_mode: str
-    ) -> bool:
+    def _evaluate_conditions(self, conditions: list, data: dict[str, Any], match_mode: str) -> bool:
         if not conditions:
             return True
 
@@ -329,8 +317,7 @@ class PluginRegistry:
             if m.consecutive_failures >= plugin.max_consecutive_failures:
                 plugin.status = PluginStatus.ERROR
         m.avg_latency_ms = (
-            (m.avg_latency_ms * (m.total_executions - 1) + latency_ms)
-            / m.total_executions
+            (m.avg_latency_ms * (m.total_executions - 1) + latency_ms) / m.total_executions
             if m.total_executions > 1
             else float(latency_ms)
         )

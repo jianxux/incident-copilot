@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 class RotationType(str, Enum):
     """Rotation pattern types."""
+
     DAILY = "daily"
     WEEKLY = "weekly"
     BIWEEKLY = "biweekly"
@@ -17,6 +18,7 @@ class RotationType(str, Enum):
 
 class ProviderType(str, Enum):
     """Supported on-call providers."""
+
     PAGERDUTY = "pagerduty"
     OPSGENIE = "opsgenie"
     MANUAL = "manual"
@@ -24,6 +26,7 @@ class ProviderType(str, Enum):
 
 class OverrideStatus(str, Enum):
     """Override request status."""
+
     PENDING = "pending"
     ACTIVE = "active"
     EXPIRED = "expired"
@@ -32,6 +35,7 @@ class OverrideStatus(str, Enum):
 
 class OnCallUser(BaseModel):
     """User on-call information."""
+
     id: str
     name: str
     email: str
@@ -47,6 +51,7 @@ class OnCallUser(BaseModel):
 
 class OnCallShift(BaseModel):
     """A single on-call shift."""
+
     id: str
     user: OnCallUser
     schedule_id: str
@@ -68,19 +73,32 @@ class OnCallShift(BaseModel):
     def is_active(self) -> bool:
         """Check if shift is currently active."""
         now = datetime.now(ZoneInfo(self.timezone))
-        start = self.start_time if self.start_time.tzinfo else self.start_time.replace(tzinfo=ZoneInfo(self.timezone))
-        end = self.end_time if self.end_time.tzinfo else self.end_time.replace(tzinfo=ZoneInfo(self.timezone))
+        start = (
+            self.start_time
+            if self.start_time.tzinfo
+            else self.start_time.replace(tzinfo=ZoneInfo(self.timezone))
+        )
+        end = (
+            self.end_time
+            if self.end_time.tzinfo
+            else self.end_time.replace(tzinfo=ZoneInfo(self.timezone))
+        )
         return start <= now <= end
 
     def time_until_end(self) -> timedelta:
         """Time remaining in shift."""
         now = datetime.now(ZoneInfo(self.timezone))
-        end = self.end_time if self.end_time.tzinfo else self.end_time.replace(tzinfo=ZoneInfo(self.timezone))
+        end = (
+            self.end_time
+            if self.end_time.tzinfo
+            else self.end_time.replace(tzinfo=ZoneInfo(self.timezone))
+        )
         return max(timedelta(0), end - now)
 
 
 class Rotation(BaseModel):
     """Rotation configuration."""
+
     id: str
     name: str
     type: RotationType
@@ -95,7 +113,7 @@ class Rotation(BaseModel):
         """Calculate next handoff time."""
         now = datetime.now(ZoneInfo(self.timezone))
         hour, minute = map(int, self.handoff_time.split(":"))
-        
+
         if self.type == RotationType.DAILY:
             next_handoff = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
             if next_handoff <= now:
@@ -110,7 +128,7 @@ class Rotation(BaseModel):
             next_handoff = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
             if next_handoff <= now:
                 next_handoff += timedelta(days=1)
-        
+
         return next_handoff
 
     def current_position(self) -> int:
@@ -118,8 +136,12 @@ class Rotation(BaseModel):
         if not self.participants:
             return 0
         now = datetime.now(ZoneInfo(self.timezone))
-        start = self.start_date if self.start_date.tzinfo else self.start_date.replace(tzinfo=ZoneInfo(self.timezone))
-        
+        start = (
+            self.start_date
+            if self.start_date.tzinfo
+            else self.start_date.replace(tzinfo=ZoneInfo(self.timezone))
+        )
+
         if self.type == RotationType.DAILY:
             days_elapsed = (now - start).days
             return days_elapsed % len(self.participants)
@@ -134,6 +156,7 @@ class Rotation(BaseModel):
 
 class OnCallSchedule(BaseModel):
     """Complete on-call schedule."""
+
     id: str
     name: str
     description: Optional[str] = None
@@ -161,6 +184,7 @@ class OnCallSchedule(BaseModel):
 
 class OnCallOverride(BaseModel):
     """Temporary schedule override (handoff)."""
+
     id: str
     schedule_id: str
     original_user: OnCallUser
@@ -195,6 +219,7 @@ class OnCallOverride(BaseModel):
 
 class HandoffNotification(BaseModel):
     """On-call handoff notification."""
+
     id: str
     schedule_id: str
     outgoing_user: OnCallUser
@@ -207,6 +232,7 @@ class HandoffNotification(BaseModel):
 
 class OnCallHistoryEntry(BaseModel):
     """Historical on-call record."""
+
     id: str
     schedule_id: str
     user: OnCallUser
@@ -219,6 +245,7 @@ class OnCallHistoryEntry(BaseModel):
 
 class ScheduleSyncResult(BaseModel):
     """Result of a schedule sync operation."""
+
     schedule_id: str
     provider: ProviderType
     success: bool

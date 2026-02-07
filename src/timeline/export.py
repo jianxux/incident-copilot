@@ -9,6 +9,7 @@ from .models import TimelineExport, TimelineEntry, TimelineGap
 
 class ExportFormat(str, Enum):
     """Supported export formats."""
+
     MARKDOWN = "markdown"
     JSON = "json"
     HTML = "html"
@@ -23,7 +24,7 @@ class TimelineExporter:
         data: TimelineExport,
         format: ExportFormat = ExportFormat.MARKDOWN,
         include_metadata: bool = True,
-        include_raw_data: bool = False
+        include_raw_data: bool = False,
     ) -> str:
         """Export timeline in specified format."""
         if format == ExportFormat.MARKDOWN:
@@ -88,12 +89,12 @@ class TimelineExporter:
 
         # Timeline section
         lines.extend(["## Timeline", ""])
-        
+
         current_date = None
         for entry in data.entries:
             event = entry.event
             event_date = event.timestamp.strftime("%Y-%m-%d")
-            
+
             # Add date header if date changed
             if event_date != current_date:
                 current_date = event_date
@@ -103,14 +104,14 @@ class TimelineExporter:
             icon = entry.icon or "•"
             milestone_marker = " ⭐" if entry.is_milestone else ""
             time_str = event.timestamp.strftime("%H:%M:%S")
-            
+
             lines.append(f"#### {icon} {time_str} - {event.title}{milestone_marker}")
             lines.append("")
-            
+
             if event.description:
                 lines.append(f"{event.description}")
                 lines.append("")
-            
+
             if include_metadata:
                 meta_parts = []
                 if event.actor:
@@ -119,7 +120,7 @@ class TimelineExporter:
                 meta_parts.append(f"**Type:** {event.event_type.value}")
                 if event.tags:
                     meta_parts.append(f"**Tags:** {', '.join(event.tags)}")
-                
+
                 lines.append(f"*{' | '.join(meta_parts)}*")
                 lines.append("")
 
@@ -141,8 +142,12 @@ class TimelineExporter:
             "summary": {
                 "total_events": data.summary.total_events,
                 "duration_seconds": data.summary.duration_seconds,
-                "first_event": data.summary.first_event.isoformat() if data.summary.first_event else None,
-                "last_event": data.summary.last_event.isoformat() if data.summary.last_event else None,
+                "first_event": data.summary.first_event.isoformat()
+                if data.summary.first_event
+                else None,
+                "last_event": data.summary.last_event.isoformat()
+                if data.summary.last_event
+                else None,
                 "event_counts_by_type": data.summary.event_counts_by_type,
                 "event_counts_by_source": data.summary.event_counts_by_source,
                 "gaps": [
@@ -150,13 +155,13 @@ class TimelineExporter:
                         "start_time": g.start_time.isoformat(),
                         "end_time": g.end_time.isoformat(),
                         "duration_seconds": g.duration_seconds,
-                        "severity": g.severity
+                        "severity": g.severity,
                     }
                     for g in data.summary.gaps
                 ],
-                "key_milestones": [str(m) for m in data.summary.key_milestones]
+                "key_milestones": [str(m) for m in data.summary.key_milestones],
             },
-            "events": []
+            "events": [],
         }
 
         for entry in data.entries:
@@ -176,7 +181,7 @@ class TimelineExporter:
                 "is_milestone": entry.is_milestone,
                 "icon": entry.icon,
                 "color": entry.color,
-                "metadata": event.metadata
+                "metadata": event.metadata,
             }
             if include_raw_data and event.raw_data:
                 event_dict["raw_data"] = event.raw_data
@@ -214,12 +219,12 @@ class TimelineExporter:
         # Timeline
         html_parts.append("<div class='timeline'>")
         html_parts.append("<h2>Timeline</h2>")
-        
+
         for entry in data.entries:
             event = entry.event
             milestone_class = " milestone" if entry.is_milestone else ""
             color = entry.color or "#3498db"
-            
+
             html_parts.extend([
                 f"<div class='event{milestone_class}' style='border-left-color: {color}'>",
                 f"<div class='event-header'>",
@@ -229,10 +234,10 @@ class TimelineExporter:
                 "</div>",
                 f"<h3>{event.title}</h3>",
             ])
-            
+
             if event.description:
                 html_parts.append(f"<p class='description'>{event.description}</p>")
-            
+
             if include_metadata:
                 html_parts.append("<div class='metadata'>")
                 html_parts.append(f"<span class='badge source'>{event.source.value}</span>")
@@ -242,7 +247,7 @@ class TimelineExporter:
                 for tag in event.tags:
                     html_parts.append(f"<span class='badge tag'>{tag}</span>")
                 html_parts.append("</div>")
-            
+
             html_parts.append("</div>")
 
         html_parts.extend(["</div>", "</div>", "</body></html>"])
@@ -250,10 +255,8 @@ class TimelineExporter:
 
     def _export_csv(self, data: TimelineExport) -> str:
         """Export timeline as CSV."""
-        lines = [
-            "timestamp,relative_time,event_type,source,severity,title,description,actor,tags"
-        ]
-        
+        lines = ["timestamp,relative_time,event_type,source,severity,title,description,actor,tags"]
+
         for entry in data.entries:
             event = entry.event
             # Escape quotes in text fields
@@ -261,20 +264,20 @@ class TimelineExporter:
             desc = (event.description or "").replace('"', '""')
             actor = (event.actor or "").replace('"', '""')
             tags = ";".join(event.tags)
-            
+
             lines.append(
-                f'{event.timestamp.isoformat()},{entry.relative_time},'
-                f'{event.event_type.value},{event.source.value},{event.severity.value},'
+                f"{event.timestamp.isoformat()},{entry.relative_time},"
+                f"{event.event_type.value},{event.source.value},{event.severity.value},"
                 f'"{title}","{desc}","{actor}","{tags}"'
             )
-        
+
         return "\n".join(lines)
 
     def _format_duration(self, seconds: float | None) -> str:
         """Format duration in human-readable format."""
         if seconds is None:
             return "N/A"
-        
+
         seconds = int(seconds)
         if seconds < 60:
             return f"{seconds}s"

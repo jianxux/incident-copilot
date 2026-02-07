@@ -221,9 +221,7 @@ def validate(
 
     # Summary
     if error_count > 0:
-        rprint(
-            f"[red]✗ {error_count} required configuration(s) missing or invalid[/red]"
-        )
+        rprint(f"[red]✗ {error_count} required configuration(s) missing or invalid[/red]")
         rprint("[dim]Run with --verbose for details[/dim]")
         raise typer.Exit(1)
     elif warn_count > 0:
@@ -339,9 +337,7 @@ async def _test_github(settings) -> dict:
                 "success": True,
                 "details": {
                     "Authenticated as": data.get("login"),
-                    "Rate limit remaining": response.headers.get(
-                        "x-ratelimit-remaining"
-                    ),
+                    "Rate limit remaining": response.headers.get("x-ratelimit-remaining"),
                 },
             }
         else:
@@ -403,9 +399,7 @@ async def _test_cloudwatch(settings) -> dict:
             "details": {
                 "Region": region,
                 "Log groups accessible": "Yes",
-                "Sample group": response.get("logGroups", [{}])[0].get(
-                    "logGroupName", "N/A"
-                ),
+                "Sample group": response.get("logGroups", [{}])[0].get("logGroupName", "N/A"),
             },
         }
     except ClientError as e:
@@ -527,9 +521,7 @@ def test_all(
 
 @app.command()
 def send_test(
-    channel: str | None = typer.Option(
-        None, "--channel", "-c", help="Slack channel to send to"
-    ),
+    channel: str | None = typer.Option(None, "--channel", "-c", help="Slack channel to send to"),
     scenario: str = typer.Option(
         "demo-stripe-timeout", "--scenario", "-s", help="Demo scenario to use"
     ),

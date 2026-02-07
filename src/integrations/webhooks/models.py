@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 class WebhookEventType(str, Enum):
     """Supported webhook event types."""
+
     INCIDENT_CREATED = "incident.created"
     INCIDENT_UPDATED = "incident.updated"
     INCIDENT_RESOLVED = "incident.resolved"
@@ -26,6 +27,7 @@ class WebhookEventType(str, Enum):
 
 class DeliveryStatus(str, Enum):
     """Webhook delivery status."""
+
     PENDING = "pending"
     DELIVERED = "delivered"
     FAILED = "failed"
@@ -34,13 +36,15 @@ class DeliveryStatus(str, Enum):
 
 class CircuitState(str, Enum):
     """Circuit breaker states."""
-    CLOSED = "closed"      # Normal operation
-    OPEN = "open"          # Failing, reject requests
+
+    CLOSED = "closed"  # Normal operation
+    OPEN = "open"  # Failing, reject requests
     HALF_OPEN = "half_open"  # Testing recovery
 
 
 class WebhookConfigBase(BaseModel):
     """Base webhook configuration."""
+
     name: str = Field(..., min_length=1, max_length=100)
     url: HttpUrl
     events: list[WebhookEventType] = Field(default_factory=list)
@@ -49,7 +53,7 @@ class WebhookConfigBase(BaseModel):
     timeout_seconds: int = Field(default=30, ge=5, le=120)
     max_retries: int = Field(default=3, ge=0, le=10)
     payload_template_id: str | None = None
-    
+
     @field_validator("events", mode="before")
     @classmethod
     def validate_events(cls, v: Any) -> list[WebhookEventType]:
@@ -60,11 +64,13 @@ class WebhookConfigBase(BaseModel):
 
 class WebhookConfigCreate(WebhookConfigBase):
     """Create webhook configuration."""
+
     pass
 
 
 class WebhookConfigUpdate(BaseModel):
     """Update webhook configuration (partial)."""
+
     name: str | None = Field(default=None, min_length=1, max_length=100)
     url: HttpUrl | None = None
     events: list[WebhookEventType] | None = None
@@ -78,18 +84,19 @@ class WebhookConfigUpdate(BaseModel):
 
 class WebhookConfig(WebhookConfigBase):
     """Full webhook configuration with metadata."""
+
     id: UUID = Field(default_factory=uuid4)
     organization_id: UUID
     secret: str  # For HMAC signing
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     # Circuit breaker state
     circuit_state: CircuitState = CircuitState.CLOSED
     failure_count: int = 0
     last_failure_at: datetime | None = None
     circuit_opened_at: datetime | None = None
-    
+
     # Stats
     total_deliveries: int = 0
     successful_deliveries: int = 0
@@ -100,13 +107,14 @@ class WebhookConfig(WebhookConfigBase):
 
 class WebhookEvent(BaseModel):
     """Webhook event to be delivered."""
+
     id: UUID = Field(default_factory=uuid4)
     event_type: WebhookEventType
     organization_id: UUID
     payload: dict[str, Any]
     occurred_at: datetime = Field(default_factory=datetime.utcnow)
     correlation_id: str | None = None  # For tracing
-    
+
     # Optional metadata
     source: str = "incident-copilot"
     version: str = "1.0"
@@ -114,29 +122,30 @@ class WebhookEvent(BaseModel):
 
 class WebhookDelivery(BaseModel):
     """Record of a webhook delivery attempt."""
+
     id: UUID = Field(default_factory=uuid4)
     webhook_id: UUID
     event_id: UUID
     event_type: WebhookEventType
-    
+
     # Delivery info
     url: str
     status: DeliveryStatus = DeliveryStatus.PENDING
     attempt_number: int = 1
-    
+
     # Request/Response
     request_headers: dict[str, str] = Field(default_factory=dict)
     request_body: str = ""
     response_status_code: int | None = None
     response_body: str | None = None
     response_headers: dict[str, str] | None = None
-    
+
     # Timing
     created_at: datetime = Field(default_factory=datetime.utcnow)
     delivered_at: datetime | None = None
     duration_ms: int | None = None
     next_retry_at: datetime | None = None
-    
+
     # Error info
     error_message: str | None = None
 
@@ -145,12 +154,14 @@ class WebhookDelivery(BaseModel):
 
 class WebhookTestRequest(BaseModel):
     """Request to test a webhook endpoint."""
+
     event_type: WebhookEventType = WebhookEventType.INCIDENT_CREATED
     custom_payload: dict[str, Any] | None = None
 
 
 class WebhookTestResponse(BaseModel):
     """Response from webhook test."""
+
     success: bool
     status_code: int | None = None
     response_body: str | None = None
@@ -161,12 +172,14 @@ class WebhookTestResponse(BaseModel):
 
 class BulkDeliveryRequest(BaseModel):
     """Request for bulk webhook delivery."""
+
     events: list[WebhookEvent]
     webhook_ids: list[UUID] | None = None  # None = all active webhooks
 
 
 class BulkDeliveryResponse(BaseModel):
     """Response from bulk delivery."""
+
     total_events: int
     total_webhooks: int
     queued_deliveries: int
@@ -175,6 +188,7 @@ class BulkDeliveryResponse(BaseModel):
 
 class WebhookStats(BaseModel):
     """Statistics for a webhook."""
+
     webhook_id: UUID
     total_deliveries: int
     successful_deliveries: int

@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 class StatusPageProvider(str, Enum):
     """Supported status page providers."""
+
     ATLASSIAN = "atlassian"
     STATUSIO = "statusio"
     CACHET = "cachet"
@@ -15,6 +16,7 @@ class StatusPageProvider(str, Enum):
 
 class ComponentStatus(str, Enum):
     """Standard component status levels."""
+
     OPERATIONAL = "operational"
     DEGRADED = "degraded_performance"
     PARTIAL_OUTAGE = "partial_outage"
@@ -24,6 +26,7 @@ class ComponentStatus(str, Enum):
 
 class IncidentStatus(str, Enum):
     """Status page incident status."""
+
     INVESTIGATING = "investigating"
     IDENTIFIED = "identified"
     MONITORING = "monitoring"
@@ -35,6 +38,7 @@ class IncidentStatus(str, Enum):
 
 class IncidentImpact(str, Enum):
     """Incident impact level."""
+
     NONE = "none"
     MINOR = "minor"
     MAJOR = "major"
@@ -43,21 +47,27 @@ class IncidentImpact(str, Enum):
 
 class StatusPageCredentials(BaseModel):
     """Provider-specific credentials."""
+
     api_key: str = Field(..., description="API key for authentication")
     page_id: str | None = Field(None, description="Page/site identifier")
     api_url: str | None = Field(None, description="Custom API URL (for self-hosted)")
-    extra: dict[str, Any] = Field(default_factory=dict, description="Additional provider-specific fields")
+    extra: dict[str, Any] = Field(
+        default_factory=dict, description="Additional provider-specific fields"
+    )
 
 
 class StatusPageConfig(BaseModel):
     """Status page configuration."""
+
     id: str = Field(..., description="Unique configuration ID")
     name: str = Field(..., description="Display name")
     provider: StatusPageProvider
     credentials: StatusPageCredentials
     enabled: bool = Field(default=True, description="Whether this config is active")
     auto_sync: bool = Field(default=True, description="Auto-sync incident status changes")
-    component_mapping: dict[str, str] = Field(default_factory=dict, description="Service ID → Component ID")
+    component_mapping: dict[str, str] = Field(
+        default_factory=dict, description="Service ID → Component ID"
+    )
     default_impact: IncidentImpact = Field(default=IncidentImpact.MINOR)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -65,6 +75,7 @@ class StatusPageConfig(BaseModel):
 
 class Component(BaseModel):
     """Status page component."""
+
     id: str
     name: str
     description: str | None = None
@@ -76,6 +87,7 @@ class Component(BaseModel):
 
 class StatusUpdate(BaseModel):
     """Status update for an incident."""
+
     id: str | None = None
     incident_id: str
     status: IncidentStatus
@@ -86,6 +98,7 @@ class StatusUpdate(BaseModel):
 
 class StatusPageIncident(BaseModel):
     """Status page incident."""
+
     id: str | None = None
     name: str
     status: IncidentStatus = IncidentStatus.INVESTIGATING
@@ -103,6 +116,7 @@ class StatusPageIncident(BaseModel):
 
 class MaintenanceWindow(BaseModel):
     """Scheduled maintenance window."""
+
     id: str
     name: str
     description: str
@@ -117,6 +131,7 @@ class MaintenanceWindow(BaseModel):
 
 class StatusPageMetrics(BaseModel):
     """Status page metrics snapshot."""
+
     config_id: str
     total_components: int = 0
     operational_components: int = 0
@@ -132,6 +147,7 @@ class StatusPageMetrics(BaseModel):
 # Request/Response Models
 class ConfigCreateRequest(BaseModel):
     """Request to create status page config."""
+
     name: str
     provider: StatusPageProvider
     credentials: StatusPageCredentials
@@ -141,6 +157,7 @@ class ConfigCreateRequest(BaseModel):
 
 class ConfigUpdateRequest(BaseModel):
     """Request to update status page config."""
+
     name: str | None = None
     enabled: bool | None = None
     auto_sync: bool | None = None
@@ -150,6 +167,7 @@ class ConfigUpdateRequest(BaseModel):
 
 class IncidentCreateRequest(BaseModel):
     """Request to create incident on status page."""
+
     name: str
     message: str
     status: IncidentStatus = IncidentStatus.INVESTIGATING
@@ -161,6 +179,7 @@ class IncidentCreateRequest(BaseModel):
 
 class IncidentUpdateRequest(BaseModel):
     """Request to update incident on status page."""
+
     status: IncidentStatus | None = None
     message: str | None = None
     component_status: ComponentStatus | None = None
@@ -168,12 +187,14 @@ class IncidentUpdateRequest(BaseModel):
 
 class ComponentUpdateRequest(BaseModel):
     """Request to update component status."""
+
     component_id: str
     status: ComponentStatus
 
 
 class SyncResult(BaseModel):
     """Result of sync operation."""
+
     success: bool
     synced_components: int = 0
     synced_incidents: int = 0
