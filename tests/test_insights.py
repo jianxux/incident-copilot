@@ -55,7 +55,12 @@ def sample_incidents():
     # Create incidents for cascade detection (within 15 minutes)
     base_time = now - timedelta(days=5)
     for j, service in enumerate(
-        ["api-gateway", "user-service", "order-service", "payment-service"]
+        [
+            "api-gateway",
+            "user-service",
+            "order-service",
+            "payment-service",
+        ]
     ):
         incidents.append(
             IncidentMetrics(

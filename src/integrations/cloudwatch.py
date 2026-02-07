@@ -30,8 +30,7 @@ class CloudWatchAdapter:
                 import boto3
             except ImportError:
                 raise ImportError(
-                    "boto3 is required for CloudWatch integration. "
-                    "Install with: pip install boto3"
+                    "boto3 is required for CloudWatch integration. Install with: pip install boto3"
                 )
 
             # Build client kwargs

@@ -75,8 +75,9 @@ class WebhookExecutor:
                 result = await self._attempt_delivery(
                     url, method, body_bytes, headers, timeout_ms
                 )
-                delivery.response_status, delivery.response_body = result["status"], (
-                    result["body"][:10000] if result["body"] else None
+                delivery.response_status, delivery.response_body = (
+                    result["status"],
+                    (result["body"][:10000] if result["body"] else None),
                 )
                 delivery.success = 200 <= result["status"] < 300
                 delivery.latency_ms = int((time.monotonic() - total_start) * 1000)
@@ -98,8 +99,9 @@ class WebhookExecutor:
                     )
                     / 1000
                 )
-        delivery.error, delivery.latency_ms = last_error, int(
-            (time.monotonic() - total_start) * 1000
+        delivery.error, delivery.latency_ms = (
+            last_error,
+            int((time.monotonic() - total_start) * 1000),
         )
         return delivery
 
