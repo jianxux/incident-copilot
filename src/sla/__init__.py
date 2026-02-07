@@ -43,8 +43,8 @@ Quick Start:
 
 # Models
 from .models import (
-    BusinessHours,
     DEFAULT_SLA_TARGETS,
+    BusinessHours,
     EscalationLevel,
     SLABreach,
     SLAIncidentStatus,
@@ -58,12 +58,6 @@ from .models import (
     SLAType,
 )
 
-# Service
-from .service import SLAService, create_sla_notification
-
-# Store
-from .store import SCHEMA_SQL, SLAStore
-
 # Routes
 from .routes import router
 
@@ -76,6 +70,12 @@ from .scheduler import (
     multi_channel_sender,
     slack_notification_sender,
 )
+
+# Service
+from .service import SLAService, create_sla_notification
+
+# Store
+from .store import SCHEMA_SQL, SLAStore
 
 __all__ = [
     # Models

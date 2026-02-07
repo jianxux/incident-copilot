@@ -3,8 +3,9 @@
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, Field, field_validator, model_validator
 from uuid import UUID, uuid4
+
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class ScopeType(str, Enum):

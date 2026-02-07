@@ -1,6 +1,6 @@
 """On-Call Provider integrations."""
 
-from .pagerduty import PagerDutyProvider
 from .opsgenie import OpsgenieProvider
+from .pagerduty import PagerDutyProvider
 
 __all__ = ["PagerDutyProvider", "OpsgenieProvider"]

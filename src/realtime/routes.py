@@ -18,10 +18,10 @@ from fastapi import (
 )
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from .events import BaseEvent
 from .handlers import MessageHandler, create_handler
 from .manager import ConnectionManager, manager
 from .models import MessageType, RoomType, WebSocketMessage
-from .events import BaseEvent
 
 logger = logging.getLogger(__name__)
 

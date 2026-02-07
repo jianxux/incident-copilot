@@ -7,19 +7,19 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from .collectors import CompositeCollector, create_default_collector
+from .export import ExportFormat, TimelineExporter
 from .models import (
-    TimelineEvent,
+    EventSeverity,
+    EventSource,
+    EventType,
     TimelineEntry,
+    TimelineEvent,
+    TimelineExport,
     TimelineFilter,
     TimelineSummary,
-    TimelineExport,
-    EventType,
-    EventSource,
-    EventSeverity,
 )
 from .service import TimelineService, get_timeline_service
-from .collectors import CompositeCollector, create_default_collector
-from .export import TimelineExporter, ExportFormat
 
 router = APIRouter(prefix="/timeline", tags=["timeline"])
 

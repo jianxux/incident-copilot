@@ -5,6 +5,7 @@ Change Tracking Models - Track deployments, config changes, and feature flags.
 from datetime import datetime
 from enum import Enum
 from typing import Optional
+
 from pydantic import BaseModel, Field
 
 

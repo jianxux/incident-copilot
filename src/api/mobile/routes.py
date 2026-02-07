@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+
 from .models import (
     BiometricAuthRequest,
     BulkActionRequest,

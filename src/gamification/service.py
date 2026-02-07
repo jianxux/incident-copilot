@@ -11,6 +11,8 @@ from typing import Optional
 from uuid import UUID
 
 from .models import (
+    LEVEL_THRESHOLDS,
+    POINT_VALUES,
     Achievement,
     AchievementCategory,
     Badge,
@@ -20,8 +22,6 @@ from .models import (
     LeaderboardEntry,
     LeaderboardMetric,
     LeaderboardPeriod,
-    LEVEL_THRESHOLDS,
-    POINT_VALUES,
     PointTransaction,
     UserAchievement,
     UserBadge,

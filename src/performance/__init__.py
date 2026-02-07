@@ -1,44 +1,44 @@
 """Team Performance Analytics Module - DORA metrics, burnout indicators, benchmarks."""
 
-from .models import (
-    PerformanceTier,
-    BurnoutRisk,
-    PerformancePeriod,
-    MetricValue,
-    WorkloadDistribution,
-    BurnoutIndicators,
-    EngineerMetrics,
-    TeamMetrics,
-    Benchmark,
-    PeriodComparison,
-    LeaderboardEntry,
-    PerformanceReport,
-)
-from .calculators import (
-    calculate_mttr,
-    calculate_mtta,
-    count_incidents_by_severity,
-    calculate_engineer_workloads,
-    calculate_workload_distribution,
-    calculate_oncall_burden,
-    calculate_after_hours_incidents,
-    calculate_burnout_risk,
-    calculate_trend,
-    create_metric_value,
-)
 from .benchmarks import (
     DORA_BENCHMARKS,
     WORKLOAD_BENCHMARKS,
+    calculate_overall_tier,
     classify_metric,
     classify_team,
-    calculate_overall_tier,
+    compare_to_industry,
     estimate_percentile,
     get_benchmark_context,
-    compare_to_industry,
 )
-from .service import PerformanceService, IncidentRepository, OncallRepository
+from .calculators import (
+    calculate_after_hours_incidents,
+    calculate_burnout_risk,
+    calculate_engineer_workloads,
+    calculate_mtta,
+    calculate_mttr,
+    calculate_oncall_burden,
+    calculate_trend,
+    calculate_workload_distribution,
+    count_incidents_by_severity,
+    create_metric_value,
+)
+from .models import (
+    Benchmark,
+    BurnoutIndicators,
+    BurnoutRisk,
+    EngineerMetrics,
+    LeaderboardEntry,
+    MetricValue,
+    PerformancePeriod,
+    PerformanceReport,
+    PerformanceTier,
+    PeriodComparison,
+    TeamMetrics,
+    WorkloadDistribution,
+)
 from .reports import ReportGenerator
 from .routes import router
+from .service import IncidentRepository, OncallRepository, PerformanceService
 
 __all__ = [
     "PerformanceTier",

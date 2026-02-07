@@ -2,12 +2,13 @@
 
 import logging
 from typing import Any, Callable
+
 from .models import (
+    SEVERITY_TO_COMPONENT_STATUS,
+    SEVERITY_TO_IMPACT,
     ComponentStatus,
     IncidentImpact,
     IncidentStatus,
-    SEVERITY_TO_COMPONENT_STATUS,
-    SEVERITY_TO_IMPACT,
     StatusPageIncident,
     StatusUpdate,
 )

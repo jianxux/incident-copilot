@@ -1,19 +1,19 @@
 # PagerDuty Integration Module
 # Comprehensive PagerDuty integration for incident management
 
+from .client import PagerDutyClient
 from .models import (
     PagerDutyConfig,
+    PDEscalationPolicy,
     PDIncident,
+    PDOnCall,
+    PDSchedule,
     PDService,
     PDUser,
-    PDEscalationPolicy,
-    PDSchedule,
-    PDOnCall,
     PDWebhookEvent,
 )
-from .client import PagerDutyClient
-from .service import PagerDutyService
 from .routes import router
+from .service import PagerDutyService
 from .webhooks import webhook_handler
 
 __all__ = [

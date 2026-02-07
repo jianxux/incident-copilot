@@ -3,7 +3,9 @@
 import uuid
 from datetime import datetime
 from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, status
+
 from .automation import StatusPageAutomation, get_statuspage_automation
 from .models import (
     Component,

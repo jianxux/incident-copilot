@@ -5,14 +5,14 @@ from typing import Callable
 from uuid import UUID
 
 from .models import (
-    TimelineEvent,
-    TimelineEntry,
-    TimelineFilter,
-    TimelineSummary,
-    TimelineGap,
-    EventType,
-    EventSource,
     EventSeverity,
+    EventSource,
+    EventType,
+    TimelineEntry,
+    TimelineEvent,
+    TimelineFilter,
+    TimelineGap,
+    TimelineSummary,
 )
 
 # Event type display properties

@@ -1,21 +1,22 @@
 """Maintenance Windows - Service Layer"""
 
+import logging
 from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID
-import logging
+
 from .models import (
-    MaintenanceWindow,
-    MaintenanceWindowCreate,
-    MaintenanceWindowUpdate,
-    MaintenanceStatus,
-    MaintenanceScope,
-    ScopeType,
     ApprovalRecord,
     ExtendMaintenanceRequest,
     MaintenanceNotification,
+    MaintenanceScope,
+    MaintenanceStatus,
+    MaintenanceWindow,
+    MaintenanceWindowCreate,
+    MaintenanceWindowUpdate,
     NotificationType,
     OverlapWarning,
+    ScopeType,
 )
 
 logger = logging.getLogger(__name__)

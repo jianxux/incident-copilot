@@ -1,13 +1,13 @@
 """Built-in incident templates."""
 
 from .models import (
+    FieldType,
     IncidentTemplate,
     InitialAction,
     MatchPattern,
     StakeholderRole,
     TemplateCategory,
     TemplateField,
-    FieldType,
 )
 
 

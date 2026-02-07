@@ -29,21 +29,21 @@ Usage:
 """
 
 from .models import (
+    HandoffNotification,
+    OnCallHistoryEntry,
+    OnCallOverride,
     OnCallSchedule,
     OnCallShift,
     OnCallUser,
-    OnCallOverride,
+    OverrideStatus,
+    ProviderType,
     Rotation,
     RotationType,
-    ProviderType,
-    OverrideStatus,
-    HandoffNotification,
-    OnCallHistoryEntry,
     ScheduleSyncResult,
 )
+from .providers import OpsgenieProvider, PagerDutyProvider
+from .routes import init_service, router
 from .service import OnCallService
-from .routes import router, init_service
-from .providers import PagerDutyProvider, OpsgenieProvider
 
 __all__ = [
     # Models

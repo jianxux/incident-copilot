@@ -9,13 +9,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from .models import (
+    ChangeCorrelation,
     ChangeEvent,
-    ChangeType,
+    ChangeFreeze,
     ChangeSource,
     ChangeStatus,
-    ChangeFreeze,
-    ChangeCorrelation,
     ChangeTimeline,
+    ChangeType,
     RiskLevel,
 )
 from .service import ChangeTrackingService, get_change_service
