@@ -1,55 +1,92 @@
-# Screenshots and Images
+# Documentation Images
 
-This directory contains screenshots and images for the user documentation.
+This folder contains images, screenshots, and diagrams for the Incident Copilot user documentation.
+
+## Image Naming Convention
+
+Use descriptive, lowercase names with hyphens:
+- `{feature}-{description}.png`
+- Example: `slack-context-card.png`, `pagerduty-webhook-setup.png`
 
 ## Required Screenshots
 
-The following screenshots should be added to complete the documentation:
+The following screenshots should be captured for complete documentation:
+
+### Overview
+- [ ] `overview-placeholder.png` - Context card in Slack showing all sections
 
 ### Getting Started
-- `overview-placeholder.png` - Example context card in Slack
-- `docker-compose-placeholder.png` - Docker Compose showing healthy containers
-- `swagger-ui-placeholder.png` - Interactive API documentation at /docs
+- [ ] `docker-compose-placeholder.png` - Docker Compose showing healthy containers
+- [ ] `swagger-ui-placeholder.png` - Swagger UI at /docs endpoint
+- [ ] `slack-context-card-placeholder.png` - First context card in Slack
 
 ### PagerDuty Integration
-- `pagerduty-api-key-placeholder.png` - Creating a PagerDuty API key
-- `pagerduty-webhook-placeholder.png` - Configuring PagerDuty webhook
+- [ ] `pagerduty-api-key-placeholder.png` - Creating API key in PagerDuty
+- [ ] `pagerduty-webhook-placeholder.png` - Webhook configuration screen
 
-### Slack Integration
-- `slack-create-app-placeholder.png` - Creating a new Slack app
-- `slack-scopes-placeholder.png` - Adding Slack bot scopes
-- `slack-context-card-placeholder.png` - Context card in Slack channel
+### Opsgenie Integration
+- [ ] `opsgenie-api-key-placeholder.png` - API key creation
+- [ ] `opsgenie-webhook-placeholder.png` - Webhook setup
 
 ### GitHub Integration
-- `github-pat-placeholder.png` - Creating GitHub personal access token
+- [ ] `github-pat-placeholder.png` - Personal Access Token creation
+- [ ] `github-app-placeholder.png` - GitHub App setup
 
-### Teams Integration
-- `teams-webhook-placeholder.png` - Creating Teams incoming webhook
+### Slack Integration
+- [ ] `slack-app-create-placeholder.png` - Creating Slack app
+- [ ] `slack-permissions-placeholder.png` - Bot token scopes
+- [ ] `slack-install-placeholder.png` - Installing to workspace
 
-## Screenshot Guidelines
+### Context Cards
+- [ ] `context-card-full-placeholder.png` - Full context card with all sections
+- [ ] `context-card-deployments-placeholder.png` - Deployment section detail
+- [ ] `context-card-logs-placeholder.png` - Log analysis section
 
-When adding screenshots:
+### Reports
+- [ ] `report-daily-placeholder.png` - Daily digest in Slack
+- [ ] `report-weekly-placeholder.png` - Weekly report example
+- [ ] `report-email-placeholder.png` - HTML email report
 
-1. **Size**: 800-1200px width, maintain aspect ratio
-2. **Format**: PNG for UI screenshots, SVG for diagrams
-3. **Annotations**: Use red arrows/boxes for emphasis
-4. **Privacy**: Blur or redact sensitive information
-5. **Naming**: Use descriptive kebab-case names
+### Admin
+- [ ] `admin-api-keys-placeholder.png` - API key management UI
+- [ ] `admin-sso-placeholder.png` - SSO configuration
 
-## Creating Placeholders
+## Diagram Guidelines
 
-For documentation review, you can use placeholder images:
+For architectural diagrams:
+- Use Mermaid for simple flowcharts (rendered in GitHub)
+- Use ASCII art for terminal-friendly diagrams
+- Export Figma/draw.io diagrams as PNG at 2x resolution
 
-```bash
-# Generate a placeholder image (requires ImageMagick)
-convert -size 800x400 xc:lightgray \
-  -gravity center \
-  -pointsize 24 \
-  -annotate 0 "Screenshot: Context Card in Slack" \
-  slack-context-card-placeholder.png
-```
+## Image Specifications
 
-Or use online placeholder services during development:
+| Type | Format | Max Width | Notes |
+|------|--------|-----------|-------|
+| Screenshots | PNG | 1200px | Retina-friendly |
+| Diagrams | PNG/SVG | 1000px | SVG preferred |
+| Icons | SVG | 64px | Vector format |
+
+## Accessibility
+
+- All images should have descriptive alt text in markdown
+- Use high contrast for diagrams
+- Avoid relying solely on color to convey information
+
+## Updating Images
+
+When updating screenshots:
+1. Capture at 2x resolution on Retina display
+2. Crop to relevant area
+3. Add subtle shadow/border if needed
+4. Compress with `pngquant` or similar
+5. Update any changed filenames in documentation
+
+## Placeholder Pattern
+
+Until real screenshots are captured, use placeholder references:
 ```markdown
-![Placeholder](https://via.placeholder.com/800x400?text=Context+Card+in+Slack)
+![Description](./images/feature-placeholder.png)
+*Caption: What this screenshot will show*
 ```
+
+This allows documentation to be written before all screenshots exist.
