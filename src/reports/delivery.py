@@ -56,7 +56,9 @@ class EmailDeliveryAdapter(DeliveryAdapter):
         self.smtp_password = getattr(self.settings, "smtp_password", "")
         self.smtp_use_tls = getattr(self.settings, "smtp_use_tls", True)
         self.smtp_from_email = getattr(self.settings, "smtp_from_email", "")
-        self.smtp_from_name = getattr(self.settings, "smtp_from_name", "Incident Copilot")
+        self.smtp_from_name = getattr(
+            self.settings, "smtp_from_name", "Incident Copilot"
+        )
 
         # AWS SES settings
         self.ses_region = getattr(self.settings, "ses_region", self.settings.aws_region)
@@ -128,7 +130,9 @@ class EmailDeliveryAdapter(DeliveryAdapter):
         """Build email message with HTML and plain text parts."""
         msg = MIMEMultipart("alternative")
         msg["Subject"] = self._get_subject(content, config)
-        msg["From"] = f"{self.smtp_from_name} <{self.smtp_from_email or self.ses_from_email}>"
+        msg["From"] = (
+            f"{self.smtp_from_name} <{self.smtp_from_email or self.ses_from_email}>"
+        )
         msg["To"] = ", ".join(config.recipients)
 
         # Plain text version (Markdown)
@@ -362,36 +366,44 @@ class SlackDeliveryAdapter(DeliveryAdapter):
         blocks = []
 
         # Header
-        blocks.append({
-            "type": "header",
-            "text": {
-                "type": "plain_text",
-                "text": content.title[:150],
-                "emoji": True,
-            },
-        })
+        blocks.append(
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": content.title[:150],
+                    "emoji": True,
+                },
+            }
+        )
 
         # Subtitle/period
         if content.subtitle:
-            blocks.append({
-                "type": "context",
-                "elements": [{
-                    "type": "mrkdwn",
-                    "text": f"*{content.subtitle}* | {content.period_start.strftime('%Y-%m-%d')} to {content.period_end.strftime('%Y-%m-%d')}",
-                }],
-            })
+            blocks.append(
+                {
+                    "type": "context",
+                    "elements": [
+                        {
+                            "type": "mrkdwn",
+                            "text": f"*{content.subtitle}* | {content.period_start.strftime('%Y-%m-%d')} to {content.period_end.strftime('%Y-%m-%d')}",
+                        }
+                    ],
+                }
+            )
 
         blocks.append({"type": "divider"})
 
         # Executive summary
         if content.executive_summary:
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"📋 *Summary*\n{content.executive_summary[:2000]}",
-                },
-            })
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"📋 *Summary*\n{content.executive_summary[:2000]}",
+                    },
+                }
+            )
 
         # Metrics summary
         if content.metrics:
@@ -406,13 +418,15 @@ class SlackDeliveryAdapter(DeliveryAdapter):
                 emoji = "📈" if change > 0 else "📉" if change < 0 else "➡️"
                 metrics_text += f"\n• *Change:* {emoji} {change:+.1f}%"
 
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"📊 *Key Metrics*\n{metrics_text}",
-                },
-            })
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"📊 *Key Metrics*\n{metrics_text}",
+                    },
+                }
+            )
 
         # Incidents summary (top 5)
         if content.incidents:
@@ -427,27 +441,33 @@ class SlackDeliveryAdapter(DeliveryAdapter):
             if len(content.incidents) > 5:
                 incident_lines.append(f"_...and {len(content.incidents) - 5} more_")
 
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "\n".join(incident_lines),
-                },
-            })
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "\n".join(incident_lines),
+                    },
+                }
+            )
 
         # AI insights (first 3)
         if content.ai_insights:
             insights_text = "💡 *AI Insights*\n"
             for insight in content.ai_insights[:3]:
-                insights_text += f"• {insight[:200]}{'...' if len(insight) > 200 else ''}\n"
+                insights_text += (
+                    f"• {insight[:200]}{'...' if len(insight) > 200 else ''}\n"
+                )
 
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": insights_text,
-                },
-            })
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": insights_text,
+                    },
+                }
+            )
 
         # Recommendations (first 3)
         if content.ai_recommendations:
@@ -455,23 +475,29 @@ class SlackDeliveryAdapter(DeliveryAdapter):
             for rec in content.ai_recommendations[:3]:
                 recs_text += f"• {rec[:200]}{'...' if len(rec) > 200 else ''}\n"
 
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": recs_text,
-                },
-            })
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": recs_text,
+                    },
+                }
+            )
 
         # Footer
         blocks.append({"type": "divider"})
-        blocks.append({
-            "type": "context",
-            "elements": [{
-                "type": "mrkdwn",
-                "text": f"_Generated by Incident Copilot at {content.generated_at.strftime('%Y-%m-%d %H:%M UTC')}_",
-            }],
-        })
+        blocks.append(
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"_Generated by Incident Copilot at {content.generated_at.strftime('%Y-%m-%d %H:%M UTC')}_",
+                    }
+                ],
+            }
+        )
 
         return blocks
 
@@ -616,7 +642,9 @@ class S3DeliveryAdapter(DeliveryAdapter):
 
         # Generate S3 key
         timestamp = content.generated_at.strftime("%Y/%m/%d/%H%M%S")
-        base_key = config.s3_key_prefix.rstrip("/") if config.s3_key_prefix else "reports"
+        base_key = (
+            config.s3_key_prefix.rstrip("/") if config.s3_key_prefix else "reports"
+        )
         report_type = content.report_type.value
 
         try:

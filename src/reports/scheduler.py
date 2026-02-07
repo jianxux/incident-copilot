@@ -37,14 +37,28 @@ class CronExpression:
     }
 
     DAY_NAMES = {
-        "sun": 0, "mon": 1, "tue": 2, "wed": 3,
-        "thu": 4, "fri": 5, "sat": 6,
+        "sun": 0,
+        "mon": 1,
+        "tue": 2,
+        "wed": 3,
+        "thu": 4,
+        "fri": 5,
+        "sat": 6,
     }
 
     MONTH_NAMES = {
-        "jan": 1, "feb": 2, "mar": 3, "apr": 4,
-        "may": 5, "jun": 6, "jul": 7, "aug": 8,
-        "sep": 9, "oct": 10, "nov": 11, "dec": 12,
+        "jan": 1,
+        "feb": 2,
+        "mar": 3,
+        "apr": 4,
+        "may": 5,
+        "jun": 6,
+        "jul": 7,
+        "aug": 8,
+        "sep": 9,
+        "oct": 10,
+        "nov": 11,
+        "dec": 12,
     }
 
     def __init__(self, expression: str):
@@ -140,7 +154,9 @@ class CronExpression:
                 return current
             current += timedelta(minutes=1)
 
-        raise ValueError(f"Could not find next run time for expression: {self.expression}")
+        raise ValueError(
+            f"Could not find next run time for expression: {self.expression}"
+        )
 
     @staticmethod
     def validate(expression: str) -> tuple[bool, str | None]:
@@ -231,10 +247,14 @@ class ReportScheduler:
 
         # Check if next_run_at is set and due
         if schedule.next_run_at:
-            next_run_tz = schedule.next_run_at.replace(tzinfo=ZoneInfo("UTC")).astimezone(tz)
+            next_run_tz = schedule.next_run_at.replace(
+                tzinfo=ZoneInfo("UTC")
+            ).astimezone(tz)
             if now_tz >= next_run_tz:
                 # Check for holiday skip
-                if schedule.skip_holidays and self._is_holiday(now_tz, schedule.holiday_calendar):
+                if schedule.skip_holidays and self._is_holiday(
+                    now_tz, schedule.holiday_calendar
+                ):
                     logger.info(
                         "skipping_holiday",
                         config_id=config.id,
@@ -260,9 +280,9 @@ class ReportScheduler:
         # Simplified US holiday check
         if calendar.upper() == "US":
             us_holidays = [
-                (1, 1),   # New Year's Day
-                (7, 4),   # Independence Day
-                (12, 25), # Christmas
+                (1, 1),  # New Year's Day
+                (7, 4),  # Independence Day
+                (12, 25),  # Christmas
             ]
             return (dt.month, dt.day) in us_holidays
 
@@ -349,7 +369,11 @@ class ReportScheduler:
             config_id=config.id,
             name=config.name,
             cron=config.schedule.cron_expression,
-            next_run=config.schedule.next_run_at.isoformat() if config.schedule.next_run_at else None,
+            next_run=(
+                config.schedule.next_run_at.isoformat()
+                if config.schedule.next_run_at
+                else None
+            ),
         )
 
         return config

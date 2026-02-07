@@ -113,11 +113,15 @@ class ReportGenerator:
 
             # Render HTML
             if config.template.format in ("html", "both"):
-                content.html = self.templates.render_html(template_name, template_context)
+                content.html = self.templates.render_html(
+                    template_name, template_context
+                )
 
             # Render Markdown
             if config.template.format in ("markdown", "both"):
-                content.markdown = self.templates.render_markdown(template_name, template_context)
+                content.markdown = self.templates.render_markdown(
+                    template_name, template_context
+                )
 
             # Always generate JSON data
             content.json_data = self._content_to_dict(content)
@@ -136,7 +140,8 @@ class ReportGenerator:
                 if request.delivery_channels:
                     # Filter to requested channels
                     delivery_configs = [
-                        dc for dc in delivery_configs
+                        dc
+                        for dc in delivery_configs
                         if dc.channel in request.delivery_channels
                     ]
 
@@ -317,9 +322,10 @@ class ReportGenerator:
             response = await client.messages.create(
                 model=model,
                 max_tokens=1000,
-                messages=[{
-                    "role": "user",
-                    "content": f"""Analyze the following incident data and provide:
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"""Analyze the following incident data and provide:
 1. 3-5 key insights about patterns, trends, or notable observations
 2. 3-5 actionable recommendations for improving reliability
 
@@ -335,8 +341,9 @@ INSIGHTS:
 RECOMMENDATIONS:
 - [recommendation 1]
 - [recommendation 2]
-..."""
-                }],
+...""",
+                    }
+                ],
             )
 
             # Parse response
@@ -373,7 +380,11 @@ RECOMMENDATIONS:
         context_parts = [
             f"Report Period: {metrics.period_start.date()} to {metrics.period_end.date()}",
             f"Total Incidents: {metrics.total_incidents}",
-            f"Mean MTTR: {metrics.mean_mttr_minutes:.1f} minutes" if metrics.mean_mttr_minutes else "",
+            (
+                f"Mean MTTR: {metrics.mean_mttr_minutes:.1f} minutes"
+                if metrics.mean_mttr_minutes
+                else ""
+            ),
         ]
 
         if metrics.incidents_by_severity:
@@ -407,9 +418,7 @@ RECOMMENDATIONS:
         parts = []
 
         # Total incidents
-        parts.append(
-            f"This period saw {metrics.total_incidents} incident(s)."
-        )
+        parts.append(f"This period saw {metrics.total_incidents} incident(s).")
 
         # Severity breakdown
         if metrics.incidents_by_severity:
@@ -443,8 +452,16 @@ RECOMMENDATIONS:
         # In a real implementation, this would compare to previous period
         return {
             "incident_volume": "stable",
-            "mttr_trend": "improving" if metrics.mean_mttr_minutes and metrics.mean_mttr_minutes < 30 else "stable",
-            "top_services_affected": list(metrics.incidents_by_service.keys())[:5] if metrics.incidents_by_service else [],
+            "mttr_trend": (
+                "improving"
+                if metrics.mean_mttr_minutes and metrics.mean_mttr_minutes < 30
+                else "stable"
+            ),
+            "top_services_affected": (
+                list(metrics.incidents_by_service.keys())[:5]
+                if metrics.incidents_by_service
+                else []
+            ),
         }
 
     def _get_report_title(

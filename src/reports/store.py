@@ -218,14 +218,10 @@ class ReportStore:
     async def get_stats(self) -> dict:
         """Get storage statistics."""
         pending = sum(
-            1
-            for o in self._outputs.values()
-            if o.run_status == ReportRunStatus.PENDING
+            1 for o in self._outputs.values() if o.run_status == ReportRunStatus.PENDING
         )
         running = sum(
-            1
-            for o in self._outputs.values()
-            if o.run_status == ReportRunStatus.RUNNING
+            1 for o in self._outputs.values() if o.run_status == ReportRunStatus.RUNNING
         )
         completed = sum(
             1
@@ -241,9 +237,7 @@ class ReportStore:
         return {
             "configs_count": len(self._configs),
             "active_configs": sum(
-                1
-                for c in self._configs.values()
-                if c.status == ReportStatus.ACTIVE
+                1 for c in self._configs.values() if c.status == ReportStatus.ACTIVE
             ),
             "outputs_count": len(self._outputs),
             "pending_outputs": pending,
