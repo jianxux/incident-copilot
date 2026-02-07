@@ -7,20 +7,17 @@ Handles permission checks, role assignments, and access decisions.
 """
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from .models import (
     SYSTEM_ROLES,
     Action,
-    Permission,
     PermissionCheck,
     ResourceScope,
     ResourceType,
     Role,
     RoleAssignment,
     RolePermission,
-    ScopeType,
     UserPermissions,
 )
 
@@ -58,7 +55,7 @@ class RBACService:
         description: str,
         organization_id: UUID,
         permissions: list[RolePermission],
-        inherits_from: Optional[list[UUID]] = None,
+        inherits_from: list[UUID] | None = None,
     ) -> Role:
         """Create a custom role for an organization."""
         role = Role(
@@ -72,15 +69,15 @@ class RBACService:
         self._roles[role.id] = role
         return role
 
-    async def get_role(self, role_id: UUID) -> Optional[Role]:
+    async def get_role(self, role_id: UUID) -> Role | None:
         """Get role by ID."""
         return self._roles.get(role_id)
 
     async def get_role_by_name(
         self,
         name: str,
-        organization_id: Optional[UUID] = None,
-    ) -> Optional[Role]:
+        organization_id: UUID | None = None,
+    ) -> Role | None:
         """Get role by name (optionally scoped to organization)."""
         for role in self._roles.values():
             if role.name.lower() == name.lower():
@@ -90,7 +87,7 @@ class RBACService:
 
     async def list_roles(
         self,
-        organization_id: Optional[UUID] = None,
+        organization_id: UUID | None = None,
         include_system: bool = True,
     ) -> list[Role]:
         """List available roles."""
@@ -110,10 +107,10 @@ class RBACService:
     async def update_role(
         self,
         role_id: UUID,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        permissions: Optional[list[RolePermission]] = None,
-    ) -> Optional[Role]:
+        name: str | None = None,
+        description: str | None = None,
+        permissions: list[RolePermission] | None = None,
+    ) -> Role | None:
         """Update a custom role."""
         role = self._roles.get(role_id)
         if not role or role.is_system:
@@ -152,9 +149,9 @@ class RBACService:
         self,
         user_id: UUID,
         role_id: UUID,
-        scope: Optional[ResourceScope] = None,
-        assigned_by: Optional[UUID] = None,
-        expires_at: Optional[datetime] = None,
+        scope: ResourceScope | None = None,
+        assigned_by: UUID | None = None,
+        expires_at: datetime | None = None,
     ) -> RoleAssignment:
         """Assign a role to a user."""
         assignment = RoleAssignment(
@@ -178,7 +175,7 @@ class RBACService:
         self,
         user_id: UUID,
         role_id: UUID,
-        scope: Optional[ResourceScope] = None,
+        scope: ResourceScope | None = None,
     ) -> bool:
         """Revoke a role from a user."""
         if user_id not in self._assignments:
@@ -234,11 +231,11 @@ class RBACService:
         user_id: UUID,
         resource_type: ResourceType,
         action: Action,
-        organization_id: Optional[UUID] = None,
-        team_id: Optional[UUID] = None,
-        service_id: Optional[UUID] = None,
-        resource_id: Optional[UUID] = None,
-        owner_id: Optional[UUID] = None,
+        organization_id: UUID | None = None,
+        team_id: UUID | None = None,
+        service_id: UUID | None = None,
+        resource_id: UUID | None = None,
+        owner_id: UUID | None = None,
     ) -> PermissionCheck:
         """
         Check if a user has permission to perform an action.
@@ -316,7 +313,7 @@ class RBACService:
     async def get_user_permissions(
         self,
         user_id: UUID,
-        organization_id: Optional[UUID] = None,
+        organization_id: UUID | None = None,
     ) -> UserPermissions:
         """
         Get aggregated permissions for a user.

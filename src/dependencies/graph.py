@@ -1,6 +1,5 @@
 """Graph algorithms for dependency analysis using NetworkX."""
 
-from collections import defaultdict
 from typing import Any
 
 import networkx as nx

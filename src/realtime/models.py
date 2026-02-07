@@ -5,13 +5,13 @@ Pydantic models for WebSocket messages, subscriptions, presence tracking, and ro
 """
 
 from datetime import datetime
-from enum import Enum
-from typing import Any, Optional
+from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class MessageType(str, Enum):
+class MessageType(StrEnum):
     """WebSocket message types."""
 
     # Client -> Server
@@ -31,7 +31,7 @@ class MessageType(str, Enum):
     RATE_LIMITED = "rate_limited"
 
 
-class RoomType(str, Enum):
+class RoomType(StrEnum):
     """Types of subscription rooms."""
 
     INCIDENT = "incident"  # Updates for a specific incident
@@ -40,7 +40,7 @@ class RoomType(str, Enum):
     GLOBAL = "global"  # All updates (admin only)
 
 
-class PresenceStatus(str, Enum):
+class PresenceStatus(StrEnum):
     """User presence status."""
 
     VIEWING = "viewing"
@@ -54,7 +54,7 @@ class WebSocketMessage(BaseModel):
     type: MessageType
     payload: dict[str, Any] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-    request_id: Optional[str] = None  # For request-response correlation
+    request_id: str | None = None  # For request-response correlation
 
 
 class SubscriptionRequest(BaseModel):
@@ -114,5 +114,5 @@ class AuthPayload(BaseModel):
     """Authentication payload from connection params."""
 
     token: str
-    user_id: Optional[str] = None
-    user_name: Optional[str] = None
+    user_id: str | None = None
+    user_name: str | None = None

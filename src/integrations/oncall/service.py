@@ -1,10 +1,7 @@
 """On-Call Service - Core business logic for schedule management."""
 
-import asyncio
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional
-from zoneinfo import ZoneInfo
 
 from .models import (
     HandoffNotification,
@@ -15,7 +12,7 @@ from .models import (
     OnCallUser,
     OverrideStatus,
     ProviderType,
-    Rotation,
+    RotationType,
     ScheduleSyncResult,
 )
 from .providers.opsgenie import OpsgenieProvider
@@ -26,7 +23,7 @@ class OnCallService:
     """Service for managing on-call schedules, lookups, and overrides."""
 
     def __init__(
-        self, pagerduty_key: Optional[str] = None, opsgenie_key: Optional[str] = None
+        self, pagerduty_key: str | None = None, opsgenie_key: str | None = None
     ):
         self._pagerduty = PagerDutyProvider(pagerduty_key) if pagerduty_key else None
         self._opsgenie = OpsgenieProvider(opsgenie_key) if opsgenie_key else None
@@ -91,13 +88,11 @@ class OnCallService:
 
         return results
 
-    async def get_schedule(self, schedule_id: str) -> Optional[OnCallSchedule]:
+    async def get_schedule(self, schedule_id: str) -> OnCallSchedule | None:
         """Get a schedule by ID."""
         return self._schedules.get(schedule_id)
 
-    async def list_schedules(
-        self, team_id: Optional[str] = None
-    ) -> list[OnCallSchedule]:
+    async def list_schedules(self, team_id: str | None = None) -> list[OnCallSchedule]:
         """List all schedules, optionally filtered by team."""
         schedules = list(self._schedules.values())
         if team_id:
@@ -114,8 +109,8 @@ class OnCallService:
     # === Who Is On-Call ===
 
     async def who_is_oncall(
-        self, schedule_id: str, at_time: Optional[datetime] = None
-    ) -> Optional[OnCallUser]:
+        self, schedule_id: str, at_time: datetime | None = None
+    ) -> OnCallUser | None:
         """
         Get the on-call user for a schedule at a specific time.
         Checks overrides first, then falls back to scheduled rotation.
@@ -149,7 +144,7 @@ class OnCallService:
         return schedule.get_current_oncall()
 
     async def who_is_oncall_with_fallbacks(
-        self, schedule_ids: list[str], at_time: Optional[datetime] = None
+        self, schedule_ids: list[str], at_time: datetime | None = None
     ) -> list[OnCallUser]:
         """
         Get on-call users from multiple schedules with fallback chain.
@@ -246,7 +241,7 @@ class OnCallService:
         override_user: OnCallUser,
         start_time: datetime,
         end_time: datetime,
-        reason: Optional[str] = None,
+        reason: str | None = None,
         created_by: str = "system",
     ) -> OnCallOverride:
         """Create a temporary schedule override (handoff)."""
@@ -296,7 +291,7 @@ class OnCallService:
         return True
 
     async def list_overrides(
-        self, schedule_id: Optional[str] = None, active_only: bool = False
+        self, schedule_id: str | None = None, active_only: bool = False
     ) -> list[OnCallOverride]:
         """List overrides, optionally filtered."""
         overrides = list(self._overrides.values())
@@ -317,7 +312,7 @@ class OnCallService:
         outgoing: OnCallUser,
         incoming: OnCallUser,
         handoff_time: datetime,
-        message: Optional[str] = None,
+        message: str | None = None,
     ) -> HandoffNotification:
         """Create a handoff notification."""
         notification = HandoffNotification(
@@ -378,10 +373,10 @@ class OnCallService:
 
     async def get_history(
         self,
-        schedule_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        since: Optional[datetime] = None,
-        until: Optional[datetime] = None,
+        schedule_id: str | None = None,
+        user_id: str | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
         limit: int = 100,
     ) -> list[OnCallHistoryEntry]:
         """Query on-call history."""

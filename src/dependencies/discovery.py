@@ -7,7 +7,6 @@ from typing import Any
 
 from .models import (
     CriticalityLevel,
-    Dependency,
     DependencyType,
     Service,
     ServiceCreate,
@@ -81,7 +80,7 @@ class DependencyDiscovery:
             ServiceCreate(
                 id=service_name,
                 name=service_name,
-                description=f"Auto-discovered from tracing",
+                description="Auto-discovered from tracing",
                 criticality=criticality,
                 metadata={"auto_discovered": True},
             )

@@ -2,13 +2,13 @@
 
 from datetime import datetime
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field, computed_field
 
 
-class Currency(str, Enum):
+class Currency(StrEnum):
     """Supported currencies."""
 
     USD = "USD"
@@ -19,7 +19,7 @@ class Currency(str, Enum):
     AUD = "AUD"
 
 
-class CostCategory(str, Enum):
+class CostCategory(StrEnum):
     """Categories of incident costs."""
 
     ENGINEER_TIME = "engineer_time"
@@ -32,7 +32,7 @@ class CostCategory(str, Enum):
     OPPORTUNITY = "opportunity"
 
 
-class ServiceCriticality(str, Enum):
+class ServiceCriticality(StrEnum):
     """Service criticality levels for revenue impact."""
 
     CRITICAL = "critical"  # Core revenue-generating

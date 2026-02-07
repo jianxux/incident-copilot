@@ -11,7 +11,6 @@ from fastapi import (
     Query,
     WebSocket,
     WebSocketDisconnect,
-    status,
 )
 from pydantic import BaseModel
 

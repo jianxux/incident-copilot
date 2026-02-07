@@ -1,7 +1,6 @@
 """Maintenance Windows - FastAPI Routes"""
 
 from datetime import datetime, timedelta
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -24,13 +23,13 @@ router = APIRouter(prefix="/maintenance", tags=["maintenance"])
 
 class MaintenanceCheckResponse(BaseModel):
     in_maintenance: bool
-    window: Optional[MaintenanceWindow] = None
+    window: MaintenanceWindow | None = None
     message: str
 
 
 class UpcomingResponse(BaseModel):
     windows: list[MaintenanceWindow]
-    next_maintenance: Optional[datetime] = None
+    next_maintenance: datetime | None = None
 
 
 class OverlapResponse(BaseModel):
@@ -40,7 +39,7 @@ class OverlapResponse(BaseModel):
 
 class ApprovalRequest(BaseModel):
     approver_id: str
-    comment: Optional[str] = None
+    comment: str | None = None
 
 
 class RejectRequest(BaseModel):
@@ -70,10 +69,10 @@ async def create_window(
 
 @router.get("", response_model=list[MaintenanceWindow])
 async def list_windows(
-    status: Optional[MaintenanceStatus] = None,
-    scope_type: Optional[ScopeType] = None,
-    from_time: Optional[datetime] = None,
-    to_time: Optional[datetime] = None,
+    status: MaintenanceStatus | None = None,
+    scope_type: ScopeType | None = None,
+    from_time: datetime | None = None,
+    to_time: datetime | None = None,
     limit: int = Query(50, ge=1, le=200),
     svc: MaintenanceService = Depends(get_svc),
 ):
@@ -82,7 +81,7 @@ async def list_windows(
 
 @router.get("/active", response_model=list[MaintenanceWindow])
 async def get_active(
-    at_time: Optional[datetime] = None, svc: MaintenanceService = Depends(get_svc)
+    at_time: datetime | None = None, svc: MaintenanceService = Depends(get_svc)
 ):
     return await svc.get_active_windows(at_time)
 
@@ -134,7 +133,7 @@ async def delete_window(window_id: UUID, svc: MaintenanceService = Depends(get_s
 async def check_status(
     scope_type: ScopeType,
     identifier: str,
-    at_time: Optional[datetime] = None,
+    at_time: datetime | None = None,
     svc: MaintenanceService = Depends(get_svc),
 ):
     in_maint, window = await svc.is_in_maintenance(scope_type, identifier, at_time)
@@ -149,7 +148,7 @@ async def check_status(
 @router.post("/check/alerts")
 async def check_alerts(
     alerts: list[dict],
-    at_time: Optional[datetime] = None,
+    at_time: datetime | None = None,
     svc: MaintenanceService = Depends(get_svc),
 ):
     return await svc.suppress_alerts(alerts, at_time)
@@ -224,9 +223,9 @@ async def check_overlaps(window_id: UUID, svc: MaintenanceService = Depends(get_
 
 @router.get("/calendar/ical")
 async def export_calendar(
-    from_time: Optional[datetime] = None,
-    to_time: Optional[datetime] = None,
-    scope_type: Optional[ScopeType] = None,
+    from_time: datetime | None = None,
+    to_time: datetime | None = None,
+    scope_type: ScopeType | None = None,
     svc: MaintenanceService = Depends(get_svc),
 ):
     windows = await svc.list_windows(

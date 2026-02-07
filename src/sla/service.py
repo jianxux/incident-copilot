@@ -19,7 +19,6 @@ from .models import (
     SLAPolicy,
     SLASeverity,
     SLAStatus,
-    SLATarget,
     SLATimer,
     SLAType,
 )

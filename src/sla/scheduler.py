@@ -6,8 +6,9 @@ Supports configurable check intervals and escalation handling.
 
 import asyncio
 import logging
+from collections.abc import Callable, Coroutine
 from datetime import datetime
-from typing import Any, Callable, Coroutine
+from typing import Any
 
 from .models import (
     EscalationLevel,

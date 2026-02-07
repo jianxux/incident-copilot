@@ -8,7 +8,6 @@ Supports resource-level, team-level, and organization-level scoping.
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -76,7 +75,7 @@ class Permission(BaseModel):
     action: Action
 
     # Optional conditions
-    conditions: Optional[dict] = Field(
+    conditions: dict | None = Field(
         None, description="JSON conditions for the permission"
     )
 
@@ -106,19 +105,19 @@ class ResourceScope(BaseModel):
     scope_type: ScopeType
 
     # Scope identifiers (depending on scope_type)
-    organization_id: Optional[UUID] = None
-    team_id: Optional[UUID] = None
-    service_id: Optional[UUID] = None
-    resource_id: Optional[UUID] = None
+    organization_id: UUID | None = None
+    team_id: UUID | None = None
+    service_id: UUID | None = None
+    resource_id: UUID | None = None
 
     def matches(
         self,
-        organization_id: Optional[UUID] = None,
-        team_id: Optional[UUID] = None,
-        service_id: Optional[UUID] = None,
-        resource_id: Optional[UUID] = None,
-        owner_id: Optional[UUID] = None,
-        user_id: Optional[UUID] = None,
+        organization_id: UUID | None = None,
+        team_id: UUID | None = None,
+        service_id: UUID | None = None,
+        resource_id: UUID | None = None,
+        owner_id: UUID | None = None,
+        user_id: UUID | None = None,
     ) -> bool:
         """Check if this scope matches the given context."""
         if self.scope_type == ScopeType.GLOBAL:
@@ -160,7 +159,7 @@ class Role(BaseModel):
     description: str = Field("", description="Role description")
 
     # Organization (None for system roles)
-    organization_id: Optional[UUID] = None
+    organization_id: UUID | None = None
 
     # Permissions granted by this role
     permissions: list[RolePermission] = Field(default_factory=list)
@@ -190,12 +189,12 @@ class RoleAssignment(BaseModel):
     role_id: UUID
 
     # Optional scope limitation
-    scope: Optional[ResourceScope] = None
+    scope: ResourceScope | None = None
 
     # Assignment metadata
-    assigned_by: Optional[UUID] = None
+    assigned_by: UUID | None = None
     assigned_at: datetime = Field(default_factory=datetime.utcnow)
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
 
     # Status
     is_active: bool = Field(default=True)
@@ -231,8 +230,8 @@ class PermissionCheck(BaseModel):
 
     allowed: bool
     reason: str
-    matched_permission: Optional[str] = None
-    matched_role: Optional[str] = None
+    matched_permission: str | None = None
+    matched_role: str | None = None
 
 
 # Built-in system roles

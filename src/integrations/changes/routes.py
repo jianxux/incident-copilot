@@ -3,7 +3,6 @@ Change Tracking Routes - FastAPI endpoints for change queries.
 """
 
 from datetime import datetime, timedelta
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -13,10 +12,8 @@ from .models import (
     ChangeEvent,
     ChangeFreeze,
     ChangeSource,
-    ChangeStatus,
     ChangeTimeline,
     ChangeType,
-    RiskLevel,
 )
 from .service import ChangeTrackingService, get_change_service
 
@@ -28,9 +25,9 @@ router = APIRouter(prefix="/changes", tags=["changes"])
 
 class RecentChangesRequest(BaseModel):
     hours: int = Field(default=24, ge=1, le=168)
-    environment: Optional[str] = None
-    service: Optional[str] = None
-    types: Optional[list[ChangeType]] = None
+    environment: str | None = None
+    service: str | None = None
+    types: list[ChangeType] | None = None
     limit: int = Field(default=50, ge=1, le=200)
 
 
@@ -38,7 +35,7 @@ class CorrelateRequest(BaseModel):
     incident_id: str
     incident_started_at: datetime
     window_minutes: int = Field(default=60, ge=5, le=360)
-    service: Optional[str] = None
+    service: str | None = None
     environment: str = "production"
 
 
@@ -57,8 +54,8 @@ class CreateFreezeRequest(BaseModel):
 
 class TimelineRequest(BaseModel):
     hours: int = Field(default=24, ge=1, le=168)
-    environment: Optional[str] = None
-    services: Optional[list[str]] = None
+    environment: str | None = None
+    services: list[str] | None = None
 
 
 class ChangeStatsResponse(BaseModel):
@@ -85,9 +82,9 @@ def get_service() -> ChangeTrackingService:
 @router.get("/recent", response_model=list[ChangeEvent])
 async def get_recent_changes(
     hours: int = Query(default=24, ge=1, le=168),
-    environment: Optional[str] = None,
-    service: Optional[str] = None,
-    change_type: Optional[ChangeType] = None,
+    environment: str | None = None,
+    service: str | None = None,
+    change_type: ChangeType | None = None,
     limit: int = Query(default=50, ge=1, le=200),
     svc: ChangeTrackingService = Depends(get_service),
 ) -> list[ChangeEvent]:
@@ -152,7 +149,7 @@ async def correlate_incident(
     incident_id: str,
     incident_time: datetime = Query(...),
     window_minutes: int = Query(default=60, ge=5, le=360),
-    service: Optional[str] = None,
+    service: str | None = None,
     environment: str = "production",
     svc: ChangeTrackingService = Depends(get_service),
 ) -> ChangeCorrelation:
@@ -172,7 +169,7 @@ async def correlate_incident(
 @router.get("/rollbacks/recent", response_model=list[ChangeEvent])
 async def get_recent_rollbacks(
     hours: int = Query(default=24, ge=1, le=168),
-    environment: Optional[str] = None,
+    environment: str | None = None,
     svc: ChangeTrackingService = Depends(get_service),
 ) -> list[ChangeEvent]:
     """Get recent rollback events."""
@@ -184,7 +181,7 @@ async def get_recent_rollbacks(
 
 @router.get("/freezes/active", response_model=list[ChangeFreeze])
 async def get_active_freezes(
-    environment: Optional[str] = None, svc: ChangeTrackingService = Depends(get_service)
+    environment: str | None = None, svc: ChangeTrackingService = Depends(get_service)
 ) -> list[ChangeFreeze]:
     """Get currently active change freezes."""
     return await svc.get_active_freezes(environment=environment)
@@ -236,7 +233,7 @@ async def check_freeze_violation(
 @router.get("/timeline", response_model=ChangeTimeline)
 async def get_timeline(
     hours: int = Query(default=24, ge=1, le=168),
-    environment: Optional[str] = None,
+    environment: str | None = None,
     svc: ChangeTrackingService = Depends(get_service),
 ) -> ChangeTimeline:
     """Get a change timeline for visualization."""
@@ -259,7 +256,7 @@ async def query_timeline(
 @router.get("/stats", response_model=ChangeStatsResponse)
 async def get_change_stats(
     hours: int = Query(default=24, ge=1, le=168),
-    environment: Optional[str] = None,
+    environment: str | None = None,
     svc: ChangeTrackingService = Depends(get_service),
 ) -> ChangeStatsResponse:
     """Get statistics about recent changes."""

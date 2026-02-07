@@ -12,7 +12,6 @@ from .models import (
     DigestFrequency,
     NotificationChannel,
     NotificationPayload,
-    NotificationPreference,
     NotificationRule,
     NotificationType,
     QuietHours,

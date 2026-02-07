@@ -2,9 +2,7 @@
 GitHub Collector - Collect deployments and PRs from GitHub.
 """
 
-import hashlib
 from datetime import datetime
-from typing import Optional
 
 import httpx
 
@@ -27,14 +25,14 @@ class GitHubCollector:
         self,
         token: str,
         org: str,
-        repos: Optional[list[str]] = None,
+        repos: list[str] | None = None,
         base_url: str = "https://api.github.com",
     ):
         self.token = token
         self.org = org
         self.repos = repos or []
         self.base_url = base_url
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -55,7 +53,7 @@ class GitHubCollector:
             self._client = None
 
     async def collect_changes(
-        self, since: datetime, until: Optional[datetime] = None
+        self, since: datetime, until: datetime | None = None
     ) -> list[ChangeEvent]:
         """Collect deployments and merged PRs from GitHub."""
         changes: list[ChangeEvent] = []
@@ -96,7 +94,7 @@ class GitHubCollector:
         return repos
 
     async def _get_deployments(
-        self, repo: str, since: datetime, until: Optional[datetime]
+        self, repo: str, since: datetime, until: datetime | None
     ) -> list[Deployment]:
         """Get deployments for a repo."""
         client = await self._get_client()
@@ -163,7 +161,7 @@ class GitHubCollector:
         return deployments
 
     async def _get_merged_prs(
-        self, repo: str, since: datetime, until: Optional[datetime]
+        self, repo: str, since: datetime, until: datetime | None
     ) -> list[ChangeEvent]:
         """Get merged PRs as change events."""
         client = await self._get_client()
@@ -226,7 +224,7 @@ class GitHubCollector:
 
         return changes
 
-    async def get_deployment(self, deployment_id: str) -> Optional[Deployment]:
+    async def get_deployment(self, deployment_id: str) -> Deployment | None:
         """Get a specific deployment by ID."""
         if not deployment_id.startswith("gh-deploy-"):
             return None

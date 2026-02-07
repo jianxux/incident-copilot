@@ -3,7 +3,6 @@
 import asyncio
 from datetime import datetime
 from typing import Any, Protocol
-from uuid import UUID
 
 from .engine import SearchEngine
 from .models import IndexedDocument, SearchableType
@@ -242,7 +241,7 @@ class IndexingService:
                         indexed_doc = adapter.to_indexed_doc(doc_data)
                         await self._engine.index(indexed_doc)
                         indexed += 1
-                    except Exception as e:
+                    except Exception:
                         errors += 1
                         self._index_stats["total_errors"] += 1
 

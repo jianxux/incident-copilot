@@ -6,13 +6,12 @@ including DORA-style metrics, burnout indicators, and industry benchmarks.
 
 import statistics
 from datetime import datetime, timedelta
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, computed_field
 
 
-class PerformanceTier(str, Enum):
+class PerformanceTier(StrEnum):
     """Performance tier classification based on DORA research."""
 
     ELITE = "elite"  # Top 10% performers
@@ -21,7 +20,7 @@ class PerformanceTier(str, Enum):
     LOW = "low"  # Below average
 
 
-class BurnoutRisk(str, Enum):
+class BurnoutRisk(StrEnum):
     """Burnout risk levels for engineers."""
 
     LOW = "low"  # Healthy workload
@@ -83,12 +82,12 @@ class MetricValue(BaseModel):
     name: str
     value: float
     unit: str = ""
-    trend: Optional[float] = None  # Percentage change (positive = improvement)
-    tier: Optional[PerformanceTier] = None
+    trend: float | None = None  # Percentage change (positive = improvement)
+    tier: PerformanceTier | None = None
 
     @computed_field
     @property
-    def trend_direction(self) -> Optional[str]:
+    def trend_direction(self) -> str | None:
         """Get trend direction: up, down, or stable."""
         if self.trend is None:
             return None
@@ -190,7 +189,7 @@ class EngineerMetrics(BaseModel):
     # Privacy
     is_anonymized: bool = False
     # Risk
-    burnout: Optional[BurnoutIndicators] = None
+    burnout: BurnoutIndicators | None = None
 
     @computed_field
     @property
@@ -247,7 +246,7 @@ class TeamMetrics(BaseModel):
     escalation_rate: float = 0
     reopen_rate: float = 0
     # Workload
-    workload_distribution: Optional[WorkloadDistribution] = None
+    workload_distribution: WorkloadDistribution | None = None
     oncall_burden_hours: float = 0
     avg_incidents_per_engineer: float = 0
     # Team health
@@ -255,7 +254,7 @@ class TeamMetrics(BaseModel):
     engineers_at_risk: int = 0
     # Benchmarks
     tier: PerformanceTier = PerformanceTier.MEDIUM
-    industry_percentile: Optional[int] = None
+    industry_percentile: int | None = None
 
     @computed_field
     @property
@@ -378,7 +377,7 @@ class LeaderboardEntry(BaseModel):
     engineer_name: str
     score: float
     metric_name: str
-    badge: Optional[str] = None  # Emoji badge: 🥇🥈🥉🏅
+    badge: str | None = None  # Emoji badge: 🥇🥈🥉🏅
     is_anonymized: bool = False
 
     @computed_field
@@ -395,7 +394,7 @@ class PerformanceReport(BaseModel):
     period: PerformancePeriod
     team_metrics: TeamMetrics
     engineer_metrics: list[EngineerMetrics] = Field(default_factory=list)
-    comparison: Optional[PeriodComparison] = None
+    comparison: PeriodComparison | None = None
     benchmarks: dict[str, PerformanceTier] = Field(default_factory=dict)
     highlights: list[str] = Field(
         default_factory=list, description="Positive observations"

@@ -28,7 +28,7 @@ def generate_signature(
         payload = payload.encode("utf-8")
 
     # Create signed payload: timestamp.payload
-    signed_payload = f"{timestamp}.".encode("utf-8") + payload
+    signed_payload = f"{timestamp}.".encode() + payload
 
     # Generate HMAC
     hash_func = hashlib.sha256 if algorithm == "sha256" else hashlib.sha512
