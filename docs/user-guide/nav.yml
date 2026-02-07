@@ -1,0 +1,59 @@
+# Navigation structure for documentation
+# Compatible with MkDocs and similar static site generators
+
+nav:
+  - Home: README.md
+  
+  - Getting Started:
+    - Overview: getting-started.md
+    - Core Concepts: core-concepts.md
+    - Best Practices: best-practices.md
+  
+  - Configuration:
+    - Configuration Reference: configuration.md
+    - CLI Reference: cli.md
+  
+  - Integrations:
+    - Overview: integrations.md
+    - Alert Sources:
+      - PagerDuty: integrations/pagerduty.md
+      - Opsgenie: integrations/opsgenie.md
+    - Source Control:
+      - GitHub: integrations/github.md
+      - GitLab: integrations/gitlab.md
+    - Log Providers:
+      - Datadog: integrations/datadog.md
+      - AWS CloudWatch: integrations/cloudwatch.md
+      - Splunk: integrations/splunk.md
+    - Notifications:
+      - Slack: integrations/slack.md
+      - Microsoft Teams: integrations/teams.md
+    - Issue Tracking:
+      - Jira: integrations/jira.md
+      - Linear: integrations/linear.md
+      - ServiceNow: integrations/servicenow.md
+  
+  - Features:
+    - Context Cards: features/context-cards.md
+    - AI Analysis: features/ai-analysis.md
+    - Similar Incidents: features/similar-incidents.md
+    - Incident Timeline: features/incident-timeline.md
+    - Scheduled Reports: features/scheduled-reports.md
+    - Postmortems: features/postmortems.md
+    - Analytics: features/analytics.md
+  
+  - Reports:
+    - Overview: reports.md
+    - Scheduled Reports: features/scheduled-reports.md
+  
+  - Administration:
+    - User Management: admin/user-management.md
+    - API Keys: admin/api-keys.md
+    - SSO Setup: admin/sso.md
+    - Tenant Setup: admin/tenant-setup.md
+    - Billing: admin/billing.md
+  
+  - Reference:
+    - API Reference: api-reference.md
+    - Troubleshooting: troubleshooting.md
+    - FAQ: faq.md
