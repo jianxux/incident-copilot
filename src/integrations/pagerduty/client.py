@@ -5,9 +5,8 @@ PagerDuty API Client
 Async HTTP client for PagerDuty REST API v2.
 """
 
-import asyncio
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -15,7 +14,6 @@ from .models import (
     CreateIncidentRequest,
     PagerDutyConfig,
     PDEscalationPolicy,
-    PDEventsAPIPayload,
     PDIncident,
     PDOnCall,
     PDSchedule,
@@ -38,7 +36,7 @@ class PagerDutyClient:
 
     def __init__(self, config: PagerDutyConfig):
         self.config = config
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     @property
     def client(self) -> httpx.AsyncClient:
@@ -71,10 +69,10 @@ class PagerDutyClient:
 
     async def list_incidents(
         self,
-        service_ids: Optional[list[str]] = None,
-        statuses: Optional[list[PDStatus]] = None,
-        since: Optional[datetime] = None,
-        until: Optional[datetime] = None,
+        service_ids: list[str] | None = None,
+        statuses: list[PDStatus] | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
         limit: int = 25,
         offset: int = 0,
         sort_by: str = "created_at:desc",
@@ -262,7 +260,7 @@ class PagerDutyClient:
         self,
         incident_id: str,
         from_email: str,
-        resolution: Optional[str] = None,
+        resolution: str | None = None,
     ) -> PDIncident:
         """Resolve an incident."""
         return await self.update_incident(
@@ -290,9 +288,9 @@ class PagerDutyClient:
 
     async def list_services(
         self,
-        query: Optional[str] = None,
-        team_ids: Optional[list[str]] = None,
-        include: Optional[list[str]] = None,
+        query: str | None = None,
+        team_ids: list[str] | None = None,
+        include: list[str] | None = None,
         limit: int = 25,
         offset: int = 0,
     ) -> list[PDService]:
@@ -327,9 +325,9 @@ class PagerDutyClient:
         self,
         name: str,
         escalation_policy_id: str,
-        description: Optional[str] = None,
-        auto_resolve_timeout: Optional[int] = None,
-        acknowledgement_timeout: Optional[int] = None,
+        description: str | None = None,
+        auto_resolve_timeout: int | None = None,
+        acknowledgement_timeout: int | None = None,
     ) -> PDService:
         """Create a new service."""
         service_data = {
@@ -361,8 +359,8 @@ class PagerDutyClient:
 
     async def list_users(
         self,
-        query: Optional[str] = None,
-        team_ids: Optional[list[str]] = None,
+        query: str | None = None,
+        team_ids: list[str] | None = None,
         limit: int = 25,
         offset: int = 0,
     ) -> list[PDUser]:
@@ -403,8 +401,8 @@ class PagerDutyClient:
 
     async def list_escalation_policies(
         self,
-        query: Optional[str] = None,
-        user_ids: Optional[list[str]] = None,
+        query: str | None = None,
+        user_ids: list[str] | None = None,
         limit: int = 25,
         offset: int = 0,
     ) -> list[PDEscalationPolicy]:
@@ -437,7 +435,7 @@ class PagerDutyClient:
 
     async def list_schedules(
         self,
-        query: Optional[str] = None,
+        query: str | None = None,
         limit: int = 25,
         offset: int = 0,
     ) -> list[PDSchedule]:
@@ -459,8 +457,8 @@ class PagerDutyClient:
     async def get_schedule(
         self,
         schedule_id: str,
-        since: Optional[datetime] = None,
-        until: Optional[datetime] = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
     ) -> PDSchedule:
         """Get a schedule with optional time range for final schedule."""
         params: dict[str, Any] = {}
@@ -483,11 +481,11 @@ class PagerDutyClient:
 
     async def list_oncalls(
         self,
-        schedule_ids: Optional[list[str]] = None,
-        user_ids: Optional[list[str]] = None,
-        escalation_policy_ids: Optional[list[str]] = None,
-        since: Optional[datetime] = None,
-        until: Optional[datetime] = None,
+        schedule_ids: list[str] | None = None,
+        user_ids: list[str] | None = None,
+        escalation_policy_ids: list[str] | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
         limit: int = 25,
         offset: int = 0,
     ) -> list[PDOnCall]:
@@ -517,7 +515,7 @@ class PagerDutyClient:
     async def get_current_oncall(
         self,
         escalation_policy_id: str,
-    ) -> Optional[PDOnCall]:
+    ) -> PDOnCall | None:
         """Get the current on-call for an escalation policy."""
         now = datetime.utcnow()
         oncalls = await self.list_oncalls(
@@ -538,12 +536,12 @@ class PagerDutyClient:
     async def send_event(
         self,
         event_action: str,
-        routing_key: Optional[str] = None,
-        dedup_key: Optional[str] = None,
-        summary: Optional[str] = None,
-        source: Optional[str] = None,
+        routing_key: str | None = None,
+        dedup_key: str | None = None,
+        summary: str | None = None,
+        source: str | None = None,
         severity: str = "critical",
-        custom_details: Optional[dict] = None,
+        custom_details: dict | None = None,
     ) -> dict:
         """
         Send an event via Events API v2.
@@ -599,8 +597,8 @@ class PagerDutyClient:
         summary: str,
         source: str = "incident-copilot",
         severity: str = "critical",
-        dedup_key: Optional[str] = None,
-        custom_details: Optional[dict] = None,
+        dedup_key: str | None = None,
+        custom_details: dict | None = None,
     ) -> dict:
         """Trigger a new event/alert."""
         return await self.send_event(

@@ -6,14 +6,14 @@ Handle incoming WebSocket messages: subscribe, unsubscribe, presence updates, et
 
 import json
 import logging
-from typing import Any, Callable, Coroutine, Optional
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 from .manager import ConnectionManager
 from .models import (
     MessageType,
     PresenceStatus,
     RoomType,
-    SubscriptionRequest,
     WebSocketMessage,
 )
 
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Type alias for handlers
 HandlerFunc = Callable[
     [ConnectionManager, str, dict[str, Any]],
-    Coroutine[Any, Any, Optional[WebSocketMessage]],
+    Coroutine[Any, Any, WebSocketMessage | None],
 ]
 
 
@@ -43,7 +43,7 @@ class MessageHandler:
         self,
         connection_id: str,
         raw_message: str | bytes,
-    ) -> Optional[WebSocketMessage]:
+    ) -> WebSocketMessage | None:
         """Parse and handle an incoming message."""
         try:
             if isinstance(raw_message, bytes):
@@ -120,7 +120,7 @@ class MessageHandler:
 
             # Check permissions for global room
             if room_type == RoomType.GLOBAL:
-                conn_info = manager.get_connection_info(connection_id)
+                manager.get_connection_info(connection_id)
                 # TODO: Add admin check here
                 # For now, allow all authenticated users
 
@@ -207,7 +207,7 @@ class MessageHandler:
         manager: ConnectionManager,
         connection_id: str,
         payload: dict[str, Any],
-    ) -> Optional[WebSocketMessage]:
+    ) -> WebSocketMessage | None:
         """Handle pong response."""
         manager.handle_pong(connection_id)
         return None  # No response needed

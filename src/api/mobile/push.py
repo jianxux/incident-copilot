@@ -1,10 +1,8 @@
 """Push notification integration for FCM and APNS."""
 
-import asyncio
 import logging
-import time
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 import httpx
@@ -78,7 +76,7 @@ class PushPayload:
         }
 
 
-class PushStatus(str, Enum):
+class PushStatus(StrEnum):
     SUCCESS = "success"
     FAILED = "failed"
     INVALID_TOKEN = "invalid_token"

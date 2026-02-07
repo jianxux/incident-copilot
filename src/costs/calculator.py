@@ -1,6 +1,5 @@
 """Cost calculators for different incident cost categories."""
 
-from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Protocol
 

@@ -5,8 +5,8 @@ RBAC Decorators
 FastAPI dependency decorators for permission enforcement.
 """
 
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable, Optional
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
@@ -44,9 +44,9 @@ async def get_current_user_id(request: Request) -> UUID:
 def require_permission(
     resource_type: ResourceType,
     action: Action,
-    resource_id_param: Optional[str] = None,
-    team_id_param: Optional[str] = None,
-    service_id_param: Optional[str] = None,
+    resource_id_param: str | None = None,
+    team_id_param: str | None = None,
+    service_id_param: str | None = None,
 ):
     """
     Decorator to require a specific permission for an endpoint.
@@ -180,7 +180,7 @@ class PermissionChecker:
         self,
         resource_type: ResourceType,
         action: Action,
-        resource_id_param: Optional[str] = None,
+        resource_id_param: str | None = None,
     ):
         self.resource_type = resource_type
         self.action = action

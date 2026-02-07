@@ -453,8 +453,8 @@ async def get_incident_sla_status(
             detail=f"Policy not found: {policy_id}",
         )
 
-    status = await service.get_incident_status(incident_id, policy)
-    return IncidentStatusResponse(status=status)
+    incident_status = await service.get_incident_status(incident_id, policy)
+    return IncidentStatusResponse(status=incident_status)
 
 
 @router.get("/incidents/{incident_id}/remaining", response_model=dict[str, Any])

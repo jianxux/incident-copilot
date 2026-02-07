@@ -1,7 +1,6 @@
 """FastAPI routes for On-Call Scheduling integration."""
 
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -11,9 +10,7 @@ from .models import (
     OnCallSchedule,
     OnCallShift,
     OnCallUser,
-    OverrideStatus,
     ProviderType,
-    Rotation,
     ScheduleSyncResult,
 )
 from .service import OnCallService
@@ -21,7 +18,7 @@ from .service import OnCallService
 router = APIRouter(prefix="/oncall", tags=["oncall"])
 
 # Dependency injection for service
-_service: Optional[OnCallService] = None
+_service: OnCallService | None = None
 
 
 def get_service() -> OnCallService:
@@ -32,9 +29,7 @@ def get_service() -> OnCallService:
     return _service
 
 
-def init_service(
-    pagerduty_key: Optional[str] = None, opsgenie_key: Optional[str] = None
-):
+def init_service(pagerduty_key: str | None = None, opsgenie_key: str | None = None):
     """Initialize the service with API keys."""
     global _service
     _service = OnCallService(pagerduty_key=pagerduty_key, opsgenie_key=opsgenie_key)
@@ -51,14 +46,14 @@ class CreateOverrideRequest(BaseModel):
     override_user_email: str
     start_time: datetime
     end_time: datetime
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class CreateScheduleRequest(BaseModel):
     """Request to create a manual schedule."""
 
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     team_id: str
     timezone: str = "UTC"
 
@@ -69,7 +64,7 @@ class AddRotationRequest(BaseModel):
     name: str
     type: str = "weekly"
     handoff_time: str = "09:00"
-    handoff_day: Optional[int] = None
+    handoff_day: int | None = None
     participant_ids: list[str] = Field(default_factory=list)
 
 
@@ -78,9 +73,9 @@ class WhoIsOnCallResponse(BaseModel):
 
     schedule_id: str
     schedule_name: str
-    oncall_user: Optional[OnCallUser] = None
+    oncall_user: OnCallUser | None = None
     is_override: bool = False
-    shift_ends_at: Optional[datetime] = None
+    shift_ends_at: datetime | None = None
 
 
 class UpcomingShiftsResponse(BaseModel):
@@ -107,7 +102,7 @@ class ScheduleVisualization(BaseModel):
 
 @router.get("/schedules", response_model=list[OnCallSchedule])
 async def list_schedules(
-    team_id: Optional[str] = Query(None, description="Filter by team ID"),
+    team_id: str | None = Query(None, description="Filter by team ID"),
     service: OnCallService = Depends(get_service),
 ):
     """List all on-call schedules."""
@@ -148,7 +143,7 @@ async def sync_schedules(service: OnCallService = Depends(get_service)):
 @router.get("/schedules/{schedule_id}/oncall", response_model=WhoIsOnCallResponse)
 async def who_is_oncall(
     schedule_id: str,
-    at: Optional[datetime] = Query(
+    at: datetime | None = Query(
         None, description="Check at specific time (ISO format)"
     ),
     service: OnCallService = Depends(get_service),
@@ -227,7 +222,7 @@ async def get_schedule_visualization(
 
 @router.get("/overrides", response_model=list[OnCallOverride])
 async def list_overrides(
-    schedule_id: Optional[str] = Query(None),
+    schedule_id: str | None = Query(None),
     active_only: bool = Query(False),
     service: OnCallService = Depends(get_service),
 ):
@@ -279,10 +274,10 @@ async def cancel_override(
 
 @router.get("/history")
 async def get_oncall_history(
-    schedule_id: Optional[str] = Query(None),
-    user_id: Optional[str] = Query(None),
-    since: Optional[datetime] = Query(None),
-    until: Optional[datetime] = Query(None),
+    schedule_id: str | None = Query(None),
+    user_id: str | None = Query(None),
+    since: datetime | None = Query(None),
+    until: datetime | None = Query(None),
     limit: int = Query(100, ge=1, le=500),
     service: OnCallService = Depends(get_service),
 ):

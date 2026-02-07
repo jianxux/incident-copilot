@@ -1,14 +1,14 @@
 """Search models for incident-copilot."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
 
-class SearchableType(str, Enum):
+class SearchableType(StrEnum):
     """Types of searchable documents."""
 
     INCIDENT = "incident"
@@ -16,7 +16,7 @@ class SearchableType(str, Enum):
     POSTMORTEM = "postmortem"
 
 
-class SortField(str, Enum):
+class SortField(StrEnum):
     """Fields available for sorting."""
 
     RELEVANCE = "relevance"
@@ -26,7 +26,7 @@ class SortField(str, Enum):
     TITLE = "title"
 
 
-class SortOrder(str, Enum):
+class SortOrder(StrEnum):
     """Sort order options."""
 
     ASC = "asc"

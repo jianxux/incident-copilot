@@ -3,7 +3,6 @@ ArgoCD Collector - Collect deployment events from ArgoCD.
 """
 
 from datetime import datetime
-from typing import Optional
 
 import httpx
 
@@ -16,12 +15,12 @@ class ArgoCDCollector:
     source = ChangeSource.ARGOCD
 
     def __init__(
-        self, base_url: str, token: str, applications: Optional[list[str]] = None
+        self, base_url: str, token: str, applications: list[str] | None = None
     ):
         self.base_url = base_url.rstrip("/")
         self.token = token
         self.applications = applications
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -42,7 +41,7 @@ class ArgoCDCollector:
             self._client = None
 
     async def collect_changes(
-        self, since: datetime, until: Optional[datetime] = None
+        self, since: datetime, until: datetime | None = None
     ) -> list[Deployment]:
         """Collect deployment events from ArgoCD applications."""
         deployments: list[Deployment] = []
@@ -69,7 +68,7 @@ class ArgoCDCollector:
         return resp.json().get("items", [])
 
     async def _get_app_deployments(
-        self, app: dict, since: datetime, until: Optional[datetime]
+        self, app: dict, since: datetime, until: datetime | None
     ) -> list[Deployment]:
         """Get deployment history for an application."""
         client = await self._get_client()
@@ -157,7 +156,7 @@ class ArgoCDCollector:
 
         return deployments
 
-    async def get_deployment(self, deployment_id: str) -> Optional[Deployment]:
+    async def get_deployment(self, deployment_id: str) -> Deployment | None:
         """Get a specific deployment by ID."""
         if not deployment_id.startswith("argo-"):
             return None
@@ -194,7 +193,7 @@ class ArgoCDCollector:
 
         return None
 
-    async def get_current_state(self, app_name: str) -> Optional[dict]:
+    async def get_current_state(self, app_name: str) -> dict | None:
         """Get current sync and health state of an application."""
         client = await self._get_client()
 
@@ -213,7 +212,7 @@ class ArgoCDCollector:
             "resources": len(status.get("resources", [])),
         }
 
-    def _parse_timestamp(self, ts: Optional[str]) -> Optional[datetime]:
+    def _parse_timestamp(self, ts: str | None) -> datetime | None:
         """Parse ArgoCD timestamp."""
         if not ts:
             return None

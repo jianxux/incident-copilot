@@ -1,20 +1,19 @@
 """Lightweight Pydantic v2 models optimized for mobile bandwidth."""
 
 from datetime import datetime
-from enum import Enum
-from typing import Any
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
 
 
-class IncidentStatus(str, Enum):
+class IncidentStatus(StrEnum):
     OPEN = "open"
     ACKNOWLEDGED = "acknowledged"
     INVESTIGATING = "investigating"
@@ -22,12 +21,12 @@ class IncidentStatus(str, Enum):
     CLOSED = "closed"
 
 
-class Platform(str, Enum):
+class Platform(StrEnum):
     IOS = "ios"
     ANDROID = "android"
 
 
-class QuickActionType(str, Enum):
+class QuickActionType(StrEnum):
     ACKNOWLEDGE = "acknowledge"
     RESOLVE = "resolve"
     ESCALATE = "escalate"

@@ -1,13 +1,13 @@
 """Pydantic models for service dependencies."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class CriticalityLevel(str, Enum):
+class CriticalityLevel(StrEnum):
     """Service criticality levels."""
 
     CRITICAL = "critical"  # Core infrastructure, payment, auth
@@ -16,7 +16,7 @@ class CriticalityLevel(str, Enum):
     LOW = "low"  # Nice-to-have, experimental
 
 
-class DependencyType(str, Enum):
+class DependencyType(StrEnum):
     """Type of dependency relationship."""
 
     SYNC = "sync"  # Synchronous call (HTTP, gRPC)
@@ -26,7 +26,7 @@ class DependencyType(str, Enum):
     STORAGE = "storage"  # Object storage (S3, GCS)
 
 
-class HealthStatus(str, Enum):
+class HealthStatus(StrEnum):
     """Health status of a service or dependency."""
 
     HEALTHY = "healthy"

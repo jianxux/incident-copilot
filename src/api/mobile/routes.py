@@ -5,7 +5,7 @@ import time
 from datetime import datetime
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 
 from .models import (
     BiometricAuthRequest,
@@ -33,7 +33,7 @@ from .models import (
     TokenRefreshRequest,
     TokenRefreshResponse,
 )
-from .push import PushPayload, get_push_service
+from .push import get_push_service
 
 router = APIRouter(prefix="/mobile/v1", tags=["mobile"])
 

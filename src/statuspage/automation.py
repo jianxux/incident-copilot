@@ -1,7 +1,8 @@
 """Status Page Automation - Auto-update based on incident status."""
 
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from .models import (
     SEVERITY_TO_COMPONENT_STATUS,

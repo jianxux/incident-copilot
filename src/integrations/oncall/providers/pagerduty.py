@@ -1,9 +1,6 @@
 """PagerDuty on-call schedule provider."""
 
-import asyncio
 from datetime import datetime, timedelta
-from typing import Optional
-from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -14,8 +11,6 @@ from ..models import (
     OnCallUser,
     OverrideStatus,
     ProviderType,
-    Rotation,
-    RotationType,
     ScheduleSyncResult,
 )
 
@@ -28,7 +23,7 @@ class PagerDutyProvider:
     def __init__(self, api_key: str, timeout: float = 30.0):
         self.api_key = api_key
         self.timeout = timeout
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     @property
     def headers(self) -> dict:
@@ -179,7 +174,7 @@ class PagerDutyProvider:
 
         resp = await client.post(f"/schedules/{schedule_id}/overrides", json=payload)
         resp.raise_for_status()
-        data = resp.json()
+        resp.json()
 
         override.status = OverrideStatus.ACTIVE
         return override

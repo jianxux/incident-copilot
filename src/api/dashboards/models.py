@@ -1,14 +1,14 @@
 """Dashboard and Widget models for incident-copilot."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
-class WidgetType(str, Enum):
+class WidgetType(StrEnum):
     COUNTER = "counter"
     CHART = "chart"
     LIST = "list"
@@ -16,7 +16,7 @@ class WidgetType(str, Enum):
     HEATMAP = "heatmap"
 
 
-class ChartType(str, Enum):
+class ChartType(StrEnum):
     LINE = "line"
     BAR = "bar"
     PIE = "pie"
@@ -24,7 +24,7 @@ class ChartType(str, Enum):
     DONUT = "donut"
 
 
-class AggregationType(str, Enum):
+class AggregationType(StrEnum):
     COUNT = "count"
     SUM = "sum"
     AVG = "avg"
@@ -34,14 +34,14 @@ class AggregationType(str, Enum):
     P99 = "p99"
 
 
-class ShareScope(str, Enum):
+class ShareScope(StrEnum):
     PRIVATE = "private"
     TEAM = "team"
     ORGANIZATION = "organization"
     PUBLIC = "public"
 
 
-class DateRangePreset(str, Enum):
+class DateRangePreset(StrEnum):
     LAST_15M = "15m"
     LAST_1H = "1h"
     LAST_6H = "6h"

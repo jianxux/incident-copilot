@@ -3,7 +3,6 @@ GitLab Collector - Collect deployments and MRs from GitLab.
 """
 
 from datetime import datetime
-from typing import Optional
 
 import httpx
 
@@ -25,15 +24,15 @@ class GitLabCollector:
     def __init__(
         self,
         token: str,
-        group: Optional[str] = None,
-        projects: Optional[list[str]] = None,
+        group: str | None = None,
+        projects: list[str] | None = None,
         base_url: str = "https://gitlab.com/api/v4",
     ):
         self.token = token
         self.group = group
         self.projects = projects or []
         self.base_url = base_url
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -50,7 +49,7 @@ class GitLabCollector:
             self._client = None
 
     async def collect_changes(
-        self, since: datetime, until: Optional[datetime] = None
+        self, since: datetime, until: datetime | None = None
     ) -> list[ChangeEvent]:
         """Collect deployments and merged MRs from GitLab."""
         changes: list[ChangeEvent] = []
@@ -95,7 +94,7 @@ class GitLabCollector:
         return projects
 
     async def _get_deployments(
-        self, project_id: str, since: datetime, until: Optional[datetime]
+        self, project_id: str, since: datetime, until: datetime | None
     ) -> list[Deployment]:
         """Get deployments for a project."""
         client = await self._get_client()
@@ -156,7 +155,7 @@ class GitLabCollector:
         return deployments
 
     async def _get_merged_mrs(
-        self, project_id: str, since: datetime, until: Optional[datetime]
+        self, project_id: str, since: datetime, until: datetime | None
     ) -> list[ChangeEvent]:
         """Get merged MRs as change events."""
         client = await self._get_client()
@@ -228,7 +227,7 @@ class GitLabCollector:
 
         return changes
 
-    async def get_deployment(self, deployment_id: str) -> Optional[Deployment]:
+    async def get_deployment(self, deployment_id: str) -> Deployment | None:
         """Get a specific deployment by ID."""
         if not deployment_id.startswith("gl-deploy-"):
             return None

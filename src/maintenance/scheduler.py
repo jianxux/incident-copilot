@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Optional
 from uuid import UUID
 
 from .models import MaintenanceSchedule, MaintenanceStatus, MaintenanceWindow, ScopeType
@@ -30,7 +29,7 @@ class MaintenanceScheduler:
     def get_next_occurrences(
         self,
         schedule: MaintenanceSchedule,
-        from_time: Optional[datetime] = None,
+        from_time: datetime | None = None,
         count: int = 10,
     ) -> list[RecurrenceInstance]:
         if not schedule.is_recurring or not schedule.rrule:
@@ -84,7 +83,7 @@ class MaintenanceScheduler:
 
     def get_occurrence_at(
         self, schedule: MaintenanceSchedule, target: datetime
-    ) -> Optional[RecurrenceInstance]:
+    ) -> RecurrenceInstance | None:
         if not schedule.is_recurring:
             if schedule.start_time <= target <= schedule.end_time:
                 return RecurrenceInstance(
@@ -99,12 +98,14 @@ class MaintenanceScheduler:
         return None
 
     def generate_ical_event(self, window: MaintenanceWindow) -> str:
-        esc = lambda t: (
-            t.replace("\\", "\\\\")
-            .replace("\n", "\\n")
-            .replace(",", "\\,")
-            .replace(";", "\\;")
-        )
+        def esc(t):
+            return (
+                t.replace("\\", "\\\\")
+                .replace("\n", "\\n")
+                .replace(",", "\\,")
+                .replace(";", "\\;")
+            )
+
         lines = [
             "BEGIN:VEVENT",
             f"UID:{window.id}@maintenance",
@@ -157,9 +158,9 @@ class MaintenanceScheduler:
     def next_maintenance_for(
         self,
         windows: list[MaintenanceWindow],
-        scope_type: Optional[str] = None,
-        identifier: Optional[str] = None,
-    ) -> Optional[tuple[MaintenanceWindow, datetime]]:
+        scope_type: str | None = None,
+        identifier: str | None = None,
+    ) -> tuple[MaintenanceWindow, datetime] | None:
         now, result = datetime.utcnow(), None
         for w in windows:
             if w.status in (MaintenanceStatus.CANCELLED, MaintenanceStatus.COMPLETED):

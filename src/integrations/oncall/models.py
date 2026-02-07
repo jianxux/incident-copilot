@@ -1,14 +1,13 @@
 """On-Call Scheduling Models - Pydantic v2 models for schedules, shifts, and rotations."""
 
 from datetime import datetime, timedelta
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field, computed_field
 
 
-class RotationType(str, Enum):
+class RotationType(StrEnum):
     """Rotation pattern types."""
 
     DAILY = "daily"
@@ -17,7 +16,7 @@ class RotationType(str, Enum):
     CUSTOM = "custom"
 
 
-class ProviderType(str, Enum):
+class ProviderType(StrEnum):
     """Supported on-call providers."""
 
     PAGERDUTY = "pagerduty"
@@ -25,7 +24,7 @@ class ProviderType(str, Enum):
     MANUAL = "manual"
 
 
-class OverrideStatus(str, Enum):
+class OverrideStatus(StrEnum):
     """Override request status."""
 
     PENDING = "pending"
@@ -40,10 +39,10 @@ class OnCallUser(BaseModel):
     id: str
     name: str
     email: str
-    phone: Optional[str] = None
-    slack_id: Optional[str] = None
+    phone: str | None = None
+    slack_id: str | None = None
     timezone: str = "UTC"
-    avatar_url: Optional[str] = None
+    avatar_url: str | None = None
 
     def local_time(self) -> datetime:
         """Get current time in user's timezone."""
@@ -60,7 +59,7 @@ class OnCallShift(BaseModel):
     end_time: datetime
     timezone: str = "UTC"
     is_override: bool = False
-    override_id: Optional[str] = None
+    override_id: str | None = None
 
     @computed_field
     @property
@@ -105,7 +104,7 @@ class Rotation(BaseModel):
     type: RotationType
     participants: list[OnCallUser]
     handoff_time: str = "09:00"  # HH:MM format
-    handoff_day: Optional[int] = None  # 0=Monday for weekly
+    handoff_day: int | None = None  # 0=Monday for weekly
     timezone: str = "UTC"
     start_date: datetime
     layer: int = 1  # For multi-layer schedules
@@ -166,19 +165,19 @@ class OnCallSchedule(BaseModel):
 
     id: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     team_id: str
     provider: ProviderType
-    provider_schedule_id: Optional[str] = None
+    provider_schedule_id: str | None = None
     timezone: str = "UTC"
     rotations: list[Rotation] = Field(default_factory=list)
-    escalation_policy_id: Optional[str] = None
+    escalation_policy_id: str | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     sync_enabled: bool = True
-    last_synced: Optional[datetime] = None
+    last_synced: datetime | None = None
 
-    def get_current_oncall(self) -> Optional[OnCallUser]:
+    def get_current_oncall(self) -> OnCallUser | None:
         """Get the currently on-call user from primary rotation."""
         if not self.rotations:
             return None
@@ -198,12 +197,12 @@ class OnCallOverride(BaseModel):
     override_user: OnCallUser
     start_time: datetime
     end_time: datetime
-    reason: Optional[str] = None
+    reason: str | None = None
     status: OverrideStatus = OverrideStatus.PENDING
     created_by: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    approved_by: Optional[str] = None
-    approved_at: Optional[datetime] = None
+    approved_by: str | None = None
+    approved_at: datetime | None = None
     notification_sent: bool = False
 
     @computed_field
@@ -232,9 +231,9 @@ class HandoffNotification(BaseModel):
     outgoing_user: OnCallUser
     incoming_user: OnCallUser
     handoff_time: datetime
-    message: Optional[str] = None
-    sent_at: Optional[datetime] = None
-    acknowledged_at: Optional[datetime] = None
+    message: str | None = None
+    sent_at: datetime | None = None
+    acknowledged_at: datetime | None = None
 
 
 class OnCallHistoryEntry(BaseModel):
@@ -247,7 +246,7 @@ class OnCallHistoryEntry(BaseModel):
     end_time: datetime
     was_override: bool = False
     incidents_handled: int = 0
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class ScheduleSyncResult(BaseModel):

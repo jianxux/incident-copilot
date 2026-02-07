@@ -117,7 +117,7 @@ async def create_dependency(
     result = await service.create_dependency(request)
     if not result:
         raise HTTPException(
-            400, f"Could not create dependency: ensure both services exist"
+            400, "Could not create dependency: ensure both services exist"
         )
     return result
 

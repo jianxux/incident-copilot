@@ -5,7 +5,6 @@ FastAPI WebSocket routes for real-time incident updates.
 """
 
 import logging
-from typing import Optional
 
 from fastapi import (
     APIRouter,
@@ -19,8 +18,8 @@ from fastapi import (
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .events import BaseEvent
-from .handlers import MessageHandler, create_handler
-from .manager import ConnectionManager, manager
+from .handlers import create_handler
+from .manager import manager
 from .models import MessageType, RoomType, WebSocketMessage
 
 logger = logging.getLogger(__name__)
@@ -57,7 +56,7 @@ async def validate_token(token: str) -> tuple[str, str]:
 @router.websocket("/connect")
 async def websocket_connect(
     websocket: WebSocket,
-    token: Optional[str] = Query(None),
+    token: str | None = Query(None),
 ):
     """
     Main WebSocket endpoint for real-time updates.
@@ -126,7 +125,7 @@ async def websocket_connect(
 async def websocket_incident(
     websocket: WebSocket,
     incident_id: str,
-    token: Optional[str] = Query(None),
+    token: str | None = Query(None),
 ):
     """
     Convenience endpoint that auto-subscribes to an incident room.

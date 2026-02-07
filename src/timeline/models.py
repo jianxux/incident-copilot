@@ -1,14 +1,14 @@
 """Timeline models using Pydantic v2."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class EventType(str, Enum):
+class EventType(StrEnum):
     """Types of timeline events."""
 
     STATUS_CHANGE = "status_change"
@@ -28,7 +28,7 @@ class EventType(str, Enum):
     MANUAL = "manual"
 
 
-class EventSource(str, Enum):
+class EventSource(StrEnum):
     """Sources of timeline events."""
 
     PAGERDUTY = "pagerduty"
@@ -43,7 +43,7 @@ class EventSource(str, Enum):
     SYSTEM = "system"
 
 
-class EventSeverity(str, Enum):
+class EventSeverity(StrEnum):
     """Event severity levels."""
 
     INFO = "info"

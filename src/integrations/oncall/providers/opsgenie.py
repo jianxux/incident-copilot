@@ -1,7 +1,6 @@
 """Opsgenie on-call schedule provider."""
 
 from datetime import datetime, timedelta
-from typing import Optional
 
 import httpx
 
@@ -26,7 +25,7 @@ class OpsgenieProvider:
     def __init__(self, api_key: str, timeout: float = 30.0):
         self.api_key = api_key
         self.timeout = timeout
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     @property
     def headers(self) -> dict:

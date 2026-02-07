@@ -7,7 +7,6 @@ import time
 from abc import ABC, abstractmethod
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
-from typing import Protocol
 
 from .models import (
     FacetValue,

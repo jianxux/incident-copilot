@@ -7,10 +7,10 @@ Manages WebSocket connections, rooms, subscriptions, and broadcasting.
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket
 
 from .events import BaseEvent, UserJoined, UserLeft
 from .models import (
@@ -255,7 +255,7 @@ class ConnectionManager:
         self,
         room_key: str,
         event: BaseEvent,
-        exclude_connection: Optional[str] = None,
+        exclude_connection: str | None = None,
     ) -> int:
         """Broadcast an event to a specific room."""
         async with self._lock:
@@ -333,11 +333,11 @@ class ConnectionManager:
         """Get all users present in a room."""
         return list(self._presence.get(room_key, {}).values())
 
-    def get_connection_info(self, connection_id: str) -> Optional[ConnectionInfo]:
+    def get_connection_info(self, connection_id: str) -> ConnectionInfo | None:
         """Get connection info."""
         return self._connection_info.get(connection_id)
 
-    def get_room(self, room_key: str) -> Optional[Room]:
+    def get_room(self, room_key: str) -> Room | None:
         """Get room info."""
         return self._rooms.get(room_key)
 

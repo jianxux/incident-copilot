@@ -1,7 +1,6 @@
 """Tests for SLA tracking module."""
 
 from datetime import datetime, time, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient

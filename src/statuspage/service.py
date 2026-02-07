@@ -5,11 +5,8 @@ from datetime import datetime
 from typing import Any
 
 from .models import (
-    SEVERITY_TO_COMPONENT_STATUS,
-    SEVERITY_TO_IMPACT,
     Component,
     ComponentStatus,
-    IncidentStatus,
     MaintenanceWindow,
     StatusPageConfig,
     StatusPageIncident,

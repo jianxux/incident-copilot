@@ -3,13 +3,12 @@ Change Tracking Models - Track deployments, config changes, and feature flags.
 """
 
 from datetime import datetime
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class ChangeType(str, Enum):
+class ChangeType(StrEnum):
     """Types of changes that can be tracked."""
 
     DEPLOYMENT = "deployment"
@@ -20,7 +19,7 @@ class ChangeType(str, Enum):
     ROLLBACK = "rollback"
 
 
-class ChangeStatus(str, Enum):
+class ChangeStatus(StrEnum):
     """Status of a change event."""
 
     PENDING = "pending"
@@ -30,7 +29,7 @@ class ChangeStatus(str, Enum):
     ROLLED_BACK = "rolled_back"
 
 
-class ChangeSource(str, Enum):
+class ChangeSource(StrEnum):
     """Source systems for change events."""
 
     GITHUB = "github"
@@ -42,7 +41,7 @@ class ChangeSource(str, Enum):
     MANUAL = "manual"
 
 
-class RiskLevel(str, Enum):
+class RiskLevel(StrEnum):
     """Risk level assessment for changes."""
 
     LOW = "low"
@@ -60,19 +59,19 @@ class ChangeEvent(BaseModel):
     status: ChangeStatus = ChangeStatus.COMPLETED
 
     title: str = Field(..., description="Short description of the change")
-    description: Optional[str] = Field(None, description="Detailed description")
+    description: str | None = Field(None, description="Detailed description")
 
     # Timing
     started_at: datetime
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
 
     # Attribution
     author: str = Field(..., description="Who made the change")
-    author_email: Optional[str] = None
+    author_email: str | None = None
 
     # Context
     environment: str = Field(default="production")
-    service: Optional[str] = Field(None, description="Affected service")
+    service: str | None = Field(None, description="Affected service")
     services: list[str] = Field(
         default_factory=list, description="All affected services"
     )
@@ -82,17 +81,15 @@ class ChangeEvent(BaseModel):
     impact_score: float = Field(default=0.5, ge=0.0, le=1.0)
 
     # Linking
-    commit_sha: Optional[str] = None
-    pr_number: Optional[int] = None
-    ticket_id: Optional[str] = None
-    external_url: Optional[str] = None
+    commit_sha: str | None = None
+    pr_number: int | None = None
+    ticket_id: str | None = None
+    external_url: str | None = None
 
     # Rollback tracking
     is_rollback: bool = False
-    rollback_of: Optional[str] = Field(
-        None, description="ID of change being rolled back"
-    )
-    rolled_back_by: Optional[str] = Field(None, description="ID of rollback change")
+    rollback_of: str | None = Field(None, description="ID of change being rolled back")
+    rolled_back_by: str | None = Field(None, description="ID of rollback change")
 
     # Metadata
     tags: list[str] = Field(default_factory=list)
@@ -106,20 +103,20 @@ class Deployment(ChangeEvent):
 
     # Deployment details
     version: str = Field(..., description="Version being deployed")
-    previous_version: Optional[str] = None
+    previous_version: str | None = None
 
     # Container/artifact info
-    image: Optional[str] = Field(None, description="Container image")
-    artifact_url: Optional[str] = None
+    image: str | None = Field(None, description="Container image")
+    artifact_url: str | None = None
 
     # Deployment strategy
     strategy: str = Field(default="rolling", description="rolling, blue-green, canary")
-    canary_percentage: Optional[int] = Field(None, ge=0, le=100)
+    canary_percentage: int | None = Field(None, ge=0, le=100)
 
     # Cluster info
-    cluster: Optional[str] = None
-    namespace: Optional[str] = None
-    replicas: Optional[int] = None
+    cluster: str | None = None
+    namespace: str | None = None
+    replicas: int | None = None
 
     # Changes included
     commits: list[str] = Field(default_factory=list)
@@ -159,12 +156,10 @@ class ConfigChange(ChangeEvent):
 
     # Config details
     config_key: str = Field(..., description="Configuration key changed")
-    old_value: Optional[str] = Field(
+    old_value: str | None = Field(
         None, description="Previous value (redacted if sensitive)"
     )
-    new_value: Optional[str] = Field(
-        None, description="New value (redacted if sensitive)"
-    )
+    new_value: str | None = Field(None, description="New value (redacted if sensitive)")
     is_sensitive: bool = Field(default=False)
 
     # Scope
@@ -183,19 +178,19 @@ class FeatureFlag(ChangeEvent):
 
     # Flag details
     flag_key: str = Field(..., description="Feature flag key")
-    flag_name: Optional[str] = None
+    flag_name: str | None = None
 
     # State change
-    previous_state: Optional[bool] = None
+    previous_state: bool | None = None
     new_state: bool
 
     # Targeting
     targeting_rules: list[dict] = Field(default_factory=list)
-    percentage_rollout: Optional[int] = Field(None, ge=0, le=100)
+    percentage_rollout: int | None = Field(None, ge=0, le=100)
 
     # Affected users
-    affected_users: Optional[int] = None
-    affected_percentage: Optional[float] = None
+    affected_users: int | None = None
+    affected_percentage: float | None = None
 
     # Prerequisites
     prerequisites: list[str] = Field(default_factory=list)
@@ -226,7 +221,7 @@ class ChangeFreeze(BaseModel):
     created_by: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    def is_in_effect(self, at_time: Optional[datetime] = None) -> bool:
+    def is_in_effect(self, at_time: datetime | None = None) -> bool:
         """Check if freeze is in effect at given time."""
         check_time = at_time or datetime.utcnow()
         return self.is_active and self.start_time <= check_time <= self.end_time
@@ -262,7 +257,7 @@ class ChangeCorrelation(BaseModel):
     window_end: datetime
 
     # Analysis
-    most_likely_cause: Optional[str] = Field(
+    most_likely_cause: str | None = Field(
         None, description="ID of most likely causal change"
     )
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)

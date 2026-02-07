@@ -1,13 +1,12 @@
 """Timeline export for postmortems."""
 
 import json
-from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
-from .models import TimelineEntry, TimelineExport, TimelineGap
+from .models import TimelineExport
 
 
-class ExportFormat(str, Enum):
+class ExportFormat(StrEnum):
     """Supported export formats."""
 
     MARKDOWN = "markdown"
@@ -236,7 +235,7 @@ class TimelineExporter:
             html_parts.extend(
                 [
                     f"<div class='event{milestone_class}' style='border-left-color: {color}'>",
-                    f"<div class='event-header'>",
+                    "<div class='event-header'>",
                     f"<span class='icon'>{entry.icon or '•'}</span>",
                     f"<span class='time'>{event.timestamp.strftime('%H:%M:%S')}</span>",
                     f"<span class='relative'>({entry.relative_time})</span>",

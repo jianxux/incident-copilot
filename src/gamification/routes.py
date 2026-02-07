@@ -5,10 +5,9 @@ Gamification API Routes
 FastAPI routes for achievements, badges, points, and leaderboards.
 """
 
-from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from .models import (
@@ -45,7 +44,7 @@ class AwardBadgeRequest(BaseModel):
 
     user_id: UUID
     badge_id: UUID
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class CheckAchievementsRequest(BaseModel):
@@ -84,8 +83,8 @@ class LeaderboardResponse(BaseModel):
     """Leaderboard response with additional metadata."""
 
     leaderboard: Leaderboard
-    user_rank: Optional[int] = None
-    user_entry: Optional[dict] = None
+    user_rank: int | None = None
+    user_entry: dict | None = None
 
 
 # ==================== Points Routes ====================
@@ -139,7 +138,7 @@ async def award_points(request: AwardPointsRequest) -> PointTransaction:
 
 @router.get("/achievements", response_model=list[Achievement])
 async def list_achievements(
-    category: Optional[AchievementCategory] = None,
+    category: AchievementCategory | None = None,
     include_hidden: bool = False,
 ) -> list[Achievement]:
     """
@@ -193,7 +192,7 @@ async def check_achievements(request: CheckAchievementsRequest) -> list[Achievem
 
 @router.get("/badges", response_model=list[Badge])
 async def list_badges(
-    category: Optional[AchievementCategory] = None,
+    category: AchievementCategory | None = None,
     include_hidden: bool = False,
 ) -> list[Badge]:
     """
@@ -250,9 +249,9 @@ async def award_badge(request: AwardBadgeRequest) -> UserBadge:
 async def get_leaderboard(
     metric: LeaderboardMetric = LeaderboardMetric.POINTS_EARNED,
     period: LeaderboardPeriod = LeaderboardPeriod.WEEKLY,
-    team_id: Optional[UUID] = None,
+    team_id: UUID | None = None,
     limit: int = Query(10, ge=1, le=100),
-    user_id: Optional[UUID] = None,
+    user_id: UUID | None = None,
 ) -> LeaderboardResponse:
     """
     Get leaderboard rankings.

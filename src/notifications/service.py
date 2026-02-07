@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
-from .channels import ChannelError, ChannelManager, create_channel
+from .channels import ChannelError, create_channel
 from .models import (
     ROLE_DEFAULTS,
     ChannelType,
@@ -89,7 +89,7 @@ class NotificationService:
         severity: Severity,
     ) -> tuple[bool, list[ChannelType], DigestFrequency]:
         """Apply role-based default notification behavior."""
-        defaults = ROLE_DEFAULTS.get(role, {})
+        ROLE_DEFAULTS.get(role, {})
 
         # Check severity thresholds based on role
         severity_order = {

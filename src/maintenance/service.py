@@ -2,7 +2,6 @@
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 from uuid import UUID
 
 from .models import (
@@ -77,12 +76,12 @@ class MaintenanceService:
             )
         return window
 
-    async def get_window(self, window_id: UUID) -> Optional[MaintenanceWindow]:
+    async def get_window(self, window_id: UUID) -> MaintenanceWindow | None:
         return self._windows.get(window_id)
 
     async def update_window(
         self, window_id: UUID, request: MaintenanceWindowUpdate
-    ) -> Optional[MaintenanceWindow]:
+    ) -> MaintenanceWindow | None:
         window = self._windows.get(window_id)
         if not window:
             return None
@@ -107,10 +106,10 @@ class MaintenanceService:
 
     async def list_windows(
         self,
-        status: Optional[MaintenanceStatus] = None,
-        scope_type: Optional[ScopeType] = None,
-        from_time: Optional[datetime] = None,
-        to_time: Optional[datetime] = None,
+        status: MaintenanceStatus | None = None,
+        scope_type: ScopeType | None = None,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
         limit: int = 50,
     ) -> list[MaintenanceWindow]:
         windows = list(self._windows.values())
@@ -125,8 +124,8 @@ class MaintenanceService:
         return sorted(windows, key=lambda w: w.schedule.start_time)[:limit]
 
     async def is_in_maintenance(
-        self, scope_type: ScopeType, identifier: str, at_time: Optional[datetime] = None
-    ) -> tuple[bool, Optional[MaintenanceWindow]]:
+        self, scope_type: ScopeType, identifier: str, at_time: datetime | None = None
+    ) -> tuple[bool, MaintenanceWindow | None]:
         now = at_time or datetime.utcnow()
         for window in self._windows.values():
             if window.is_active(now) and window.scope.matches(scope_type, identifier):
@@ -134,7 +133,7 @@ class MaintenanceService:
         return False, None
 
     async def get_active_windows(
-        self, at_time: Optional[datetime] = None
+        self, at_time: datetime | None = None
     ) -> list[MaintenanceWindow]:
         now = at_time or datetime.utcnow()
         return [w for w in self._windows.values() if w.is_active(now)]
@@ -152,15 +151,15 @@ class MaintenanceService:
         )
 
     async def should_suppress_alert(
-        self, scope_type: ScopeType, identifier: str, at_time: Optional[datetime] = None
-    ) -> tuple[bool, Optional[str]]:
+        self, scope_type: ScopeType, identifier: str, at_time: datetime | None = None
+    ) -> tuple[bool, str | None]:
         in_maint, window = await self.is_in_maintenance(scope_type, identifier, at_time)
         if in_maint and window and window.scope.suppress_alerts:
             return True, f"Suppressed: {window.title}"
         return False, None
 
     async def suppress_alerts(
-        self, alerts: list[dict], at_time: Optional[datetime] = None
+        self, alerts: list[dict], at_time: datetime | None = None
     ) -> list[dict]:
         for alert in alerts:
             suppress, reason = await self.should_suppress_alert(
@@ -173,7 +172,7 @@ class MaintenanceService:
 
     async def annotate_incident(
         self, incident_id: str, scope_type: ScopeType, identifier: str
-    ) -> Optional[str]:
+    ) -> str | None:
         in_maint, window = await self.is_in_maintenance(scope_type, identifier)
         if in_maint and window:
             annotation = f"[MAINTENANCE] During: {window.title}"
@@ -185,7 +184,7 @@ class MaintenanceService:
         return None
 
     async def approve(
-        self, window_id: UUID, approver_id: str, comment: Optional[str] = None
+        self, window_id: UUID, approver_id: str, comment: str | None = None
     ) -> MaintenanceWindow:
         window = self._windows.get(window_id)
         if not window or window.status != MaintenanceStatus.PENDING_APPROVAL:
@@ -330,7 +329,7 @@ class MaintenanceService:
         return processed
 
 
-_service: Optional[MaintenanceService] = None
+_service: MaintenanceService | None = None
 
 
 def get_maintenance_service() -> MaintenanceService:

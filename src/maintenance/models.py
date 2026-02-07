@@ -1,21 +1,20 @@
 """Maintenance Windows - Pydantic Models"""
 
 from datetime import datetime, timedelta
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
-class ScopeType(str, Enum):
+class ScopeType(StrEnum):
     SERVICE = "service"
     TEAM = "team"
     INFRASTRUCTURE = "infrastructure"
     GLOBAL = "global"
 
 
-class MaintenanceStatus(str, Enum):
+class MaintenanceStatus(StrEnum):
     DRAFT = "draft"
     PENDING_APPROVAL = "pending_approval"
     SCHEDULED = "scheduled"
@@ -25,7 +24,7 @@ class MaintenanceStatus(str, Enum):
     EXTENDED = "extended"
 
 
-class NotificationType(str, Enum):
+class NotificationType(StrEnum):
     SCHEDULED = "scheduled"
     REMINDER = "reminder"
     STARTED = "started"
@@ -58,12 +57,12 @@ class MaintenanceSchedule(BaseModel):
     end_time: datetime
     timezone: str = "UTC"
     is_recurring: bool = False
-    rrule: Optional[str] = None
-    recurrence_end: Optional[datetime] = None
+    rrule: str | None = None
+    recurrence_end: datetime | None = None
 
     @field_validator("rrule")
     @classmethod
-    def validate_rrule(cls, v: Optional[str]) -> Optional[str]:
+    def validate_rrule(cls, v: str | None) -> str | None:
         if v and not any(v.upper().startswith(p) for p in ("FREQ=", "RRULE:")):
             raise ValueError("RRULE must start with FREQ= or RRULE:")
         return v.upper().replace("RRULE:", "") if v else None
@@ -85,7 +84,7 @@ class ApprovalRecord(BaseModel):
     approver_id: str
     approved_at: datetime = Field(default_factory=datetime.utcnow)
     approved: bool
-    comment: Optional[str] = None
+    comment: str | None = None
 
 
 class MaintenanceWindow(BaseModel):
@@ -93,7 +92,7 @@ class MaintenanceWindow(BaseModel):
 
     id: UUID = Field(default_factory=uuid4)
     title: str = Field(..., min_length=1, max_length=200)
-    description: Optional[str] = None
+    description: str | None = None
     scope: MaintenanceScope
     schedule: MaintenanceSchedule
     status: MaintenanceStatus = MaintenanceStatus.DRAFT
@@ -105,9 +104,9 @@ class MaintenanceWindow(BaseModel):
     required_approvers: list[str] = Field(default_factory=list)
     stakeholders: list[str] = Field(default_factory=list)
     notification_minutes_before: list[int] = Field(default_factory=lambda: [60, 15])
-    original_end_time: Optional[datetime] = None
+    original_end_time: datetime | None = None
     extension_count: int = 0
-    extension_reason: Optional[str] = None
+    extension_reason: str | None = None
     related_incident_ids: list[str] = Field(default_factory=list)
     annotations: list[str] = Field(default_factory=list)
 
@@ -121,7 +120,7 @@ class MaintenanceWindow(BaseModel):
             else all(a in approved_by for a in self.required_approvers)
         )
 
-    def is_active(self, at_time: Optional[datetime] = None) -> bool:
+    def is_active(self, at_time: datetime | None = None) -> bool:
         now = at_time or datetime.utcnow()
         return (
             self.status in (MaintenanceStatus.IN_PROGRESS, MaintenanceStatus.EXTENDED)
@@ -131,7 +130,7 @@ class MaintenanceWindow(BaseModel):
 
 class MaintenanceWindowCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
-    description: Optional[str] = None
+    description: str | None = None
     scope: MaintenanceScope
     schedule: MaintenanceSchedule
     requires_approval: bool = True
@@ -141,11 +140,11 @@ class MaintenanceWindowCreate(BaseModel):
 
 
 class MaintenanceWindowUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    scope: Optional[MaintenanceScope] = None
-    schedule: Optional[MaintenanceSchedule] = None
-    stakeholders: Optional[list[str]] = None
+    title: str | None = None
+    description: str | None = None
+    scope: MaintenanceScope | None = None
+    schedule: MaintenanceSchedule | None = None
+    stakeholders: list[str] | None = None
 
 
 class ExtendMaintenanceRequest(BaseModel):
@@ -159,7 +158,7 @@ class MaintenanceNotification(BaseModel):
     notification_type: NotificationType
     recipients: list[str]
     message: str
-    sent_at: Optional[datetime] = None
+    sent_at: datetime | None = None
     scheduled_for: datetime
 
 
