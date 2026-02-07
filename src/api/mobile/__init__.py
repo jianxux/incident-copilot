@@ -1,111 +1,35 @@
-"""
-Mobile API module for incident-copilot.
-
-Provides lightweight, bandwidth-optimized endpoints for mobile clients
-with push notification support and offline-first patterns.
-"""
+"""Mobile API module for incident-copilot."""
 
 from .models import (
-    # Enums
-    Severity,
-    IncidentStatus,
-    Platform,
-    QuickActionType,
-    # Incident models
-    IncidentMinimal,
-    IncidentCompact,
-    IncidentFull,
-    IncidentListResponse,
-    # Pagination
-    PaginationMeta,
-    # Actions
-    QuickActionRequest,
-    QuickActionResponse,
-    BulkActionRequest,
-    BulkActionResponse,
-    # Dashboard
-    DashboardSummary,
-    SeverityCount,
-    # Auth
-    TokenRefreshRequest,
-    TokenRefreshResponse,
-    BiometricAuthRequest,
-    # Push
-    DeviceRegistration,
-    DeviceRegistrationResponse,
-    NotificationPreferences,
-    # Comments
-    CommentCreate,
-    CommentMinimal,
-    # Sync
-    SyncCheckRequest,
-    SyncCheckResponse,
-    # Errors
-    MobileError,
+    Severity, IncidentStatus, Platform, QuickActionType,
+    IncidentMinimal, IncidentCompact, IncidentFull, IncidentListResponse, PaginationMeta,
+    QuickActionRequest, QuickActionResponse, BulkActionRequest, BulkActionResponse,
+    DashboardSummary, SeverityCount,
+    TokenRefreshRequest, TokenRefreshResponse, BiometricAuthRequest,
+    DeviceRegistration, DeviceRegistrationResponse, NotificationPreferences,
+    CommentCreate, CommentMinimal,
+    SyncCheckRequest, SyncCheckResponse, MobileError,
 )
-
-from .push import (
-    PushConfig,
-    PushPayload,
-    PushResult,
-    PushStatus,
-    PushService,
-    DeviceTokenStore,
-    FCMProvider,
-    APNSProvider,
-    get_push_service,
-)
-
+from .push import PushConfig, PushPayload, PushResult, PushStatus, PushService, DeviceTokenStore, get_push_service
 from .routes import router
 
 __all__ = [
-    # Router
     "router",
     # Enums
-    "Severity",
-    "IncidentStatus",
-    "Platform",
-    "QuickActionType",
-    # Incident models
-    "IncidentMinimal",
-    "IncidentCompact",
-    "IncidentFull",
-    "IncidentListResponse",
-    # Pagination
-    "PaginationMeta",
+    "Severity", "IncidentStatus", "Platform", "QuickActionType",
+    # Incidents
+    "IncidentMinimal", "IncidentCompact", "IncidentFull", "IncidentListResponse", "PaginationMeta",
     # Actions
-    "QuickActionRequest",
-    "QuickActionResponse",
-    "BulkActionRequest",
-    "BulkActionResponse",
+    "QuickActionRequest", "QuickActionResponse", "BulkActionRequest", "BulkActionResponse",
     # Dashboard
-    "DashboardSummary",
-    "SeverityCount",
+    "DashboardSummary", "SeverityCount",
     # Auth
-    "TokenRefreshRequest",
-    "TokenRefreshResponse",
-    "BiometricAuthRequest",
+    "TokenRefreshRequest", "TokenRefreshResponse", "BiometricAuthRequest",
     # Push
-    "DeviceRegistration",
-    "DeviceRegistrationResponse",
-    "NotificationPreferences",
-    "PushConfig",
-    "PushPayload",
-    "PushResult",
-    "PushStatus",
-    "PushService",
-    "DeviceTokenStore",
-    "FCMProvider",
-    "APNSProvider",
-    "get_push_service",
+    "DeviceRegistration", "DeviceRegistrationResponse", "NotificationPreferences",
+    "PushConfig", "PushPayload", "PushResult", "PushStatus", "PushService", "DeviceTokenStore", "get_push_service",
     # Comments
-    "CommentCreate",
-    "CommentMinimal",
+    "CommentCreate", "CommentMinimal",
     # Sync
-    "SyncCheckRequest",
-    "SyncCheckResponse",
-    # Errors
-    "MobileError",
+    "SyncCheckRequest", "SyncCheckResponse", "MobileError",
 ]
-
-__version__ = "1.0.0"
