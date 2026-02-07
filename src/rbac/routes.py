@@ -27,7 +27,6 @@ from .models import (
 )
 from .service import rbac_service
 
-
 router = APIRouter(prefix="/rbac", tags=["rbac"])
 
 

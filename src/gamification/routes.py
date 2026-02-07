@@ -26,7 +26,6 @@ from .models import (
 )
 from .service import gamification_service
 
-
 router = APIRouter(prefix="/gamification", tags=["gamification"])
 
 

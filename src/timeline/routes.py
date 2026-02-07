@@ -21,7 +21,6 @@ from .service import TimelineService, get_timeline_service
 from .collectors import CompositeCollector, create_default_collector
 from .export import TimelineExporter, ExportFormat
 
-
 router = APIRouter(prefix="/timeline", tags=["timeline"])
 
 

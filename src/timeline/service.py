@@ -15,7 +15,6 @@ from .models import (
     EventSeverity,
 )
 
-
 # Event type display properties
 EVENT_DISPLAY = {
     EventType.STATUS_CHANGE: {"icon": "🔄", "color": "#3498db", "milestone": True},
