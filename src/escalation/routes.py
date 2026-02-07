@@ -6,26 +6,26 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, Depends, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel
 
+from .engine import PolicyEngine, get_policy_engine
 from .models import (
+    CreatePolicyRequest,
+    EscalationHistoryEntry,
+    EscalationHistoryFilter,
     EscalationPolicy,
     EscalationState,
-    EscalationHistoryEntry,
     EscalationStatus,
-    Severity,
-    CreatePolicyRequest,
-    UpdatePolicyRequest,
-    TriggerEscalationRequest,
-    OverrideEscalationRequest,
-    EscalationHistoryFilter,
     OnCallAssignment,
+    OverrideEscalationRequest,
+    Severity,
     TeamRotation,
+    TriggerEscalationRequest,
+    UpdatePolicyRequest,
 )
-from .service import EscalationService, get_escalation_service
-from .engine import PolicyEngine, get_policy_engine
 from .scheduler import EscalationScheduler, get_scheduler
+from .service import EscalationService, get_escalation_service
 
 router = APIRouter(prefix="/escalation", tags=["escalation"])
 

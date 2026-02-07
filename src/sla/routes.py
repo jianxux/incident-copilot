@@ -12,8 +12,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from .models import (
-    BusinessHours,
     DEFAULT_SLA_TARGETS,
+    BusinessHours,
     SLABreach,
     SLAIncidentStatus,
     SLAMetrics,

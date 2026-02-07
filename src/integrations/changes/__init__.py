@@ -25,34 +25,31 @@ Usage:
     app.include_router(router)
 """
 
-from .models import (
-    ChangeType,
-    ChangeStatus,
-    ChangeSource,
-    RiskLevel,
-    ChangeEvent,
-    Deployment,
-    ConfigChange,
-    FeatureFlag,
-    ChangeFreeze,
-    ChangeCorrelation,
-    ChangeTimeline,
-)
-
-from .service import (
-    ChangeTrackingService,
-    ChangeCollector,
-    get_change_service,
-)
-
 from .collectors import (
+    ArgoCDCollector,
     GitHubCollector,
     GitLabCollector,
-    ArgoCDCollector,
     LaunchDarklyCollector,
 )
-
+from .models import (
+    ChangeCorrelation,
+    ChangeEvent,
+    ChangeFreeze,
+    ChangeSource,
+    ChangeStatus,
+    ChangeTimeline,
+    ChangeType,
+    ConfigChange,
+    Deployment,
+    FeatureFlag,
+    RiskLevel,
+)
 from .routes import router
+from .service import (
+    ChangeCollector,
+    ChangeTrackingService,
+    get_change_service,
+)
 
 __all__ = [
     # Enums

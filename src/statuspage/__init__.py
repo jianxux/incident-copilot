@@ -19,6 +19,8 @@ Example:
 
 from .automation import StatusPageAutomation, get_statuspage_automation
 from .models import (
+    SEVERITY_TO_COMPONENT_STATUS,
+    SEVERITY_TO_IMPACT,
     Component,
     ComponentStatus,
     ConfigCreateRequest,
@@ -26,8 +28,6 @@ from .models import (
     IncidentImpact,
     IncidentStatus,
     MaintenanceWindow,
-    SEVERITY_TO_COMPONENT_STATUS,
-    SEVERITY_TO_IMPACT,
     StatusPageConfig,
     StatusPageCredentials,
     StatusPageIncident,

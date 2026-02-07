@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from .engine import SearchEngine, InMemorySearchBackend
+from .engine import InMemorySearchBackend, SearchEngine
 from .indexer import IndexingService, WebhookIndexer
 from .models import (
     SavedSearch,

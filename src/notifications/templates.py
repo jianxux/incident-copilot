@@ -4,7 +4,7 @@ from datetime import datetime
 from string import Template
 from typing import Any
 
-from .models import NotificationType, Severity, ChannelType
+from .models import ChannelType, NotificationType, Severity
 
 
 class NotificationTemplate:

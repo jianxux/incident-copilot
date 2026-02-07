@@ -10,53 +10,44 @@ Multi-level escalation management for incident response with:
 - Full history tracking
 """
 
-from .models import (
-    # Enums
-    ActionType,
-    Severity,
-    EscalationStatus,
-    ConditionOperator,
-    # Core models
-    TimeWindow,
-    EscalationCondition,
-    EscalationAction,
-    EscalationLevel,
-    EscalationPolicy,
-    DeescalationRule,
-    # State and history
-    EscalationState,
-    EscalationHistoryEntry,
-    # On-call
-    OnCallAssignment,
-    TeamRotation,
-    # Request/Response
-    CreatePolicyRequest,
-    UpdatePolicyRequest,
-    TriggerEscalationRequest,
-    OverrideEscalationRequest,
-    EscalationHistoryFilter,
-)
-
-from .service import (
-    EscalationService,
-    get_escalation_service,
-)
-
 from .engine import (
-    PolicyEngine,
     ActionExecutor,
     ConditionEvaluator,
+    PolicyEngine,
     get_policy_engine,
 )
-
+from .models import (  # Enums; Core models; State and history; On-call; Request/Response
+    ActionType,
+    ConditionOperator,
+    CreatePolicyRequest,
+    DeescalationRule,
+    EscalationAction,
+    EscalationCondition,
+    EscalationHistoryEntry,
+    EscalationHistoryFilter,
+    EscalationLevel,
+    EscalationPolicy,
+    EscalationState,
+    EscalationStatus,
+    OnCallAssignment,
+    OverrideEscalationRequest,
+    Severity,
+    TeamRotation,
+    TimeWindow,
+    TriggerEscalationRequest,
+    UpdatePolicyRequest,
+)
+from .routes import router
 from .scheduler import (
     EscalationScheduler,
     get_scheduler,
     start_scheduler,
     stop_scheduler,
 )
-
-from .routes import router
+from .service import (
+    EscalationService,
+    get_escalation_service,
+)
 
 __all__ = [
     # Enums

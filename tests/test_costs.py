@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from src.main import app
 from src.costs.models import (
     CostCategory,
     CostEntry,
@@ -22,6 +21,7 @@ from src.costs.models import (
     SLAConfig,
     TeamCostAllocation,
 )
+from src.main import app
 
 
 @pytest.fixture

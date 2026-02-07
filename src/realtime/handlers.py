@@ -8,6 +8,7 @@ import json
 import logging
 from typing import Any, Callable, Coroutine, Optional
 
+from .manager import ConnectionManager
 from .models import (
     MessageType,
     PresenceStatus,
@@ -15,7 +16,6 @@ from .models import (
     SubscriptionRequest,
     WebSocketMessage,
 )
-from .manager import ConnectionManager
 
 logger = logging.getLogger(__name__)
 

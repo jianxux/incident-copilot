@@ -7,16 +7,16 @@ from typing import Any
 from uuid import UUID
 
 from .models import (
-    EscalationPolicy,
+    EscalationHistoryEntry,
     EscalationLevel,
+    EscalationPolicy,
     EscalationState,
     EscalationStatus,
-    EscalationHistoryEntry,
     OnCallAssignment,
-    TeamRotation,
-    Severity,
-    TriggerEscalationRequest,
     OverrideEscalationRequest,
+    Severity,
+    TeamRotation,
+    TriggerEscalationRequest,
 )
 
 

@@ -1,10 +1,11 @@
 """Maintenance Windows - Scheduler with RRULE support and iCal export"""
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID
-from dataclasses import dataclass
-from .models import MaintenanceWindow, MaintenanceSchedule, MaintenanceStatus, ScopeType
+
+from .models import MaintenanceSchedule, MaintenanceStatus, MaintenanceWindow, ScopeType
 
 
 @dataclass

@@ -1,19 +1,21 @@
 """FastAPI routes for performance analytics."""
 
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Query, HTTPException, Depends
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+
+from .benchmarks import DORA_BENCHMARKS, compare_to_industry, get_benchmark_context
 from .models import (
-    PerformancePeriod,
-    TeamMetrics,
     EngineerMetrics,
-    PeriodComparison,
     LeaderboardEntry,
+    PerformancePeriod,
     PerformanceReport,
+    PeriodComparison,
+    TeamMetrics,
 )
-from .service import PerformanceService
 from .reports import ReportGenerator
-from .benchmarks import get_benchmark_context, compare_to_industry, DORA_BENCHMARKS
+from .service import PerformanceService
 
 router = APIRouter(prefix="/performance", tags=["performance"])
 

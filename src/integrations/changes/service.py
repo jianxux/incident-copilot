@@ -3,22 +3,22 @@ Change Tracking Service - Core logic for tracking and correlating changes.
 """
 
 import asyncio
+from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Optional, Protocol
-from collections import defaultdict
 
 from .models import (
+    ChangeCorrelation,
     ChangeEvent,
-    ChangeType,
+    ChangeFreeze,
     ChangeSource,
     ChangeStatus,
-    RiskLevel,
-    Deployment,
-    ConfigChange,
-    FeatureFlag,
-    ChangeFreeze,
-    ChangeCorrelation,
     ChangeTimeline,
+    ChangeType,
+    ConfigChange,
+    Deployment,
+    FeatureFlag,
+    RiskLevel,
 )
 
 

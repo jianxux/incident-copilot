@@ -3,19 +3,21 @@
 from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID
-from fastapi import APIRouter, HTTPException, Query, Response, Depends
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
+
 from .models import (
+    ExtendMaintenanceRequest,
+    MaintenanceStatus,
     MaintenanceWindow,
     MaintenanceWindowCreate,
     MaintenanceWindowUpdate,
-    MaintenanceStatus,
-    ScopeType,
-    ExtendMaintenanceRequest,
     OverlapWarning,
+    ScopeType,
 )
-from .service import MaintenanceService, get_maintenance_service
 from .scheduler import MaintenanceScheduler
+from .service import MaintenanceService, get_maintenance_service
 
 router = APIRouter(prefix="/maintenance", tags=["maintenance"])
 

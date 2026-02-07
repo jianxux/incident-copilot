@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from src.main import app
 from src.notifications.models import (
+    ROLE_DEFAULTS,
     ChannelType,
     DigestFrequency,
     NotificationChannel,
@@ -16,7 +17,6 @@ from src.notifications.models import (
     NotificationRule,
     NotificationType,
     QuietHours,
-    ROLE_DEFAULTS,
     Severity,
     UserRole,
 )

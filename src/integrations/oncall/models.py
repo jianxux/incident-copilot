@@ -3,8 +3,9 @@
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, Field, computed_field
 from zoneinfo import ZoneInfo
+
+from pydantic import BaseModel, Field, computed_field
 
 
 class RotationType(str, Enum):

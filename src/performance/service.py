@@ -2,25 +2,26 @@
 
 from datetime import datetime
 from typing import Any, Protocol
-from .models import (
-    PerformancePeriod,
-    TeamMetrics,
-    EngineerMetrics,
-    PeriodComparison,
-    BurnoutRisk,
-    LeaderboardEntry,
-)
+
+from .benchmarks import calculate_overall_tier, classify_team, estimate_percentile
 from .calculators import (
-    calculate_mttr,
-    calculate_mtta,
-    count_incidents_by_severity,
-    calculate_workload_distribution,
-    calculate_burnout_risk,
-    calculate_oncall_burden,
     calculate_after_hours_incidents,
+    calculate_burnout_risk,
+    calculate_mtta,
+    calculate_mttr,
+    calculate_oncall_burden,
+    calculate_workload_distribution,
+    count_incidents_by_severity,
     create_metric_value,
 )
-from .benchmarks import classify_team, calculate_overall_tier, estimate_percentile
+from .models import (
+    BurnoutRisk,
+    EngineerMetrics,
+    LeaderboardEntry,
+    PerformancePeriod,
+    PeriodComparison,
+    TeamMetrics,
+)
 
 
 class IncidentRepository(Protocol):

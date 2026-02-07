@@ -45,30 +45,11 @@ Usage:
     app.include_router(router)
 """
 
-from .models import (
-    ChannelType,
-    DigestFrequency,
-    NotificationChannel,
-    NotificationPayload,
-    NotificationPreference,
-    NotificationRule,
-    NotificationType,
-    QuietHours,
-    ROLE_DEFAULTS,
-    Severity,
-    UserRole,
-)
-from .service import (
-    NotificationService,
-    PreferenceStore,
-    InMemoryPreferenceStore,
-    get_notification_service,
-)
 from .channels import (
     BaseChannel,
-    ChannelError,
     ChannelConfigError,
     ChannelDeliveryError,
+    ChannelError,
     ChannelManager,
     EmailChannel,
     PushChannel,
@@ -77,14 +58,33 @@ from .channels import (
     WebhookChannel,
     create_channel,
 )
-from .templates import (
-    DEFAULT_TEMPLATES,
-    NotificationTemplate,
-    SEVERITY_COLOR,
-    SEVERITY_EMOJI,
-    TemplateRenderer,
+from .models import (
+    ROLE_DEFAULTS,
+    ChannelType,
+    DigestFrequency,
+    NotificationChannel,
+    NotificationPayload,
+    NotificationPreference,
+    NotificationRule,
+    NotificationType,
+    QuietHours,
+    Severity,
+    UserRole,
 )
 from .routes import router
+from .service import (
+    InMemoryPreferenceStore,
+    NotificationService,
+    PreferenceStore,
+    get_notification_service,
+)
+from .templates import (
+    DEFAULT_TEMPLATES,
+    SEVERITY_COLOR,
+    SEVERITY_EMOJI,
+    NotificationTemplate,
+    TemplateRenderer,
+)
 
 __all__ = [
     # Models

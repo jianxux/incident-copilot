@@ -3,6 +3,7 @@
 from datetime import datetime
 from typing import Annotated, Any
 from uuid import UUID
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -13,6 +14,7 @@ from fastapi import (
     status,
 )
 from pydantic import BaseModel
+
 from .defaults import get_all_default_roles, get_default_dashboard
 from .models import (
     Dashboard,
