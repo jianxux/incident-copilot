@@ -47,7 +47,9 @@ class ChangeTrackingService:
         self._collectors: dict[ChangeSource, ChangeCollector] = {}
         self._changes: dict[str, ChangeEvent] = {}  # In-memory store
         self._freezes: dict[str, ChangeFreeze] = {}
-        self._service_changes: dict[str, list[str]] = defaultdict(list)  # service -> change_ids
+        self._service_changes: dict[str, list[str]] = defaultdict(
+            list
+        )  # service -> change_ids
 
     def register_collector(self, collector: ChangeCollector) -> None:
         """Register a change collector."""
@@ -81,7 +83,10 @@ class ChangeTrackingService:
         return self._changes.get(change_id)
 
     async def update_change_status(
-        self, change_id: str, status: ChangeStatus, completed_at: Optional[datetime] = None
+        self,
+        change_id: str,
+        status: ChangeStatus,
+        completed_at: Optional[datetime] = None,
     ) -> Optional[ChangeEvent]:
         """Update the status of a change."""
         change = self._changes.get(change_id)
@@ -89,7 +94,11 @@ class ChangeTrackingService:
             change.status = status
             if completed_at:
                 change.completed_at = completed_at
-            elif status in (ChangeStatus.COMPLETED, ChangeStatus.FAILED, ChangeStatus.ROLLED_BACK):
+            elif status in (
+                ChangeStatus.COMPLETED,
+                ChangeStatus.FAILED,
+                ChangeStatus.ROLLED_BACK,
+            ):
                 change.completed_at = datetime.utcnow()
         return change
 
@@ -135,7 +144,10 @@ class ChangeTrackingService:
             if not (start <= change.started_at <= end):
                 continue
 
-            if filters.get("environment") and change.environment != filters["environment"]:
+            if (
+                filters.get("environment")
+                and change.environment != filters["environment"]
+            ):
                 continue
 
             if filters.get("service"):
@@ -195,7 +207,10 @@ class ChangeTrackingService:
         return correlation
 
     async def _score_changes_for_incident(
-        self, changes: list[ChangeEvent], incident_time: datetime, service: Optional[str]
+        self,
+        changes: list[ChangeEvent],
+        incident_time: datetime,
+        service: Optional[str],
     ) -> list[ChangeEvent]:
         """Score changes based on likelihood of causing incident."""
         for change in changes:
@@ -232,7 +247,9 @@ class ChangeTrackingService:
 
     # ========== Rollback Tracking ==========
 
-    async def record_rollback(self, original_change_id: str, rollback: ChangeEvent) -> ChangeEvent:
+    async def record_rollback(
+        self, original_change_id: str, rollback: ChangeEvent
+    ) -> ChangeEvent:
         """Record a rollback of a previous change."""
         original = await self.get_change(original_change_id)
         if original:
@@ -277,7 +294,9 @@ class ChangeTrackingService:
 
         return active
 
-    async def check_freeze_violation(self, change: ChangeEvent) -> Optional[ChangeFreeze]:
+    async def check_freeze_violation(
+        self, change: ChangeEvent
+    ) -> Optional[ChangeFreeze]:
         """Check if a change violates any active freeze."""
         freezes = await self.get_active_freezes(
             environment=change.environment, at_time=change.started_at
@@ -315,13 +334,18 @@ class ChangeTrackingService:
 
         if services:
             events = [
-                e for e in events if e.service in services or any(s in e.services for s in services)
+                e
+                for e in events
+                if e.service in services or any(s in e.services for s in services)
             ]
 
         freezes = await self.get_active_freezes(environment=environment)
 
         timeline = ChangeTimeline(
-            start_time=start_time, end_time=end_time, events=events, active_freezes=freezes
+            start_time=start_time,
+            end_time=end_time,
+            events=events,
+            active_freezes=freezes,
         )
         timeline.aggregate()
 
@@ -335,7 +359,10 @@ class ChangeTrackingService:
         """Collect changes from all registered collectors."""
         all_changes = []
 
-        tasks = [collector.collect_changes(since, until) for collector in self._collectors.values()]
+        tasks = [
+            collector.collect_changes(since, until)
+            for collector in self._collectors.values()
+        ]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -375,7 +402,9 @@ class ChangeTrackingService:
 
         # Service count
         total_services = (
-            len(set([change.service] + change.services)) if change.service else len(change.services)
+            len(set([change.service] + change.services))
+            if change.service
+            else len(change.services)
         )
         if total_services > 5:
             score += 0.2
@@ -395,9 +424,13 @@ class ChangeTrackingService:
 
     # ========== Statistics ==========
 
-    async def get_change_stats(self, hours: int = 24, environment: Optional[str] = None) -> dict:
+    async def get_change_stats(
+        self, hours: int = 24, environment: Optional[str] = None
+    ) -> dict:
         """Get statistics about recent changes."""
-        changes = await self.get_recent_changes(hours=hours, environment=environment, limit=1000)
+        changes = await self.get_recent_changes(
+            hours=hours, environment=environment, limit=1000
+        )
 
         stats = {
             "total": len(changes),
@@ -428,7 +461,9 @@ class ChangeTrackingService:
         stats["avg_impact_score"] = total_impact / len(changes)
 
         # Convert defaultdicts to regular dicts
-        return {k: dict(v) if isinstance(v, defaultdict) else v for k, v in stats.items()}
+        return {
+            k: dict(v) if isinstance(v, defaultdict) else v for k, v in stats.items()
+        }
 
 
 # Singleton instance

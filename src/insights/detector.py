@@ -64,10 +64,14 @@ class PatternDetector:
                 # Calculate average time between incidents
                 time_diffs = []
                 for i in range(1, len(sorted_group)):
-                    diff = sorted_group[i].triggered_at - sorted_group[i - 1].triggered_at
+                    diff = (
+                        sorted_group[i].triggered_at - sorted_group[i - 1].triggered_at
+                    )
                     time_diffs.append(diff.total_seconds() / 3600)  # Hours
 
-                avg_time_between = sum(time_diffs) / len(time_diffs) if time_diffs else None
+                avg_time_between = (
+                    sum(time_diffs) / len(time_diffs) if time_diffs else None
+                )
 
                 pattern = RecurringPattern(
                     pattern_id=self._generate_pattern_id(normalized_title),
@@ -78,7 +82,9 @@ class PatternDetector:
                     last_seen=sorted_group[-1].triggered_at,
                     avg_time_between_hours=avg_time_between,
                     affected_incident_ids=[i.incident_id for i in group],
-                    suggested_action=self._suggest_action_for_pattern(normalized_title, len(group)),
+                    suggested_action=self._suggest_action_for_pattern(
+                        normalized_title, len(group)
+                    ),
                 )
                 patterns.append(pattern)
 
@@ -116,7 +122,9 @@ class PatternDetector:
             expected = total_incidents / 24
             if count >= self.min_occurrences and count > expected * 2:
                 confidence = min(1.0, count / (expected * 3))
-                affected = [i.incident_id for i in incidents if i.triggered_at.hour == hour]
+                affected = [
+                    i.incident_id for i in incidents if i.triggered_at.hour == hour
+                ]
 
                 pattern = TimeBasedPattern(
                     pattern_id=self._generate_pattern_id(f"hour_{hour}_{service_name}"),
@@ -145,7 +153,9 @@ class PatternDetector:
             expected = total_incidents / 7
             if count >= self.min_occurrences and count > expected * 1.5:
                 confidence = min(1.0, count / (expected * 2))
-                affected = [i.incident_id for i in incidents if i.triggered_at.weekday() == day]
+                affected = [
+                    i.incident_id for i in incidents if i.triggered_at.weekday() == day
+                ]
 
                 pattern = TimeBasedPattern(
                     pattern_id=self._generate_pattern_id(f"day_{day}_{service_name}"),
@@ -209,7 +219,9 @@ class PatternDetector:
         first_avg = avg_severity(first_half)
         second_avg = avg_severity(second_half)
 
-        change_percent = ((second_avg - first_avg) / first_avg) * 100 if first_avg else 0
+        change_percent = (
+            ((second_avg - first_avg) / first_avg) * 100 if first_avg else 0
+        )
 
         if change_percent > 10:
             trend = "increasing"

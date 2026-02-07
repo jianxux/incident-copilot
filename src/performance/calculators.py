@@ -15,12 +15,15 @@ from .models import (
 def calculate_mttr(incidents: list[Any], period: PerformancePeriod) -> float:
     """Mean Time To Resolve in minutes."""
     resolved = [
-        i for i in incidents if i.resolved_at and period.start <= i.created_at <= period.end
+        i
+        for i in incidents
+        if i.resolved_at and period.start <= i.created_at <= period.end
     ]
     if not resolved:
         return 0.0
     return round(
-        sum((i.resolved_at - i.created_at).total_seconds() / 60 for i in resolved) / len(resolved),
+        sum((i.resolved_at - i.created_at).total_seconds() / 60 for i in resolved)
+        / len(resolved),
         2,
     )
 
@@ -28,16 +31,22 @@ def calculate_mttr(incidents: list[Any], period: PerformancePeriod) -> float:
 def calculate_mtta(incidents: list[Any], period: PerformancePeriod) -> float:
     """Mean Time To Acknowledge in minutes."""
     acked = [
-        i for i in incidents if i.acknowledged_at and period.start <= i.created_at <= period.end
+        i
+        for i in incidents
+        if i.acknowledged_at and period.start <= i.created_at <= period.end
     ]
     if not acked:
         return 0.0
     return round(
-        sum((i.acknowledged_at - i.created_at).total_seconds() / 60 for i in acked) / len(acked), 2
+        sum((i.acknowledged_at - i.created_at).total_seconds() / 60 for i in acked)
+        / len(acked),
+        2,
     )
 
 
-def count_incidents_by_severity(incidents: list[Any], period: PerformancePeriod) -> dict[str, int]:
+def count_incidents_by_severity(
+    incidents: list[Any], period: PerformancePeriod
+) -> dict[str, int]:
     counts: dict[str, int] = {}
     for i in incidents:
         if period.start <= i.created_at <= period.end:
@@ -106,7 +115,10 @@ def calculate_after_hours_incidents(
 
 
 def calculate_burnout_risk(
-    engineer_id: str, incidents: list[Any], oncall_shifts: list[dict], period: PerformancePeriod
+    engineer_id: str,
+    incidents: list[Any],
+    oncall_shifts: list[dict],
+    period: PerformancePeriod,
 ) -> BurnoutIndicators:
     factors, score = [], 0.0
     eng_incidents = [
@@ -118,13 +130,21 @@ def calculate_burnout_risk(
 
     after_hours = calculate_after_hours_incidents(incidents, engineer_id, period)
     if after_hours > 10:
-        score, factors = score + 25, factors + [f"High after-hours pages: {after_hours}"]
+        score, factors = score + 25, factors + [
+            f"High after-hours pages: {after_hours}"
+        ]
     elif after_hours > 5:
-        score, factors = score + 15, factors + [f"Moderate after-hours pages: {after_hours}"]
+        score, factors = score + 15, factors + [
+            f"Moderate after-hours pages: {after_hours}"
+        ]
 
-    high_sev = sum(1 for i in eng_incidents if getattr(i, "severity", "") in ("critical", "high"))
+    high_sev = sum(
+        1 for i in eng_incidents if getattr(i, "severity", "") in ("critical", "high")
+    )
     if high_sev > 5:
-        score, factors = score + 20, factors + [f"Many high-severity incidents: {high_sev}"]
+        score, factors = score + 20, factors + [
+            f"Many high-severity incidents: {high_sev}"
+        ]
 
     consecutive = _calc_consecutive_oncall(oncall_shifts, engineer_id, period.end)
     if consecutive > 7:
@@ -138,7 +158,8 @@ def calculate_burnout_risk(
 
     resolved = [i for i in eng_incidents if i.resolved_at]
     avg_dur = (
-        sum((i.resolved_at - i.created_at).total_seconds() / 3600 for i in resolved) / len(resolved)
+        sum((i.resolved_at - i.created_at).total_seconds() / 3600 for i in resolved)
+        / len(resolved)
         if resolved
         else 0
     )
@@ -198,7 +219,9 @@ def _burnout_recs(factors: list[str], risk: BurnoutRisk) -> list[str]:
     return recs or ["Continue current patterns"]
 
 
-def calculate_trend(current: float, previous: float, lower_is_better: bool = True) -> float:
+def calculate_trend(
+    current: float, previous: float, lower_is_better: bool = True
+) -> float:
     if previous == 0:
         return 0.0 if current == 0 else (100.0 if not lower_is_better else -100.0)
     return round(((current - previous) / previous) * 100, 1)
@@ -215,6 +238,7 @@ def create_metric_value(
     trend = (
         None
         if previous is None
-        else (-1 if lower_is_better else 1) * calculate_trend(current, previous, lower_is_better)
+        else (-1 if lower_is_better else 1)
+        * calculate_trend(current, previous, lower_is_better)
     )
     return MetricValue(name=name, value=current, unit=unit, trend=trend, tier=tier)

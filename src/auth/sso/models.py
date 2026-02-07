@@ -200,7 +200,9 @@ class SSOSession(BaseModel):
 
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    expires_at: datetime = Field(default_factory=lambda: datetime.utcnow() + timedelta(minutes=10))
+    expires_at: datetime = Field(
+        default_factory=lambda: datetime.utcnow() + timedelta(minutes=10)
+    )
 
     # Result
     is_completed: bool = False

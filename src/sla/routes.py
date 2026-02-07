@@ -169,7 +169,9 @@ async def health_check() -> HealthResponse:
 # --- Policy CRUD Routes ---
 
 
-@router.post("/policies", response_model=PolicyResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/policies", response_model=PolicyResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_policy(
     request: CreatePolicyRequest,
     service: SLAServiceDep,
@@ -542,7 +544,9 @@ async def acknowledge_breach(
     return {
         "breach_id": breach_id,
         "acknowledged_by": request.user,
-        "acknowledged_at": breach.acknowledged_at.isoformat() if breach.acknowledged_at else None,
+        "acknowledged_at": (
+            breach.acknowledged_at.isoformat() if breach.acknowledged_at else None
+        ),
         "message": "Breach acknowledged successfully",
     }
 
@@ -614,14 +618,16 @@ async def get_metrics_summary(
             "overall_compliance": metrics_7d.overall_compliance_percent,
             "response_compliance": metrics_7d.response_compliance_percent,
             "resolution_compliance": metrics_7d.resolution_compliance_percent,
-            "breaches": metrics_7d.response_sla_breached + metrics_7d.resolution_sla_breached,
+            "breaches": metrics_7d.response_sla_breached
+            + metrics_7d.resolution_sla_breached,
         },
         "last_30_days": {
             "total_incidents": metrics_30d.total_incidents,
             "overall_compliance": metrics_30d.overall_compliance_percent,
             "response_compliance": metrics_30d.response_compliance_percent,
             "resolution_compliance": metrics_30d.resolution_compliance_percent,
-            "breaches": metrics_30d.response_sla_breached + metrics_30d.resolution_sla_breached,
+            "breaches": metrics_30d.response_sla_breached
+            + metrics_30d.resolution_sla_breached,
             "avg_response_minutes": metrics_30d.avg_response_minutes,
             "avg_resolution_minutes": metrics_30d.avg_resolution_minutes,
         },

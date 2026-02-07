@@ -117,7 +117,9 @@ class InsightsService:
         # Analyze dependencies
         if request.include_dependencies:
             try:
-                dependencies = await self.analyzer.analyze_service_dependencies(incidents)
+                dependencies = await self.analyzer.analyze_service_dependencies(
+                    incidents
+                )
                 for dep in dependencies.dependencies:
                     await self.store.save_dependency(dep)
             except Exception as e:
@@ -199,9 +201,9 @@ class InsightsService:
             for service in insight.affected_services:
                 service_counts[service] = service_counts.get(service, 0) + 1
 
-        top_services = sorted(service_counts.keys(), key=lambda x: service_counts[x], reverse=True)[
-            :10
-        ]
+        top_services = sorted(
+            service_counts.keys(), key=lambda x: service_counts[x], reverse=True
+        )[:10]
 
         return InsightSummary(
             period_start=cutoff,
@@ -298,7 +300,9 @@ class InsightsService:
             f"Last seen: {pattern.last_seen.strftime('%Y-%m-%d')}.",
             affected_services=[pattern.service_name],
             affected_incident_ids=pattern.affected_incident_ids,
-            recommendations=([pattern.suggested_action] if pattern.suggested_action else []),
+            recommendations=(
+                [pattern.suggested_action] if pattern.suggested_action else []
+            ),
             confidence=min(1.0, pattern.incident_count / 20),
             metadata={"pattern_id": pattern.pattern_id},
         )
@@ -315,7 +319,9 @@ class InsightsService:
             "unusual_day": InsightType.TIME_BASED_PATTERN,
         }
 
-        insight_type = insight_type_map.get(anomaly.anomaly_type.value, InsightType.CORRELATION)
+        insight_type = insight_type_map.get(
+            anomaly.anomaly_type.value, InsightType.CORRELATION
+        )
 
         return Insight(
             insight_id=self._generate_id(f"insight_anomaly_{anomaly.anomaly_id}"),

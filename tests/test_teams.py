@@ -159,9 +159,9 @@ class TestTeamsAdapterCardFormatting:
         # Find deployment section
         deployment_found = False
         for element in content["body"]:
-            if element.get("type") == "TextBlock" and "Recent Deployments" in element.get(
-                "text", ""
-            ):
+            if element.get(
+                "type"
+            ) == "TextBlock" and "Recent Deployments" in element.get("text", ""):
                 deployment_found = True
                 assert "abc1234" in element["text"]
                 assert "sarah" in element["text"]
@@ -177,7 +177,9 @@ class TestTeamsAdapterCardFormatting:
         # Find AI summary section
         ai_found = False
         for element in content["body"]:
-            if element.get("type") == "TextBlock" and "AI Analysis" in element.get("text", ""):
+            if element.get("type") == "TextBlock" and "AI Analysis" in element.get(
+                "text", ""
+            ):
                 ai_found = True
                 assert "ConnectionTimeout" in element["text"]
                 break
@@ -211,7 +213,9 @@ class TestTeamsAdapterCardFormatting:
         # Find log summary section
         log_found = False
         for element in content["body"]:
-            if element.get("type") == "TextBlock" and "Error Patterns" in element.get("text", ""):
+            if element.get("type") == "TextBlock" and "Error Patterns" in element.get(
+                "text", ""
+            ):
                 log_found = True
                 assert "NullPointerException" in element["text"]
                 assert "(42x)" in element["text"]
@@ -272,9 +276,9 @@ class TestTeamsAdapterCardFormatting:
         # Find similar incidents section
         incidents_found = False
         for element in content["body"]:
-            if element.get("type") == "TextBlock" and "Similar Past Incidents" in element.get(
-                "text", ""
-            ):
+            if element.get(
+                "type"
+            ) == "TextBlock" and "Similar Past Incidents" in element.get("text", ""):
                 incidents_found = True
                 assert "Previous payment failure" in element["text"]
                 assert "Increased connection pool" in element["text"]
@@ -335,7 +339,9 @@ class TestTeamsAdapterWebhook:
             assert call_args[1]["headers"]["Content-Type"] == "application/json"
 
     @pytest.mark.asyncio
-    async def test_send_context_card_http_error(self, teams_adapter, sample_context_card):
+    async def test_send_context_card_http_error(
+        self, teams_adapter, sample_context_card
+    ):
         """Test handling of HTTP errors."""
         with patch("src.integrations.teams.httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
@@ -363,7 +369,9 @@ class TestTeamsAdapterWebhook:
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_send_with_custom_webhook_url(self, teams_adapter, sample_context_card):
+    async def test_send_with_custom_webhook_url(
+        self, teams_adapter, sample_context_card
+    ):
         """Test sending to a custom webhook URL."""
         custom_url = "https://outlook.office.com/webhook/custom-url"
 
@@ -389,7 +397,9 @@ class TestTeamsAdapterWebhook:
         with patch("src.integrations.teams.httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = mock_client
-            mock_client.post.side_effect = httpx.TimeoutException("Connection timed out")
+            mock_client.post.side_effect = httpx.TimeoutException(
+                "Connection timed out"
+            )
 
             result = await teams_adapter.send_context_card(sample_context_card)
 
@@ -437,7 +447,9 @@ class TestTeamsAdapterEdgeCases:
 
         # Find AI section and verify truncation
         for element in content["body"]:
-            if element.get("type") == "TextBlock" and "AI Analysis" in element.get("text", ""):
+            if element.get("type") == "TextBlock" and "AI Analysis" in element.get(
+                "text", ""
+            ):
                 assert "..." in element["text"]
                 assert len(element["text"]) < 500
                 break
@@ -450,7 +462,10 @@ class TestTeamsAdapterEdgeCases:
         # Should not have owners section
         for element in content["body"]:
             if element.get("type") == "TextBlock":
-                assert "Owners:" not in element.get("text", "") or minimal_context_card.owners
+                assert (
+                    "Owners:" not in element.get("text", "")
+                    or minimal_context_card.owners
+                )
 
     def test_unicode_handling(self, teams_adapter):
         """Test that unicode characters are handled correctly."""

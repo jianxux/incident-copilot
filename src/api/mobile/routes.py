@@ -93,7 +93,9 @@ class MockIncidentService:
                 return True
         return False
 
-    async def add_comment(self, incident_id: str, user_id: str, text: str, internal: bool):
+    async def add_comment(
+        self, incident_id: str, user_id: str, text: str, internal: bool
+    ):
         return {
             "id": f"c_{int(time.time())}",
             "text": text,
@@ -192,7 +194,9 @@ async def list_incidents(
     )
     response.headers.update({"ETag": etag, "Cache-Control": "private, max-age=30"})
     return IncidentListResponse(
-        items=items, meta=PaginationMeta(cursor=next_cursor, has_more=has_more), etag=etag
+        items=items,
+        meta=PaginationMeta(cursor=next_cursor, has_more=has_more),
+        etag=etag,
     )
 
 
@@ -208,7 +212,9 @@ async def get_incident(incident_id: str, response: Response, svc=Depends(get_ser
 
 @router.post("/actions", response_model=QuickActionResponse)
 async def quick_action(
-    req: QuickActionRequest, user: dict = Depends(get_current_user), svc=Depends(get_service)
+    req: QuickActionRequest,
+    user: dict = Depends(get_current_user),
+    svc=Depends(get_service),
 ):
     """Execute quick action: acknowledge, resolve, escalate, comment, snooze."""
     inc = await svc.get_incident(req.incident_id)
@@ -245,7 +251,9 @@ async def quick_action(
 
 @router.post("/actions/bulk", response_model=BulkActionResponse)
 async def bulk_action(
-    req: BulkActionRequest, user: dict = Depends(get_current_user), svc=Depends(get_service)
+    req: BulkActionRequest,
+    user: dict = Depends(get_current_user),
+    svc=Depends(get_service),
 ):
     """Bulk action on multiple incidents."""
     succeeded, failed = [], []
@@ -262,7 +270,9 @@ async def bulk_action(
     return BulkActionResponse(succeeded=succeeded, failed=failed)
 
 
-@router.post("/incidents/{incident_id}/comments", response_model=CommentMinimal, status_code=201)
+@router.post(
+    "/incidents/{incident_id}/comments", response_model=CommentMinimal, status_code=201
+)
 async def add_comment(
     incident_id: str,
     comment: CommentCreate,
@@ -272,9 +282,15 @@ async def add_comment(
     """Add comment to incident."""
     if not await svc.get_incident(incident_id):
         raise HTTPException(404, "Incident not found")
-    r = await svc.add_comment(incident_id, user["id"], comment.text, comment.is_internal)
+    r = await svc.add_comment(
+        incident_id, user["id"], comment.text, comment.is_internal
+    )
     return CommentMinimal(
-        id=r["id"], text=r["text"], author=user["name"], ts=r["ts"], is_internal=r["is_internal"]
+        id=r["id"],
+        text=r["text"],
+        author=user["name"],
+        ts=r["ts"],
+        is_internal=r["is_internal"],
     )
 
 
@@ -299,7 +315,9 @@ async def get_dashboard(
 
 
 @router.post("/devices", response_model=DeviceRegistrationResponse, status_code=201)
-async def register_device(reg: DeviceRegistration, user: dict = Depends(get_current_user)):
+async def register_device(
+    reg: DeviceRegistration, user: dict = Depends(get_current_user)
+):
     """Register device for push notifications."""
     await get_push_service().register_device(user["id"], reg)
     return DeviceRegistrationResponse(

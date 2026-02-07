@@ -298,7 +298,9 @@ class TestLinearClient:
     async def test_link_issues(self, linear_client):
         """Should link two issues together."""
         mock_response = MagicMock()
-        mock_response.json.return_value = {"data": {"issueRelationCreate": {"success": True}}}
+        mock_response.json.return_value = {
+            "data": {"issueRelationCreate": {"success": True}}
+        }
         mock_response.raise_for_status = MagicMock()
 
         with patch.object(linear_client, "_get_client") as mock_get_client:
@@ -440,7 +442,9 @@ class TestCreateIncidentTicket:
                     alert_summary="High error rate",
                     severity="HIGH",
                     context_card_url="https://slack.com/card/123",
-                    deployments=[{"sha": "abc1234", "author": "dev", "message": "Fix bug"}],
+                    deployments=[
+                        {"sha": "abc1234", "author": "dev", "message": "Fix bug"}
+                    ],
                     log_summary="Multiple timeout errors detected",
                     similar_incidents=[{"title": "Past incident", "score": 0.85}],
                     runbook_url="https://wiki.example.com/runbook",
@@ -550,7 +554,9 @@ class TestUpdateIncidentResolved:
                 )
 
                 mock_client.add_comment.assert_called_once()
-                mock_client.update_issue.assert_called_once_with("issue-123", state_id="2")
+                mock_client.update_issue.assert_called_once_with(
+                    "issue-123", state_id="2"
+                )
 
     @pytest.mark.asyncio
     async def test_skips_when_not_configured(self):
@@ -610,7 +616,9 @@ class TestTransitionIssueStatus:
 
                 assert issue is not None
                 assert issue.state == "In Progress"
-                mock_client.update_issue.assert_called_once_with("issue-123", state_id="2")
+                mock_client.update_issue.assert_called_once_with(
+                    "issue-123", state_id="2"
+                )
                 mock_client.add_comment.assert_called_once()
 
     @pytest.mark.asyncio

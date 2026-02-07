@@ -29,7 +29,9 @@ class RateLimitConfig(BaseModel):
     capacity: int = Field(
         default=100, ge=1, description="Maximum tokens in the bucket (burst capacity)"
     )
-    refill_rate: float = Field(default=10.0, gt=0, description="Tokens added per second")
+    refill_rate: float = Field(
+        default=10.0, gt=0, description="Tokens added per second"
+    )
     refill_interval: float = Field(
         default=1.0, gt=0, description="Interval in seconds between refills"
     )
@@ -67,7 +69,9 @@ class RateLimitResult(BaseModel):
     allowed: bool = Field(..., description="Whether the request is allowed")
     limit: int = Field(..., description="Maximum tokens (bucket capacity)")
     remaining: int = Field(..., description="Remaining tokens")
-    reset_at: datetime = Field(..., description="When the bucket will be fully refilled")
+    reset_at: datetime = Field(
+        ..., description="When the bucket will be fully refilled"
+    )
     retry_after: float | None = Field(
         default=None, description="Seconds to wait before retrying (if denied)"
     )
@@ -98,7 +102,9 @@ class RateLimitStatus(BaseModel):
     capacity: int = Field(..., description="Maximum bucket capacity")
     refill_rate: float = Field(..., description="Tokens added per second")
     last_refill: datetime = Field(..., description="Last time tokens were refilled")
-    requests_in_window: int = Field(default=0, description="Total requests in current window")
+    requests_in_window: int = Field(
+        default=0, description="Total requests in current window"
+    )
 
     # Computed
     @property
@@ -117,10 +123,14 @@ class RateLimitOverride(BaseModel):
     capacity: int | None = Field(default=None, description="Override capacity")
     refill_rate: float | None = Field(default=None, description="Override refill rate")
     enabled: bool = Field(default=True, description="Whether override is active")
-    expires_at: datetime | None = Field(default=None, description="When this override expires")
+    expires_at: datetime | None = Field(
+        default=None, description="When this override expires"
+    )
     reason: str | None = Field(default=None, description="Reason for the override")
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    created_by: str | None = Field(default=None, description="User who created override")
+    created_by: str | None = Field(
+        default=None, description="User who created override"
+    )
 
 
 class EndpointRateLimit(BaseModel):
@@ -136,7 +146,9 @@ class EndpointRateLimit(BaseModel):
     cost: int = Field(default=1, description="Token cost per request")
 
     # Can override per-scope limits
-    override_global: bool = Field(default=False, description="Whether this overrides global limits")
+    override_global: bool = Field(
+        default=False, description="Whether this overrides global limits"
+    )
 
 
 class RateLimitEvent(BaseModel):

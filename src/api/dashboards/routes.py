@@ -3,7 +3,15 @@
 from datetime import datetime
 from typing import Annotated, Any
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from pydantic import BaseModel
 from .defaults import get_all_default_roles, get_default_dashboard
 from .models import (
@@ -172,7 +180,13 @@ async def update_sharing(
 ) -> ShareConfig:
     try:
         return await svc.update_sharing(
-            did, uid, req.scope, req.team_ids, req.user_ids, req.allow_edit, req.expires_at
+            did,
+            uid,
+            req.scope,
+            req.team_ids,
+            req.user_ids,
+            req.allow_edit,
+            req.expires_at,
         )
     except DashboardNotFoundError as e:
         _err(e)
@@ -292,21 +306,29 @@ async def dashboard_ws(
     await manager.connect(did, ws)
     try:
         for w in d.widgets:
-            await ws.send_json({"type": "widget_data", "payload": await fetch_widget_data(w)})
+            await ws.send_json(
+                {"type": "widget_data", "payload": await fetch_widget_data(w)}
+            )
         while True:
             msg = await ws.receive_json()
             if msg.get("type") == "refresh_widget":
-                if w := next((x for x in d.widgets if str(x.id) == msg.get("widget_id")), None):
-                    await ws.send_json({
-                        "type": "widget_data",
-                        "payload": await fetch_widget_data(w),
-                    })
+                if w := next(
+                    (x for x in d.widgets if str(x.id) == msg.get("widget_id")), None
+                ):
+                    await ws.send_json(
+                        {
+                            "type": "widget_data",
+                            "payload": await fetch_widget_data(w),
+                        }
+                    )
             elif msg.get("type") == "refresh_all":
                 for w in d.widgets:
-                    await ws.send_json({
-                        "type": "widget_data",
-                        "payload": await fetch_widget_data(w),
-                    })
+                    await ws.send_json(
+                        {
+                            "type": "widget_data",
+                            "payload": await fetch_widget_data(w),
+                        }
+                    )
             elif msg.get("type") == "ping":
                 await ws.send_json({"type": "pong"})
     except WebSocketDisconnect:

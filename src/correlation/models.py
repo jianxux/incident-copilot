@@ -76,7 +76,9 @@ class AlertGroup(BaseModel):
             self.title = f"[{alert.service}] {alert.title}"
 
     def update_summary(self) -> None:
-        parts = [f"{self.alert_count} related alerts" if self.alert_count > 1 else "1 alert"]
+        parts = [
+            f"{self.alert_count} related alerts" if self.alert_count > 1 else "1 alert"
+        ]
         if len(self.services) > 1:
             parts.append(f"across {len(self.services)} services")
         elif self.service:

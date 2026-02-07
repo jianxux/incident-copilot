@@ -68,7 +68,10 @@ class PushPayload:
 
     def to_apns(self) -> dict:
         return {
-            "aps": {"alert": {"title": self.title, "body": self.body}, "sound": "default"},
+            "aps": {
+                "alert": {"title": self.title, "body": self.body},
+                "sound": "default",
+            },
             "incident_id": self.incident_id,
         }
 
@@ -133,7 +136,10 @@ class PushService:
             resp = await client.post(
                 f"{base}/3/device/{token}",
                 json=payload.to_apns(),
-                headers={"apns-topic": self.config.apns_bundle_id, "apns-push-type": "alert"},
+                headers={
+                    "apns-topic": self.config.apns_bundle_id,
+                    "apns-push-type": "alert",
+                },
             )
             if resp.status_code == 200:
                 return PushResult(token[:20], PushStatus.SUCCESS)
@@ -143,7 +149,9 @@ class PushService:
         except Exception as e:
             return PushResult(token[:20], PushStatus.FAILED, str(e))
 
-    async def send_to_user(self, user_id: str, payload: PushPayload) -> list[PushResult]:
+    async def send_to_user(
+        self, user_id: str, payload: PushPayload
+    ) -> list[PushResult]:
         devices = await self.token_store.get_user_devices(user_id)
         results = []
         for device in devices:
@@ -161,7 +169,9 @@ class PushService:
         severity: Severity,
         user_ids: list[str] | None = None,
     ) -> dict[str, list[PushResult]]:
-        payload = PushPayload(title=title, body=body, incident_id=incident_id, severity=severity)
+        payload = PushPayload(
+            title=title, body=body, incident_id=incident_id, severity=severity
+        )
         targets = user_ids or list(self.token_store._user_devices.keys())
         return {uid: await self.send_to_user(uid, payload) for uid in targets}
 

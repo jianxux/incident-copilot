@@ -66,7 +66,9 @@ class NotificationChannel(BaseModel):
     enabled: bool = True
     address: str = Field(..., description="Email, phone, webhook URL, or Slack channel")
     verified: bool = False
-    priority: int = Field(default=0, ge=0, le=10, description="Higher = preferred channel")
+    priority: int = Field(
+        default=0, ge=0, le=10, description="Higher = preferred channel"
+    )
 
     # Channel-specific settings
     settings: dict[str, Any] = Field(default_factory=dict)
@@ -84,14 +86,24 @@ class QuietHours(BaseModel):
     """Do Not Disturb / Quiet Hours configuration."""
 
     enabled: bool = False
-    start_time: time = Field(default=time(22, 0), description="Start of quiet period (HH:MM)")
-    end_time: time = Field(default=time(8, 0), description="End of quiet period (HH:MM)")
+    start_time: time = Field(
+        default=time(22, 0), description="Start of quiet period (HH:MM)"
+    )
+    end_time: time = Field(
+        default=time(8, 0), description="End of quiet period (HH:MM)"
+    )
     timezone: str = Field(default="UTC", description="Timezone for quiet hours")
 
     # Override settings
-    allow_p1: bool = Field(default=True, description="Allow P1 incidents during quiet hours")
-    allow_p2: bool = Field(default=False, description="Allow P2 incidents during quiet hours")
-    weekend_only: bool = Field(default=False, description="Only apply quiet hours on weekends")
+    allow_p1: bool = Field(
+        default=True, description="Allow P1 incidents during quiet hours"
+    )
+    allow_p2: bool = Field(
+        default=False, description="Allow P2 incidents during quiet hours"
+    )
+    weekend_only: bool = Field(
+        default=False, description="Only apply quiet hours on weekends"
+    )
 
     def is_active(self, current_time: time | None = None) -> bool:
         """Check if quiet hours are currently active."""
@@ -124,9 +136,15 @@ class NotificationRule(BaseModel):
 
     # Filters
     notification_types: list[NotificationType] = Field(default_factory=list)
-    min_severity: Severity = Field(default=Severity.P5, description="Minimum severity to notify")
-    max_severity: Severity = Field(default=Severity.P1, description="Maximum severity to notify")
-    services: list[str] = Field(default_factory=list, description="Filter by service names")
+    min_severity: Severity = Field(
+        default=Severity.P5, description="Minimum severity to notify"
+    )
+    max_severity: Severity = Field(
+        default=Severity.P1, description="Maximum severity to notify"
+    )
+    services: list[str] = Field(
+        default_factory=list, description="Filter by service names"
+    )
     teams: list[str] = Field(default_factory=list, description="Filter by team names")
     tags: list[str] = Field(default_factory=list, description="Filter by incident tags")
 
@@ -147,7 +165,9 @@ class NotificationRule(BaseModel):
             Severity.P5: 5,
         }
         if severity_order[self.min_severity] < severity_order[self.max_severity]:
-            raise ValueError("min_severity must be less critical than or equal to max_severity")
+            raise ValueError(
+                "min_severity must be less critical than or equal to max_severity"
+            )
         return self
 
     def matches(
@@ -260,7 +280,10 @@ ROLE_DEFAULTS: dict[UserRole, dict] = {
             {
                 "name": "Updates for P3+",
                 "min_severity": Severity.P3,
-                "notification_types": [NotificationType.INCIDENT_UPDATED, NotificationType.COMMENT],
+                "notification_types": [
+                    NotificationType.INCIDENT_UPDATED,
+                    NotificationType.COMMENT,
+                ],
                 "digest_frequency": DigestFrequency.HOURLY,
             },
         ],
@@ -305,7 +328,10 @@ ROLE_DEFAULTS: dict[UserRole, dict] = {
             {
                 "name": "My Assignments",
                 "min_severity": Severity.P3,
-                "notification_types": [NotificationType.ASSIGNMENT, NotificationType.ESCALATION],
+                "notification_types": [
+                    NotificationType.ASSIGNMENT,
+                    NotificationType.ESCALATION,
+                ],
             },
             {
                 "name": "Critical Incidents",

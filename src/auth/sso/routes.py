@@ -242,7 +242,9 @@ async def saml_login(
     config = get_or_create_sso_config(tenant_id)
 
     if not config.sso_enabled:
-        raise HTTPException(status_code=400, detail="SSO is not enabled for this tenant")
+        raise HTTPException(
+            status_code=400, detail="SSO is not enabled for this tenant"
+        )
 
     # Get identity provider
     identity_provider = None
@@ -288,7 +290,9 @@ async def saml_init(
     config = get_or_create_sso_config(tenant_id)
 
     if not config.sso_enabled:
-        raise HTTPException(status_code=400, detail="SSO is not enabled for this tenant")
+        raise HTTPException(
+            status_code=400, detail="SSO is not enabled for this tenant"
+        )
 
     identity_provider = None
     if idp_slug:
@@ -343,7 +347,9 @@ async def saml_acs(
     idp = config.get_idp_by_id(session.idp_id)
 
     if not idp:
-        logger.error("saml_acs_idp_not_found", tenant_id=tenant_id, idp_id=session.idp_id)
+        logger.error(
+            "saml_acs_idp_not_found", tenant_id=tenant_id, idp_id=session.idp_id
+        )
         return RedirectResponse(
             url=f"{app_url}/login?error=sso_config_error",
             status_code=302,
@@ -447,7 +453,9 @@ async def oidc_login(
     config = get_or_create_sso_config(tenant_id)
 
     if not config.sso_enabled:
-        raise HTTPException(status_code=400, detail="SSO is not enabled for this tenant")
+        raise HTTPException(
+            status_code=400, detail="SSO is not enabled for this tenant"
+        )
 
     # Get identity provider
     identity_provider = None
@@ -466,7 +474,11 @@ async def oidc_login(
     redirect_uri = f"{app_url}/auth/sso/oidc/callback/{tenant_id}"
 
     # Create session with PKCE
-    use_pkce = identity_provider.oidc_settings.use_pkce if identity_provider.oidc_settings else True
+    use_pkce = (
+        identity_provider.oidc_settings.use_pkce
+        if identity_provider.oidc_settings
+        else True
+    )
     session = OIDCProvider.create_session_for_auth(
         tenant_id=tenant_id,
         idp_id=identity_provider.id,
@@ -542,7 +554,9 @@ async def oidc_callback(
     idp = config.get_idp_by_id(session.idp_id)
 
     if not idp:
-        logger.error("oidc_callback_idp_not_found", tenant_id=tenant_id, idp_id=session.idp_id)
+        logger.error(
+            "oidc_callback_idp_not_found", tenant_id=tenant_id, idp_id=session.idp_id
+        )
         return RedirectResponse(
             url=f"{app_url}/login?error=sso_config_error",
             status_code=302,

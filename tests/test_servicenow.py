@@ -168,7 +168,9 @@ class TestUpdateIncident:
     @pytest.mark.asyncio
     async def test_resolve_incident(self, adapter):
         """Test resolving an incident."""
-        with patch.object(adapter, "update_incident", new_callable=AsyncMock) as mock_update:
+        with patch.object(
+            adapter, "update_incident", new_callable=AsyncMock
+        ) as mock_update:
             mock_update.return_value = {"sys_id": "abc123", "state": "6"}
 
             await adapter.resolve_incident(
@@ -180,21 +182,27 @@ class TestUpdateIncident:
         # Verify update was called with correct state
         call_args = mock_update.call_args
         updates = (
-            call_args.args[1] if len(call_args.args) > 1 else call_args.kwargs.get("updates", {})
+            call_args.args[1]
+            if len(call_args.args) > 1
+            else call_args.kwargs.get("updates", {})
         )
         assert updates.get("state") == IncidentState.RESOLVED.value
 
     @pytest.mark.asyncio
     async def test_add_work_note(self, adapter):
         """Test adding a work note."""
-        with patch.object(adapter, "update_incident", new_callable=AsyncMock) as mock_update:
+        with patch.object(
+            adapter, "update_incident", new_callable=AsyncMock
+        ) as mock_update:
             mock_update.return_value = {"sys_id": "abc123"}
 
             await adapter.add_work_note("abc123", "Investigation in progress")
 
         call_args = mock_update.call_args
         updates = (
-            call_args.args[1] if len(call_args.args) > 1 else call_args.kwargs.get("updates", {})
+            call_args.args[1]
+            if len(call_args.args) > 1
+            else call_args.kwargs.get("updates", {})
         )
         assert updates.get("work_notes") == "Investigation in progress"
 
@@ -240,8 +248,12 @@ class TestSearchIncidents:
     @pytest.mark.asyncio
     async def test_get_similar_incidents(self, adapter):
         """Test finding similar incidents."""
-        with patch.object(adapter, "search_incidents", new_callable=AsyncMock) as mock_search:
-            mock_search.return_value = [{"sys_id": "1", "short_description": "Payment failure"}]
+        with patch.object(
+            adapter, "search_incidents", new_callable=AsyncMock
+        ) as mock_search:
+            mock_search.return_value = [
+                {"sys_id": "1", "short_description": "Payment failure"}
+            ]
 
             similar = await adapter.get_similar_incidents(
                 short_description="Payment processing failed for user",
@@ -263,7 +275,9 @@ class TestGetIncident:
 
             mock_response = MagicMock()
             mock_response.status_code = 200
-            mock_response.json.return_value = {"result": {"sys_id": "abc123", "number": "INC001"}}
+            mock_response.json.return_value = {
+                "result": {"sys_id": "abc123", "number": "INC001"}
+            }
             mock_response.raise_for_status = MagicMock()
             mock_client.get.return_value = mock_response
 
@@ -341,7 +355,9 @@ class TestChangeRequest:
             mock_client_class.return_value.__aenter__.return_value = mock_client
 
             mock_response = MagicMock()
-            mock_response.json.return_value = {"result": {"sys_id": "chg123", "number": "CHG001"}}
+            mock_response.json.return_value = {
+                "result": {"sys_id": "chg123", "number": "CHG001"}
+            }
             mock_response.raise_for_status = MagicMock()
             mock_client.post.return_value = mock_response
 
@@ -429,7 +445,9 @@ class TestAlertLinking:
     @pytest.mark.asyncio
     async def test_link_incident_to_alert(self, adapter):
         """Test linking an incident to an external alert."""
-        with patch.object(adapter, "add_work_note", new_callable=AsyncMock) as mock_note:
+        with patch.object(
+            adapter, "add_work_note", new_callable=AsyncMock
+        ) as mock_note:
             mock_note.return_value = {"sys_id": "abc123"}
 
             result = await adapter.link_incident_to_alert(
@@ -441,7 +459,11 @@ class TestAlertLinking:
 
         assert result is True
         call_args = mock_note.call_args
-        note = call_args.args[1] if len(call_args.args) > 1 else call_args.kwargs.get("note", "")
+        note = (
+            call_args.args[1]
+            if len(call_args.args) > 1
+            else call_args.kwargs.get("note", "")
+        )
         assert "PagerDuty" in note
         assert "PD-12345" in note
         assert "https://pagerduty.com" in note

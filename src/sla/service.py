@@ -67,7 +67,9 @@ class SLAService:
         """
         target = policy.get_target(severity, sla_type)
         if not target:
-            logger.warning(f"No SLA target for {severity}/{sla_type} in policy {policy.id}")
+            logger.warning(
+                f"No SLA target for {severity}/{sla_type} in policy {policy.id}"
+            )
             return None
 
         timer = SLATimer(
@@ -152,7 +154,9 @@ class SLAService:
         await self.store.save_timer(timer)
         return timer
 
-    async def resume_timer(self, incident_id: str, sla_type: SLAType) -> SLATimer | None:
+    async def resume_timer(
+        self, incident_id: str, sla_type: SLAType
+    ) -> SLATimer | None:
         """Resume a paused SLA timer.
 
         Args:
@@ -234,7 +238,9 @@ class SLAService:
 
         return None
 
-    async def get_incident_status(self, incident_id: str, policy: SLAPolicy) -> SLAIncidentStatus:
+    async def get_incident_status(
+        self, incident_id: str, policy: SLAPolicy
+    ) -> SLAIncidentStatus:
         """Get complete SLA status for an incident.
 
         Args:
@@ -268,12 +274,16 @@ class SLAService:
             policy_name=policy.name,
             response_timer=response_timer,
             response_breached=response_timer.is_breached if response_timer else False,
-            response_completed=response_timer.completed_at is not None if response_timer else False,
+            response_completed=(
+                response_timer.completed_at is not None if response_timer else False
+            ),
             resolution_timer=resolution_timer,
-            resolution_breached=resolution_timer.is_breached if resolution_timer else False,
-            resolution_completed=resolution_timer.completed_at is not None
-            if resolution_timer
-            else False,
+            resolution_breached=(
+                resolution_timer.is_breached if resolution_timer else False
+            ),
+            resolution_completed=(
+                resolution_timer.completed_at is not None if resolution_timer else False
+            ),
             breaches=breaches,
         )
         status.overall_status = status.worst_status
@@ -320,7 +330,9 @@ class SLAService:
             eta = self._calculate_breach_eta(remaining, policy.business_hours)
             result["breach_eta"] = eta.isoformat()
         elif remaining > 0:
-            result["breach_eta"] = (datetime.utcnow() + timedelta(minutes=remaining)).isoformat()
+            result["breach_eta"] = (
+                datetime.utcnow() + timedelta(minutes=remaining)
+            ).isoformat()
 
         return result
 
@@ -393,9 +405,13 @@ class SLAService:
         metrics.incidents_by_severity = by_severity
 
         if response_times:
-            metrics.avg_response_minutes = round(sum(response_times) / len(response_times), 2)
+            metrics.avg_response_minutes = round(
+                sum(response_times) / len(response_times), 2
+            )
         if resolution_times:
-            metrics.avg_resolution_minutes = round(sum(resolution_times) / len(resolution_times), 2)
+            metrics.avg_resolution_minutes = round(
+                sum(resolution_times) / len(resolution_times), 2
+            )
 
         metrics.calculate_compliance()
 
@@ -406,7 +422,9 @@ class SLAService:
 
         return metrics
 
-    async def check_all_active_timers(self, policy_lookup: dict[str, SLAPolicy]) -> list[SLABreach]:
+    async def check_all_active_timers(
+        self, policy_lookup: dict[str, SLAPolicy]
+    ) -> list[SLABreach]:
         """Check all active timers for breaches.
 
         Called periodically by the scheduler.
@@ -427,7 +445,9 @@ class SLAService:
 
             # Handle business hours pausing
             if policy.business_hours.enabled:
-                is_biz_hours = self._is_business_hours(datetime.utcnow(), policy.business_hours)
+                is_biz_hours = self._is_business_hours(
+                    datetime.utcnow(), policy.business_hours
+                )
                 if is_biz_hours and timer.paused:
                     await self.resume_timer(timer.incident_id, timer.sla_type)
                 elif not is_biz_hours and not timer.paused:
@@ -516,7 +536,9 @@ class SLAService:
         current_time = local_dt.time()
         return config.start_time <= current_time < config.end_time
 
-    def _calculate_breach_eta(self, remaining_minutes: float, config: BusinessHours) -> datetime:
+    def _calculate_breach_eta(
+        self, remaining_minutes: float, config: BusinessHours
+    ) -> datetime:
         """Calculate when SLA will breach accounting for business hours."""
         if not config.enabled:
             return datetime.utcnow() + timedelta(minutes=remaining_minutes)
@@ -584,13 +606,15 @@ class SLAService:
             total = len(timers)
             compliance = (met / total * 100) if total > 0 else 100.0
 
-            trend.append({
-                "date": current.strftime("%Y-%m-%d"),
-                "total": total,
-                "met": met,
-                "breached": total - met,
-                "compliance_percent": round(compliance, 2),
-            })
+            trend.append(
+                {
+                    "date": current.strftime("%Y-%m-%d"),
+                    "total": total,
+                    "met": met,
+                    "breached": total - met,
+                    "compliance_percent": round(compliance, 2),
+                }
+            )
 
             current = next_day
 

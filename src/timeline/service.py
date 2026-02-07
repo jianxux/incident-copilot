@@ -102,7 +102,9 @@ class TimelineService:
             display = EVENT_DISPLAY.get(event.event_type, {})
             entry = TimelineEntry(
                 event=event,
-                relative_time=self._format_relative_time(event.timestamp, reference_time),
+                relative_time=self._format_relative_time(
+                    event.timestamp, reference_time
+                ),
                 is_milestone=display.get("milestone", False),
                 icon=display.get("icon"),
                 color=display.get("color"),
@@ -121,8 +123,12 @@ class TimelineService:
         milestones: list[UUID] = []
 
         for event in events:
-            type_counts[event.event_type.value] = type_counts.get(event.event_type.value, 0) + 1
-            source_counts[event.source.value] = source_counts.get(event.source.value, 0) + 1
+            type_counts[event.event_type.value] = (
+                type_counts.get(event.event_type.value, 0) + 1
+            )
+            source_counts[event.source.value] = (
+                source_counts.get(event.source.value, 0) + 1
+            )
             if EVENT_DISPLAY.get(event.event_type, {}).get("milestone"):
                 milestones.append(event.id)
 
@@ -231,7 +237,8 @@ class TimelineService:
             result = [
                 e
                 for e in result
-                if query in e.title.lower() or (e.description and query in e.description.lower())
+                if query in e.title.lower()
+                or (e.description and query in e.description.lower())
             ]
 
         return result

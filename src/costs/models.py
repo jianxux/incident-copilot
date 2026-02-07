@@ -117,10 +117,14 @@ class SLAConfig(BaseModel):
     customer_name: str
     service_level: str  # gold, silver, bronze
     uptime_target: float = 99.9  # Percentage
-    penalty_per_violation_pct: Decimal = Field(default=Decimal("1.0"))  # % of monthly fee
+    penalty_per_violation_pct: Decimal = Field(
+        default=Decimal("1.0")
+    )  # % of monthly fee
     monthly_fee: Decimal
     currency: Currency = Currency.USD
-    max_penalty_pct: Decimal = Field(default=Decimal("25.0"))  # Max penalty as % of monthly fee
+    max_penalty_pct: Decimal = Field(
+        default=Decimal("25.0")
+    )  # Max penalty as % of monthly fee
 
 
 class IncidentCost(BaseModel):
@@ -275,7 +279,9 @@ class TeamCostAllocation(BaseModel):
 
     # Costs
     direct_costs: Decimal = Field(default=Decimal("0"))  # Costs directly caused by team
-    support_costs: Decimal = Field(default=Decimal("0"))  # Costs for supporting other teams
+    support_costs: Decimal = Field(
+        default=Decimal("0")
+    )  # Costs for supporting other teams
     total_costs: Decimal = Field(default=Decimal("0"))
 
     # Breakdown

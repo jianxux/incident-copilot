@@ -206,7 +206,11 @@ View incident: ${incident_url}
         slack_blocks=[
             {
                 "type": "header",
-                "text": {"type": "plain_text", "text": "⚠️ SLA Breach Warning", "emoji": True},
+                "text": {
+                    "type": "plain_text",
+                    "text": "⚠️ SLA Breach Warning",
+                    "emoji": True,
+                },
             },
             {
                 "type": "section",
@@ -286,7 +290,11 @@ View incident: ${incident_url}
         slack_blocks=[
             {
                 "type": "header",
-                "text": {"type": "plain_text", "text": "✅ Incident Resolved", "emoji": True},
+                "text": {
+                    "type": "plain_text",
+                    "text": "✅ Incident Resolved",
+                    "emoji": True,
+                },
             },
             {"type": "section", "text": {"type": "mrkdwn", "text": "*${title}*"}},
             {
@@ -298,7 +306,10 @@ View incident: ${incident_url}
                     {"type": "mrkdwn", "text": "*Severity:*\n${severity}"},
                 ],
             },
-            {"type": "section", "text": {"type": "mrkdwn", "text": "*Resolution:*\n${resolution}"}},
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": "*Resolution:*\n${resolution}"},
+            },
             {
                 "type": "actions",
                 "elements": [
@@ -399,7 +410,11 @@ class TemplateRenderer:
             context["severity_emoji"] = SEVERITY_EMOJI.get(severity, "")
             context["severity_color"] = SEVERITY_COLOR.get(severity, "#666666")
         elif isinstance(severity, str):
-            sev = Severity(severity) if severity in [s.value for s in Severity] else Severity.P3
+            sev = (
+                Severity(severity)
+                if severity in [s.value for s in Severity]
+                else Severity.P3
+            )
             context["severity_emoji"] = SEVERITY_EMOJI.get(sev, "")
             context["severity_color"] = SEVERITY_COLOR.get(sev, "#666666")
 

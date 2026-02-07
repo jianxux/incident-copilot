@@ -78,7 +78,9 @@ class TimeWindow(BaseModel):
 class EscalationCondition(BaseModel):
     """A condition that triggers escalation."""
 
-    field: str = Field(..., description="Field to evaluate (e.g., 'severity', 'service')")
+    field: str = Field(
+        ..., description="Field to evaluate (e.g., 'severity', 'service')"
+    )
     operator: ConditionOperator
     value: Any
     time_window: TimeWindow | None = None
@@ -160,7 +162,9 @@ class EscalationLevel(BaseModel):
     )
     actions: list[EscalationAction] = Field(default_factory=list)
     conditions: list[EscalationCondition] = Field(default_factory=list)
-    use_oncall: bool = Field(default=True, description="Use on-call schedule for targets")
+    use_oncall: bool = Field(
+        default=True, description="Use on-call schedule for targets"
+    )
     team_id: str | None = Field(None, description="Team ID for on-call lookup")
     fallback_targets: list[str] = Field(
         default_factory=list, description="Fallback targets if no on-call found"
@@ -195,7 +199,9 @@ class DeescalationRule(BaseModel):
     name: str
     conditions: list[EscalationCondition] = Field(default_factory=list)
     target_level: int = Field(..., ge=1, description="Level to de-escalate to")
-    cooldown_minutes: int = Field(default=30, description="Cooldown before re-escalation")
+    cooldown_minutes: int = Field(
+        default=30, description="Cooldown before re-escalation"
+    )
 
 
 class EscalationPolicy(BaseModel):
@@ -205,10 +211,14 @@ class EscalationPolicy(BaseModel):
     name: str
     description: str | None = None
     enabled: bool = True
-    priority: int = Field(default=0, description="Higher priority policies evaluated first")
+    priority: int = Field(
+        default=0, description="Higher priority policies evaluated first"
+    )
 
     # Matching criteria
-    services: list[str] = Field(default_factory=list, description="Services this policy applies to")
+    services: list[str] = Field(
+        default_factory=list, description="Services this policy applies to"
+    )
     severities: list[Severity] = Field(default_factory=list)
     conditions: list[EscalationCondition] = Field(default_factory=list)
 
@@ -217,7 +227,9 @@ class EscalationPolicy(BaseModel):
     deescalation_rules: list[DeescalationRule] = Field(default_factory=list)
 
     # Behavior
-    repeat_enabled: bool = Field(default=False, description="Repeat escalation cycle if unresolved")
+    repeat_enabled: bool = Field(
+        default=False, description="Repeat escalation cycle if unresolved"
+    )
     repeat_delay_minutes: int = Field(default=60)
     max_repeats: int = Field(default=3)
 

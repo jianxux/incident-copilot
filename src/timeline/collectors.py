@@ -51,7 +51,9 @@ class PagerDutyCollector(EventCollector):
         # For now, return structure for integration
         return events
 
-    def _parse_log_entry(self, incident_id: str, entry: dict[str, Any]) -> TimelineEvent:
+    def _parse_log_entry(
+        self, incident_id: str, entry: dict[str, Any]
+    ) -> TimelineEvent:
         """Parse a PagerDuty log entry into a TimelineEvent."""
         entry_type = entry.get("type", "")
 
@@ -109,7 +111,9 @@ class SlackCollector(EventCollector):
         # Would call Slack API conversations.history
         return events
 
-    def _parse_message(self, incident_id: str, message: dict[str, Any]) -> TimelineEvent:
+    def _parse_message(
+        self, incident_id: str, message: dict[str, Any]
+    ) -> TimelineEvent:
         """Parse a Slack message into a TimelineEvent."""
         text = message.get("text", "")
 
@@ -157,7 +161,9 @@ class GitHubCollector(EventCollector):
         # Would call GitHub API for deployments, commits, PRs
         return events
 
-    def _parse_deployment(self, incident_id: str, deployment: dict[str, Any]) -> TimelineEvent:
+    def _parse_deployment(
+        self, incident_id: str, deployment: dict[str, Any]
+    ) -> TimelineEvent:
         """Parse a GitHub deployment into a TimelineEvent."""
         return TimelineEvent(
             incident_id=incident_id,
@@ -214,9 +220,11 @@ class DatadogCollector(EventCollector):
         return TimelineEvent(
             incident_id=incident_id,
             timestamp=datetime.fromtimestamp(dd_event.get("date_happened", 0)),
-            event_type=EventType.ALERT
-            if alert_type in ("error", "warning")
-            else EventType.METRIC_ANOMALY,
+            event_type=(
+                EventType.ALERT
+                if alert_type in ("error", "warning")
+                else EventType.METRIC_ANOMALY
+            ),
             source=EventSource.DATADOG,
             severity=severity,
             title=dd_event.get("title", "Datadog event"),
@@ -256,10 +264,16 @@ class PrometheusCollector(EventCollector):
 
         return TimelineEvent(
             incident_id=incident_id,
-            timestamp=datetime.fromisoformat(alert.get("startsAt", "").replace("Z", "+00:00")),
+            timestamp=datetime.fromisoformat(
+                alert.get("startsAt", "").replace("Z", "+00:00")
+            ),
             event_type=EventType.ALERT,
             source=EventSource.PROMETHEUS,
-            severity=EventSeverity.CRITICAL if severity == "critical" else EventSeverity.WARNING,
+            severity=(
+                EventSeverity.CRITICAL
+                if severity == "critical"
+                else EventSeverity.WARNING
+            ),
             title=labels.get("alertname", "Prometheus alert"),
             description=annotations.get("description") or annotations.get("summary"),
             actor=labels.get("instance"),
@@ -287,7 +301,9 @@ class KubernetesCollector(EventCollector):
         # Would use kubernetes client
         return events
 
-    def _parse_k8s_event(self, incident_id: str, k8s_event: dict[str, Any]) -> TimelineEvent:
+    def _parse_k8s_event(
+        self, incident_id: str, k8s_event: dict[str, Any]
+    ) -> TimelineEvent:
         """Parse a Kubernetes event into a TimelineEvent."""
         event_type_map = {"Normal": EventType.ACTION_TAKEN, "Warning": EventType.ALERT}
         severity_map = {"Normal": EventSeverity.INFO, "Warning": EventSeverity.WARNING}
@@ -337,7 +353,10 @@ class CompositeCollector:
         for collector in self.collectors:
             try:
                 events = await collector.collect(
-                    incident_id=incident_id, start_time=start_time, end_time=end_time, **kwargs
+                    incident_id=incident_id,
+                    start_time=start_time,
+                    end_time=end_time,
+                    **kwargs,
                 )
                 all_events.extend(events)
             except Exception as e:
@@ -363,11 +382,13 @@ class CompositeCollector:
 
 def create_default_collector() -> CompositeCollector:
     """Create a collector with all available sources."""
-    return CompositeCollector([
-        PagerDutyCollector(),
-        SlackCollector(),
-        GitHubCollector(),
-        DatadogCollector(),
-        PrometheusCollector(),
-        KubernetesCollector(),
-    ])
+    return CompositeCollector(
+        [
+            PagerDutyCollector(),
+            SlackCollector(),
+            GitHubCollector(),
+            DatadogCollector(),
+            PrometheusCollector(),
+            KubernetesCollector(),
+        ]
+    )

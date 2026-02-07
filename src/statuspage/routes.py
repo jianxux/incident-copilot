@@ -45,13 +45,16 @@ async def create_config(
     )
     if not await service.add_config(config):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to validate credentials"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to validate credentials",
         )
     return config
 
 
 @router.get("/configs", response_model=list[StatusPageConfig])
-async def list_configs(service: StatusPageService = Depends(get_service)) -> list[StatusPageConfig]:
+async def list_configs(
+    service: StatusPageService = Depends(get_service),
+) -> list[StatusPageConfig]:
     return service.list_configs()
 
 
@@ -87,7 +90,11 @@ async def update_component(
     status: ComponentStatus,
     service: StatusPageService = Depends(get_service),
 ) -> Component:
-    if not (component := await service.update_component_status(config_id, component_id, status)):
+    if not (
+        component := await service.update_component_status(
+            config_id, component_id, status
+        )
+    ):
         raise HTTPException(status_code=404, detail="Component not found")
     return component
 
@@ -98,7 +105,9 @@ async def sync_components(
 ) -> SyncResult:
     result = await service.sync_components(config_id)
     if not result.success:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=result.errors)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=result.errors
+        )
     return result
 
 
@@ -149,7 +158,9 @@ async def resolve_incident(
     message: str = "Issue resolved.",
     service: StatusPageService = Depends(get_service),
 ) -> StatusPageIncident:
-    if not (resolved := await service.resolve_incident(config_id, incident_id, message)):
+    if not (
+        resolved := await service.resolve_incident(config_id, incident_id, message)
+    ):
         raise HTTPException(status_code=404, detail="Incident not found")
     return resolved
 
@@ -201,7 +212,9 @@ async def auto_update_status(
     message: str | None = None,
     automation: StatusPageAutomation = Depends(get_automation),
 ) -> dict[str, Any]:
-    results = await automation.on_incident_status_change(incident_id, new_status, message)
+    results = await automation.on_incident_status_change(
+        incident_id, new_status, message
+    )
     return {"updated_on": list(results.keys()), "count": len(results)}
 
 
@@ -217,7 +230,9 @@ async def auto_resolve_incident(
 
 @router.post("/automation/service/{service_id}/status")
 async def auto_update_service_status(
-    service_id: str, status: str, automation: StatusPageAutomation = Depends(get_automation)
+    service_id: str,
+    status: str,
+    automation: StatusPageAutomation = Depends(get_automation),
 ) -> dict[str, Any]:
     results = await automation.on_service_status_change(service_id, status)
     return {"updated_on": list(results.keys()), "count": len(results)}

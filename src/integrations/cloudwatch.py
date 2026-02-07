@@ -45,7 +45,9 @@ class CloudWatchAdapter:
             # (env vars, IAM role, ~/.aws/credentials, etc.)
             if self.settings.aws_access_key_id and self.settings.aws_secret_access_key:
                 client_kwargs["aws_access_key_id"] = self.settings.aws_access_key_id
-                client_kwargs["aws_secret_access_key"] = self.settings.aws_secret_access_key
+                client_kwargs["aws_secret_access_key"] = (
+                    self.settings.aws_secret_access_key
+                )
 
             self._logs_client = boto3.client(**client_kwargs)
 
@@ -99,7 +101,9 @@ class CloudWatchAdapter:
             logger.error("cloudwatch_fetch_failed", service=service_name, error=str(e))
             return None
 
-    async def _fetch_logs(self, service_name: str, time_range_minutes: int) -> list[LogEntry]:
+    async def _fetch_logs(
+        self, service_name: str, time_range_minutes: int
+    ) -> list[LogEntry]:
         """Fetch recent logs from CloudWatch Log Groups."""
         import asyncio
 
@@ -154,7 +158,9 @@ class CloudWatchAdapter:
         logs: list[LogEntry] = []
 
         # Filter for error/warning patterns
-        filter_pattern = "?ERROR ?WARN ?error ?warn ?Error ?Warning ?CRITICAL ?Exception"
+        filter_pattern = (
+            "?ERROR ?WARN ?error ?warn ?Error ?Warning ?CRITICAL ?Exception"
+        )
 
         try:
             response = client.filter_log_events(
@@ -201,7 +207,9 @@ class CloudWatchAdapter:
 
         if any(x in message_lower for x in ["critical", "fatal"]):
             return "critical"
-        elif any(x in message_lower for x in ["error", "exception", "failed", "failure"]):
+        elif any(
+            x in message_lower for x in ["error", "exception", "failed", "failure"]
+        ):
             return "error"
         elif any(x in message_lower for x in ["warn", "warning"]):
             return "warn"

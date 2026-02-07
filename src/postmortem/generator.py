@@ -238,7 +238,9 @@ class PostmortemGenerator:
         # Generate root cause analysis
         root_cause = None
         if include_ai_analysis and self.client:
-            root_cause = await self._generate_root_cause(context_card, timeline, context_str)
+            root_cause = await self._generate_root_cause(
+                context_card, timeline, context_str
+            )
 
         # Generate impact assessment
         impact = None
@@ -265,7 +267,9 @@ class PostmortemGenerator:
         what_went_poorly = []
         lucky_factors = []
         if include_ai_analysis and self.client and root_cause and impact:
-            lessons = await self._generate_lessons(context_card, root_cause, impact, timeline)
+            lessons = await self._generate_lessons(
+                context_card, root_cause, impact, timeline
+            )
             lessons_learned = lessons.get("lessons_learned", [])
             what_went_well = lessons.get("what_went_well", [])
             what_went_poorly = lessons.get("what_went_poorly", [])
@@ -280,7 +284,9 @@ class PostmortemGenerator:
                 break
 
         if resolved_at and context_card.triggered_at:
-            duration_minutes = int((resolved_at - context_card.triggered_at).total_seconds() / 60)
+            duration_minutes = int(
+                (resolved_at - context_card.triggered_at).total_seconds() / 60
+            )
 
         postmortem = Postmortem(
             id=postmortem_id,
@@ -400,7 +406,9 @@ class PostmortemGenerator:
 
             parts.append("## Log Summaries")
             for summary in context_card.datadog.log_summaries[:5]:
-                parts.append(f"- [{summary.level}] {summary.pattern} (count: {summary.count})")
+                parts.append(
+                    f"- [{summary.level}] {summary.pattern} (count: {summary.count})"
+                )
 
         # AI Summary
         if context_card.ai_summary:
@@ -498,7 +506,9 @@ class PostmortemGenerator:
             for event_data in data:
                 event_type = TimelineEventType.OTHER
                 try:
-                    event_type = TimelineEventType(event_data.get("event_type", "other"))
+                    event_type = TimelineEventType(
+                        event_data.get("event_type", "other")
+                    )
                 except ValueError:
                     pass
 
@@ -532,7 +542,9 @@ class PostmortemGenerator:
             return None
 
         try:
-            timeline_str = "\n".join(f"- {e.timestamp.isoformat()}: {e.title}" for e in timeline)
+            timeline_str = "\n".join(
+                f"- {e.timestamp.isoformat()}: {e.title}" for e in timeline
+            )
 
             prompt = ROOT_CAUSE_PROMPT.format(
                 title=context_card.title,
@@ -574,7 +586,9 @@ class PostmortemGenerator:
         try:
             duration_info = "Unknown duration"
             if context_card.datadog and context_card.datadog.metrics:
-                duration_info = f"{context_card.datadog.metrics.time_range_minutes} minutes of data"
+                duration_info = (
+                    f"{context_card.datadog.metrics.time_range_minutes} minutes of data"
+                )
 
             prompt = IMPACT_PROMPT.format(
                 title=context_card.title,

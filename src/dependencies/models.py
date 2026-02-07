@@ -45,7 +45,9 @@ class Service(BaseModel):
     criticality: CriticalityLevel = Field(
         default=CriticalityLevel.MEDIUM, description="Service criticality level"
     )
-    health: HealthStatus = Field(default=HealthStatus.UNKNOWN, description="Current health status")
+    health: HealthStatus = Field(
+        default=HealthStatus.UNKNOWN, description="Current health status"
+    )
     tags: list[str] = Field(default_factory=list, description="Service tags")
     metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -118,7 +120,9 @@ class BlastRadius(BaseModel):
     critical_affected: list[str] = Field(
         default_factory=list, description="Critical services affected"
     )
-    risk_score: float = Field(default=0.0, ge=0.0, le=100.0, description="Risk score (0-100)")
+    risk_score: float = Field(
+        default=0.0, ge=0.0, le=100.0, description="Risk score (0-100)"
+    )
     impact_paths: list[DependencyPath] = Field(
         default_factory=list, description="Paths to affected services"
     )

@@ -51,7 +51,9 @@ class SMTPClient(EmailClient):
             # Create SMTP connection
             if config.smtp.use_ssl:
                 context = ssl.create_default_context()
-                server = smtplib.SMTP_SSL(config.smtp.host, config.smtp.port, context=context)
+                server = smtplib.SMTP_SSL(
+                    config.smtp.host, config.smtp.port, context=context
+                )
             else:
                 server = smtplib.SMTP(config.smtp.host, config.smtp.port)
                 if config.smtp.use_tls:
@@ -122,7 +124,9 @@ class SMTPClient(EmailClient):
         try:
             if config.smtp.use_ssl:
                 context = ssl.create_default_context()
-                server = smtplib.SMTP_SSL(config.smtp.host, config.smtp.port, context=context)
+                server = smtplib.SMTP_SSL(
+                    config.smtp.host, config.smtp.port, context=context
+                )
             else:
                 server = smtplib.SMTP(
                     config.smtp.host, config.smtp.port, timeout=config.smtp.timeout
@@ -149,7 +153,9 @@ class SMTPClient(EmailClient):
                 error=str(e),
             )
 
-    def _build_message(self, message: EmailMessage, config: EmailConfig) -> MIMEMultipart:
+    def _build_message(
+        self, message: EmailMessage, config: EmailConfig
+    ) -> MIMEMultipart:
         """Build MIME message."""
         msg = MIMEMultipart("alternative")
 
@@ -340,7 +346,9 @@ class SESClient(EmailClient):
             ses = boto3.client("ses", **client_kwargs)
 
             # Build destination
-            destination: dict[str, list[str]] = {"ToAddresses": [r.email for r in message.to]}
+            destination: dict[str, list[str]] = {
+                "ToAddresses": [r.email for r in message.to]
+            }
 
             if message.cc:
                 destination["CcAddresses"] = [r.email for r in message.cc]

@@ -142,7 +142,9 @@ async def list_deliveries(
 
 
 @router.get("/{webhook_id}/deliveries/{delivery_id}", response_model=WebhookDelivery)
-async def get_delivery(webhook_id: UUID, delivery_id: UUID, org_id: OrgId) -> WebhookDelivery:
+async def get_delivery(
+    webhook_id: UUID, delivery_id: UUID, org_id: OrgId
+) -> WebhookDelivery:
     """Get details of a specific delivery."""
     webhook = webhook_service.get_webhook(webhook_id)
     if not webhook or webhook.organization_id != org_id:
@@ -186,7 +188,9 @@ async def reset_circuit_breaker(webhook_id: UUID, org_id: OrgId) -> dict:
 
 
 @router.post("/bulk-deliver", response_model=BulkDeliveryResponse)
-async def bulk_deliver(request: BulkDeliveryRequest, org_id: OrgId) -> BulkDeliveryResponse:
+async def bulk_deliver(
+    request: BulkDeliveryRequest, org_id: OrgId
+) -> BulkDeliveryResponse:
     """Deliver multiple events in bulk."""
     # Validate all events belong to org
     for event in request.events:

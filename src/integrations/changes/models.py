@@ -72,7 +72,9 @@ class ChangeEvent(BaseModel):
     # Context
     environment: str = Field(default="production")
     service: Optional[str] = Field(None, description="Affected service")
-    services: list[str] = Field(default_factory=list, description="All affected services")
+    services: list[str] = Field(
+        default_factory=list, description="All affected services"
+    )
 
     # Impact assessment
     risk_level: RiskLevel = RiskLevel.MEDIUM
@@ -86,7 +88,9 @@ class ChangeEvent(BaseModel):
 
     # Rollback tracking
     is_rollback: bool = False
-    rollback_of: Optional[str] = Field(None, description="ID of change being rolled back")
+    rollback_of: Optional[str] = Field(
+        None, description="ID of change being rolled back"
+    )
     rolled_back_by: Optional[str] = Field(None, description="ID of rollback change")
 
     # Metadata
@@ -154,8 +158,12 @@ class ConfigChange(ChangeEvent):
 
     # Config details
     config_key: str = Field(..., description="Configuration key changed")
-    old_value: Optional[str] = Field(None, description="Previous value (redacted if sensitive)")
-    new_value: Optional[str] = Field(None, description="New value (redacted if sensitive)")
+    old_value: Optional[str] = Field(
+        None, description="Previous value (redacted if sensitive)"
+    )
+    new_value: Optional[str] = Field(
+        None, description="New value (redacted if sensitive)"
+    )
     is_sensitive: bool = Field(default=False)
 
     # Scope
@@ -204,7 +212,9 @@ class ChangeFreeze(BaseModel):
 
     # Scope
     environments: list[str] = Field(default_factory=lambda: ["production"])
-    services: list[str] = Field(default_factory=list, description="Empty = all services")
+    services: list[str] = Field(
+        default_factory=list, description="Empty = all services"
+    )
 
     # Exceptions
     allowed_change_types: list[ChangeType] = Field(default_factory=list)
@@ -251,7 +261,9 @@ class ChangeCorrelation(BaseModel):
     window_end: datetime
 
     # Analysis
-    most_likely_cause: Optional[str] = Field(None, description="ID of most likely causal change")
+    most_likely_cause: Optional[str] = Field(
+        None, description="ID of most likely causal change"
+    )
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
 
     # Statistics
@@ -263,13 +275,21 @@ class ChangeCorrelation(BaseModel):
     def analyze(self) -> None:
         """Analyze changes and update statistics."""
         self.total_changes = len(self.changes)
-        self.deployments = sum(1 for c in self.changes if c.type == ChangeType.DEPLOYMENT)
-        self.config_changes = sum(1 for c in self.changes if c.type == ChangeType.CONFIG_CHANGE)
-        self.feature_flags = sum(1 for c in self.changes if c.type == ChangeType.FEATURE_FLAG)
+        self.deployments = sum(
+            1 for c in self.changes if c.type == ChangeType.DEPLOYMENT
+        )
+        self.config_changes = sum(
+            1 for c in self.changes if c.type == ChangeType.CONFIG_CHANGE
+        )
+        self.feature_flags = sum(
+            1 for c in self.changes if c.type == ChangeType.FEATURE_FLAG
+        )
 
         if self.changes:
             # Find highest impact change as most likely cause
-            sorted_changes = sorted(self.changes, key=lambda c: c.impact_score, reverse=True)
+            sorted_changes = sorted(
+                self.changes, key=lambda c: c.impact_score, reverse=True
+            )
             self.most_likely_cause = sorted_changes[0].id
             self.confidence = sorted_changes[0].impact_score
 
@@ -302,7 +322,9 @@ class ChangeTimeline(BaseModel):
 
             # By service
             if event.service:
-                self.by_service[event.service] = self.by_service.get(event.service, 0) + 1
+                self.by_service[event.service] = (
+                    self.by_service.get(event.service, 0) + 1
+                )
 
             # By environment
             self.by_environment[event.environment] = (

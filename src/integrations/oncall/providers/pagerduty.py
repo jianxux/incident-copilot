@@ -96,9 +96,11 @@ class PagerDutyProvider:
                         id=f"pd_{user_data['id']}",
                         name=user_data.get("name", "Unknown"),
                         email=user_data.get("email", ""),
-                        phone=user_data.get("contact_methods", [{}])[0].get("address")
-                        if user_data.get("contact_methods")
-                        else None,
+                        phone=(
+                            user_data.get("contact_methods", [{}])[0].get("address")
+                            if user_data.get("contact_methods")
+                            else None
+                        ),
                         timezone=user_data.get("time_zone", "UTC"),
                         avatar_url=user_data.get("avatar_url"),
                     )
@@ -126,7 +128,9 @@ class PagerDutyProvider:
         schedule_data = data.get("schedule", {})
         tz = schedule_data.get("time_zone", "UTC")
 
-        for entry in schedule_data.get("final_schedule", {}).get("rendered_schedule_entries", []):
+        for entry in schedule_data.get("final_schedule", {}).get(
+            "rendered_schedule_entries", []
+        ):
             user_data = entry.get("user", {})
             if not user_data:
                 continue
@@ -143,15 +147,21 @@ class PagerDutyProvider:
                     id=f"pd_shift_{entry.get('id', user_data['id'])}_{entry['start']}",
                     user=user,
                     schedule_id=f"pd_{schedule_id}",
-                    start_time=datetime.fromisoformat(entry["start"].replace("Z", "+00:00")),
-                    end_time=datetime.fromisoformat(entry["end"].replace("Z", "+00:00")),
+                    start_time=datetime.fromisoformat(
+                        entry["start"].replace("Z", "+00:00")
+                    ),
+                    end_time=datetime.fromisoformat(
+                        entry["end"].replace("Z", "+00:00")
+                    ),
                     timezone=tz,
                 )
             )
 
         return shifts
 
-    async def create_override(self, schedule_id: str, override: OnCallOverride) -> OnCallOverride:
+    async def create_override(
+        self, schedule_id: str, override: OnCallOverride
+    ) -> OnCallOverride:
         """Create a schedule override in PagerDuty."""
         client = await self._get_client()
 
@@ -187,7 +197,9 @@ class PagerDutyProvider:
         try:
             now = datetime.utcnow()
             shifts = await self.get_schedule_shifts(
-                schedule_id, since=now - timedelta(days=7), until=now + timedelta(days=30)
+                schedule_id,
+                since=now - timedelta(days=7),
+                until=now + timedelta(days=30),
             )
             shifts_count = len(shifts)
         except Exception as e:

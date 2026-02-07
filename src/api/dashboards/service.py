@@ -34,7 +34,9 @@ class DashboardService:
         self._dashboards: dict[UUID, Dashboard] = {}
         self._public_tokens: dict[str, UUID] = {}
 
-    async def create_dashboard(self, owner_id: UUID, data: DashboardCreate) -> Dashboard:
+    async def create_dashboard(
+        self, owner_id: UUID, data: DashboardCreate
+    ) -> Dashboard:
         did, now = uuid4(), datetime.utcnow()
         widgets = []
         for wd in data.widgets:
@@ -42,7 +44,11 @@ class DashboardService:
                 raise ValueError(f"Invalid widget: {errs}")
             widgets.append(
                 Widget(
-                    id=uuid4(), dashboard_id=did, created_at=now, updated_at=now, **wd.model_dump()
+                    id=uuid4(),
+                    dashboard_id=did,
+                    created_at=now,
+                    updated_at=now,
+                    **wd.model_dump(),
                 )
             )
 
@@ -108,7 +114,9 @@ class DashboardService:
             )
         return sorted(results, key=lambda x: x.updated_at, reverse=True)
 
-    async def update_dashboard(self, did: UUID, user_id: UUID, data: DashboardUpdate) -> Dashboard:
+    async def update_dashboard(
+        self, did: UUID, user_id: UUID, data: DashboardUpdate
+    ) -> Dashboard:
         d = await self.get_dashboard(did, user_id)
         if not await self._can_edit(d, user_id):
             raise PermissionDeniedError("No edit access")
@@ -238,7 +246,9 @@ class DashboardService:
         d.updated_at = datetime.utcnow()
         return d.share_config
 
-    async def _can_view(self, d: Dashboard, uid: UUID, teams: list[UUID] | None = None) -> bool:
+    async def _can_view(
+        self, d: Dashboard, uid: UUID, teams: list[UUID] | None = None
+    ) -> bool:
         if d.owner_id == uid:
             return True
         s = d.share_config

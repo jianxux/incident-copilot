@@ -145,7 +145,9 @@ class SLAPolicy(BaseModel):
         for target in self.targets:
             key = (target.severity, target.sla_type)
             if key in seen:
-                raise ValueError(f"Duplicate target for {target.severity}/{target.sla_type}")
+                raise ValueError(
+                    f"Duplicate target for {target.severity}/{target.sla_type}"
+                )
             seen.add(key)
         return self
 
@@ -196,7 +198,10 @@ class SLATimer(BaseModel):
     @property
     def is_breached(self) -> bool:
         """Check if SLA has been breached."""
-        return self.status == SLAStatus.BREACHED or self.elapsed_minutes >= self.target_minutes
+        return (
+            self.status == SLAStatus.BREACHED
+            or self.elapsed_minutes >= self.target_minutes
+        )
 
 
 class SLABreach(BaseModel):
@@ -386,17 +391,25 @@ class SLANotification(BaseModel):
 DEFAULT_SLA_TARGETS = [
     # P1 - Critical
     SLATarget(severity=SLASeverity.P1, sla_type=SLAType.RESPONSE, target_minutes=15),
-    SLATarget(severity=SLASeverity.P1, sla_type=SLAType.RESOLUTION, target_minutes=240),  # 4 hours
+    SLATarget(
+        severity=SLASeverity.P1, sla_type=SLAType.RESOLUTION, target_minutes=240
+    ),  # 4 hours
     # P2 - High
     SLATarget(severity=SLASeverity.P2, sla_type=SLAType.RESPONSE, target_minutes=30),
-    SLATarget(severity=SLASeverity.P2, sla_type=SLAType.RESOLUTION, target_minutes=480),  # 8 hours
+    SLATarget(
+        severity=SLASeverity.P2, sla_type=SLAType.RESOLUTION, target_minutes=480
+    ),  # 8 hours
     # P3 - Medium
-    SLATarget(severity=SLASeverity.P3, sla_type=SLAType.RESPONSE, target_minutes=120),  # 2 hours
+    SLATarget(
+        severity=SLASeverity.P3, sla_type=SLAType.RESPONSE, target_minutes=120
+    ),  # 2 hours
     SLATarget(
         severity=SLASeverity.P3, sla_type=SLAType.RESOLUTION, target_minutes=1440
     ),  # 24 hours
     # P4 - Low
-    SLATarget(severity=SLASeverity.P4, sla_type=SLAType.RESPONSE, target_minutes=480),  # 8 hours
+    SLATarget(
+        severity=SLASeverity.P4, sla_type=SLAType.RESPONSE, target_minutes=480
+    ),  # 8 hours
     SLATarget(
         severity=SLASeverity.P4, sla_type=SLAType.RESOLUTION, target_minutes=4320
     ),  # 72 hours

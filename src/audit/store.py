@@ -61,7 +61,10 @@ class AuditStore:
             # Enforce max events limit (remove oldest)
             while len(self._events) > self.max_events:
                 oldest = self._events.pop(0)
-                if oldest.tenant_id and oldest in self._events_by_tenant[oldest.tenant_id]:
+                if (
+                    oldest.tenant_id
+                    and oldest in self._events_by_tenant[oldest.tenant_id]
+                ):
                     self._events_by_tenant[oldest.tenant_id].remove(oldest)
 
         return event
@@ -114,12 +117,16 @@ class AuditStore:
             # Update tenant indices
             for tenant_id in self._events_by_tenant:
                 self._events_by_tenant[tenant_id] = [
-                    e for e in self._events_by_tenant[tenant_id] if e.timestamp >= cutoff
+                    e
+                    for e in self._events_by_tenant[tenant_id]
+                    if e.timestamp >= cutoff
                 ]
 
         return deleted
 
-    def _apply_filters(self, events: list[AuditEvent], query: AuditLogQuery) -> list[AuditEvent]:
+    def _apply_filters(
+        self, events: list[AuditEvent], query: AuditLogQuery
+    ) -> list[AuditEvent]:
         """Apply query filters to events list."""
         filtered = events
 
@@ -219,7 +226,8 @@ class PostgresAuditStore:
             await self.connect()
 
         async with self._pool.acquire() as conn:
-            await conn.execute("""
+            await conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS audit_events (
                     id VARCHAR(32) PRIMARY KEY,
                     event_type VARCHAR(64) NOT NULL,
@@ -253,7 +261,8 @@ class PostgresAuditStore:
                     ON audit_events (category);
                 CREATE INDEX IF NOT EXISTS idx_audit_timestamp
                     ON audit_events (timestamp DESC);
-            """)
+            """
+            )
 
     async def store_event(self, event: AuditEvent) -> AuditEvent:
         """Store an audit event in PostgreSQL."""
@@ -493,7 +502,9 @@ def get_audit_store() -> AuditStore | PostgresAuditStore:
     return audit_store
 
 
-async def init_audit_store(database_url: str | None = None, retention_days: int = 90) -> None:
+async def init_audit_store(
+    database_url: str | None = None, retention_days: int = 90
+) -> None:
     """Initialize the audit store with appropriate backend."""
     global audit_store
 

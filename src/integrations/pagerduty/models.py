@@ -56,7 +56,9 @@ class PagerDutyConfig(BaseModel):
 
     # API credentials
     api_token: str = Field(..., description="REST API token")
-    integration_key: Optional[str] = Field(None, description="Events API integration key")
+    integration_key: Optional[str] = Field(
+        None, description="Events API integration key"
+    )
 
     # OAuth credentials (alternative)
     client_id: Optional[str] = None

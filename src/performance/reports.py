@@ -26,7 +26,9 @@ class ReportGenerator:
         anonymize_engineers: bool = False,
         include_comparison: bool = True,
     ) -> PerformanceReport:
-        team_metrics = await self.service.calculate_team_metrics(team_id, team_name, period)
+        team_metrics = await self.service.calculate_team_metrics(
+            team_id, team_name, period
+        )
         engineer_metrics = []
         if include_engineers:
             incidents = await self.service.incident_repo.get_incidents(
@@ -39,16 +41,25 @@ class ReportGenerator:
             ):
                 engineer_metrics.append(
                     await self.service.calculate_engineer_metrics(
-                        eid, f"Eng {eid[:6]}", team_id, period, True, anonymize_engineers
+                        eid,
+                        f"Eng {eid[:6]}",
+                        team_id,
+                        period,
+                        True,
+                        anonymize_engineers,
                     )
                 )
 
         comparison = None
         if include_comparison:
             prev = PerformancePeriod(
-                start=period.start - (period.end - period.start), end=period.start, label="Previous"
+                start=period.start - (period.end - period.start),
+                end=period.start,
+                label="Previous",
             )
-            comparison = await self.service.compare_periods(team_id, team_name, period, prev)
+            comparison = await self.service.compare_periods(
+                team_id, team_name, period, prev
+            )
 
         return PerformanceReport(
             period=period,
@@ -58,11 +69,16 @@ class ReportGenerator:
             benchmarks={k: v.value for k, v in classify_team(team_metrics).items()},
             highlights=self._highlights(team_metrics, engineer_metrics, comparison),
             concerns=self._concerns(team_metrics, engineer_metrics),
-            recommendations=self._recommendations(team_metrics, engineer_metrics, comparison),
+            recommendations=self._recommendations(
+                team_metrics, engineer_metrics, comparison
+            ),
         )
 
     def _highlights(
-        self, tm: TeamMetrics, engs: list[EngineerMetrics], comp: PeriodComparison | None
+        self,
+        tm: TeamMetrics,
+        engs: list[EngineerMetrics],
+        comp: PeriodComparison | None,
     ) -> list[str]:
         h = []
         if tm.tier == PerformanceTier.ELITE:
@@ -88,18 +104,24 @@ class ReportGenerator:
         if tm.escalation_rate > 20:
             c.append(f"📤 High escalation: {tm.escalation_rate}%")
         if tm.workload_distribution and not tm.workload_distribution.is_balanced:
-            c.append(f"⚖️ Uneven workload (Gini: {tm.workload_distribution.gini_coefficient:.2f})")
+            c.append(
+                f"⚖️ Uneven workload (Gini: {tm.workload_distribution.gini_coefficient:.2f})"
+            )
         at_risk = [
             e
             for e in engs
-            if e.burnout and e.burnout.risk_level in (BurnoutRisk.HIGH, BurnoutRisk.CRITICAL)
+            if e.burnout
+            and e.burnout.risk_level in (BurnoutRisk.HIGH, BurnoutRisk.CRITICAL)
         ]
         if at_risk:
             c.append(f"🔥 {len(at_risk)} at burnout risk")
         return c[:5]
 
     def _recommendations(
-        self, tm: TeamMetrics, engs: list[EngineerMetrics], comp: PeriodComparison | None
+        self,
+        tm: TeamMetrics,
+        engs: list[EngineerMetrics],
+        comp: PeriodComparison | None,
     ) -> list[str]:
         r = []
         if tm.mttr_minutes > 120:

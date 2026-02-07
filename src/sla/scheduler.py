@@ -185,7 +185,9 @@ class SLAScheduler:
                     sent = await self._notification_sender(warning)
                     if sent:
                         self._warning_sent[warn_key] = now
-                        logger.info(f"Sent SLA warning for {timer.incident_id}/{timer.sla_type}")
+                        logger.info(
+                            f"Sent SLA warning for {timer.incident_id}/{timer.sla_type}"
+                        )
                 except Exception as e:
                     logger.error(f"Failed to send warning notification: {e}")
 
@@ -208,9 +210,13 @@ class SLAScheduler:
                             # Update breach with notification sent time
                             breach.escalation_sent_at = datetime.utcnow()
                             await self.service.store.save_breach(breach)
-                            logger.info(f"Sent {channel} notification for breach {breach.id}")
+                            logger.info(
+                                f"Sent {channel} notification for breach {breach.id}"
+                            )
                 except Exception as e:
-                    logger.error(f"Failed to send {channel} notification for {breach.id}: {e}")
+                    logger.error(
+                        f"Failed to send {channel} notification for {breach.id}: {e}"
+                    )
 
     async def _refresh_policy_cache(self) -> None:
         """Refresh the policy cache if stale."""
@@ -311,7 +317,9 @@ class SLASchedulerManager:
             check_interval_seconds: Breach check interval
             enabled: Whether to enable the scheduler on startup
         """
-        self.scheduler = SLAScheduler(service, check_interval_seconds=check_interval_seconds)
+        self.scheduler = SLAScheduler(
+            service, check_interval_seconds=check_interval_seconds
+        )
         self._enabled = enabled
 
     def set_notification_sender(self, sender: NotificationSender) -> None:
@@ -345,7 +353,9 @@ async def email_notification_sender(notification: SLANotification) -> bool:
 
     Replace with your actual email sending implementation.
     """
-    logger.info(f"[EMAIL] To: {notification.recipients}, Subject: {notification.subject}")
+    logger.info(
+        f"[EMAIL] To: {notification.recipients}, Subject: {notification.subject}"
+    )
     # TODO: Implement actual email sending
     # Example with aiosmtplib:
     # await send_email(
@@ -361,7 +371,9 @@ async def slack_notification_sender(notification: SLANotification) -> bool:
 
     Replace with your actual Slack integration.
     """
-    logger.info(f"[SLACK] Channels: {notification.recipients}, Message: {notification.subject}")
+    logger.info(
+        f"[SLACK] Channels: {notification.recipients}, Message: {notification.subject}"
+    )
     # TODO: Implement actual Slack sending
     # Example with slack_sdk:
     # client = AsyncWebClient(token=os.environ["SLACK_BOT_TOKEN"])

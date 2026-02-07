@@ -51,7 +51,9 @@ class EngineerTimeCostCalculator:
 
         # Check for team default rate
         if team:
-            team_rates = [r for r in self.rates.values() if r.team == team and r.is_default]
+            team_rates = [
+                r for r in self.rates.values() if r.team == team and r.is_default
+            ]
             if team_rates:
                 return team_rates[0].hourly_rate
 
@@ -202,7 +204,8 @@ class CloudCostCalculator:
             category=CostCategory.CLOUD_RESOURCES,
             amount=amount,
             currency=Currency.USD,
-            description=description or f"Cloud: {resource_type} ({quantity} x {hours}h)",
+            description=description
+            or f"Cloud: {resource_type} ({quantity} x {hours}h)",
             source="calculated",
             metadata={
                 "resource_type": resource_type,
@@ -222,7 +225,11 @@ class CloudCostCalculator:
     ) -> CostEntry:
         """Calculate cost of emergency scaling."""
         extra_units = max(0, scaled_capacity - original_capacity)
-        amount = cost_per_unit_hour * Decimal(str(extra_units)) * Decimal(str(duration_hours))
+        amount = (
+            cost_per_unit_hour
+            * Decimal(str(extra_units))
+            * Decimal(str(duration_hours))
+        )
 
         return CostEntry(
             incident_id=incident_id,

@@ -51,8 +51,12 @@ def business_hours_policy() -> SLAPolicy:
         name="Business Hours SLA",
         organization_id="org-123",
         targets=[
-            SLATarget(severity=SLASeverity.P1, sla_type=SLAType.RESPONSE, target_minutes=15),
-            SLATarget(severity=SLASeverity.P1, sla_type=SLAType.RESOLUTION, target_minutes=240),
+            SLATarget(
+                severity=SLASeverity.P1, sla_type=SLAType.RESPONSE, target_minutes=15
+            ),
+            SLATarget(
+                severity=SLASeverity.P1, sla_type=SLAType.RESOLUTION, target_minutes=240
+            ),
         ],
         business_hours=BusinessHours(
             enabled=True,
@@ -168,10 +172,14 @@ class TestSLAPolicy:
                 organization_id="org-123",
                 targets=[
                     SLATarget(
-                        severity=SLASeverity.P1, sla_type=SLAType.RESPONSE, target_minutes=15
+                        severity=SLASeverity.P1,
+                        sla_type=SLAType.RESPONSE,
+                        target_minutes=15,
                     ),
                     SLATarget(
-                        severity=SLASeverity.P1, sla_type=SLAType.RESPONSE, target_minutes=30
+                        severity=SLASeverity.P1,
+                        sla_type=SLAType.RESPONSE,
+                        target_minutes=30,
                     ),
                 ],
             )

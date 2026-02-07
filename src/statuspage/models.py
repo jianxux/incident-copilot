@@ -64,7 +64,9 @@ class StatusPageConfig(BaseModel):
     provider: StatusPageProvider
     credentials: StatusPageCredentials
     enabled: bool = Field(default=True, description="Whether this config is active")
-    auto_sync: bool = Field(default=True, description="Auto-sync incident status changes")
+    auto_sync: bool = Field(
+        default=True, description="Auto-sync incident status changes"
+    )
     component_mapping: dict[str, str] = Field(
         default_factory=dict, description="Service ID → Component ID"
     )

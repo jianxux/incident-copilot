@@ -168,7 +168,8 @@ class PagerDutyClient:
 
         if request.assignments:
             incident_data["assignments"] = [
-                {"assignee": {"id": uid, "type": "user_reference"}} for uid in request.assignments
+                {"assignee": {"id": uid, "type": "user_reference"}}
+                for uid in request.assignments
             ]
 
         if request.conference_bridge:
@@ -229,7 +230,8 @@ class PagerDutyClient:
             incident_data["escalation_level"] = request.escalation_level
         if request.assignments is not None:
             incident_data["assignments"] = [
-                {"assignee": {"id": uid, "type": "user_reference"}} for uid in request.assignments
+                {"assignee": {"id": uid, "type": "user_reference"}}
+                for uid in request.assignments
             ]
         if request.resolution:
             incident_data["resolution"] = request.resolution
