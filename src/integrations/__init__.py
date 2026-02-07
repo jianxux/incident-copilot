@@ -8,7 +8,7 @@ from .jira import JiraClient, create_incident_ticket, update_incident_resolved
 from .linear import LinearClient
 from .loki import LokiAdapter
 from .oncall import OnCallService, ProviderType
-from .pagerduty import PagerDutyAdapter
+from .pagerduty_legacy import PagerDutyAdapter
 from .servicenow import ServiceNowAdapter
 from .slack import SlackAdapter
 from .splunk import SplunkAdapter
