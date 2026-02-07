@@ -6,7 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request
 from ..config import get_settings
 from ..correlation.engine import get_correlation_engine
 from ..integrations.opsgenie import OpsgenieAdapter
-from ..integrations.pagerduty import PagerDutyAdapter
+from ..integrations.pagerduty_legacy import PagerDutyAdapter
 from ..orchestrator import ContextOrchestrator
 
 logger = structlog.get_logger()
