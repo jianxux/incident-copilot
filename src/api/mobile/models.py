@@ -35,7 +35,9 @@ class QuickActionType(str, Enum):
 
 
 class MobileBaseModel(BaseModel):
-    model_config = ConfigDict(populate_by_name=True, use_enum_values=True, extra="ignore")
+    model_config = ConfigDict(
+        populate_by_name=True, use_enum_values=True, extra="ignore"
+    )
 
 
 # === Incident Models ===

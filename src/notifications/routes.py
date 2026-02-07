@@ -187,7 +187,9 @@ async def list_channels(
 
 
 @router.post(
-    "/preferences/channels", response_model=NotificationChannel, status_code=status.HTTP_201_CREATED
+    "/preferences/channels",
+    response_model=NotificationChannel,
+    status_code=status.HTTP_201_CREATED,
 )
 async def add_channel(
     channel: ChannelCreate,
@@ -215,7 +217,9 @@ async def add_channel(
     return new_channel
 
 
-@router.patch("/preferences/channels/{channel_index}", response_model=NotificationChannel)
+@router.patch(
+    "/preferences/channels/{channel_index}", response_model=NotificationChannel
+)
 async def update_channel(
     channel_index: int,
     updates: ChannelUpdate,
@@ -245,7 +249,9 @@ async def update_channel(
     return channel
 
 
-@router.delete("/preferences/channels/{channel_index}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/preferences/channels/{channel_index}", status_code=status.HTTP_204_NO_CONTENT
+)
 async def delete_channel(
     channel_index: int,
     user_id: str = Depends(get_current_user_id),
@@ -312,7 +318,9 @@ async def list_rules(
 
 
 @router.post(
-    "/preferences/rules", response_model=NotificationRule, status_code=status.HTTP_201_CREATED
+    "/preferences/rules",
+    response_model=NotificationRule,
+    status_code=status.HTTP_201_CREATED,
 )
 async def add_rule(
     rule: RuleCreate,
@@ -394,7 +402,11 @@ async def test_notification(
     if request.channel_type:
         prefs = await service.preference_store.get(user_id)
         if prefs:
-            matching = [c for c in prefs.channels if c.type == request.channel_type and c.enabled]
+            matching = [
+                c
+                for c in prefs.channels
+                if c.type == request.channel_type and c.enabled
+            ]
             if not matching:
                 raise HTTPException(
                     status_code=400,

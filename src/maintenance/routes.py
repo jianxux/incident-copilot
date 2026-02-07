@@ -91,7 +91,8 @@ async def get_upcoming(
 ):
     windows = await svc.get_upcoming_windows(hours)
     return UpcomingResponse(
-        windows=windows, next_maintenance=windows[0].schedule.start_time if windows else None
+        windows=windows,
+        next_maintenance=windows[0].schedule.start_time if windows else None,
     )
 
 
@@ -105,7 +106,9 @@ async def get_window(window_id: UUID, svc: MaintenanceService = Depends(get_svc)
 
 @router.patch("/{window_id}", response_model=MaintenanceWindow)
 async def update_window(
-    window_id: UUID, request: MaintenanceWindowUpdate, svc: MaintenanceService = Depends(get_svc)
+    window_id: UUID,
+    request: MaintenanceWindowUpdate,
+    svc: MaintenanceService = Depends(get_svc),
 ):
     try:
         window = await svc.update_window(window_id, request)
@@ -161,7 +164,9 @@ async def approve(
 
 
 @router.post("/{window_id}/reject", response_model=MaintenanceWindow)
-async def reject(window_id: UUID, req: RejectRequest, svc: MaintenanceService = Depends(get_svc)):
+async def reject(
+    window_id: UUID, req: RejectRequest, svc: MaintenanceService = Depends(get_svc)
+):
     try:
         return await svc.reject(window_id, req.approver_id, req.reason)
     except ValueError as e:
@@ -185,7 +190,9 @@ async def complete(window_id: UUID, svc: MaintenanceService = Depends(get_svc)):
 
 
 @router.post("/{window_id}/cancel", response_model=MaintenanceWindow)
-async def cancel(window_id: UUID, req: CancelRequest, svc: MaintenanceService = Depends(get_svc)):
+async def cancel(
+    window_id: UUID, req: CancelRequest, svc: MaintenanceService = Depends(get_svc)
+):
     try:
         return await svc.cancel_maintenance(window_id, req.reason)
     except ValueError as e:
@@ -194,7 +201,9 @@ async def cancel(window_id: UUID, req: CancelRequest, svc: MaintenanceService = 
 
 @router.post("/{window_id}/extend", response_model=MaintenanceWindow)
 async def extend(
-    window_id: UUID, req: ExtendMaintenanceRequest, svc: MaintenanceService = Depends(get_svc)
+    window_id: UUID,
+    req: ExtendMaintenanceRequest,
+    svc: MaintenanceService = Depends(get_svc),
 ):
     try:
         return await svc.extend_maintenance(window_id, req)
@@ -231,14 +240,18 @@ async def export_calendar(
 
 
 @router.get("/{window_id}/ical")
-async def export_window_ical(window_id: UUID, svc: MaintenanceService = Depends(get_svc)):
+async def export_window_ical(
+    window_id: UUID, svc: MaintenanceService = Depends(get_svc)
+):
     window = await svc.get_window(window_id)
     if not window:
         raise HTTPException(404, "Not found")
     return Response(
         MaintenanceScheduler().generate_ical_calendar([window]),
         media_type="text/calendar",
-        headers={"Content-Disposition": f"attachment; filename=maintenance-{window_id}.ics"},
+        headers={
+            "Content-Disposition": f"attachment; filename=maintenance-{window_id}.ics"
+        },
     )
 
 

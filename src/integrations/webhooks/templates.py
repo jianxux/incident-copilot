@@ -21,7 +21,10 @@ BUILTIN_TEMPLATES: dict[WebhookEventType, dict[str, Any]] = {
                 "created_at": "{{created_at}}",
                 "url": "{{incident_url}}",
             },
-            "organization": {"id": "{{organization_id}}", "name": "{{organization_name}}"},
+            "organization": {
+                "id": "{{organization_id}}",
+                "name": "{{organization_name}}",
+            },
         },
     },
     WebhookEventType.INCIDENT_RESOLVED: {
@@ -40,7 +43,11 @@ BUILTIN_TEMPLATES: dict[WebhookEventType, dict[str, Any]] = {
     WebhookEventType.SLA_BREACHED: {
         "event": "sla.breached",
         "data": {
-            "incident": {"id": "{{incident_id}}", "title": "{{title}}", "severity": "{{severity}}"},
+            "incident": {
+                "id": "{{incident_id}}",
+                "title": "{{title}}",
+                "severity": "{{severity}}",
+            },
             "sla": {
                 "type": "{{sla_type}}",
                 "target_minutes": "{{target_minutes}}",
@@ -64,7 +71,11 @@ BUILTIN_TEMPLATES: dict[WebhookEventType, dict[str, Any]] = {
     WebhookEventType.INCIDENT_ESCALATED: {
         "event": "incident.escalated",
         "data": {
-            "incident": {"id": "{{incident_id}}", "title": "{{title}}", "severity": "{{severity}}"},
+            "incident": {
+                "id": "{{incident_id}}",
+                "title": "{{title}}",
+                "severity": "{{severity}}",
+            },
             "escalation": {
                 "from_level": "{{from_level}}",
                 "to_level": "{{to_level}}",
@@ -92,9 +103,13 @@ class PayloadTemplate:
         """Get template for event type."""
         if template_id and template_id in self._custom_templates:
             return self._custom_templates[template_id]
-        return BUILTIN_TEMPLATES.get(event_type, {"event": event_type.value, "data": {}})
+        return BUILTIN_TEMPLATES.get(
+            event_type, {"event": event_type.value, "data": {}}
+        )
 
-    def render(self, event: WebhookEvent, template_id: str | None = None) -> dict[str, Any]:
+    def render(
+        self, event: WebhookEvent, template_id: str | None = None
+    ) -> dict[str, Any]:
         """Render event payload using template."""
         template = self.get_template(event.event_type, template_id)
 
@@ -111,7 +126,9 @@ class PayloadTemplate:
             payload["correlation_id"] = event.correlation_id
 
         # Merge event data with template structure
-        payload["data"] = self._merge_with_template(template.get("data", {}), event.payload)
+        payload["data"] = self._merge_with_template(
+            template.get("data", {}), event.payload
+        )
 
         return payload
 
@@ -124,7 +141,11 @@ class PayloadTemplate:
         for key, value in template.items():
             if isinstance(value, dict):
                 result[key] = self._merge_with_template(value, data)
-            elif isinstance(value, str) and value.startswith("{{") and value.endswith("}}"):
+            elif (
+                isinstance(value, str)
+                and value.startswith("{{")
+                and value.endswith("}}")
+            ):
                 # Extract placeholder key
                 placeholder = value[2:-2]
                 result[key] = self._get_nested_value(data, placeholder)
@@ -162,6 +183,8 @@ class PayloadTemplate:
 template_manager = PayloadTemplate()
 
 
-def render_webhook_payload(event: WebhookEvent, template_id: str | None = None) -> dict[str, Any]:
+def render_webhook_payload(
+    event: WebhookEvent, template_id: str | None = None
+) -> dict[str, Any]:
     """Convenience function to render webhook payload."""
     return template_manager.render(event, template_id)

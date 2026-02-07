@@ -49,8 +49,12 @@ async def get_scenario_details(scenario_id: str):
 
 @router.post("/trigger")
 async def trigger_demo_incident(
-    scenario_id: Annotated[str | None, Query(description="Specific scenario to trigger")] = None,
-    simulate_delays: Annotated[bool, Query(description="Add realistic API delays")] = True,
+    scenario_id: Annotated[
+        str | None, Query(description="Specific scenario to trigger")
+    ] = None,
+    simulate_delays: Annotated[
+        bool, Query(description="Add realistic API delays")
+    ] = True,
 ):
     """
     Trigger a demo incident and return the assembled context card.
@@ -85,7 +89,9 @@ async def trigger_demo_incident(
 
 @router.get("/trigger/stream")
 async def trigger_demo_incident_stream(
-    scenario_id: Annotated[str | None, Query(description="Specific scenario to trigger")] = None,
+    scenario_id: Annotated[
+        str | None, Query(description="Specific scenario to trigger")
+    ] = None,
 ):
     """
     Trigger a demo incident with streaming progress updates.

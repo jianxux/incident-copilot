@@ -30,7 +30,9 @@ class CorrelationStore:
         try:
             import redis.asyncio as aioredis
 
-            self._redis = aioredis.from_url(self.redis_url, encoding="utf-8", decode_responses=True)
+            self._redis = aioredis.from_url(
+                self.redis_url, encoding="utf-8", decode_responses=True
+            )
             await self._redis.ping()
             self._use_memory = False
             logger.info("correlation_store_connected")
@@ -47,11 +49,13 @@ class CorrelationStore:
         if self._use_memory:
             self._memory_store[key] = data
             if group.status == AlertGroupStatus.ACTIVE:
-                self._memory_store.setdefault(KEY_ACTIVE_GROUPS, set()).add(group.group_id)
-            if group.service:
-                self._memory_store.setdefault(f"{KEY_SERVICE_GROUPS}{group.service}", set()).add(
+                self._memory_store.setdefault(KEY_ACTIVE_GROUPS, set()).add(
                     group.group_id
                 )
+            if group.service:
+                self._memory_store.setdefault(
+                    f"{KEY_SERVICE_GROUPS}{group.service}", set()
+                ).add(group.group_id)
         else:
             await self._redis.setex(key, self.group_ttl, data)
             if group.status == AlertGroupStatus.ACTIVE:
@@ -59,12 +63,20 @@ class CorrelationStore:
             else:
                 await self._redis.srem(KEY_ACTIVE_GROUPS, group.group_id)
             if group.service:
-                await self._redis.sadd(f"{KEY_SERVICE_GROUPS}{group.service}", group.group_id)
-        logger.debug("group_stored", group_id=group.group_id, alert_count=group.alert_count)
+                await self._redis.sadd(
+                    f"{KEY_SERVICE_GROUPS}{group.service}", group.group_id
+                )
+        logger.debug(
+            "group_stored", group_id=group.group_id, alert_count=group.alert_count
+        )
 
     async def get_group(self, group_id: str) -> AlertGroup | None:
         key = f"{KEY_GROUP}{group_id}"
-        data = self._memory_store.get(key) if self._use_memory else await self._redis.get(key)
+        data = (
+            self._memory_store.get(key)
+            if self._use_memory
+            else await self._redis.get(key)
+        )
         return AlertGroup.model_validate_json(data) if data else None
 
     async def delete_group(self, group_id: str) -> bool:
@@ -75,9 +87,9 @@ class CorrelationStore:
                 del self._memory_store[key]
                 self._memory_store.get(KEY_ACTIVE_GROUPS, set()).discard(group_id)
                 if group and group.service:
-                    self._memory_store.get(f"{KEY_SERVICE_GROUPS}{group.service}", set()).discard(
-                        group_id
-                    )
+                    self._memory_store.get(
+                        f"{KEY_SERVICE_GROUPS}{group.service}", set()
+                    ).discard(group_id)
                 return True
             return False
         deleted = await self._redis.delete(key)
@@ -134,9 +146,9 @@ class CorrelationStore:
         if self._use_memory:
             mapping = self._memory_store.get(key)
             if mapping:
-                if mapping.get("expires_at") and datetime.utcnow() > datetime.fromisoformat(
-                    mapping["expires_at"]
-                ):
+                if mapping.get(
+                    "expires_at"
+                ) and datetime.utcnow() > datetime.fromisoformat(mapping["expires_at"]):
                     del self._memory_store[key]
                     return None
                 return await self.get_group(mapping["group_id"])
@@ -146,7 +158,11 @@ class CorrelationStore:
 
     async def delete_fingerprint(self, fingerprint: str) -> None:
         key = f"{KEY_FINGERPRINT}{fingerprint}"
-        (self._memory_store.pop(key, None) if self._use_memory else await self._redis.delete(key))
+        (
+            self._memory_store.pop(key, None)
+            if self._use_memory
+            else await self._redis.delete(key)
+        )
 
     async def store_rule(self, rule: CorrelationRule) -> None:
         key = f"{KEY_RULE}{rule.rule_id}"
@@ -161,7 +177,11 @@ class CorrelationStore:
 
     async def get_rule(self, rule_id: str) -> CorrelationRule | None:
         key = f"{KEY_RULE}{rule_id}"
-        data = self._memory_store.get(key) if self._use_memory else await self._redis.get(key)
+        data = (
+            self._memory_store.get(key)
+            if self._use_memory
+            else await self._redis.get(key)
+        )
         return CorrelationRule.model_validate_json(data) if data else None
 
     async def get_all_rules(self, enabled_only: bool = True) -> list[CorrelationRule]:

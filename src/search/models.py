@@ -36,9 +36,15 @@ class SortOrder(str, Enum):
 class SearchFilter(BaseModel):
     """Faceted filter for search queries."""
 
-    statuses: list[str] | None = Field(default=None, description="Filter by status values")
-    severities: list[str] | None = Field(default=None, description="Filter by severity levels")
-    services: list[str] | None = Field(default=None, description="Filter by service names")
+    statuses: list[str] | None = Field(
+        default=None, description="Filter by status values"
+    )
+    severities: list[str] | None = Field(
+        default=None, description="Filter by severity levels"
+    )
+    services: list[str] | None = Field(
+        default=None, description="Filter by service names"
+    )
     tags: list[str] | None = Field(default=None, description="Filter by tags")
     doc_types: list[SearchableType] | None = Field(
         default=None, description="Filter by document type"
@@ -114,7 +120,9 @@ class SearchResult(BaseModel):
     took_ms: float = Field(default=0.0, description="Search execution time in ms")
 
     @classmethod
-    def empty(cls, query: str = "", page: int = 1, page_size: int = 20) -> "SearchResult":
+    def empty(
+        cls, query: str = "", page: int = 1, page_size: int = 20
+    ) -> "SearchResult":
         """Create an empty result."""
         return cls(
             query=query,

@@ -218,4 +218,6 @@ async def import_templates(
     service: TemplateService = Depends(get_template_service),
 ) -> list[IncidentTemplate]:
     """Import templates from export format."""
-    return await service.import_templates(request.export_data, organization_id, created_by)
+    return await service.import_templates(
+        request.export_data, organization_id, created_by
+    )

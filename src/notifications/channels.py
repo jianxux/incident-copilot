@@ -40,7 +40,9 @@ class BaseChannel(ABC):
 
     channel_type: ChannelType
 
-    def __init__(self, config: NotificationChannel, renderer: TemplateRenderer | None = None):
+    def __init__(
+        self, config: NotificationChannel, renderer: TemplateRenderer | None = None
+    ):
         self.config = config
         self.renderer = renderer or TemplateRenderer()
         self._client: httpx.AsyncClient | None = None
@@ -98,7 +100,9 @@ class EmailChannel(BaseChannel):
         smtp_port = self.config.settings.get("smtp_port", 587)
         smtp_user = self.config.settings.get("smtp_user", "")
         smtp_pass = self.config.settings.get("smtp_pass", "")
-        from_addr = self.config.settings.get("from_address", "notifications@example.com")
+        from_addr = self.config.settings.get(
+            "from_address", "notifications@example.com"
+        )
 
         try:
             # Using httpx for email API (e.g., SendGrid, Mailgun, SES)
@@ -122,7 +126,9 @@ class EmailChannel(BaseChannel):
                 return {"message_id": response.json().get("id"), "status": "sent"}
             else:
                 # Simulate SMTP send (actual implementation would use aiosmtplib)
-                logger.info(f"Email to {self.config.address}: {rendered.get('subject')}")
+                logger.info(
+                    f"Email to {self.config.address}: {rendered.get('subject')}"
+                )
                 return {"status": "sent", "simulated": True}
 
         except httpx.HTTPError as e:
@@ -241,7 +247,9 @@ class PushChannel(BaseChannel):
         else:
             raise ChannelConfigError(f"Unknown push provider: {provider}")
 
-    async def _send_firebase(self, rendered: dict, payload: NotificationPayload) -> dict[str, Any]:
+    async def _send_firebase(
+        self, rendered: dict, payload: NotificationPayload
+    ) -> dict[str, Any]:
         """Send via Firebase Cloud Messaging."""
         server_key = self.config.settings.get("server_key")
 
@@ -270,7 +278,9 @@ class PushChannel(BaseChannel):
         except httpx.HTTPError as e:
             raise ChannelDeliveryError(f"Failed to send push notification: {e}") from e
 
-    async def _send_apns(self, rendered: dict, payload: NotificationPayload) -> dict[str, Any]:
+    async def _send_apns(
+        self, rendered: dict, payload: NotificationPayload
+    ) -> dict[str, Any]:
         """Send via Apple Push Notification service."""
         # APNs requires JWT authentication - simplified here
         key_id = self.config.settings.get("key_id")
@@ -327,9 +337,13 @@ class WebhookChannel(BaseChannel):
 
         try:
             if method == "POST":
-                response = await self.client.post(webhook_url, headers=headers, content=body)
+                response = await self.client.post(
+                    webhook_url, headers=headers, content=body
+                )
             elif method == "PUT":
-                response = await self.client.put(webhook_url, headers=headers, content=body)
+                response = await self.client.put(
+                    webhook_url, headers=headers, content=body
+                )
             else:
                 raise ChannelConfigError(f"Unsupported HTTP method: {method}")
 

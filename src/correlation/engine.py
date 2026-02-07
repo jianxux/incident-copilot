@@ -73,7 +73,9 @@ class CorrelationEngine:
 
     def normalize_opsgenie(self, alert: OpsgenieAlert) -> IncomingAlert:
         tags = list(alert.tags) if alert.tags else []
-        tags.extend([f"service:{alert.service_name}", f"severity:{alert.severity.value}"])
+        tags.extend(
+            [f"service:{alert.service_name}", f"severity:{alert.severity.value}"]
+        )
         return IncomingAlert(
             alert_id=alert.alert_id,
             source="opsgenie",
@@ -100,10 +102,14 @@ class CorrelationEngine:
             else await self._create_group(alert, rule)
         )
 
-    async def correlate_pagerduty(self, incident: PagerDutyIncident) -> CorrelationResult:
+    async def correlate_pagerduty(
+        self, incident: PagerDutyIncident
+    ) -> CorrelationResult:
         return await self.correlate(self.normalize_pagerduty(incident))
 
-    async def correlate_opsgenie(self, opsgenie_alert: OpsgenieAlert) -> CorrelationResult:
+    async def correlate_opsgenie(
+        self, opsgenie_alert: OpsgenieAlert
+    ) -> CorrelationResult:
         return await self.correlate(self.normalize_opsgenie(opsgenie_alert))
 
     async def _add_to_group(
@@ -123,7 +129,9 @@ class CorrelationEngine:
                 ):
                     should_notify = True
                 else:
-                    suppression_reason = f"Correlated with {group.alert_count - 1} other alerts"
+                    suppression_reason = (
+                        f"Correlated with {group.alert_count - 1} other alerts"
+                    )
                     group.suppressed_count += 1
             else:
                 should_notify = group.alert_count >= rule.max_alerts_before_notify
@@ -153,7 +161,9 @@ class CorrelationEngine:
             suppression_reason=suppression_reason,
         )
 
-    async def _create_group(self, alert: IncomingAlert, rule: CorrelationRule) -> CorrelationResult:
+    async def _create_group(
+        self, alert: IncomingAlert, rule: CorrelationRule
+    ) -> CorrelationResult:
         fingerprint = self.rule_manager.generate_fingerprint(alert, rule)
         window_expires = (
             datetime.utcnow() + timedelta(seconds=rule.time_window_seconds)
@@ -229,7 +239,9 @@ class CorrelationEngine:
 
     async def cleanup_stale_groups(self) -> int:
         return await self.store.cleanup_stale_groups(
-            stale_after_seconds=getattr(self.settings, "correlation_stale_after_seconds", 3600)
+            stale_after_seconds=getattr(
+                self.settings, "correlation_stale_after_seconds", 3600
+            )
         )
 
     async def get_stats(self) -> dict:

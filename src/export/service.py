@@ -199,7 +199,9 @@ class ExportService:
 
         if organization_id:
             templates = [
-                t for t in templates if t.organization_id == organization_id or t.is_default
+                t
+                for t in templates
+                if t.organization_id == organization_id or t.is_default
             ]
         if export_type:
             templates = [t for t in templates if t.export_type == export_type]
@@ -377,7 +379,9 @@ class ExportService:
 
             # Write file
             file_ext = self._get_file_extension(job.request.format)
-            file_name = f"export_{job.request.export_type.value}_{job.id[:8]}.{file_ext}"
+            file_name = (
+                f"export_{job.request.export_type.value}_{job.id[:8]}.{file_ext}"
+            )
             file_path = self.export_dir / file_name
 
             with open(file_path, "wb") as f:

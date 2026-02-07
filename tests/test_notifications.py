@@ -36,7 +36,10 @@ def sample_preference() -> NotificationPreference:
         enabled=True,
         channels=[
             NotificationChannel(
-                type=ChannelType.EMAIL, address="user@example.com", verified=True, priority=1
+                type=ChannelType.EMAIL,
+                address="user@example.com",
+                verified=True,
+                priority=1,
             ),
             NotificationChannel(
                 type=ChannelType.SLACK, address="#alerts", verified=True, priority=2
@@ -209,7 +212,9 @@ class TestNotificationRule:
             services=["api-service", "payments"],
         )
 
-        assert rule.matches(NotificationType.INCIDENT_CREATED, Severity.P3, service="api-service")
+        assert rule.matches(
+            NotificationType.INCIDENT_CREATED, Severity.P3, service="api-service"
+        )
         assert not rule.matches(
             NotificationType.INCIDENT_CREATED, Severity.P3, service="web-service"
         )

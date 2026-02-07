@@ -50,7 +50,9 @@ class ServiceNowAdapter:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.instance_url = (
-            settings.servicenow_instance.rstrip("/") if settings.servicenow_instance else ""
+            settings.servicenow_instance.rstrip("/")
+            if settings.servicenow_instance
+            else ""
         )
         self.username = settings.servicenow_username
         self.password = settings.servicenow_password
@@ -73,7 +75,9 @@ class ServiceNowAdapter:
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         elif self.username and self.password:
-            credentials = base64.b64encode(f"{self.username}:{self.password}".encode()).decode()
+            credentials = base64.b64encode(
+                f"{self.username}:{self.password}".encode()
+            ).decode()
             headers["Authorization"] = f"Basic {credentials}"
 
         return headers

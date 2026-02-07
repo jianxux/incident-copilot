@@ -45,7 +45,9 @@ class JSONFormatter:
         json_string = self.format(data)
         return json_string.encode("utf-8")
 
-    def _prepare_output(self, data: list[dict[str, Any]] | dict[str, Any]) -> dict[str, Any]:
+    def _prepare_output(
+        self, data: list[dict[str, Any]] | dict[str, Any]
+    ) -> dict[str, Any]:
         """Prepare output with optional schema and metadata."""
         # Filter columns if specified
         if isinstance(data, list):
@@ -91,7 +93,9 @@ class JSONFormatter:
             elif isinstance(v, list) and v and isinstance(v[0], dict):
                 # Convert list of dicts to indexed keys
                 for i, item in enumerate(v):
-                    items.extend(self._flatten_dict(item, f"{new_key}_{i}", sep).items())
+                    items.extend(
+                        self._flatten_dict(item, f"{new_key}_{i}", sep).items()
+                    )
             else:
                 items.append((new_key, v))
         return dict(items)
@@ -101,7 +105,9 @@ class JSONFormatter:
         if isinstance(obj, datetime):
             if self.options.date_format == "timestamp":
                 return obj.timestamp()
-            elif self.options.date_format == "custom" and self.options.custom_date_format:
+            elif (
+                self.options.date_format == "custom" and self.options.custom_date_format
+            ):
                 return obj.strftime(self.options.custom_date_format)
             return obj.isoformat()
 
@@ -289,13 +295,17 @@ class JSONFormatter:
             result.pop("timeline", None)
         elif self.related_data.max_timeline_events:
             if "timeline" in result:
-                result["timeline"] = result["timeline"][: self.related_data.max_timeline_events]
+                result["timeline"] = result["timeline"][
+                    : self.related_data.max_timeline_events
+                ]
 
         if not self.related_data.include_comments:
             result.pop("comments", None)
         elif self.related_data.max_comments:
             if "comments" in result:
-                result["comments"] = result["comments"][: self.related_data.max_comments]
+                result["comments"] = result["comments"][
+                    : self.related_data.max_comments
+                ]
 
         if not self.related_data.include_attachments:
             result.pop("attachments", None)

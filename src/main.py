@@ -114,7 +114,9 @@ def create_app() -> FastAPI:
 
     # Mount static files for web dashboard
     static_dir = Path(__file__).parent / "web" / "static"
-    app.mount("/dashboard/static", StaticFiles(directory=str(static_dir)), name="static")
+    app.mount(
+        "/dashboard/static", StaticFiles(directory=str(static_dir)), name="static"
+    )
 
     @app.on_event("startup")
     async def startup():
@@ -131,7 +133,9 @@ def create_app() -> FastAPI:
             audit_store.database_url = settings.database_url
             audit_store.retention_days = settings.audit_retention_days
             await audit_store.initialize()
-            logger.info("audit_store_initialized", retention_days=settings.audit_retention_days)
+            logger.info(
+                "audit_store_initialized", retention_days=settings.audit_retention_days
+            )
 
     @app.on_event("shutdown")
     async def shutdown():

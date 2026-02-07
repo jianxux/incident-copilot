@@ -51,10 +51,16 @@ class LokiAdapter:
             return self.service_labels[service_name]
         return f'{{service="{service_name}"}} or {{app="{service_name}"}}'
 
-    def _build_logql_query(self, service_name: str, include_errors_only: bool = True) -> str:
+    def _build_logql_query(
+        self, service_name: str, include_errors_only: bool = True
+    ) -> str:
         """Build a LogQL query for fetching logs."""
         label_selector = self._get_label_selector(service_name)
-        base_query = label_selector if label_selector.startswith("{") else f"{{{label_selector}}}"
+        base_query = (
+            label_selector
+            if label_selector.startswith("{")
+            else f"{{{label_selector}}}"
+        )
 
         if include_errors_only:
             return f'{base_query} |~ "(?i)(error|warn|exception|failed|failure|critical|fatal)"'
@@ -106,7 +112,9 @@ class LokiAdapter:
             }
 
             try:
-                resp = await client.get(url, headers=self._get_auth_headers(), params=params)
+                resp = await client.get(
+                    url, headers=self._get_auth_headers(), params=params
+                )
 
                 if resp.status_code != 200:
                     logger.warning("loki_query_failed", status=resp.status_code)
@@ -122,7 +130,9 @@ class LokiAdapter:
         all_logs.sort(key=lambda x: x.timestamp, reverse=True)
         return all_logs[:limit]
 
-    def _parse_log_streams(self, result: list[dict], service_name: str) -> list[LogEntry]:
+    def _parse_log_streams(
+        self, result: list[dict], service_name: str
+    ) -> list[LogEntry]:
         """Parse Loki log streams into LogEntry objects."""
         logs: list[LogEntry] = []
 
@@ -163,7 +173,9 @@ class LokiAdapter:
 
         if any(x in message_lower for x in ["critical", "fatal", "panic"]):
             return "critical"
-        elif any(x in message_lower for x in ["error", "exception", "failed", "failure"]):
+        elif any(
+            x in message_lower for x in ["error", "exception", "failed", "failure"]
+        ):
             return "error"
         elif any(x in message_lower for x in ["warn", "warning"]):
             return "warn"

@@ -13,11 +13,20 @@ from .models import (
 
 
 def _widget(
-    title: str, wtype: WidgetType, metric: str, x: int, y: int, w: int = 3, h: int = 2, **kw
+    title: str,
+    wtype: WidgetType,
+    metric: str,
+    x: int,
+    y: int,
+    w: int = 3,
+    h: int = 2,
+    **kw,
 ) -> WidgetCreate:
     return WidgetCreate(
         title=title,
-        config=WidgetConfig(widget_type=wtype, data_source=WidgetDataSource(metric=metric), **kw),
+        config=WidgetConfig(
+            widget_type=wtype, data_source=WidgetDataSource(metric=metric), **kw
+        ),
         position=GridPosition(x=x, y=y, w=w, h=h),
     )
 
@@ -33,21 +42,48 @@ def _chart(
 
 
 def _list(
-    title: str, metric: str, x: int, y: int, w: int = 6, h: int = 4, cols: list[str] | None = None
+    title: str,
+    metric: str,
+    x: int,
+    y: int,
+    w: int = 6,
+    h: int = 4,
+    cols: list[str] | None = None,
 ) -> WidgetCreate:
     return _widget(
-        title, WidgetType.LIST, metric, x, y, w, h, columns=cols or ["title", "severity", "status"]
+        title,
+        WidgetType.LIST,
+        metric,
+        x,
+        y,
+        w,
+        h,
+        columns=cols or ["title", "severity", "status"],
     )
 
 
 def _timeline(
-    title: str, metric: str, x: int, y: int, w: int = 12, h: int = 3, grouped: bool = False
+    title: str,
+    metric: str,
+    x: int,
+    y: int,
+    w: int = 12,
+    h: int = 3,
+    grouped: bool = False,
 ) -> WidgetCreate:
-    return _widget(title, WidgetType.TIMELINE, metric, x, y, w, h, group_by_service=grouped)
+    return _widget(
+        title, WidgetType.TIMELINE, metric, x, y, w, h, group_by_service=grouped
+    )
 
 
 def _heatmap(
-    title: str, metric: str, x: int, y: int, w: int = 6, h: int = 4, scheme: str = "severity"
+    title: str,
+    metric: str,
+    x: int,
+    y: int,
+    w: int = 6,
+    h: int = 4,
+    scheme: str = "severity",
 ) -> WidgetCreate:
     return _widget(title, WidgetType.HEATMAP, metric, x, y, w, h, color_scheme=scheme)
 
@@ -62,7 +98,14 @@ EXECUTIVE_DASHBOARD = DashboardCreate(
     widgets=[
         _counter("Active Incidents", "incidents.active", 0, 0),
         _counter("P1 Incidents", "incidents.p1", 3, 0, threshold_critical=1),
-        _counter("MTTR (hours)", "incidents.mttr", 6, 0, threshold_warning=4, threshold_critical=8),
+        _counter(
+            "MTTR (hours)",
+            "incidents.mttr",
+            6,
+            0,
+            threshold_warning=4,
+            threshold_critical=8,
+        ),
         _counter("SLA Compliance %", "incidents.sla", 9, 0),
         _chart("Incidents Over Time", "incidents.created", ChartType.AREA, 0, 2, 8),
         _chart("By Severity", "incidents.severity", ChartType.DONUT, 8, 2, 4),
@@ -80,7 +123,12 @@ ONCALL_DASHBOARD = DashboardCreate(
     widgets=[
         _counter("Open", "incidents.open", 0, 0),
         _counter(
-            "Unacknowledged", "incidents.unacked", 3, 0, threshold_warning=3, threshold_critical=5
+            "Unacknowledged",
+            "incidents.unacked",
+            3,
+            0,
+            threshold_warning=3,
+            threshold_critical=5,
         ),
         _counter("Assigned to Me", "incidents.mine", 6, 0),
         _counter("Avg Response", "incidents.response", 9, 0),
@@ -93,7 +141,9 @@ ONCALL_DASHBOARD = DashboardCreate(
             5,
             ["severity", "title", "service", "duration"],
         ),
-        _list("Recent Alerts", "alerts.recent", 6, 2, 6, 5, ["time", "source", "message"]),
+        _list(
+            "Recent Alerts", "alerts.recent", 6, 2, 6, 5, ["time", "source", "message"]
+        ),
         _chart("By Service", "incidents.by_service", ChartType.BAR, 0, 7),
         _heatmap("Service Health", "services.health", 6, 7),
     ],
@@ -109,7 +159,14 @@ SRE_DASHBOARD = DashboardCreate(
     widgets=[
         _counter("Error Budget", "slo.error_budget", 0, 0),
         _counter("Availability", "slo.availability", 3, 0),
-        _counter("Burn Rate", "slo.burn_rate", 6, 0, threshold_warning=1, threshold_critical=2),
+        _counter(
+            "Burn Rate",
+            "slo.burn_rate",
+            6,
+            0,
+            threshold_warning=1,
+            threshold_critical=2,
+        ),
         _counter("MTTD (min)", "incidents.mttd", 9, 0),
         _chart("Error Rate", "metrics.error_rate", ChartType.LINE, 0, 2),
         _chart("Latency P99", "metrics.latency.p99", ChartType.LINE, 6, 2),
@@ -133,9 +190,23 @@ MANAGER_DASHBOARD = DashboardCreate(
         _counter("Escalations", "incidents.escalations", 9, 0),
         _chart("By Assignee", "incidents.by_assignee", ChartType.BAR, 0, 2),
         _chart("Weekly Trend", "incidents.weekly", ChartType.AREA, 6, 2),
-        _list("Stale Incidents", "incidents.stale", 0, 5, 6, 4, ["title", "age", "assignee"]),
         _list(
-            "SLA At Risk", "incidents.sla_risk", 6, 5, 6, 4, ["title", "sla_remaining", "assignee"]
+            "Stale Incidents",
+            "incidents.stale",
+            0,
+            5,
+            6,
+            4,
+            ["title", "age", "assignee"],
+        ),
+        _list(
+            "SLA At Risk",
+            "incidents.sla_risk",
+            6,
+            5,
+            6,
+            4,
+            ["title", "sla_remaining", "assignee"],
         ),
     ],
 )

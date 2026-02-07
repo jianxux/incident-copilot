@@ -444,14 +444,16 @@ class TestPostmortemGenerator:
         mock_response = MagicMock()
         mock_response.content = [
             MagicMock(
-                text=json.dumps([
-                    {
-                        "timestamp": "2024-01-15T10:00:00Z",
-                        "event_type": "alert_triggered",
-                        "title": "High error rate alert fired",
-                        "source": "pagerduty",
-                    }
-                ])
+                text=json.dumps(
+                    [
+                        {
+                            "timestamp": "2024-01-15T10:00:00Z",
+                            "event_type": "alert_triggered",
+                            "title": "High error rate alert fired",
+                            "source": "pagerduty",
+                        }
+                    ]
+                )
             )
         ]
 
@@ -653,7 +655,9 @@ class TestPostmortemRoutes:
         assert data["postmortem"]["incident_id"] == "INC-99999"
 
     @pytest.mark.asyncio
-    async def test_generate_returns_existing(self, client, clean_store, sample_postmortem):
+    async def test_generate_returns_existing(
+        self, client, clean_store, sample_postmortem
+    ):
         """Test that generate returns existing postmortem."""
         # First save a postmortem
         await postmortem_store.save(sample_postmortem)
@@ -693,7 +697,9 @@ class TestPostmortemRoutes:
         """Test GET /api/postmortems/by-incident/{incident_id}."""
         await postmortem_store.save(sample_postmortem)
 
-        response = client.get(f"/api/postmortems/by-incident/{sample_postmortem.incident_id}")
+        response = client.get(
+            f"/api/postmortems/by-incident/{sample_postmortem.incident_id}"
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -779,7 +785,9 @@ class TestPostmortemRoutes:
         """Test GET /api/postmortems/{id}/export/{format}."""
         await postmortem_store.save(sample_postmortem)
 
-        response = client.get(f"/api/postmortems/{sample_postmortem.id}/export/markdown")
+        response = client.get(
+            f"/api/postmortems/{sample_postmortem.id}/export/markdown"
+        )
 
         assert response.status_code == 200
         assert "text/markdown" in response.headers["content-type"]
@@ -791,7 +799,9 @@ class TestPostmortemRoutes:
         await postmortem_store.save(sample_postmortem)
 
         # Valid transition: draft -> in_review
-        response = client.post(f"/api/postmortems/{sample_postmortem.id}/status?status=in_review")
+        response = client.post(
+            f"/api/postmortems/{sample_postmortem.id}/status?status=in_review"
+        )
         assert response.status_code == 200
         assert response.json()["status"] == "in_review"
 
@@ -803,12 +813,16 @@ class TestPostmortemRoutes:
         assert response.json()["status"] == "approved"
 
     @pytest.mark.asyncio
-    async def test_invalid_status_transition(self, client, clean_store, sample_postmortem):
+    async def test_invalid_status_transition(
+        self, client, clean_store, sample_postmortem
+    ):
         """Test invalid status transitions are rejected."""
         await postmortem_store.save(sample_postmortem)
 
         # Invalid: draft -> published (must go through in_review and approved)
-        response = client.post(f"/api/postmortems/{sample_postmortem.id}/status?status=published")
+        response = client.post(
+            f"/api/postmortems/{sample_postmortem.id}/status?status=published"
+        )
         assert response.status_code == 400
         assert "Invalid status transition" in response.json()["detail"]
 

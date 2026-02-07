@@ -54,12 +54,14 @@ def sample_incidents():
 
     # Create incidents for cascade detection (within 15 minutes)
     base_time = now - timedelta(days=5)
-    for j, service in enumerate([
-        "api-gateway",
-        "user-service",
-        "order-service",
-        "payment-service",
-    ]):
+    for j, service in enumerate(
+        [
+            "api-gateway",
+            "user-service",
+            "order-service",
+            "payment-service",
+        ]
+    ):
         incidents.append(
             IncidentMetrics(
                 incident_id=f"cascade-{j}",
@@ -76,7 +78,9 @@ def sample_incidents():
             IncidentMetrics(
                 incident_id=f"varied-{k}",
                 triggered_at=now.replace(hour=hour) - timedelta(days=k),
-                resolved_at=now.replace(hour=hour) - timedelta(days=k) + timedelta(minutes=45),
+                resolved_at=now.replace(hour=hour)
+                - timedelta(days=k)
+                + timedelta(minutes=45),
                 service_name=f"service-{k % 3}",
                 severity=["low", "medium", "high"][k % 3],
             )
@@ -126,7 +130,9 @@ class TestPatternDetector:
         detector = PatternDetector()
 
         # UUID removal (using valid UUID format) - result is lowercased
-        normalized = detector._normalize_title("Error in a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        normalized = detector._normalize_title(
+            "Error in a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        )
         assert "<uuid>" in normalized
 
         # IP removal - result is lowercased
@@ -287,7 +293,9 @@ class TestInsightsStore:
             )
         )
 
-        patterns = await store.get_all_insights(insight_type=InsightType.RECURRING_INCIDENT)
+        patterns = await store.get_all_insights(
+            insight_type=InsightType.RECURRING_INCIDENT
+        )
         assert len(patterns) == 1
         assert patterns[0].insight_id == "pattern-1"
 

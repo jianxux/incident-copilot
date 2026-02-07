@@ -115,17 +115,23 @@ class Rotation(BaseModel):
         hour, minute = map(int, self.handoff_time.split(":"))
 
         if self.type == RotationType.DAILY:
-            next_handoff = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            next_handoff = now.replace(
+                hour=hour, minute=minute, second=0, microsecond=0
+            )
             if next_handoff <= now:
                 next_handoff += timedelta(days=1)
         elif self.type == RotationType.WEEKLY:
             days_ahead = (self.handoff_day or 0) - now.weekday()
             if days_ahead < 0 or (days_ahead == 0 and now.hour >= hour):
                 days_ahead += 7
-            next_handoff = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            next_handoff = now.replace(
+                hour=hour, minute=minute, second=0, microsecond=0
+            )
             next_handoff += timedelta(days=days_ahead)
         else:
-            next_handoff = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            next_handoff = now.replace(
+                hour=hour, minute=minute, second=0, microsecond=0
+            )
             if next_handoff <= now:
                 next_handoff += timedelta(days=1)
 

@@ -96,7 +96,11 @@ async def get_recent_changes(
     types = [change_type] if change_type else None
 
     return await svc.get_recent_changes(
-        hours=hours, environment=environment, service=service, change_types=types, limit=limit
+        hours=hours,
+        environment=environment,
+        service=service,
+        change_types=types,
+        limit=limit,
     )
 
 
@@ -269,7 +273,8 @@ async def get_change_stats(
 
 @router.post("/collect")
 async def trigger_collection(
-    hours: int = Query(default=24, ge=1, le=168), svc: ChangeTrackingService = Depends(get_service)
+    hours: int = Query(default=24, ge=1, le=168),
+    svc: ChangeTrackingService = Depends(get_service),
 ) -> dict:
     """Trigger collection from all registered sources."""
     since = datetime.utcnow() - timedelta(hours=hours)

@@ -289,7 +289,8 @@ async def list_leaderboard_metrics() -> list[dict]:
     Returns metric names with descriptions.
     """
     return [
-        {"metric": m.value, "name": m.value.replace("_", " ").title()} for m in LeaderboardMetric
+        {"metric": m.value, "name": m.value.replace("_", " ").title()}
+        for m in LeaderboardMetric
     ]
 
 
@@ -299,7 +300,8 @@ async def list_leaderboard_periods() -> list[dict]:
     List available leaderboard time periods.
     """
     return [
-        {"period": p.value, "name": p.value.replace("_", " ").title()} for p in LeaderboardPeriod
+        {"period": p.value, "name": p.value.replace("_", " ").title()}
+        for p in LeaderboardPeriod
     ]
 
 

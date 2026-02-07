@@ -47,7 +47,9 @@ class DatadogAdapter:
                 # For simplicity, doing sequentially here
                 logs = await self._fetch_logs(client, service_name, time_range_minutes)
                 log_summaries = self._summarize_logs(logs)
-                metrics = await self._fetch_metrics(client, service_name, time_range_minutes)
+                metrics = await self._fetch_metrics(
+                    client, service_name, time_range_minutes
+                )
 
                 return DatadogContext(
                     service=service_name,
@@ -85,7 +87,9 @@ class DatadogAdapter:
         resp = await client.post(url, headers=self._get_headers(), json=payload)
 
         if resp.status_code != 200:
-            logger.warning("datadog_logs_failed", status=resp.status_code, body=resp.text[:200])
+            logger.warning(
+                "datadog_logs_failed", status=resp.status_code, body=resp.text[:200]
+            )
             return []
 
         data = resp.json()

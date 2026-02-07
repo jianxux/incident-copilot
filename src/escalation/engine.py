@@ -29,7 +29,9 @@ class ActionExecutor:
     """Executes escalation actions."""
 
     def __init__(self):
-        self._handlers: dict[ActionType, Callable[[EscalationAction, dict], Awaitable[bool]]] = {
+        self._handlers: dict[
+            ActionType, Callable[[EscalationAction, dict], Awaitable[bool]]
+        ] = {
             ActionType.PAGE: self._send_page,
             ActionType.EMAIL: self._send_email,
             ActionType.SLACK: self._send_slack,
@@ -59,18 +61,26 @@ class ActionExecutor:
             try:
                 success = await handler(action, context)
                 if success:
-                    logger.info(f"Action {action.action_type} executed successfully to {target}")
+                    logger.info(
+                        f"Action {action.action_type} executed successfully to {target}"
+                    )
                     return True
             except Exception as e:
-                logger.warning(f"Action {action.action_type} failed (attempt {attempt + 1}): {e}")
+                logger.warning(
+                    f"Action {action.action_type} failed (attempt {attempt + 1}): {e}"
+                )
 
             if attempt < action.retry_count:
                 await asyncio.sleep(action.retry_delay_seconds)
 
-        logger.error(f"Action {action.action_type} failed after {action.retry_count + 1} attempts")
+        logger.error(
+            f"Action {action.action_type} failed after {action.retry_count + 1} attempts"
+        )
         return False
 
-    def _resolve_target(self, action: EscalationAction, oncall: OnCallAssignment | None) -> str:
+    def _resolve_target(
+        self, action: EscalationAction, oncall: OnCallAssignment | None
+    ) -> str:
         """Resolve the action target, preferring on-call if available."""
         if not oncall:
             return action.target
@@ -87,7 +97,9 @@ class ActionExecutor:
     def _render_template(self, template: str | None, context: dict[str, Any]) -> str:
         """Render a message template with context variables."""
         if not template:
-            return f"Escalation alert for incident {context.get('incident_id', 'unknown')}"
+            return (
+                f"Escalation alert for incident {context.get('incident_id', 'unknown')}"
+            )
 
         # Simple template rendering with {variable} syntax
         result = template
@@ -96,7 +108,9 @@ class ActionExecutor:
                 result = result.replace(f"{{{key}}}", str(value))
         return result
 
-    async def _send_page(self, action: EscalationAction, context: dict[str, Any]) -> bool:
+    async def _send_page(
+        self, action: EscalationAction, context: dict[str, Any]
+    ) -> bool:
         """Send a page (PagerDuty, Opsgenie, etc.)."""
         target = context["_target"]
         message = self._render_template(action.template, context)
@@ -104,7 +118,9 @@ class ActionExecutor:
         # TODO: Integrate with PagerDuty/Opsgenie API
         return True
 
-    async def _send_email(self, action: EscalationAction, context: dict[str, Any]) -> bool:
+    async def _send_email(
+        self, action: EscalationAction, context: dict[str, Any]
+    ) -> bool:
         """Send an email notification."""
         target = context["_target"]
         message = self._render_template(action.template, context)
@@ -113,7 +129,9 @@ class ActionExecutor:
         # TODO: Integrate with email service
         return True
 
-    async def _send_slack(self, action: EscalationAction, context: dict[str, Any]) -> bool:
+    async def _send_slack(
+        self, action: EscalationAction, context: dict[str, Any]
+    ) -> bool:
         """Send a Slack notification."""
         target = context["_target"]
         message = self._render_template(action.template, context)
@@ -121,7 +139,9 @@ class ActionExecutor:
         # TODO: Integrate with Slack API
         return True
 
-    async def _make_phone_call(self, action: EscalationAction, context: dict[str, Any]) -> bool:
+    async def _make_phone_call(
+        self, action: EscalationAction, context: dict[str, Any]
+    ) -> bool:
         """Make a phone call (Twilio, etc.)."""
         target = context["_target"]
         message = self._render_template(action.template, context)
@@ -129,7 +149,9 @@ class ActionExecutor:
         # TODO: Integrate with Twilio API
         return True
 
-    async def _send_sms(self, action: EscalationAction, context: dict[str, Any]) -> bool:
+    async def _send_sms(
+        self, action: EscalationAction, context: dict[str, Any]
+    ) -> bool:
         """Send an SMS message."""
         target = context["_target"]
         message = self._render_template(action.template, context)
@@ -137,7 +159,9 @@ class ActionExecutor:
         # TODO: Integrate with SMS service
         return True
 
-    async def _call_webhook(self, action: EscalationAction, context: dict[str, Any]) -> bool:
+    async def _call_webhook(
+        self, action: EscalationAction, context: dict[str, Any]
+    ) -> bool:
         """Call a webhook URL."""
         target = context["_target"]
         logger.info(f"[MOCK] Webhook to {target}")
@@ -165,13 +189,18 @@ class ConditionEvaluator:
         # Check custom evaluator
         if condition.field in self._custom_evaluators:
             field_value = context.get(condition.field)
-            return self._custom_evaluators[condition.field](field_value, condition.value)
+            return self._custom_evaluators[condition.field](
+                field_value, condition.value
+            )
 
         # Use the condition's built-in matching
         return condition.matches(context)
 
     def evaluate_all(
-        self, conditions: list[EscalationCondition], context: dict[str, Any], match_all: bool = True
+        self,
+        conditions: list[EscalationCondition],
+        context: dict[str, Any],
+        match_all: bool = True,
     ) -> bool:
         """Evaluate multiple conditions."""
         if not conditions:
@@ -217,7 +246,9 @@ class PolicyEngine:
         """Find and return the matching policy for an incident."""
         return await self.service.find_matching_policy(context)
 
-    async def should_escalate(self, state: EscalationState, context: dict[str, Any]) -> bool:
+    async def should_escalate(
+        self, state: EscalationState, context: dict[str, Any]
+    ) -> bool:
         """Determine if an incident should be escalated."""
         policy = await self.service.get_policy(state.policy_id)
         if not policy or not policy.enabled:
@@ -247,7 +278,9 @@ class PolicyEngine:
 
         return True
 
-    async def execute_escalation(self, state: EscalationState, context: dict[str, Any]) -> bool:
+    async def execute_escalation(
+        self, state: EscalationState, context: dict[str, Any]
+    ) -> bool:
         """Execute escalation to the next level."""
         policy = await self.service.get_policy(state.policy_id)
         if not policy:
@@ -296,7 +329,9 @@ class PolicyEngine:
 
             # Start escalation
             state = await self.service.start_escalation(incident_id, policy, context)
-            logger.info(f"Started escalation for {incident_id} with policy {policy.name}")
+            logger.info(
+                f"Started escalation for {incident_id} with policy {policy.name}"
+            )
 
         # Check for de-escalation first
         await self.service.check_deescalation(incident_id, context)
@@ -324,11 +359,15 @@ class PolicyEngine:
                     await self.execute_escalation(state, context)
                     processed.append(state)
             except Exception as e:
-                logger.error(f"Error processing escalation for {state.incident_id}: {e}")
+                logger.error(
+                    f"Error processing escalation for {state.incident_id}: {e}"
+                )
 
         return processed
 
-    def _get_level(self, policy: EscalationPolicy, level_num: int) -> EscalationLevel | None:
+    def _get_level(
+        self, policy: EscalationPolicy, level_num: int
+    ) -> EscalationLevel | None:
         """Get a specific level from a policy."""
         for level in policy.levels:
             if level.level == level_num:

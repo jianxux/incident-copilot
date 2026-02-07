@@ -143,7 +143,9 @@ class StatusPageAutomation:
         )
 
         results = await self.service.create_incident_all(incident, incident_id)
-        await self._trigger_hooks("incident_created", incident_id=incident_id, results=results)
+        await self._trigger_hooks(
+            "incident_created", incident_id=incident_id, results=results
+        )
         logger.info(f"Created incident {incident_id} on {len(results)} status pages")
         return results
 
@@ -168,7 +170,10 @@ class StatusPageAutomation:
 
         results = await self.service.update_incident_all(incident_id, update)
         await self._trigger_hooks(
-            "incident_updated", incident_id=incident_id, status=new_status, results=results
+            "incident_updated",
+            incident_id=incident_id,
+            status=new_status,
+            results=results,
         )
         logger.info(f"Updated incident {incident_id} to status: {new_status}")
         return results
@@ -181,8 +186,12 @@ class StatusPageAutomation:
     ) -> dict[str, StatusPageIncident]:
         """Handle incident resolution."""
         resolution_message = message or self.generate_message("resolved", context)
-        results = await self.service.resolve_incident_all(incident_id, resolution_message)
-        await self._trigger_hooks("incident_resolved", incident_id=incident_id, results=results)
+        results = await self.service.resolve_incident_all(
+            incident_id, resolution_message
+        )
+        await self._trigger_hooks(
+            "incident_resolved", incident_id=incident_id, results=results
+        )
         logger.info(f"Resolved incident {incident_id} on {len(results)} status pages")
         return results
 
@@ -214,11 +223,24 @@ class StatusPageAutomation:
 
     def _is_severity_upgrade(self, old: str | None, new: str) -> bool:
         """Check if severity was upgraded."""
-        severity_order = ["low", "medium", "high", "critical", "sev4", "sev3", "sev2", "sev1"]
+        severity_order = [
+            "low",
+            "medium",
+            "high",
+            "critical",
+            "sev4",
+            "sev3",
+            "sev2",
+            "sev1",
+        ]
         if not old:
             return True
-        old_idx = severity_order.index(old.lower()) if old.lower() in severity_order else 0
-        new_idx = severity_order.index(new.lower()) if new.lower() in severity_order else 0
+        old_idx = (
+            severity_order.index(old.lower()) if old.lower() in severity_order else 0
+        )
+        new_idx = (
+            severity_order.index(new.lower()) if new.lower() in severity_order else 0
+        )
         return new_idx > old_idx
 
     async def on_service_status_change(
@@ -227,7 +249,9 @@ class StatusPageAutomation:
         status: str,
     ) -> dict[str, Any]:
         """Handle service status change - update component status."""
-        component_status = COMPONENT_MAP.get(status.lower(), ComponentStatus.OPERATIONAL)
+        component_status = COMPONENT_MAP.get(
+            status.lower(), ComponentStatus.OPERATIONAL
+        )
         results = await self.service.update_service_status(service_id, component_status)
         await self._trigger_hooks(
             "component_updated", service_id=service_id, status=status, results=results
@@ -259,11 +283,15 @@ class StatusPageAutomation:
             affected_services=internal_incident.get("affected_services", []),
         )
 
-    async def bulk_update_services(self, status_map: dict[str, str]) -> dict[str, dict[str, Any]]:
+    async def bulk_update_services(
+        self, status_map: dict[str, str]
+    ) -> dict[str, dict[str, Any]]:
         """Update multiple services at once."""
         results = {}
         for service_id, status in status_map.items():
-            results[service_id] = await self.on_service_status_change(service_id, status)
+            results[service_id] = await self.on_service_status_change(
+                service_id, status
+            )
         return results
 
 

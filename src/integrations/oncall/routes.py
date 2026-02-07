@@ -32,7 +32,9 @@ def get_service() -> OnCallService:
     return _service
 
 
-def init_service(pagerduty_key: Optional[str] = None, opsgenie_key: Optional[str] = None):
+def init_service(
+    pagerduty_key: Optional[str] = None, opsgenie_key: Optional[str] = None
+):
     """Initialize the service with API keys."""
     global _service
     _service = OnCallService(pagerduty_key=pagerduty_key, opsgenie_key=opsgenie_key)
@@ -146,7 +148,9 @@ async def sync_schedules(service: OnCallService = Depends(get_service)):
 @router.get("/schedules/{schedule_id}/oncall", response_model=WhoIsOnCallResponse)
 async def who_is_oncall(
     schedule_id: str,
-    at: Optional[datetime] = Query(None, description="Check at specific time (ISO format)"),
+    at: Optional[datetime] = Query(
+        None, description="Check at specific time (ISO format)"
+    ),
     service: OnCallService = Depends(get_service),
 ):
     """Get the currently on-call user for a schedule."""
@@ -158,7 +162,9 @@ async def who_is_oncall(
 
     # Check if this is an override
     overrides = await service.list_overrides(schedule_id=schedule_id, active_only=True)
-    is_override = any(o.override_user.id == user.id if user else False for o in overrides)
+    is_override = any(
+        o.override_user.id == user.id if user else False for o in overrides
+    )
 
     # Get current shift end time
     shifts = await service.get_upcoming_shifts(schedule_id, days=1)
@@ -178,7 +184,9 @@ async def get_all_oncall(service: OnCallService = Depends(get_service)):
     """Get currently on-call users for all schedules."""
     result = await service.get_all_oncall_now()
     return {
-        "schedules": [{"schedule_id": sid, "oncall_user": user} for sid, user in result.items()]
+        "schedules": [
+            {"schedule_id": sid, "oncall_user": user} for sid, user in result.items()
+        ]
     }
 
 
@@ -194,10 +202,14 @@ async def get_upcoming_shifts(
         raise HTTPException(status_code=404, detail="Schedule not found")
 
     shifts = await service.get_upcoming_shifts(schedule_id, days=days)
-    return UpcomingShiftsResponse(schedule_id=schedule_id, shifts=shifts, total_count=len(shifts))
+    return UpcomingShiftsResponse(
+        schedule_id=schedule_id, shifts=shifts, total_count=len(shifts)
+    )
 
 
-@router.get("/schedules/{schedule_id}/visualization", response_model=ScheduleVisualization)
+@router.get(
+    "/schedules/{schedule_id}/visualization", response_model=ScheduleVisualization
+)
 async def get_schedule_visualization(
     schedule_id: str,
     days: int = Query(14, ge=1, le=90, description="Number of days to visualize"),
@@ -220,12 +232,16 @@ async def list_overrides(
     service: OnCallService = Depends(get_service),
 ):
     """List schedule overrides."""
-    return await service.list_overrides(schedule_id=schedule_id, active_only=active_only)
+    return await service.list_overrides(
+        schedule_id=schedule_id, active_only=active_only
+    )
 
 
 @router.post("/schedules/{schedule_id}/overrides", response_model=OnCallOverride)
 async def create_override(
-    schedule_id: str, request: CreateOverrideRequest, service: OnCallService = Depends(get_service)
+    schedule_id: str,
+    request: CreateOverrideRequest,
+    service: OnCallService = Depends(get_service),
 ):
     """Create a schedule override (temporary handoff)."""
     override_user = OnCallUser(
@@ -248,7 +264,9 @@ async def create_override(
 
 
 @router.delete("/overrides/{override_id}")
-async def cancel_override(override_id: str, service: OnCallService = Depends(get_service)):
+async def cancel_override(
+    override_id: str, service: OnCallService = Depends(get_service)
+):
     """Cancel an override."""
     success = await service.cancel_override(override_id)
     if not success:
@@ -280,7 +298,8 @@ async def get_oncall_history(
 
 @router.get("/handoffs/pending")
 async def get_pending_handoffs(
-    lookahead_hours: int = Query(2, ge=1, le=24), service: OnCallService = Depends(get_service)
+    lookahead_hours: int = Query(2, ge=1, le=24),
+    service: OnCallService = Depends(get_service),
 ):
     """Get pending handoff notifications."""
     notifications = await service.get_pending_handoffs(lookahead_hours=lookahead_hours)
@@ -288,7 +307,9 @@ async def get_pending_handoffs(
 
 
 @router.post("/handoffs/{notification_id}/sent")
-async def mark_handoff_sent(notification_id: str, service: OnCallService = Depends(get_service)):
+async def mark_handoff_sent(
+    notification_id: str, service: OnCallService = Depends(get_service)
+):
     """Mark a handoff notification as sent."""
     success = await service.mark_handoff_sent(notification_id)
     if not success:

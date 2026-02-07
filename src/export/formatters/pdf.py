@@ -147,15 +147,25 @@ class PDFFormatter:
 
         # Main content
         if self.export_type == ExportType.INCIDENTS:
-            story.extend(self._build_incidents_content(data if isinstance(data, list) else [data]))
+            story.extend(
+                self._build_incidents_content(
+                    data if isinstance(data, list) else [data]
+                )
+            )
         elif self.export_type == ExportType.POSTMORTEMS:
             story.extend(
-                self._build_postmortems_content(data if isinstance(data, list) else [data])
+                self._build_postmortems_content(
+                    data if isinstance(data, list) else [data]
+                )
             )
         elif self.export_type == ExportType.ANALYTICS:
-            story.extend(self._build_analytics_content(data if isinstance(data, dict) else {}))
+            story.extend(
+                self._build_analytics_content(data if isinstance(data, dict) else {})
+            )
         else:
-            story.extend(self._build_generic_content(data if isinstance(data, list) else [data]))
+            story.extend(
+                self._build_generic_content(data if isinstance(data, list) else [data])
+            )
 
         # Build with custom header/footer
         doc.build(
@@ -310,11 +320,13 @@ class PDFFormatter:
 
                 timeline_data = [["Time", "Event", "Type"]]
                 for event in display_timeline:
-                    timeline_data.append([
-                        self._format_datetime(event.get("timestamp")),
-                        str(event.get("title", ""))[:50],
-                        str(event.get("event_type", "")),
-                    ])
+                    timeline_data.append(
+                        [
+                            self._format_datetime(event.get("timestamp")),
+                            str(event.get("title", ""))[:50],
+                            str(event.get("event_type", "")),
+                        ]
+                    )
 
                 elements.append(self._create_table(timeline_data))
 
@@ -331,15 +343,19 @@ class PDFFormatter:
         if self.related_data.include_action_items:
             actions = incident.get("action_items", [])
             if actions:
-                elements.append(Paragraph("Action Items", self.styles["CustomHeading3"]))
+                elements.append(
+                    Paragraph("Action Items", self.styles["CustomHeading3"])
+                )
                 action_data = [["Title", "Priority", "Status", "Owner"]]
                 for action in actions:
-                    action_data.append([
-                        str(action.get("title", ""))[:40],
-                        str(action.get("priority", "")),
-                        str(action.get("status", "")),
-                        str(action.get("owner", "N/A")),
-                    ])
+                    action_data.append(
+                        [
+                            str(action.get("title", ""))[:40],
+                            str(action.get("priority", "")),
+                            str(action.get("status", "")),
+                            str(action.get("owner", "N/A")),
+                        ]
+                    )
                 elements.append(self._create_table(action_data))
                 elements.append(Spacer(1, 0.2 * inch))
 
@@ -386,15 +402,21 @@ class PDFFormatter:
 
         # Executive Summary
         if pm.get("executive_summary"):
-            elements.append(Paragraph("Executive Summary", self.styles["CustomHeading3"]))
-            elements.append(Paragraph(pm["executive_summary"], self.styles["CustomBody"]))
+            elements.append(
+                Paragraph("Executive Summary", self.styles["CustomHeading3"])
+            )
+            elements.append(
+                Paragraph(pm["executive_summary"], self.styles["CustomBody"])
+            )
             elements.append(Spacer(1, 0.2 * inch))
 
         # Root Cause
         if self.related_data.include_root_cause:
             root_cause = pm.get("root_cause", {})
             if root_cause:
-                elements.append(Paragraph("Root Cause Analysis", self.styles["CustomHeading3"]))
+                elements.append(
+                    Paragraph("Root Cause Analysis", self.styles["CustomHeading3"])
+                )
                 elements.append(
                     Paragraph(
                         f"<b>Primary Cause:</b> {root_cause.get('primary_cause', 'N/A')}",
@@ -444,16 +466,20 @@ class PDFFormatter:
         if self.related_data.include_action_items:
             actions = pm.get("action_items", [])
             if actions:
-                elements.append(Paragraph("Action Items", self.styles["CustomHeading3"]))
+                elements.append(
+                    Paragraph("Action Items", self.styles["CustomHeading3"])
+                )
                 action_data = [["ID", "Title", "Priority", "Status", "Owner"]]
                 for action in actions:
-                    action_data.append([
-                        str(action.get("id", "")),
-                        str(action.get("title", ""))[:35],
-                        str(action.get("priority", "")),
-                        str(action.get("status", "")),
-                        str(action.get("owner", "N/A")),
-                    ])
+                    action_data.append(
+                        [
+                            str(action.get("id", "")),
+                            str(action.get("title", ""))[:35],
+                            str(action.get("priority", "")),
+                            str(action.get("status", "")),
+                            str(action.get("owner", "N/A")),
+                        ]
+                    )
                 elements.append(self._create_table(action_data))
                 elements.append(Spacer(1, 0.2 * inch))
 
@@ -487,21 +513,27 @@ class PDFFormatter:
                 ["Metric", "Value"],
                 [
                     "Mean MTTR",
-                    f"{stats.get('mean_mttr_minutes', 'N/A'):.1f} min"
-                    if stats.get("mean_mttr_minutes")
-                    else "N/A",
+                    (
+                        f"{stats.get('mean_mttr_minutes', 'N/A'):.1f} min"
+                        if stats.get("mean_mttr_minutes")
+                        else "N/A"
+                    ),
                 ],
                 [
                     "Median MTTR",
-                    f"{stats.get('median_mttr_minutes', 'N/A'):.1f} min"
-                    if stats.get("median_mttr_minutes")
-                    else "N/A",
+                    (
+                        f"{stats.get('median_mttr_minutes', 'N/A'):.1f} min"
+                        if stats.get("median_mttr_minutes")
+                        else "N/A"
+                    ),
                 ],
                 [
                     "P90 MTTR",
-                    f"{stats.get('p90_mttr_minutes', 'N/A'):.1f} min"
-                    if stats.get("p90_mttr_minutes")
-                    else "N/A",
+                    (
+                        f"{stats.get('p90_mttr_minutes', 'N/A'):.1f} min"
+                        if stats.get("p90_mttr_minutes")
+                        else "N/A"
+                    ),
                 ],
                 ["Total Incidents", str(stats.get("incidents_count", 0))],
                 ["Resolved", str(stats.get("resolved_count", 0))],
@@ -511,7 +543,9 @@ class PDFFormatter:
 
         # Severity Breakdown
         if "severity_breakdown" in analytics:
-            elements.append(Paragraph("Incidents by Severity", self.styles["CustomHeading2"]))
+            elements.append(
+                Paragraph("Incidents by Severity", self.styles["CustomHeading2"])
+            )
             sev_data = [["Severity", "Count"]]
             for sev, count in analytics["severity_breakdown"].items():
                 sev_data.append([str(sev), str(count)])
@@ -520,7 +554,9 @@ class PDFFormatter:
 
         # Service Breakdown
         if "service_breakdown" in analytics:
-            elements.append(Paragraph("Incidents by Service", self.styles["CustomHeading2"]))
+            elements.append(
+                Paragraph("Incidents by Service", self.styles["CustomHeading2"])
+            )
             svc_data = [["Service", "Count"]]
             for svc, count in analytics["service_breakdown"].items():
                 svc_data.append([str(svc), str(count)])
@@ -571,21 +607,28 @@ class PDFFormatter:
 
         table = Table(data)
 
-        style = TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#4a5568")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, 0), 10),
-            ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
-            ("TOPPADDING", (0, 0), (-1, 0), 8),
-            ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-            ("FONTSIZE", (0, 1), (-1, -1), 9),
-            ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
-            ("TOPPADDING", (0, 1), (-1, -1), 6),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f7fafc")]),
-        ])
+        style = TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#4a5568")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+                ("TOPPADDING", (0, 0), (-1, 0), 8),
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 1), (-1, -1), 9),
+                ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
+                ("TOPPADDING", (0, 1), (-1, -1), 6),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                (
+                    "ROWBACKGROUNDS",
+                    (0, 1),
+                    (-1, -1),
+                    [colors.white, colors.HexColor("#f7fafc")],
+                ),
+            ]
+        )
         table.setStyle(style)
 
         return table

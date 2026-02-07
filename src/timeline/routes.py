@@ -217,7 +217,9 @@ async def collect_events(
 ):
     """Collect events from configured sources and add to timeline."""
     events = await collector.collect_all(
-        incident_id=incident_id, start_time=request.start_time, end_time=request.end_time
+        incident_id=incident_id,
+        start_time=request.start_time,
+        end_time=request.end_time,
     )
     return await service.reconstruct_timeline(incident_id, events)
 
@@ -247,7 +249,11 @@ async def export_timeline(
         include_raw_data=request.include_raw_data,
     )
 
-    return {"incident_id": incident_id, "format": request.format.value, "content": content}
+    return {
+        "incident_id": incident_id,
+        "format": request.format.value,
+        "content": content,
+    }
 
 
 @router.get("/{incident_id}/visualization")
@@ -265,25 +271,31 @@ async def get_visualization_data(
         bucket_key = entry.event.timestamp.strftime("%Y-%m-%d %H:00")
         if bucket_key not in buckets:
             buckets[bucket_key] = []
-        buckets[bucket_key].append({
-            "id": str(entry.event.id),
-            "timestamp": entry.event.timestamp.isoformat(),
-            "type": entry.event.event_type.value,
-            "source": entry.event.source.value,
-            "title": entry.event.title,
-            "icon": entry.icon,
-            "color": entry.color,
-            "is_milestone": entry.is_milestone,
-            "relative_time": entry.relative_time,
-        })
+        buckets[bucket_key].append(
+            {
+                "id": str(entry.event.id),
+                "timestamp": entry.event.timestamp.isoformat(),
+                "type": entry.event.event_type.value,
+                "source": entry.event.source.value,
+                "title": entry.event.title,
+                "icon": entry.icon,
+                "color": entry.color,
+                "is_milestone": entry.is_milestone,
+                "relative_time": entry.relative_time,
+            }
+        )
 
     return {
         "incident_id": incident_id,
         "summary": {
             "total_events": summary.total_events,
             "duration_seconds": summary.duration_seconds,
-            "first_event": summary.first_event.isoformat() if summary.first_event else None,
-            "last_event": summary.last_event.isoformat() if summary.last_event else None,
+            "first_event": (
+                summary.first_event.isoformat() if summary.first_event else None
+            ),
+            "last_event": (
+                summary.last_event.isoformat() if summary.last_event else None
+            ),
             "gaps_count": len(summary.gaps),
             "milestone_count": len(summary.key_milestones),
         },

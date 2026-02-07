@@ -42,7 +42,9 @@ def sample_email_config():
         provider=EmailProvider.SMTP,
         from_email="noreply@example.com",
         from_name="Incident Copilot",
-        default_recipients=[EmailRecipient(email="oncall@example.com", name="On-Call Team")],
+        default_recipients=[
+            EmailRecipient(email="oncall@example.com", name="On-Call Team")
+        ],
         smtp=SMTPConfig(
             host="smtp.example.com",
             port=587,
@@ -63,7 +65,9 @@ def sample_sendgrid_config():
         provider=EmailProvider.SENDGRID,
         from_email="noreply@example.com",
         from_name="Incident Copilot",
-        default_recipients=[EmailRecipient(email="oncall@example.com", name="On-Call Team")],
+        default_recipients=[
+            EmailRecipient(email="oncall@example.com", name="On-Call Team")
+        ],
         sendgrid=SendGridConfig(api_key="SG.test_api_key"),
     )
 
@@ -77,7 +81,9 @@ def sample_ses_config():
         provider=EmailProvider.SES,
         from_email="noreply@example.com",
         from_name="Incident Copilot",
-        default_recipients=[EmailRecipient(email="oncall@example.com", name="On-Call Team")],
+        default_recipients=[
+            EmailRecipient(email="oncall@example.com", name="On-Call Team")
+        ],
         ses=SESConfig(
             region="us-east-1",
             access_key_id="AKIATEST",
@@ -271,13 +277,18 @@ class TestEmailTemplateRenderer:
 
     def test_truncate_text(self):
         assert EmailTemplateRenderer._truncate_text("short", 10) == "short"
-        assert EmailTemplateRenderer._truncate_text("this is a long text", 10) == "this is..."
+        assert (
+            EmailTemplateRenderer._truncate_text("this is a long text", 10)
+            == "this is..."
+        )
 
     def test_get_subject_context_card(self, sample_context_card):
         renderer = EmailTemplateRenderer()
         from src.integrations.email.models import EmailTemplateType
 
-        subject = renderer.get_subject(EmailTemplateType.CONTEXT_CARD, card=sample_context_card)
+        subject = renderer.get_subject(
+            EmailTemplateType.CONTEXT_CARD, card=sample_context_card
+        )
         assert "🟠 HIGH" in subject
         assert "api-gateway" in subject
 
@@ -285,7 +296,9 @@ class TestEmailTemplateRenderer:
         renderer = EmailTemplateRenderer()
         from src.integrations.email.models import EmailTemplateType
 
-        subject = renderer.get_subject(EmailTemplateType.DIGEST_DAILY, data=sample_digest_data)
+        subject = renderer.get_subject(
+            EmailTemplateType.DIGEST_DAILY, data=sample_digest_data
+        )
         assert "Daily Incident Report" in subject
 
     def test_get_subject_test(self):
@@ -319,7 +332,9 @@ class TestEmailNotificationService:
     """Tests for EmailNotificationService."""
 
     @pytest.mark.asyncio
-    async def test_send_context_card_disabled(self, sample_email_config, sample_context_card):
+    async def test_send_context_card_disabled(
+        self, sample_email_config, sample_context_card
+    ):
         """Test sending when disabled."""
         sample_email_config.enabled = False
         service = EmailNotificationService(sample_email_config)
@@ -330,7 +345,9 @@ class TestEmailNotificationService:
         assert "disabled" in result.error.lower()
 
     @pytest.mark.asyncio
-    async def test_send_context_card_no_recipients(self, sample_email_config, sample_context_card):
+    async def test_send_context_card_no_recipients(
+        self, sample_email_config, sample_context_card
+    ):
         """Test sending with no recipients."""
         sample_email_config.default_recipients = []
         service = EmailNotificationService(sample_email_config)
@@ -458,7 +475,9 @@ class TestEmailAPI:
             "provider": "smtp",
             "from_email": "noreply@example.com",
             "from_name": "Incident Copilot",
-            "default_recipients": [{"email": "oncall@example.com", "name": "On-Call Team"}],
+            "default_recipients": [
+                {"email": "oncall@example.com", "name": "On-Call Team"}
+            ],
             "smtp": {
                 "host": "smtp.example.com",
                 "port": 587,

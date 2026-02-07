@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 
 # Type alias for handlers
 HandlerFunc = Callable[
-    [ConnectionManager, str, dict[str, Any]], Coroutine[Any, Any, Optional[WebSocketMessage]]
+    [ConnectionManager, str, dict[str, Any]],
+    Coroutine[Any, Any, Optional[WebSocketMessage]],
 ]
 
 
@@ -141,13 +142,19 @@ class MessageHandler:
             else:
                 return WebSocketMessage(
                     type=MessageType.ERROR,
-                    payload={"error": "Failed to subscribe", "code": "SUBSCRIBE_FAILED"},
+                    payload={
+                        "error": "Failed to subscribe",
+                        "code": "SUBSCRIBE_FAILED",
+                    },
                 )
 
         except ValueError as e:
             return WebSocketMessage(
                 type=MessageType.ERROR,
-                payload={"error": f"Invalid room_type: {e}", "code": "INVALID_ROOM_TYPE"},
+                payload={
+                    "error": f"Invalid room_type: {e}",
+                    "code": "INVALID_ROOM_TYPE",
+                },
             )
 
     async def _handle_unsubscribe(
@@ -222,7 +229,9 @@ class MessageHandler:
             )
 
         try:
-            status = PresenceStatus(status_str) if status_str else PresenceStatus.VIEWING
+            status = (
+                PresenceStatus(status_str) if status_str else PresenceStatus.VIEWING
+            )
         except ValueError:
             status = PresenceStatus.VIEWING
 

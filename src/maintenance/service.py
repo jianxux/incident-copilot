@@ -61,9 +61,11 @@ class MaintenanceService:
             required_approvers=request.required_approvers,
             stakeholders=request.stakeholders,
             notification_minutes_before=request.notification_minutes_before,
-            status=MaintenanceStatus.PENDING_APPROVAL
-            if request.requires_approval
-            else MaintenanceStatus.SCHEDULED,
+            status=(
+                MaintenanceStatus.PENDING_APPROVAL
+                if request.requires_approval
+                else MaintenanceStatus.SCHEDULED
+            ),
         )
         self._windows[window.id] = window
         if window.stakeholders:
@@ -83,7 +85,10 @@ class MaintenanceService:
         window = self._windows.get(window_id)
         if not window:
             return None
-        if window.status in (MaintenanceStatus.IN_PROGRESS, MaintenanceStatus.COMPLETED):
+        if window.status in (
+            MaintenanceStatus.IN_PROGRESS,
+            MaintenanceStatus.COMPLETED,
+        ):
             raise ValueError("Cannot update active/completed windows")
         for field, value in request.model_dump(exclude_unset=True).items():
             setattr(window, field, value)
@@ -158,7 +163,9 @@ class MaintenanceService:
     ) -> list[dict]:
         for alert in alerts:
             suppress, reason = await self.should_suppress_alert(
-                ScopeType(alert.get("scope_type", "service")), alert.get("identifier", ""), at_time
+                ScopeType(alert.get("scope_type", "service")),
+                alert.get("identifier", ""),
+                at_time,
             )
             alert["suppressed"], alert["suppression_reason"] = suppress, reason
         return alerts
@@ -170,7 +177,9 @@ class MaintenanceService:
         if in_maint and window:
             annotation = f"[MAINTENANCE] During: {window.title}"
             window.related_incident_ids.append(incident_id)
-            window.annotations.append(f"Incident {incident_id} at {datetime.utcnow().isoformat()}")
+            window.annotations.append(
+                f"Incident {incident_id} at {datetime.utcnow().isoformat()}"
+            )
             return annotation
         return None
 
@@ -192,7 +201,9 @@ class MaintenanceService:
         window.updated_at = datetime.utcnow()
         return window
 
-    async def reject(self, window_id: UUID, approver_id: str, reason: str) -> MaintenanceWindow:
+    async def reject(
+        self, window_id: UUID, approver_id: str, reason: str
+    ) -> MaintenanceWindow:
         window = self._windows.get(window_id)
         if not window:
             raise ValueError("Window not found")
@@ -219,10 +230,14 @@ class MaintenanceService:
             raise ValueError("Window not found")
         window.status = MaintenanceStatus.COMPLETED
         window.updated_at = datetime.utcnow()
-        await self._notify(window, NotificationType.COMPLETED, f"Completed: {window.title}")
+        await self._notify(
+            window, NotificationType.COMPLETED, f"Completed: {window.title}"
+        )
         return window
 
-    async def cancel_maintenance(self, window_id: UUID, reason: str) -> MaintenanceWindow:
+    async def cancel_maintenance(
+        self, window_id: UUID, reason: str
+    ) -> MaintenanceWindow:
         window = self._windows.get(window_id)
         if not window:
             raise ValueError("Window not found")
@@ -275,8 +290,12 @@ class MaintenanceService:
                     OverlapWarning(
                         window_id=window.id,
                         overlapping_window_id=other.id,
-                        overlap_start=max(window.schedule.start_time, other.schedule.start_time),
-                        overlap_end=min(window.schedule.end_time, other.schedule.end_time),
+                        overlap_start=max(
+                            window.schedule.start_time, other.schedule.start_time
+                        ),
+                        overlap_end=min(
+                            window.schedule.end_time, other.schedule.end_time
+                        ),
                         shared_scope=shared,
                     )
                 )
@@ -301,7 +320,8 @@ class MaintenanceService:
                 await self.start_maintenance(window.id)
                 processed.append(window)
             elif (
-                window.status in (MaintenanceStatus.IN_PROGRESS, MaintenanceStatus.EXTENDED)
+                window.status
+                in (MaintenanceStatus.IN_PROGRESS, MaintenanceStatus.EXTENDED)
                 and window.schedule.end_time <= now
             ):
                 await self.complete_maintenance(window.id)

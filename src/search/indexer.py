@@ -288,7 +288,9 @@ class IndexingService:
         """Get indexing statistics."""
         return {
             **self._index_stats,
-            "last_index_times": {k.value: v.isoformat() for k, v in self._last_index_time.items()},
+            "last_index_times": {
+                k.value: v.isoformat() for k, v in self._last_index_time.items()
+            },
             "registered_sources": [t.value for t in self._sources],
         }
 

@@ -30,7 +30,9 @@ router = APIRouter(prefix="/search", tags=["search"])
 _engine: SearchEngine | None = None
 _indexer: IndexingService | None = None
 _webhook_indexer: WebhookIndexer | None = None
-_saved_searches: dict[str, dict[UUID, SavedSearch]] = {}  # user_id -> {id -> SavedSearch}
+_saved_searches: dict[str, dict[UUID, SavedSearch]] = (
+    {}
+)  # user_id -> {id -> SavedSearch}
 
 
 def get_engine() -> SearchEngine:
@@ -410,7 +412,9 @@ async def trigger_reindex(
     if request.doc_types:
         results = {}
         for doc_type in request.doc_types:
-            results[doc_type.value] = await indexer.reindex_type(doc_type, request.batch_size)
+            results[doc_type.value] = await indexer.reindex_type(
+                doc_type, request.batch_size
+            )
         return {"status": "completed", "results": results}
     else:
         results = await indexer.reindex_all(request.batch_size)

@@ -38,7 +38,11 @@ class CSVFormatter:
         # Determine columns from config or data
         if self.columns:
             fieldnames = [col.field for col in self.columns if col.include]
-            headers = {col.field: col.header or col.field for col in self.columns if col.include}
+            headers = {
+                col.field: col.header or col.field
+                for col in self.columns
+                if col.include
+            }
         else:
             fieldnames = list(data[0].keys()) if data else []
             headers = {f: f for f in fieldnames}
@@ -174,7 +178,9 @@ class CSVFormatter:
         if self.related_data.include_action_items:
             actions = incident.get("action_items", [])
             flat["action_items_count"] = len(actions)
-            flat["action_items_open"] = sum(1 for a in actions if a.get("status") != "done")
+            flat["action_items_open"] = sum(
+                1 for a in actions if a.get("status") != "done"
+            )
 
         return flat
 
@@ -199,19 +205,25 @@ class CSVFormatter:
             if root_cause:
                 flat["primary_cause"] = root_cause.get("primary_cause")
                 flat["trigger"] = root_cause.get("trigger")
-                flat["contributing_factors"] = ", ".join(root_cause.get("contributing_factors", []))
+                flat["contributing_factors"] = ", ".join(
+                    root_cause.get("contributing_factors", [])
+                )
 
         if self.related_data.include_impact:
             impact = pm.get("impact", {})
             if impact:
                 flat["users_affected"] = impact.get("users_affected")
                 flat["sla_breach"] = impact.get("sla_breach")
-                flat["services_affected"] = ", ".join(impact.get("services_affected", []))
+                flat["services_affected"] = ", ".join(
+                    impact.get("services_affected", [])
+                )
 
         if self.related_data.include_action_items:
             actions = pm.get("action_items", [])
             flat["action_items_count"] = len(actions)
-            flat["action_items_done"] = sum(1 for a in actions if a.get("status") == "done")
+            flat["action_items_done"] = sum(
+                1 for a in actions if a.get("status") == "done"
+            )
 
         return flat
 
@@ -222,49 +234,61 @@ class CSVFormatter:
         # MTTR stats
         if "mttr_stats" in analytics:
             stats = analytics["mttr_stats"]
-            rows.append({
-                "metric_name": "Mean MTTR",
-                "value": stats.get("mean_mttr_minutes"),
-                "unit": "minutes",
-                "period": stats.get("period"),
-            })
-            rows.append({
-                "metric_name": "Median MTTR",
-                "value": stats.get("median_mttr_minutes"),
-                "unit": "minutes",
-                "period": stats.get("period"),
-            })
-            rows.append({
-                "metric_name": "P90 MTTR",
-                "value": stats.get("p90_mttr_minutes"),
-                "unit": "minutes",
-                "period": stats.get("period"),
-            })
-            rows.append({
-                "metric_name": "Incidents Count",
-                "value": stats.get("incidents_count"),
-                "unit": "count",
-                "period": stats.get("period"),
-            })
+            rows.append(
+                {
+                    "metric_name": "Mean MTTR",
+                    "value": stats.get("mean_mttr_minutes"),
+                    "unit": "minutes",
+                    "period": stats.get("period"),
+                }
+            )
+            rows.append(
+                {
+                    "metric_name": "Median MTTR",
+                    "value": stats.get("median_mttr_minutes"),
+                    "unit": "minutes",
+                    "period": stats.get("period"),
+                }
+            )
+            rows.append(
+                {
+                    "metric_name": "P90 MTTR",
+                    "value": stats.get("p90_mttr_minutes"),
+                    "unit": "minutes",
+                    "period": stats.get("period"),
+                }
+            )
+            rows.append(
+                {
+                    "metric_name": "Incidents Count",
+                    "value": stats.get("incidents_count"),
+                    "unit": "count",
+                    "period": stats.get("period"),
+                }
+            )
 
         # Severity breakdown
         if "severity_breakdown" in analytics:
             for severity, count in analytics["severity_breakdown"].items():
-                rows.append({
-                    "metric_name": f"Incidents - {severity}",
-                    "value": count,
-                    "unit": "count",
-                    "period": analytics.get("period"),
-                })
+                rows.append(
+                    {
+                        "metric_name": f"Incidents - {severity}",
+                        "value": count,
+                        "unit": "count",
+                        "period": analytics.get("period"),
+                    }
+                )
 
         # Service breakdown
         if "service_breakdown" in analytics:
             for service, count in analytics["service_breakdown"].items():
-                rows.append({
-                    "metric_name": f"Service Incidents - {service}",
-                    "value": count,
-                    "unit": "count",
-                    "period": analytics.get("period"),
-                })
+                rows.append(
+                    {
+                        "metric_name": f"Service Incidents - {service}",
+                        "value": count,
+                        "unit": "count",
+                        "period": analytics.get("period"),
+                    }
+                )
 
         return rows

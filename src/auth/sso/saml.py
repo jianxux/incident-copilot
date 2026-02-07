@@ -55,13 +55,19 @@ class SAMLProvider(BaseProvider):
 
         # Set SP URLs if not configured
         if not self.settings.sp_entity_id:
-            self.settings.sp_entity_id = f"{self.app_url}/auth/sso/saml/metadata/{idp.tenant_id}"
+            self.settings.sp_entity_id = (
+                f"{self.app_url}/auth/sso/saml/metadata/{idp.tenant_id}"
+            )
 
         if not self.settings.sp_acs_url:
-            self.settings.sp_acs_url = f"{self.app_url}/auth/sso/saml/acs/{idp.tenant_id}"
+            self.settings.sp_acs_url = (
+                f"{self.app_url}/auth/sso/saml/acs/{idp.tenant_id}"
+            )
 
         if not self.settings.sp_metadata_url:
-            self.settings.sp_metadata_url = f"{self.app_url}/auth/sso/saml/metadata/{idp.tenant_id}"
+            self.settings.sp_metadata_url = (
+                f"{self.app_url}/auth/sso/saml/metadata/{idp.tenant_id}"
+            )
 
     @staticmethod
     def create_session_for_auth(
@@ -98,7 +104,9 @@ class SAMLProvider(BaseProvider):
 
         return session
 
-    def _build_authn_request(self, request_id: str, relay_state: str | None = None) -> str:
+    def _build_authn_request(
+        self, request_id: str, relay_state: str | None = None
+    ) -> str:
         """Build a SAML AuthnRequest XML document.
 
         Args:
@@ -247,7 +255,9 @@ class SAMLProvider(BaseProvider):
         if expected_request_id:
             in_response_to = root.get("InResponseTo")
             if in_response_to and in_response_to != expected_request_id:
-                raise ValueError(f"Invalid InResponseTo: {in_response_to} != {expected_request_id}")
+                raise ValueError(
+                    f"Invalid InResponseTo: {in_response_to} != {expected_request_id}"
+                )
 
         # Note: In production, also validate:
         # - XML signature
@@ -518,7 +528,9 @@ class SAMLProvider(BaseProvider):
         # Build LogoutRequest
         name_id_xml = f"<saml:NameID>{name_id}</saml:NameID>" if name_id else ""
         session_index_xml = (
-            f"<samlp:SessionIndex>{session_index}</samlp:SessionIndex>" if session_index else ""
+            f"<samlp:SessionIndex>{session_index}</samlp:SessionIndex>"
+            if session_index
+            else ""
         )
 
         logout_request = f"""<?xml version="1.0" encoding="UTF-8"?>

@@ -34,7 +34,8 @@ class IncidentStore:
     def _init_db(self):
         """Initialize the database schema."""
         with self._get_connection() as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS incidents (
                     incident_id TEXT PRIMARY KEY,
                     title TEXT NOT NULL,
@@ -48,15 +49,20 @@ class IncidentStore:
                     context_card TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_incidents_service
                 ON incidents(service)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_incidents_occurred
                 ON incidents(occurred_at)
-            """)
+            """
+            )
             conn.commit()
 
         logger.info("incident_store_initialized", db_path=str(self.db_path))
@@ -180,7 +186,9 @@ class IncidentStore:
         Returns list of (incident, embedding) tuples.
         """
         with self._get_connection() as conn:
-            rows = conn.execute("SELECT * FROM incidents WHERE embedding IS NOT NULL").fetchall()
+            rows = conn.execute(
+                "SELECT * FROM incidents WHERE embedding IS NOT NULL"
+            ).fetchall()
 
         results = []
         for row in rows:
@@ -236,7 +244,9 @@ class IncidentStore:
             resolution=row["resolution"],
             occurred_at=datetime.fromisoformat(row["occurred_at"]),
             resolved_at=(
-                datetime.fromisoformat(row["resolved_at"]) if row["resolved_at"] else None
+                datetime.fromisoformat(row["resolved_at"])
+                if row["resolved_at"]
+                else None
             ),
         )
 

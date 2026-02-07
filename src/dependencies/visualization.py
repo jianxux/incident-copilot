@@ -87,13 +87,17 @@ class GraphVisualizer:
             if show_health:
                 attrs["fillcolor"] = self.HEALTH_COLORS.get(service.health, "#ffffff")
             else:
-                attrs["fillcolor"] = self.CRITICALITY_COLORS.get(service.criticality, "#ffffff")
+                attrs["fillcolor"] = self.CRITICALITY_COLORS.get(
+                    service.criticality, "#ffffff"
+                )
             attrs["penwidth"] = "3"
             attrs["color"] = "#1e40af"  # Blue border for affected
         elif show_health:
             attrs["fillcolor"] = self.HEALTH_COLORS.get(service.health, "#ffffff")
         else:
-            attrs["fillcolor"] = self.CRITICALITY_COLORS.get(service.criticality, "#ffffff")
+            attrs["fillcolor"] = self.CRITICALITY_COLORS.get(
+                service.criticality, "#ffffff"
+            )
 
         return attrs
 
@@ -153,34 +157,42 @@ class GraphVisualizer:
         nodes = []
         for service in self._analyzer.get_all_services():
             risk_score = self._analyzer.calculate_risk_score(service.id)
-            nodes.append({
-                "id": service.id,
-                "name": service.name,
-                "team": service.team,
-                "criticality": service.criticality.value,
-                "health": service.health.value,
-                "riskScore": risk_score,
-                "fanIn": self._analyzer.get_fan_in(service.id),
-                "fanOut": self._analyzer.get_fan_out(service.id),
-                "affected": service.id in affected,
-                "isHighlighted": service.id == highlight_service,
-                "color": self.CRITICALITY_COLORS.get(service.criticality, "#6b7280"),
-                "healthColor": self.HEALTH_COLORS.get(service.health, "#6b7280"),
-            })
+            nodes.append(
+                {
+                    "id": service.id,
+                    "name": service.name,
+                    "team": service.team,
+                    "criticality": service.criticality.value,
+                    "health": service.health.value,
+                    "riskScore": risk_score,
+                    "fanIn": self._analyzer.get_fan_in(service.id),
+                    "fanOut": self._analyzer.get_fan_out(service.id),
+                    "affected": service.id in affected,
+                    "isHighlighted": service.id == highlight_service,
+                    "color": self.CRITICALITY_COLORS.get(
+                        service.criticality, "#6b7280"
+                    ),
+                    "healthColor": self.HEALTH_COLORS.get(service.health, "#6b7280"),
+                }
+            )
 
         links = []
         for dep in self._analyzer.get_all_dependencies():
-            links.append({
-                "source": dep.source_id,
-                "target": dep.target_id,
-                "id": dep.id,
-                "type": dep.dependency_type.value,
-                "isCritical": dep.is_critical,
-                "latencyMs": dep.latency_p99_ms,
-                "errorRate": dep.error_rate,
-                "health": dep.health.value,
-                "affected": (dep.source_id in affected and dep.target_id in affected),
-            })
+            links.append(
+                {
+                    "source": dep.source_id,
+                    "target": dep.target_id,
+                    "id": dep.id,
+                    "type": dep.dependency_type.value,
+                    "isCritical": dep.is_critical,
+                    "latencyMs": dep.latency_p99_ms,
+                    "errorRate": dep.error_rate,
+                    "health": dep.health.value,
+                    "affected": (
+                        dep.source_id in affected and dep.target_id in affected
+                    ),
+                }
+            )
 
         return {
             "nodes": nodes,
@@ -198,17 +210,19 @@ class GraphVisualizer:
 
         # Add nodes
         for service in self._analyzer.get_all_services():
-            elements.append({
-                "data": {
-                    "id": service.id,
-                    "label": service.name,
-                    "criticality": service.criticality.value,
-                    "health": service.health.value,
-                    "team": service.team,
-                    "riskScore": self._analyzer.calculate_risk_score(service.id),
-                },
-                "classes": f"{service.criticality.value} {service.health.value}",
-            })
+            elements.append(
+                {
+                    "data": {
+                        "id": service.id,
+                        "label": service.name,
+                        "criticality": service.criticality.value,
+                        "health": service.health.value,
+                        "team": service.team,
+                        "riskScore": self._analyzer.calculate_risk_score(service.id),
+                    },
+                    "classes": f"{service.criticality.value} {service.health.value}",
+                }
+            )
 
         # Add edges
         for dep in self._analyzer.get_all_dependencies():
@@ -216,18 +230,20 @@ class GraphVisualizer:
             if dep.is_critical:
                 classes.append("critical")
 
-            elements.append({
-                "data": {
-                    "id": dep.id,
-                    "source": dep.source_id,
-                    "target": dep.target_id,
-                    "type": dep.dependency_type.value,
-                    "isCritical": dep.is_critical,
-                    "latency": dep.latency_p99_ms,
-                    "errorRate": dep.error_rate,
-                },
-                "classes": " ".join(classes),
-            })
+            elements.append(
+                {
+                    "data": {
+                        "id": dep.id,
+                        "source": dep.source_id,
+                        "target": dep.target_id,
+                        "type": dep.dependency_type.value,
+                        "isCritical": dep.is_critical,
+                        "latency": dep.latency_p99_ms,
+                        "errorRate": dep.error_rate,
+                    },
+                    "classes": " ".join(classes),
+                }
+            )
 
         return {"elements": elements}
 
@@ -274,7 +290,9 @@ class GraphVisualizer:
             for svc_id in affected:
                 lines.append(f"    style {svc_id} fill:#fef3c7,stroke:#f59e0b")
             if highlight_service:
-                lines.append(f"    style {highlight_service} fill:#fee2e2,stroke:#dc2626")
+                lines.append(
+                    f"    style {highlight_service} fill:#fee2e2,stroke:#dc2626"
+                )
 
         return "\n".join(lines)
 

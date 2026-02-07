@@ -3,7 +3,14 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Any
-from .models import ChartType, DateRange, DateRangePreset, Widget, WidgetConfig, WidgetType
+from .models import (
+    ChartType,
+    DateRange,
+    DateRangePreset,
+    Widget,
+    WidgetConfig,
+    WidgetType,
+)
 
 PRESET_DELTAS = {
     DateRangePreset.LAST_15M: timedelta(minutes=15),

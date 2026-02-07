@@ -82,7 +82,9 @@ class AtlassianProvider:
             for c in r.json()
         ]
 
-    async def update_component(self, component_id: str, status: ComponentStatus) -> Component:
+    async def update_component(
+        self, component_id: str, status: ComponentStatus
+    ) -> Component:
         r = await self.client.patch(
             self._url(f"/components/{component_id}"),
             json={"component": {"status": STATUS_MAP[status]}},
@@ -94,13 +96,17 @@ class AtlassianProvider:
             status=STATUS_REV.get(c.get("status"), ComponentStatus.OPERATIONAL),
         )
 
-    async def get_incidents(self, unresolved_only: bool = True) -> list[StatusPageIncident]:
+    async def get_incidents(
+        self, unresolved_only: bool = True
+    ) -> list[StatusPageIncident]:
         endpoint = "/incidents/unresolved" if unresolved_only else "/incidents"
         r = await self.client.get(self._url(endpoint))
         return [self._parse_incident(i) for i in r.json()]
 
     async def create_incident(self, incident: StatusPageIncident) -> StatusPageIncident:
-        components = {cid: STATUS_MAP[incident.component_status] for cid in incident.component_ids}
+        components = {
+            cid: STATUS_MAP[incident.component_status] for cid in incident.component_ids
+        }
         payload = {
             "incident": {
                 "name": incident.name,
@@ -115,7 +121,9 @@ class AtlassianProvider:
         r = await self.client.post(self._url("/incidents"), json=payload)
         return self._parse_incident(r.json())
 
-    async def update_incident(self, incident_id: str, update: StatusUpdate) -> StatusPageIncident:
+    async def update_incident(
+        self, incident_id: str, update: StatusUpdate
+    ) -> StatusPageIncident:
         r = await self.client.patch(
             self._url(f"/incidents/{incident_id}"),
             json={
@@ -127,7 +135,9 @@ class AtlassianProvider:
         )
         return self._parse_incident(r.json())
 
-    async def resolve_incident(self, incident_id: str, message: str) -> StatusPageIncident:
+    async def resolve_incident(
+        self, incident_id: str, message: str
+    ) -> StatusPageIncident:
         r = await self.client.patch(
             self._url(f"/incidents/{incident_id}"),
             json={"incident": {"status": "resolved", "body": message}},
@@ -141,8 +151,12 @@ class AtlassianProvider:
                 id=m["id"],
                 name=m["name"],
                 description=m.get("incident_updates", [{}])[0].get("body", ""),
-                scheduled_start=datetime.fromisoformat(m["scheduled_for"].replace("Z", "+00:00")),
-                scheduled_end=datetime.fromisoformat(m["scheduled_until"].replace("Z", "+00:00")),
+                scheduled_start=datetime.fromisoformat(
+                    m["scheduled_for"].replace("Z", "+00:00")
+                ),
+                scheduled_end=datetime.fromisoformat(
+                    m["scheduled_until"].replace("Z", "+00:00")
+                ),
                 component_ids=[c["id"] for c in m.get("components", [])],
             )
             for m in r.json()

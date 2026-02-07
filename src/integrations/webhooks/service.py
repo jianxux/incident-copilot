@@ -120,7 +120,9 @@ class WebhookDeliveryService:
 
     def get_webhooks_for_org(self, organization_id: UUID) -> list[WebhookConfig]:
         """Get all webhooks for an organization."""
-        return [w for w in self._webhooks.values() if w.organization_id == organization_id]
+        return [
+            w for w in self._webhooks.values() if w.organization_id == organization_id
+        ]
 
     def get_active_webhooks_for_event(
         self, organization_id: UUID, event_type: WebhookEventType
@@ -129,7 +131,9 @@ class WebhookDeliveryService:
         return [
             w
             for w in self._webhooks.values()
-            if w.organization_id == organization_id and w.is_active and event_type in w.events
+            if w.organization_id == organization_id
+            and w.is_active
+            and event_type in w.events
         ]
 
     async def deliver(
@@ -137,9 +141,13 @@ class WebhookDeliveryService:
     ) -> list[WebhookDelivery]:
         """Deliver event to webhooks."""
         if webhook_ids:
-            webhooks = [self._webhooks[wid] for wid in webhook_ids if wid in self._webhooks]
+            webhooks = [
+                self._webhooks[wid] for wid in webhook_ids if wid in self._webhooks
+            ]
         else:
-            webhooks = self.get_active_webhooks_for_event(event.organization_id, event.event_type)
+            webhooks = self.get_active_webhooks_for_event(
+                event.organization_id, event.event_type
+            )
 
         deliveries = []
         for webhook in webhooks:
@@ -286,10 +294,13 @@ class WebhookDeliveryService:
 
         return delivery
 
-    async def _schedule_retry(self, delivery: WebhookDelivery, webhook: WebhookConfig) -> None:
+    async def _schedule_retry(
+        self, delivery: WebhookDelivery, webhook: WebhookConfig
+    ) -> None:
         """Schedule a delivery for retry."""
         delay = min(
-            RETRY_BASE_DELAY_SECONDS * (RETRY_BACKOFF_MULTIPLIER**delivery.attempt_number),
+            RETRY_BASE_DELAY_SECONDS
+            * (RETRY_BACKOFF_MULTIPLIER**delivery.attempt_number),
             RETRY_MAX_DELAY_SECONDS,
         )
         delivery.status = DeliveryStatus.RETRYING
@@ -304,7 +315,9 @@ class WebhookDeliveryService:
                 delivery = await self._pending_retries.get()
 
                 if delivery.next_retry_at:
-                    wait_seconds = (delivery.next_retry_at - datetime.utcnow()).total_seconds()
+                    wait_seconds = (
+                        delivery.next_retry_at - datetime.utcnow()
+                    ).total_seconds()
                     if wait_seconds > 0:
                         await asyncio.sleep(wait_seconds)
 
@@ -320,7 +333,9 @@ class WebhookDeliveryService:
                     payload=json.loads(delivery.request_body).get("data", {}),
                 )
 
-                await self._deliver_to_webhook(event, webhook, delivery.attempt_number + 1)
+                await self._deliver_to_webhook(
+                    event, webhook, delivery.attempt_number + 1
+                )
 
             except asyncio.CancelledError:
                 raise
@@ -369,7 +384,9 @@ class WebhookDeliveryService:
         self, webhook_id: UUID, limit: int = 100
     ) -> list[WebhookDelivery]:
         """Get recent deliveries for a webhook."""
-        deliveries = [d for d in self._deliveries.values() if d.webhook_id == webhook_id]
+        deliveries = [
+            d for d in self._deliveries.values() if d.webhook_id == webhook_id
+        ]
         deliveries.sort(key=lambda d: d.created_at, reverse=True)
         return deliveries[:limit]
 

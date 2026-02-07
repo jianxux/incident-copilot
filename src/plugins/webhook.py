@@ -43,13 +43,15 @@ class WebhookExecutor:
         headers = dict(headers or {})
         body = json.dumps(payload, default=str)
         body_bytes = body.encode("utf-8")
-        headers.update({
-            "Content-Type": "application/json",
-            "X-Webhook-Event": event.value if event else "unknown",
-            "X-Webhook-Plugin": plugin_id,
-            "X-Webhook-Delivery": str(uuid.uuid4()),
-            "X-Webhook-Timestamp": str(int(time.time())),
-        })
+        headers.update(
+            {
+                "Content-Type": "application/json",
+                "X-Webhook-Event": event.value if event else "unknown",
+                "X-Webhook-Plugin": plugin_id,
+                "X-Webhook-Delivery": str(uuid.uuid4()),
+                "X-Webhook-Timestamp": str(int(time.time())),
+            }
+        )
         if hmac_config:
             headers[hmac_config.header_name] = self._compute_signature(
                 body_bytes, hmac_config.secret, hmac_config.algorithm
@@ -60,7 +62,9 @@ class WebhookExecutor:
             event=event or PluginEvent.CONTEXT_ASSEMBLED,
             url=url,
             method=method,
-            request_headers={k: v for k, v in headers.items() if not k.lower().startswith("x-")},
+            request_headers={
+                k: v for k, v in headers.items() if not k.lower().startswith("x-")
+            },
             request_body=body[:10000],
         )
         attempt, last_error, total_start = 0, None, time.monotonic()
@@ -68,7 +72,9 @@ class WebhookExecutor:
             attempt += 1
             delivery.attempt_number = attempt
             try:
-                result = await self._attempt_delivery(url, method, body_bytes, headers, timeout_ms)
+                result = await self._attempt_delivery(
+                    url, method, body_bytes, headers, timeout_ms
+                )
                 delivery.response_status, delivery.response_body = (
                     result["status"],
                     (result["body"][:10000] if result["body"] else None),
@@ -131,7 +137,11 @@ class WebhookExecutor:
         import random
 
         return min(
-            int(initial_delay_ms * (multiplier ** (attempt - 1)) * random.uniform(0.75, 1.25)),
+            int(
+                initial_delay_ms
+                * (multiplier ** (attempt - 1))
+                * random.uniform(0.75, 1.25)
+            ),
             max_delay_ms,
         )
 
