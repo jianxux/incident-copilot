@@ -58,9 +58,7 @@ class ContextOrchestrator:
 
         # Keep datadog reference for backward compatibility
         self.datadog = (
-            self.log_adapter
-            if self.log_provider == "datadog"
-            else DatadogAdapter(settings)
+            self.log_adapter if self.log_provider == "datadog" else DatadogAdapter(settings)
         )
 
     def _detect_scm_provider(self) -> str:
@@ -91,28 +89,20 @@ class ContextOrchestrator:
 
         # Fan-out: fetch from multiple sources in parallel
         scm_task = asyncio.create_task(self._fetch_scm_context(incident.service_name))
-        datadog_task = asyncio.create_task(
-            self._fetch_log_context(incident.service_name)
-        )
-        oncall_task = asyncio.create_task(
-            self._fetch_oncall_roster(incident.service_name)
-        )
+        datadog_task = asyncio.create_task(self._fetch_log_context(incident.service_name))
+        oncall_task = asyncio.create_task(self._fetch_oncall_roster(incident.service_name))
 
         # Wait for all with timeout
         try:
             scm_ctx, datadog_ctx, oncall_roster = await asyncio.wait_for(
-                asyncio.gather(
-                    scm_task, datadog_task, oncall_task, return_exceptions=True
-                ),
+                asyncio.gather(scm_task, datadog_task, oncall_task, return_exceptions=True),
                 timeout=8.0,  # Leave room for AI + Slack
             )
 
             # Handle exceptions from gather
             if isinstance(scm_ctx, Exception):
                 scm_name = "GitHub" if self.scm_provider == "github" else "GitLab"
-                logger.error(
-                    "scm_fetch_error", provider=self.scm_provider, error=str(scm_ctx)
-                )
+                logger.error("scm_fetch_error", provider=self.scm_provider, error=str(scm_ctx))
                 errors.append(f"{scm_name}: {str(scm_ctx)}")
                 scm_ctx = None
 

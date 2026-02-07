@@ -42,7 +42,7 @@ class ActionExecutor:
         self,
         action: EscalationAction,
         context: dict[str, Any],
-        oncall: OnCallAssignment | None = None
+        oncall: OnCallAssignment | None = None,
     ) -> bool:
         """Execute an escalation action with retry logic."""
         handler = self._handlers.get(action.action_type)
@@ -62,21 +62,15 @@ class ActionExecutor:
                     logger.info(f"Action {action.action_type} executed successfully to {target}")
                     return True
             except Exception as e:
-                logger.warning(
-                    f"Action {action.action_type} failed (attempt {attempt + 1}): {e}"
-                )
-            
+                logger.warning(f"Action {action.action_type} failed (attempt {attempt + 1}): {e}")
+
             if attempt < action.retry_count:
                 await asyncio.sleep(action.retry_delay_seconds)
-        
+
         logger.error(f"Action {action.action_type} failed after {action.retry_count + 1} attempts")
         return False
 
-    def _resolve_target(
-        self,
-        action: EscalationAction,
-        oncall: OnCallAssignment | None
-    ) -> str:
+    def _resolve_target(self, action: EscalationAction, oncall: OnCallAssignment | None) -> str:
         """Resolve the action target, preferring on-call if available."""
         if not oncall:
             return action.target
@@ -94,7 +88,7 @@ class ActionExecutor:
         """Render a message template with context variables."""
         if not template:
             return f"Escalation alert for incident {context.get('incident_id', 'unknown')}"
-        
+
         # Simple template rendering with {variable} syntax
         result = template
         for key, value in context.items():
@@ -161,11 +155,7 @@ class ConditionEvaluator:
         """Register a custom evaluator for a field."""
         self._custom_evaluators[field] = evaluator
 
-    def evaluate(
-        self,
-        condition: EscalationCondition,
-        context: dict[str, Any]
-    ) -> bool:
+    def evaluate(self, condition: EscalationCondition, context: dict[str, Any]) -> bool:
         """Evaluate a single condition against context."""
         # Check time window first
         if condition.time_window:
@@ -181,10 +171,7 @@ class ConditionEvaluator:
         return condition.matches(context)
 
     def evaluate_all(
-        self,
-        conditions: list[EscalationCondition],
-        context: dict[str, Any],
-        match_all: bool = True
+        self, conditions: list[EscalationCondition], context: dict[str, Any], match_all: bool = True
     ) -> bool:
         """Evaluate multiple conditions."""
         if not conditions:
@@ -199,7 +186,7 @@ class ConditionEvaluator:
             tz = ZoneInfo(window.timezone)
         except Exception:
             tz = ZoneInfo("UTC")
-        
+
         now = datetime.now(tz)
         current_time = now.time()
         current_day = now.weekday()
@@ -225,18 +212,12 @@ class PolicyEngine:
         self.evaluator = ConditionEvaluator()
 
     async def evaluate_incident(
-        self,
-        incident_id: str,
-        context: dict[str, Any]
+        self, incident_id: str, context: dict[str, Any]
     ) -> EscalationPolicy | None:
         """Find and return the matching policy for an incident."""
         return await self.service.find_matching_policy(context)
 
-    async def should_escalate(
-        self,
-        state: EscalationState,
-        context: dict[str, Any]
-    ) -> bool:
+    async def should_escalate(self, state: EscalationState, context: dict[str, Any]) -> bool:
         """Determine if an incident should be escalated."""
         policy = await self.service.get_policy(state.policy_id)
         if not policy or not policy.enabled:
@@ -266,11 +247,7 @@ class PolicyEngine:
 
         return True
 
-    async def execute_escalation(
-        self,
-        state: EscalationState,
-        context: dict[str, Any]
-    ) -> bool:
+    async def execute_escalation(self, state: EscalationState, context: dict[str, Any]) -> bool:
         """Execute escalation to the next level."""
         policy = await self.service.get_policy(state.policy_id)
         if not policy:
@@ -304,21 +281,19 @@ class PolicyEngine:
         return success_count > 0
 
     async def process_incident(
-        self,
-        incident_id: str,
-        context: dict[str, Any]
+        self, incident_id: str, context: dict[str, Any]
     ) -> EscalationState | None:
         """Process an incident through the escalation engine."""
         # Get or create escalation state
         state = await self.service.get_escalation_state(incident_id)
-        
+
         if not state:
             # Find matching policy
             policy = await self.evaluate_incident(incident_id, context)
             if not policy:
                 logger.info(f"No matching policy for incident {incident_id}")
                 return None
-            
+
             # Start escalation
             state = await self.service.start_escalation(incident_id, policy, context)
             logger.info(f"Started escalation for {incident_id} with policy {policy.name}")
@@ -344,7 +319,7 @@ class PolicyEngine:
                     "incident_id": state.incident_id,
                     "current_level": state.current_level,
                 }
-                
+
                 if await self.should_escalate(state, context):
                     await self.execute_escalation(state, context)
                     processed.append(state)
@@ -370,5 +345,6 @@ def get_policy_engine(service: EscalationService | None = None) -> PolicyEngine:
     global _engine
     if _engine is None:
         from .service import get_escalation_service
+
         _engine = PolicyEngine(service or get_escalation_service())
     return _engine

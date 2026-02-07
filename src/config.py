@@ -9,9 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
-    model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # App
     app_name: str = "incident-copilot"
@@ -25,9 +23,7 @@ class Settings(BaseSettings):
 
     # Opsgenie
     opsgenie_api_key: str = Field(default="", description="Opsgenie API key")
-    opsgenie_webhook_secret: str = Field(
-        default="", description="Opsgenie webhook signing secret"
-    )
+    opsgenie_webhook_secret: str = Field(default="", description="Opsgenie webhook signing secret")
     opsgenie_region: str = Field(default="us", description="Opsgenie region (us or eu)")
 
     # On-Call Roster
@@ -73,9 +69,7 @@ class Settings(BaseSettings):
     aws_access_key_id: str = Field(
         default="", description="AWS access key ID (optional, uses boto3 defaults)"
     )
-    aws_secret_access_key: str = Field(
-        default="", description="AWS secret access key (optional)"
-    )
+    aws_secret_access_key: str = Field(default="", description="AWS secret access key (optional)")
     cloudwatch_log_group_map: dict[str, str] = Field(
         default_factory=dict,
         description="Service to CloudWatch Log Group mapping (e.g., payments-api=/aws/lambda/payments)",
@@ -98,9 +92,7 @@ class Settings(BaseSettings):
         default="",
         description="Loki password for basic auth (e.g., Grafana Cloud API key)",
     )
-    loki_token: str = Field(
-        default="", description="Loki bearer token for token-based auth"
-    )
+    loki_token: str = Field(default="", description="Loki bearer token for token-based auth")
     loki_org_id: str = Field(
         default="",
         description="Loki tenant ID for multi-tenant deployments (X-Scope-OrgID header)",
@@ -143,9 +135,7 @@ class Settings(BaseSettings):
     slack_signing_secret: str = Field(
         default="", description="Slack app signing secret for request verification"
     )
-    slack_default_channel: str = Field(
-        default="#incidents", description="Default Slack channel"
-    )
+    slack_default_channel: str = Field(default="#incidents", description="Default Slack channel")
 
     # Microsoft Teams
     teams_webhook_url: str = Field(default="", description="Teams Incoming Webhook URL")
@@ -170,28 +160,20 @@ class Settings(BaseSettings):
         default="postgresql+asyncpg://postgres:postgres@localhost:5432/incident_copilot",
         description="PostgreSQL connection URL",
     )
-    redis_url: str = Field(
-        default="redis://localhost:6379/0", description="Redis connection URL"
-    )
+    redis_url: str = Field(default="redis://localhost:6379/0", description="Redis connection URL")
 
     # Service mapping (simple key=value pairs, e.g., "payments-api=mycompany/payments")
     service_repo_map: dict[str, str] = Field(default_factory=dict)
 
     # OAuth - GitHub
-    github_oauth_client_id: str = Field(
-        default="", description="GitHub OAuth App Client ID"
-    )
+    github_oauth_client_id: str = Field(default="", description="GitHub OAuth App Client ID")
     github_oauth_client_secret: str = Field(
         default="", description="GitHub OAuth App Client Secret"
     )
 
     # OAuth - Google
-    google_oauth_client_id: str = Field(
-        default="", description="Google OAuth Client ID"
-    )
-    google_oauth_client_secret: str = Field(
-        default="", description="Google OAuth Client Secret"
-    )
+    google_oauth_client_id: str = Field(default="", description="Google OAuth Client ID")
+    google_oauth_client_secret: str = Field(default="", description="Google OAuth Client Secret")
 
     # Auth
     secret_key: str = Field(
@@ -254,18 +236,10 @@ class Settings(BaseSettings):
 
     # Stripe
     stripe_api_key: str = Field(default="", description="Stripe API secret key")
-    stripe_publishable_key: str = Field(
-        default="", description="Stripe publishable key"
-    )
-    stripe_webhook_secret: str = Field(
-        default="", description="Stripe webhook signing secret"
-    )
-    stripe_price_starter: str = Field(
-        default="", description="Stripe Price ID for Starter plan"
-    )
-    stripe_price_pro: str = Field(
-        default="", description="Stripe Price ID for Pro plan"
-    )
+    stripe_publishable_key: str = Field(default="", description="Stripe publishable key")
+    stripe_webhook_secret: str = Field(default="", description="Stripe webhook signing secret")
+    stripe_price_starter: str = Field(default="", description="Stripe Price ID for Starter plan")
+    stripe_price_pro: str = Field(default="", description="Stripe Price ID for Pro plan")
     stripe_price_enterprise: str = Field(
         default="", description="Stripe Price ID for Enterprise plan"
     )
@@ -309,9 +283,7 @@ class Settings(BaseSettings):
     )
 
     # Rate Limiting
-    ratelimit_enabled: bool = Field(
-        default=True, description="Enable API rate limiting"
-    )
+    ratelimit_enabled: bool = Field(default=True, description="Enable API rate limiting")
     ratelimit_exclude_paths: list[str] = Field(
         default_factory=lambda: [
             "/health",
@@ -360,9 +332,7 @@ class Settings(BaseSettings):
     )
 
     # Alert Correlation
-    correlation_enabled: bool = Field(
-        default=True, description="Enable alert correlation engine"
-    )
+    correlation_enabled: bool = Field(default=True, description="Enable alert correlation engine")
     correlation_default_rules: bool = Field(
         default=True, description="Setup default correlation rules on startup"
     )
@@ -391,12 +361,8 @@ class Settings(BaseSettings):
     )
 
     # Audit Logging
-    audit_enabled: bool = Field(
-        default=True, description="Enable audit logging for compliance"
-    )
-    audit_retention_days: int = Field(
-        default=90, description="Number of days to retain audit logs"
-    )
+    audit_enabled: bool = Field(default=True, description="Enable audit logging for compliance")
+    audit_retention_days: int = Field(default=90, description="Number of days to retain audit logs")
     audit_log_all_requests: bool = Field(
         default=False, description="Log all API requests (verbose, for debugging)"
     )

@@ -174,13 +174,13 @@ class ExportRequest(BaseModel):
     columns: list[ColumnConfig] = Field(default_factory=list)
     related_data: RelatedDataConfig = Field(default_factory=RelatedDataConfig)
     template_id: str | None = None
-    
+
     # Format-specific options
     pdf_options: PDFOptions | None = None
     csv_options: CSVOptions | None = None
     json_options: JSONOptions | None = None
     markdown_options: MarkdownOptions | None = None
-    
+
     # Job options
     async_processing: bool = True
     notify_on_completion: bool = True
@@ -201,19 +201,19 @@ class ExportJob(BaseModel):
     expires_at: datetime | None = None
     created_by: str | None = None
     organization_id: str | None = None
-    
+
     # Progress tracking
     progress_percent: int = 0
     records_processed: int = 0
     total_records: int | None = None
     current_step: str | None = None
-    
+
     # Result info
     file_path: str | None = None
     file_size_bytes: int | None = None
     file_name: str | None = None
     download_url: str | None = None
-    
+
     # Error tracking
     error_message: str | None = None
     error_details: dict[str, Any] | None = None
@@ -252,16 +252,16 @@ class ScheduledExport(BaseModel):
     next_run_at: datetime | None = None
     last_run_at: datetime | None = None
     last_job_id: str | None = None
-    
+
     # Export configuration
     request: ExportRequest
-    
+
     # Delivery configuration
     delivery_email: list[str] = Field(default_factory=list)
     delivery_webhook: str | None = None
     delivery_s3_bucket: str | None = None
     delivery_s3_prefix: str | None = None
-    
+
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

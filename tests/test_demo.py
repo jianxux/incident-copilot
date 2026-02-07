@@ -57,14 +57,14 @@ class TestDemoScenarios:
 
         for scenario in DEMO_SCENARIOS:
             for field in required_fields:
-                assert (
-                    field in scenario
-                ), f"Missing field '{field}' in scenario {scenario.get('id')}"
+                assert field in scenario, (
+                    f"Missing field '{field}' in scenario {scenario.get('id')}"
+                )
 
             for field in alert_fields:
-                assert (
-                    field in scenario["alert"]
-                ), f"Missing alert field '{field}' in scenario {scenario.get('id')}"
+                assert field in scenario["alert"], (
+                    f"Missing alert field '{field}' in scenario {scenario.get('id')}"
+                )
 
 
 class TestDemoGenerator:

@@ -340,9 +340,7 @@ class LinearClient:
         if label_ids is not None:
             input_data["labelIds"] = label_ids
 
-        data = await self._execute_query(
-            mutation, {"id": issue_id, "input": input_data}
-        )
+        data = await self._execute_query(mutation, {"id": issue_id, "input": input_data})
 
         issue_data = data["issueUpdate"]["issue"]
         issue = LinearIssue(
@@ -404,9 +402,7 @@ class LinearClient:
             created_at=comment_data.get("createdAt"),
         )
 
-    async def get_workflow_states(
-        self, team_id: str | None = None
-    ) -> list[LinearWorkflowState]:
+    async def get_workflow_states(self, team_id: str | None = None) -> list[LinearWorkflowState]:
         """Get workflow states for a team.
 
         Args:
@@ -708,13 +704,11 @@ async def create_incident_ticket(
         description_parts.append("")
 
     if log_summary:
-        description_parts.extend(
-            [
-                "## Log Analysis",
-                log_summary,
-                "",
-            ]
-        )
+        description_parts.extend([
+            "## Log Analysis",
+            log_summary,
+            "",
+        ])
 
     if deployments:
         description_parts.append("## Recent Deployments")

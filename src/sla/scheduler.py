@@ -27,15 +27,15 @@ NotificationSender = Callable[[SLANotification], Coroutine[Any, Any, bool]]
 
 class SLAScheduler:
     """Background scheduler for SLA breach checking.
-    
+
     Runs periodic checks on all active SLA timers, detects breaches,
     and sends notifications/escalations.
-    
+
     Example usage:
         scheduler = SLAScheduler(sla_service, check_interval_seconds=60)
         scheduler.set_notification_sender(my_notification_handler)
         await scheduler.start()
-        
+
         # Later...
         await scheduler.stop()
     """
@@ -47,7 +47,7 @@ class SLAScheduler:
         warning_interval_seconds: int = 300,
     ) -> None:
         """Initialize the SLA scheduler.
-        
+
         Args:
             service: SLA service instance
             check_interval_seconds: How often to check for breaches (default: 60s)
@@ -56,20 +56,20 @@ class SLAScheduler:
         self.service = service
         self.check_interval = check_interval_seconds
         self.warning_interval = warning_interval_seconds
-        
+
         self._running = False
         self._task: asyncio.Task | None = None
         self._notification_sender: NotificationSender | None = None
         self._policy_cache: dict[str, SLAPolicy] = {}
         self._policy_cache_ttl = 300  # 5 minutes
         self._policy_cache_time: datetime | None = None
-        
+
         # Track sent warnings to avoid spam
         self._warning_sent: dict[str, datetime] = {}
 
     def set_notification_sender(self, sender: NotificationSender) -> None:
         """Set the notification sender callback.
-        
+
         Args:
             sender: Async function that sends notifications.
                     Should return True if sent successfully.
@@ -78,7 +78,7 @@ class SLAScheduler:
 
     async def start(self) -> None:
         """Start the background scheduler.
-        
+
         Begins periodic SLA breach checking. Safe to call multiple times.
         """
         if self._running:
@@ -87,13 +87,11 @@ class SLAScheduler:
 
         self._running = True
         self._task = asyncio.create_task(self._run_loop())
-        logger.info(
-            f"SLA scheduler started (check interval: {self.check_interval}s)"
-        )
+        logger.info(f"SLA scheduler started (check interval: {self.check_interval}s)")
 
     async def stop(self) -> None:
         """Stop the background scheduler.
-        
+
         Gracefully stops the check loop and waits for completion.
         """
         if not self._running:
@@ -107,14 +105,14 @@ class SLAScheduler:
             except asyncio.CancelledError:
                 pass
             self._task = None
-        
+
         logger.info("SLA scheduler stopped")
 
     async def run_once(self) -> list[SLABreach]:
         """Run a single breach check cycle.
-        
+
         Useful for testing or manual triggering.
-        
+
         Returns:
             List of new breaches detected
         """
@@ -130,17 +128,17 @@ class SLAScheduler:
         while self._running:
             try:
                 breaches = await self._check_breaches()
-                
+
                 if breaches:
                     logger.info(f"Detected {len(breaches)} new SLA breaches")
                     await self._handle_breaches(breaches)
-                
+
                 # Also check for warnings
                 await self._check_warnings()
-                
+
             except Exception as e:
                 logger.error(f"Error in SLA scheduler loop: {e}", exc_info=True)
-            
+
             # Sleep until next check
             await asyncio.sleep(self.check_interval)
 
@@ -148,10 +146,10 @@ class SLAScheduler:
         """Check all active timers for breaches."""
         # Refresh policy cache if stale
         await self._refresh_policy_cache()
-        
+
         # Check all active timers
         breaches = await self.service.check_all_active_timers(self._policy_cache)
-        
+
         return breaches
 
     async def _check_warnings(self) -> None:
@@ -162,13 +160,14 @@ class SLAScheduler:
         for timer in active_timers:
             # Skip if not at risk or already breached
             from .models import SLAStatus
+
             if timer.status != SLAStatus.AT_RISK:
                 continue
 
             # Check if we already sent a warning recently
             warn_key = f"{timer.incident_id}:{timer.sla_type}"
             last_warn = self._warning_sent.get(warn_key)
-            
+
             if last_warn:
                 seconds_since = (now - last_warn).total_seconds()
                 if seconds_since < self.warning_interval:
@@ -186,9 +185,7 @@ class SLAScheduler:
                     sent = await self._notification_sender(warning)
                     if sent:
                         self._warning_sent[warn_key] = now
-                        logger.info(
-                            f"Sent SLA warning for {timer.incident_id}/{timer.sla_type}"
-                        )
+                        logger.info(f"Sent SLA warning for {timer.incident_id}/{timer.sla_type}")
                 except Exception as e:
                     logger.error(f"Failed to send warning notification: {e}")
 
@@ -196,7 +193,7 @@ class SLAScheduler:
         """Handle detected breaches by sending notifications."""
         for breach in breaches:
             policy = self._policy_cache.get(breach.policy_id)
-            
+
             if not policy or not policy.escalation_enabled:
                 continue
 
@@ -204,25 +201,21 @@ class SLAScheduler:
             for channel in ["email", "slack"]:
                 try:
                     notification = await create_sla_notification(breach, channel)
-                    
+
                     if self._notification_sender:
                         sent = await self._notification_sender(notification)
                         if sent:
                             # Update breach with notification sent time
                             breach.escalation_sent_at = datetime.utcnow()
                             await self.service.store.save_breach(breach)
-                            logger.info(
-                                f"Sent {channel} notification for breach {breach.id}"
-                            )
+                            logger.info(f"Sent {channel} notification for breach {breach.id}")
                 except Exception as e:
-                    logger.error(
-                        f"Failed to send {channel} notification for {breach.id}: {e}"
-                    )
+                    logger.error(f"Failed to send {channel} notification for {breach.id}: {e}")
 
     async def _refresh_policy_cache(self) -> None:
         """Refresh the policy cache if stale."""
         now = datetime.utcnow()
-        
+
         if self._policy_cache_time:
             age = (now - self._policy_cache_time).total_seconds()
             if age < self._policy_cache_ttl:
@@ -231,7 +224,7 @@ class SLAScheduler:
         # Get all active timers and fetch their policies
         active_timers = await self.service.store.get_active_timers()
         policy_ids = set(t.policy_id for t in active_timers)
-        
+
         new_cache: dict[str, SLAPolicy] = {}
         for policy_id in policy_ids:
             policy = await self.service.store.get_policy(policy_id)
@@ -257,10 +250,7 @@ class SLAScheduler:
             SLASeverity.P4: "🟢",
         }
 
-        subject = (
-            f"⚠️ SLA At Risk: {timer.severity} {timer.sla_type} - "
-            f"Incident {timer.incident_id}"
-        )
+        subject = f"⚠️ SLA At Risk: {timer.severity} {timer.sla_type} - Incident {timer.incident_id}"
 
         remaining = timer.remaining_minutes
         body = f"""
@@ -273,7 +263,7 @@ Target: {timer.target_minutes} minutes
 Elapsed: {timer.elapsed_minutes:.1f} minutes ({timer.percent_elapsed:.1f}%)
 Remaining: {remaining:.1f} minutes
 
-{severity_emoji.get(timer.severity, '⚠️')} This SLA is at risk of breach!
+{severity_emoji.get(timer.severity, "⚠️")} This SLA is at risk of breach!
 
 Please take action to resolve within the remaining time.
 """
@@ -293,16 +283,16 @@ Please take action to resolve within the remaining time.
 
 class SLASchedulerManager:
     """Manager for SLA scheduler lifecycle.
-    
+
     Integrates with FastAPI application lifecycle events.
-    
+
     Example:
         manager = SLASchedulerManager(sla_service)
-        
+
         @app.on_event("startup")
         async def startup():
             await manager.startup()
-        
+
         @app.on_event("shutdown")
         async def shutdown():
             await manager.shutdown()
@@ -315,15 +305,13 @@ class SLASchedulerManager:
         enabled: bool = True,
     ) -> None:
         """Initialize the scheduler manager.
-        
+
         Args:
             service: SLA service instance
             check_interval_seconds: Breach check interval
             enabled: Whether to enable the scheduler on startup
         """
-        self.scheduler = SLAScheduler(
-            service, check_interval_seconds=check_interval_seconds
-        )
+        self.scheduler = SLAScheduler(service, check_interval_seconds=check_interval_seconds)
         self._enabled = enabled
 
     def set_notification_sender(self, sender: NotificationSender) -> None:
@@ -351,15 +339,13 @@ class SLASchedulerManager:
 
 # Example notification sender implementations
 
+
 async def email_notification_sender(notification: SLANotification) -> bool:
     """Example email notification sender.
-    
+
     Replace with your actual email sending implementation.
     """
-    logger.info(
-        f"[EMAIL] To: {notification.recipients}, "
-        f"Subject: {notification.subject}"
-    )
+    logger.info(f"[EMAIL] To: {notification.recipients}, Subject: {notification.subject}")
     # TODO: Implement actual email sending
     # Example with aiosmtplib:
     # await send_email(
@@ -372,13 +358,10 @@ async def email_notification_sender(notification: SLANotification) -> bool:
 
 async def slack_notification_sender(notification: SLANotification) -> bool:
     """Example Slack notification sender.
-    
+
     Replace with your actual Slack integration.
     """
-    logger.info(
-        f"[SLACK] Channels: {notification.recipients}, "
-        f"Message: {notification.subject}"
-    )
+    logger.info(f"[SLACK] Channels: {notification.recipients}, Message: {notification.subject}")
     # TODO: Implement actual Slack sending
     # Example with slack_sdk:
     # client = AsyncWebClient(token=os.environ["SLACK_BOT_TOKEN"])
@@ -404,26 +387,27 @@ async def multi_channel_sender(notification: SLANotification) -> bool:
 
 # Convenience function to create and configure scheduler
 
+
 def create_sla_scheduler(
     service: SLAService,
     check_interval: int = 60,
     notification_sender: NotificationSender | None = None,
 ) -> SLAScheduler:
     """Create and configure an SLA scheduler.
-    
+
     Args:
         service: SLA service instance
         check_interval: Seconds between breach checks
         notification_sender: Optional notification callback
-        
+
     Returns:
         Configured SLAScheduler instance
     """
     scheduler = SLAScheduler(service, check_interval_seconds=check_interval)
-    
+
     if notification_sender:
         scheduler.set_notification_sender(notification_sender)
     else:
         scheduler.set_notification_sender(multi_channel_sender)
-    
+
     return scheduler

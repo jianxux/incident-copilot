@@ -133,15 +133,11 @@ class Plugin(BaseModel):
 
 
 class PluginCreateRequest(BaseModel):
-    id: str = Field(
-        pattern=r"^[a-z0-9][a-z0-9-_]*[a-z0-9]$", min_length=3, max_length=64
-    )
+    id: str = Field(pattern=r"^[a-z0-9][a-z0-9-_]*[a-z0-9]$", min_length=3, max_length=64)
     name: str = Field(min_length=1, max_length=128)
     description: str = ""
     type: PluginType
-    events: list[PluginEvent] = Field(
-        default_factory=lambda: [PluginEvent.CONTEXT_ASSEMBLED]
-    )
+    events: list[PluginEvent] = Field(default_factory=lambda: [PluginEvent.CONTEXT_ASSEMBLED])
     priority: int = Field(default=100, ge=1, le=1000)
     webhook_config: WebhookConfig | None = None
     enrichment_config: EnrichmentConfig | None = None

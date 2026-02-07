@@ -176,9 +176,7 @@ class RateLimiter:
                     decode_responses=True,
                 )
                 # Load Lua script
-                self._script_sha = await self._redis.script_load(
-                    self.TOKEN_BUCKET_SCRIPT
-                )
+                self._script_sha = await self._redis.script_load(self.TOKEN_BUCKET_SCRIPT)
                 self._use_memory_fallback = False
                 logger.info("rate_limiter_redis_connected", url=self.redis_url)
             except Exception as e:
@@ -505,9 +503,7 @@ class RateLimiter:
 
                     # Calculate current tokens with refill
                     elapsed = time.time() - last_update
-                    current_tokens = min(
-                        config.capacity, tokens + elapsed * config.refill_rate
-                    )
+                    current_tokens = min(config.capacity, tokens + elapsed * config.refill_rate)
 
                     return RateLimitStatus(
                         key=key,

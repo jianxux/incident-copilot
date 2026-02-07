@@ -50,16 +50,11 @@ class TestSignatureVerification:
         timestamp = str(int(time.time()))
         body = b"token=test"
         sig_base = f"v0:{timestamp}:{body.decode()}"
-        sig = (
-            "v0="
-            + hmac.new(secret.encode(), sig_base.encode(), hashlib.sha256).hexdigest()
-        )
+        sig = "v0=" + hmac.new(secret.encode(), sig_base.encode(), hashlib.sha256).hexdigest()
         assert verify_slack_signature(body, timestamp, sig, secret)
 
     def test_invalid_signature(self):
-        assert not verify_slack_signature(
-            b"test", str(int(time.time())), "v0=invalid", "secret"
-        )
+        assert not verify_slack_signature(b"test", str(int(time.time())), "v0=invalid", "secret")
 
     def test_no_secret_allows_request(self):
         assert verify_slack_signature(b"test", str(int(time.time())), "any", "")

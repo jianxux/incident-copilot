@@ -35,8 +35,12 @@ def sample_preference() -> NotificationPreference:
         role=UserRole.ON_CALL,
         enabled=True,
         channels=[
-            NotificationChannel(type=ChannelType.EMAIL, address="user@example.com", verified=True, priority=1),
-            NotificationChannel(type=ChannelType.SLACK, address="#alerts", verified=True, priority=2),
+            NotificationChannel(
+                type=ChannelType.EMAIL, address="user@example.com", verified=True, priority=1
+            ),
+            NotificationChannel(
+                type=ChannelType.SLACK, address="#alerts", verified=True, priority=2
+            ),
         ],
         quiet_hours=QuietHours(enabled=False),
         rules=[
@@ -44,7 +48,10 @@ def sample_preference() -> NotificationPreference:
                 id="rule-1",
                 name="Critical Alerts",
                 min_severity=Severity.P2,
-                notification_types=[NotificationType.INCIDENT_CREATED, NotificationType.BREACH_OCCURRED],
+                notification_types=[
+                    NotificationType.INCIDENT_CREATED,
+                    NotificationType.BREACH_OCCURRED,
+                ],
                 channels=[ChannelType.EMAIL, ChannelType.SLACK],
             ),
         ],
@@ -100,12 +107,12 @@ class TestQuietHours:
     def test_is_active_overnight(self):
         """Test overnight quiet hours (22:00 to 08:00)."""
         qh = QuietHours(enabled=True, start_time=time(22, 0), end_time=time(8, 0))
-        
+
         # During quiet hours
         assert qh.is_active(time(23, 0))
         assert qh.is_active(time(2, 0))
         assert qh.is_active(time(7, 30))
-        
+
         # Outside quiet hours
         assert not qh.is_active(time(9, 0))
         assert not qh.is_active(time(12, 0))
@@ -114,12 +121,12 @@ class TestQuietHours:
     def test_is_active_daytime(self):
         """Test daytime quiet hours (09:00 to 17:00)."""
         qh = QuietHours(enabled=True, start_time=time(9, 0), end_time=time(17, 0))
-        
+
         # During quiet hours
         assert qh.is_active(time(10, 0))
         assert qh.is_active(time(12, 0))
         assert qh.is_active(time(16, 59))
-        
+
         # Outside quiet hours
         assert not qh.is_active(time(8, 0))
         assert not qh.is_active(time(17, 0))
@@ -172,7 +179,7 @@ class TestNotificationRule:
             notification_types=[NotificationType.INCIDENT_CREATED],
             min_severity=Severity.P5,
         )
-        
+
         assert rule.matches(
             notification_type=NotificationType.INCIDENT_CREATED,
             severity=Severity.P3,
@@ -189,7 +196,7 @@ class TestNotificationRule:
             min_severity=Severity.P2,  # P2 or higher
             max_severity=Severity.P1,
         )
-        
+
         assert rule.matches(NotificationType.INCIDENT_CREATED, Severity.P1)
         assert rule.matches(NotificationType.INCIDENT_CREATED, Severity.P2)
         assert not rule.matches(NotificationType.INCIDENT_CREATED, Severity.P3)
@@ -201,9 +208,11 @@ class TestNotificationRule:
             min_severity=Severity.P5,
             services=["api-service", "payments"],
         )
-        
+
         assert rule.matches(NotificationType.INCIDENT_CREATED, Severity.P3, service="api-service")
-        assert not rule.matches(NotificationType.INCIDENT_CREATED, Severity.P3, service="web-service")
+        assert not rule.matches(
+            NotificationType.INCIDENT_CREATED, Severity.P3, service="web-service"
+        )
 
     def test_matches_disabled_rule(self):
         """Test that disabled rules don't match."""

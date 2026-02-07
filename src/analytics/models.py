@@ -41,9 +41,7 @@ class IncidentMetrics(BaseModel):
 class MTTRStats(BaseModel):
     """MTTR statistics for a time period."""
 
-    period: (
-        str  # e.g., "7d", "30d", "90d", or date range like "2024-01-01 to 2024-01-07"
-    )
+    period: str  # e.g., "7d", "30d", "90d", or date range like "2024-01-01 to 2024-01-07"
     period_start: datetime
     period_end: datetime
     mean_mttr_seconds: float | None = None

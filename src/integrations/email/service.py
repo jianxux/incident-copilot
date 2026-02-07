@@ -88,11 +88,7 @@ class EmailNotificationService:
         result = await client.send(message, self.config)
 
         logger.info(
-            (
-                "context_card_email_sent"
-                if result.success
-                else "context_card_email_failed"
-            ),
+            ("context_card_email_sent" if result.success else "context_card_email_failed"),
             incident_id=card.incident_id,
             recipients=[r.email for r in to_recipients],
             provider=self.config.provider.value,
@@ -144,9 +140,7 @@ class EmailNotificationService:
         # Render email
         html_body, text_body = self.renderer.render_digest(data, self.config, weekly)
         template_type = (
-            EmailTemplateType.DIGEST_WEEKLY
-            if weekly
-            else EmailTemplateType.DIGEST_DAILY
+            EmailTemplateType.DIGEST_WEEKLY if weekly else EmailTemplateType.DIGEST_DAILY
         )
         subject = self.renderer.get_subject(template_type, data=data)
 
@@ -181,9 +175,7 @@ class EmailNotificationService:
 
         return result
 
-    async def send_test_email(
-        self, recipient: EmailRecipient | None = None
-    ) -> SendResult:
+    async def send_test_email(self, recipient: EmailRecipient | None = None) -> SendResult:
         """Send a test email to verify configuration.
 
         Args:
@@ -428,9 +420,7 @@ class DigestScheduler:
 
             # Calculate resolve time
             if item.resolved_at and item.triggered_at:
-                resolve_time = (
-                    item.resolved_at - item.triggered_at
-                ).total_seconds() / 60
+                resolve_time = (item.resolved_at - item.triggered_at).total_seconds() / 60
                 resolve_times.append(resolve_time)
 
         # Calculate MTTR

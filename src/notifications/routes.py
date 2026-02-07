@@ -26,8 +26,10 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 # Request/Response Models
 
+
 class ChannelCreate(BaseModel):
     """Request model for creating a notification channel."""
+
     type: ChannelType
     address: str
     enabled: bool = True
@@ -37,6 +39,7 @@ class ChannelCreate(BaseModel):
 
 class ChannelUpdate(BaseModel):
     """Request model for updating a notification channel."""
+
     enabled: bool | None = None
     address: str | None = None
     priority: int | None = None
@@ -45,6 +48,7 @@ class ChannelUpdate(BaseModel):
 
 class RuleCreate(BaseModel):
     """Request model for creating a notification rule."""
+
     name: str
     enabled: bool = True
     notification_types: list[NotificationType] = Field(default_factory=list)
@@ -59,9 +63,10 @@ class RuleCreate(BaseModel):
 
 class QuietHoursUpdate(BaseModel):
     """Request model for updating quiet hours."""
+
     enabled: bool | None = None
     start_time: str | None = None  # HH:MM format
-    end_time: str | None = None    # HH:MM format
+    end_time: str | None = None  # HH:MM format
     timezone: str | None = None
     allow_p1: bool | None = None
     allow_p2: bool | None = None
@@ -70,6 +75,7 @@ class QuietHoursUpdate(BaseModel):
 
 class PreferenceUpdate(BaseModel):
     """Request model for updating preferences."""
+
     enabled: bool | None = None
     role: UserRole | None = None
     default_digest_frequency: DigestFrequency | None = None
@@ -79,6 +85,7 @@ class PreferenceUpdate(BaseModel):
 
 class TestNotificationRequest(BaseModel):
     """Request model for testing notifications."""
+
     channel_type: ChannelType | None = None
     notification_type: NotificationType = NotificationType.INCIDENT_CREATED
     severity: Severity = Severity.P3
@@ -88,6 +95,7 @@ class TestNotificationRequest(BaseModel):
 
 class PreferenceResponse(BaseModel):
     """Response model for notification preferences."""
+
     user_id: str
     role: UserRole
     enabled: bool
@@ -102,6 +110,7 @@ class PreferenceResponse(BaseModel):
 
 class NotificationResult(BaseModel):
     """Response model for notification send results."""
+
     status: str
     results: dict[str, Any] = Field(default_factory=dict)
     reason: str | None = None
@@ -116,6 +125,7 @@ async def get_current_user_id() -> str:
 
 # Routes
 
+
 @router.get("/preferences", response_model=PreferenceResponse)
 async def get_preferences(
     user_id: str = Depends(get_current_user_id),
@@ -123,12 +133,12 @@ async def get_preferences(
 ) -> PreferenceResponse:
     """Get current user's notification preferences."""
     prefs = await service.preference_store.get(user_id)
-    
+
     if not prefs:
         # Return default preferences
         prefs = service._create_default_preferences(user_id, UserRole.ENGINEER)
         await service.preference_store.save(prefs)
-    
+
     return PreferenceResponse(
         user_id=prefs.user_id,
         role=prefs.role,
@@ -152,7 +162,7 @@ async def update_preferences(
     """Update current user's notification preferences."""
     update_dict = updates.model_dump(exclude_none=True)
     prefs = await service.apply_preferences(user_id, update_dict)
-    
+
     return PreferenceResponse(
         user_id=prefs.user_id,
         role=prefs.role,
@@ -176,7 +186,9 @@ async def list_channels(
     return await service.get_channels(user_id)
 
 
-@router.post("/preferences/channels", response_model=NotificationChannel, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/preferences/channels", response_model=NotificationChannel, status_code=status.HTTP_201_CREATED
+)
 async def add_channel(
     channel: ChannelCreate,
     user_id: str = Depends(get_current_user_id),
@@ -184,10 +196,10 @@ async def add_channel(
 ) -> NotificationChannel:
     """Add a new notification channel."""
     prefs = await service.preference_store.get(user_id)
-    
+
     if not prefs:
         prefs = service._create_default_preferences(user_id, UserRole.ENGINEER)
-    
+
     new_channel = NotificationChannel(
         type=channel.type,
         address=channel.address,
@@ -195,11 +207,11 @@ async def add_channel(
         priority=channel.priority,
         settings=channel.settings,
     )
-    
+
     prefs.channels.append(new_channel)
     prefs.updated_at = datetime.utcnow()
     await service.preference_store.save(prefs)
-    
+
     return new_channel
 
 
@@ -212,12 +224,12 @@ async def update_channel(
 ) -> NotificationChannel:
     """Update a notification channel by index."""
     prefs = await service.preference_store.get(user_id)
-    
+
     if not prefs or channel_index >= len(prefs.channels):
         raise HTTPException(status_code=404, detail="Channel not found")
-    
+
     channel = prefs.channels[channel_index]
-    
+
     if updates.enabled is not None:
         channel.enabled = updates.enabled
     if updates.address is not None:
@@ -226,10 +238,10 @@ async def update_channel(
         channel.priority = updates.priority
     if updates.settings is not None:
         channel.settings.update(updates.settings)
-    
+
     prefs.updated_at = datetime.utcnow()
     await service.preference_store.save(prefs)
-    
+
     return channel
 
 
@@ -241,10 +253,10 @@ async def delete_channel(
 ) -> None:
     """Delete a notification channel by index."""
     prefs = await service.preference_store.get(user_id)
-    
+
     if not prefs or channel_index >= len(prefs.channels):
         raise HTTPException(status_code=404, detail="Channel not found")
-    
+
     prefs.channels.pop(channel_index)
     prefs.updated_at = datetime.utcnow()
     await service.preference_store.save(prefs)
@@ -258,14 +270,14 @@ async def update_quiet_hours(
 ) -> QuietHours:
     """Update quiet hours settings."""
     from datetime import time as dt_time
-    
+
     prefs = await service.preference_store.get(user_id)
-    
+
     if not prefs:
         prefs = service._create_default_preferences(user_id, UserRole.ENGINEER)
-    
+
     quiet_hours = prefs.quiet_hours
-    
+
     if updates.enabled is not None:
         quiet_hours.enabled = updates.enabled
     if updates.start_time is not None:
@@ -282,10 +294,10 @@ async def update_quiet_hours(
         quiet_hours.allow_p2 = updates.allow_p2
     if updates.weekend_only is not None:
         quiet_hours.weekend_only = updates.weekend_only
-    
+
     prefs.updated_at = datetime.utcnow()
     await service.preference_store.save(prefs)
-    
+
     return quiet_hours
 
 
@@ -299,7 +311,9 @@ async def list_rules(
     return prefs.rules if prefs else []
 
 
-@router.post("/preferences/rules", response_model=NotificationRule, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/preferences/rules", response_model=NotificationRule, status_code=status.HTTP_201_CREATED
+)
 async def add_rule(
     rule: RuleCreate,
     user_id: str = Depends(get_current_user_id),
@@ -307,10 +321,10 @@ async def add_rule(
 ) -> NotificationRule:
     """Add a new notification rule."""
     prefs = await service.preference_store.get(user_id)
-    
+
     if not prefs:
         prefs = service._create_default_preferences(user_id, UserRole.ENGINEER)
-    
+
     new_rule = NotificationRule(
         id=str(uuid4()),
         name=rule.name,
@@ -324,11 +338,11 @@ async def add_rule(
         channels=rule.channels,
         digest_frequency=rule.digest_frequency,
     )
-    
+
     prefs.rules.append(new_rule)
     prefs.updated_at = datetime.utcnow()
     await service.preference_store.save(prefs)
-    
+
     return new_rule
 
 
@@ -340,16 +354,16 @@ async def delete_rule(
 ) -> None:
     """Delete a notification rule by ID."""
     prefs = await service.preference_store.get(user_id)
-    
+
     if not prefs:
         raise HTTPException(status_code=404, detail="Preferences not found")
-    
+
     original_len = len(prefs.rules)
     prefs.rules = [r for r in prefs.rules if r.id != rule_id]
-    
+
     if len(prefs.rules) == original_len:
         raise HTTPException(status_code=404, detail="Rule not found")
-    
+
     prefs.updated_at = datetime.utcnow()
     await service.preference_store.save(prefs)
 
@@ -375,7 +389,7 @@ async def test_notification(
             "test": True,
         },
     )
-    
+
     # If specific channel requested, temporarily modify channels
     if request.channel_type:
         prefs = await service.preference_store.get(user_id)
@@ -386,9 +400,9 @@ async def test_notification(
                     status_code=400,
                     detail=f"No enabled {request.channel_type.value} channel found",
                 )
-    
+
     result = await service.send_notification(user_id, payload, force=True)
-    
+
     return NotificationResult(
         status=result.get("status", "unknown"),
         results=result.get("results", {}),
@@ -406,12 +420,12 @@ async def send_notification(
 ) -> NotificationResult:
     """Send a notification to specified users or current user."""
     targets = target_user_ids or [user_id]
-    
+
     if len(targets) == 1:
         result = await service.send_notification(targets[0], payload, force=force)
     else:
         result = await service.send_to_multiple(targets, payload)
-    
+
     return NotificationResult(
         status="completed",
         results=result,

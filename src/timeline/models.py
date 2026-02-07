@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 class EventType(str, Enum):
     """Types of timeline events."""
+
     STATUS_CHANGE = "status_change"
     ASSIGNMENT = "assignment"
     COMMENT = "comment"
@@ -29,6 +30,7 @@ class EventType(str, Enum):
 
 class EventSource(str, Enum):
     """Sources of timeline events."""
+
     PAGERDUTY = "pagerduty"
     SLACK = "slack"
     JIRA = "jira"
@@ -43,6 +45,7 @@ class EventSource(str, Enum):
 
 class EventSeverity(str, Enum):
     """Event severity levels."""
+
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
@@ -51,6 +54,7 @@ class EventSeverity(str, Enum):
 
 class TimelineEvent(BaseModel):
     """A single event in the incident timeline."""
+
     model_config = ConfigDict(populate_by_name=True)
 
     id: UUID = Field(default_factory=uuid4)
@@ -72,6 +76,7 @@ class TimelineEvent(BaseModel):
 
 class TimelineGap(BaseModel):
     """Represents a gap in the timeline."""
+
     start_time: datetime
     end_time: datetime
     duration_seconds: float
@@ -82,6 +87,7 @@ class TimelineGap(BaseModel):
 
 class TimelineEntry(BaseModel):
     """Timeline entry with computed properties for display."""
+
     model_config = ConfigDict(populate_by_name=True)
 
     event: TimelineEvent
@@ -94,6 +100,7 @@ class TimelineEntry(BaseModel):
 
 class TimelineFilter(BaseModel):
     """Filters for querying timeline."""
+
     event_types: list[EventType] | None = None
     sources: list[EventSource] | None = None
     severities: list[EventSeverity] | None = None
@@ -106,6 +113,7 @@ class TimelineFilter(BaseModel):
 
 class TimelineSummary(BaseModel):
     """Summary statistics for a timeline."""
+
     incident_id: str
     total_events: int
     event_counts_by_type: dict[str, int]
@@ -119,6 +127,7 @@ class TimelineSummary(BaseModel):
 
 class TimelineExport(BaseModel):
     """Exported timeline for postmortems."""
+
     incident_id: str
     title: str
     exported_at: datetime = Field(default_factory=datetime.utcnow)

@@ -19,11 +19,11 @@ Quick Start:
         SLAType,
         router as sla_router,
     )
-    
+
     # Create store and service
     store = SLAStore(redis_client=redis, db_pool=db)
     service = SLAService(store)
-    
+
     # Start timer for an incident
     policy = await store.get_policy("default-policy")
     await service.start_timer(
@@ -32,11 +32,11 @@ Quick Start:
         severity=SLASeverity.P1,
         sla_type=SLAType.RESPONSE,
     )
-    
+
     # Check status
     status = await service.get_incident_status("INC-123", policy)
     print(f"Response SLA: {status.response_timer.percent_elapsed}% elapsed")
-    
+
     # Include API routes in your FastAPI app
     app.include_router(sla_router)
 """

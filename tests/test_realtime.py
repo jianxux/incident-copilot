@@ -303,10 +303,10 @@ class TestWebSocketEndpoints:
         with client.websocket_connect("/ws") as websocket:
             # Skip connected message
             websocket.receive_json()
-            
+
             # Send ping
             websocket.send_json({"type": "ping"})
-            
+
             # Should receive pong
             data = websocket.receive_json()
             assert data["type"] == "pong"
@@ -316,13 +316,13 @@ class TestWebSocketEndpoints:
         with client.websocket_connect("/ws") as websocket:
             # Skip connected message
             websocket.receive_json()
-            
+
             # Subscribe to incident room
             websocket.send_json({
                 "type": "subscribe",
                 "payload": {"room_type": "incident", "room_id": "inc-123"},
             })
-            
+
             # Should receive subscribed confirmation
             data = websocket.receive_json()
             assert data["type"] == "subscribed"
@@ -332,10 +332,10 @@ class TestWebSocketEndpoints:
         with client.websocket_connect("/ws") as websocket:
             # Skip connected message
             websocket.receive_json()
-            
+
             # Send invalid message
             websocket.send_json({"type": "invalid_type"})
-            
+
             # Should receive error
             data = websocket.receive_json()
             assert data["type"] == "error"

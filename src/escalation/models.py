@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, field_validator
 
 class ActionType(str, Enum):
     """Types of escalation actions."""
+
     PAGE = "page"
     EMAIL = "email"
     SLACK = "slack"
@@ -23,6 +24,7 @@ class ActionType(str, Enum):
 
 class Severity(str, Enum):
     """Incident severity levels."""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -32,6 +34,7 @@ class Severity(str, Enum):
 
 class EscalationStatus(str, Enum):
     """Status of an escalation."""
+
     PENDING = "pending"
     TRIGGERED = "triggered"
     ACKNOWLEDGED = "acknowledged"
@@ -42,6 +45,7 @@ class EscalationStatus(str, Enum):
 
 class ConditionOperator(str, Enum):
     """Operators for condition evaluation."""
+
     EQUALS = "eq"
     NOT_EQUALS = "neq"
     CONTAINS = "contains"
@@ -55,11 +59,11 @@ class ConditionOperator(str, Enum):
 
 class TimeWindow(BaseModel):
     """Time window for condition-based escalation."""
+
     start_time: time = Field(..., description="Start time (HH:MM)")
     end_time: time = Field(..., description="End time (HH:MM)")
     days_of_week: list[int] = Field(
-        default=[0, 1, 2, 3, 4, 5, 6],
-        description="Days of week (0=Monday, 6=Sunday)"
+        default=[0, 1, 2, 3, 4, 5, 6], description="Days of week (0=Monday, 6=Sunday)"
     )
     timezone: str = Field(default="UTC")
 
@@ -73,6 +77,7 @@ class TimeWindow(BaseModel):
 
 class EscalationCondition(BaseModel):
     """A condition that triggers escalation."""
+
     field: str = Field(..., description="Field to evaluate (e.g., 'severity', 'service')")
     operator: ConditionOperator
     value: Any
@@ -102,12 +107,14 @@ class EscalationCondition(BaseModel):
             return field_value not in self.value
         elif self.operator == ConditionOperator.MATCHES:
             import re
+
             return bool(re.match(self.value, str(field_value)))
         return False
 
 
 class EscalationAction(BaseModel):
     """An action to perform during escalation."""
+
     id: UUID = Field(default_factory=uuid4)
     action_type: ActionType
     target: str = Field(..., description="Target (email, phone, slack channel, etc.)")
@@ -119,6 +126,7 @@ class EscalationAction(BaseModel):
 
 class OnCallAssignment(BaseModel):
     """On-call schedule assignment."""
+
     user_id: str
     user_name: str
     user_email: str
@@ -132,6 +140,7 @@ class OnCallAssignment(BaseModel):
 
 class TeamRotation(BaseModel):
     """Team rotation configuration."""
+
     id: UUID = Field(default_factory=uuid4)
     team_id: str
     team_name: str
@@ -143,24 +152,21 @@ class TeamRotation(BaseModel):
 
 class EscalationLevel(BaseModel):
     """A level in the escalation chain."""
+
     level: int = Field(..., ge=1, le=10, description="Level number (1=L1, 2=L2, etc.)")
     name: str = Field(..., description="Level name (e.g., 'L1 Support', 'Manager')")
     delay_minutes: int = Field(
-        default=15,
-        ge=0,
-        description="Minutes to wait before escalating to this level"
+        default=15, ge=0, description="Minutes to wait before escalating to this level"
     )
     actions: list[EscalationAction] = Field(default_factory=list)
     conditions: list[EscalationCondition] = Field(default_factory=list)
     use_oncall: bool = Field(default=True, description="Use on-call schedule for targets")
     team_id: str | None = Field(None, description="Team ID for on-call lookup")
     fallback_targets: list[str] = Field(
-        default_factory=list,
-        description="Fallback targets if no on-call found"
+        default_factory=list, description="Fallback targets if no on-call found"
     )
     auto_acknowledge_minutes: int | None = Field(
-        None,
-        description="Auto-acknowledge if no response after N minutes"
+        None, description="Auto-acknowledge if no response after N minutes"
     )
 
     def get_effective_targets(self, oncall: "OnCallAssignment | None") -> list[str]:
@@ -184,6 +190,7 @@ class EscalationLevel(BaseModel):
 
 class DeescalationRule(BaseModel):
     """Rule for automatic de-escalation."""
+
     id: UUID = Field(default_factory=uuid4)
     name: str
     conditions: list[EscalationCondition] = Field(default_factory=list)
@@ -193,26 +200,27 @@ class DeescalationRule(BaseModel):
 
 class EscalationPolicy(BaseModel):
     """Complete escalation policy configuration."""
+
     id: UUID = Field(default_factory=uuid4)
     name: str
     description: str | None = None
     enabled: bool = True
     priority: int = Field(default=0, description="Higher priority policies evaluated first")
-    
+
     # Matching criteria
     services: list[str] = Field(default_factory=list, description="Services this policy applies to")
     severities: list[Severity] = Field(default_factory=list)
     conditions: list[EscalationCondition] = Field(default_factory=list)
-    
+
     # Escalation chain
     levels: list[EscalationLevel] = Field(default_factory=list)
     deescalation_rules: list[DeescalationRule] = Field(default_factory=list)
-    
+
     # Behavior
     repeat_enabled: bool = Field(default=False, description="Repeat escalation cycle if unresolved")
     repeat_delay_minutes: int = Field(default=60)
     max_repeats: int = Field(default=3)
-    
+
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -236,6 +244,7 @@ class EscalationPolicy(BaseModel):
 
 class EscalationHistoryEntry(BaseModel):
     """A single entry in escalation history."""
+
     id: UUID = Field(default_factory=uuid4)
     incident_id: str
     policy_id: UUID
@@ -258,6 +267,7 @@ class EscalationHistoryEntry(BaseModel):
 
 class EscalationState(BaseModel):
     """Current escalation state for an incident."""
+
     incident_id: str
     policy_id: UUID
     current_level: int = 1
@@ -274,6 +284,7 @@ class EscalationState(BaseModel):
 # Request/Response models for API
 class CreatePolicyRequest(BaseModel):
     """Request to create a new escalation policy."""
+
     name: str
     description: str | None = None
     services: list[str] = Field(default_factory=list)
@@ -290,6 +301,7 @@ class CreatePolicyRequest(BaseModel):
 
 class UpdatePolicyRequest(BaseModel):
     """Request to update an escalation policy."""
+
     name: str | None = None
     description: str | None = None
     enabled: bool | None = None
@@ -307,6 +319,7 @@ class UpdatePolicyRequest(BaseModel):
 
 class TriggerEscalationRequest(BaseModel):
     """Request to manually trigger escalation."""
+
     incident_id: str
     policy_id: UUID | None = None
     target_level: int | None = None
@@ -316,6 +329,7 @@ class TriggerEscalationRequest(BaseModel):
 
 class OverrideEscalationRequest(BaseModel):
     """Request to override/skip escalation."""
+
     incident_id: str
     action: str = Field(..., pattern="^(skip|pause|resume|override)$")
     reason: str
@@ -325,6 +339,7 @@ class OverrideEscalationRequest(BaseModel):
 
 class EscalationHistoryFilter(BaseModel):
     """Filter for querying escalation history."""
+
     incident_id: str | None = None
     policy_id: UUID | None = None
     status: EscalationStatus | None = None

@@ -8,8 +8,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from .models import (
-    TimelineEvent, TimelineEntry, TimelineFilter, TimelineSummary,
-    TimelineExport, EventType, EventSource, EventSeverity
+    TimelineEvent,
+    TimelineEntry,
+    TimelineFilter,
+    TimelineSummary,
+    TimelineExport,
+    EventType,
+    EventSource,
+    EventSeverity,
 )
 from .service import TimelineService, get_timeline_service
 from .collectors import CompositeCollector, create_default_collector
@@ -22,6 +28,7 @@ router = APIRouter(prefix="/timeline", tags=["timeline"])
 # Request/Response models
 class AddEventRequest(BaseModel):
     """Request to add a manual event."""
+
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     event_type: EventType = EventType.MANUAL
     severity: EventSeverity = EventSeverity.INFO
@@ -33,21 +40,25 @@ class AddEventRequest(BaseModel):
 
 class AnnotateEventRequest(BaseModel):
     """Request to annotate an event."""
+
     annotation: str
 
 
 class TagEventRequest(BaseModel):
     """Request to tag an event."""
+
     tags: list[str]
 
 
 class LinkEventsRequest(BaseModel):
     """Request to link events."""
+
     related_ids: list[UUID]
 
 
 class CollectEventsRequest(BaseModel):
     """Request to collect events from sources."""
+
     start_time: datetime | None = None
     end_time: datetime | None = None
     sources: list[EventSource] | None = None
@@ -55,6 +66,7 @@ class CollectEventsRequest(BaseModel):
 
 class ExportRequest(BaseModel):
     """Request to export timeline."""
+
     format: ExportFormat = ExportFormat.MARKDOWN
     title: str = "Incident Timeline"
     include_metadata: bool = True
@@ -93,7 +105,7 @@ async def get_timeline(
         end_time=end_time,
         actors=actors,
         tags=tags,
-        search_query=search
+        search_query=search,
     )
     return await service.get_timeline(incident_id, filters)
 
@@ -136,7 +148,7 @@ async def add_event(
         title=request.title,
         description=request.description,
         actor=request.actor,
-        tags=request.tags
+        tags=request.tags,
     )
     return await service.add_event(event)
 
@@ -205,9 +217,7 @@ async def collect_events(
 ):
     """Collect events from configured sources and add to timeline."""
     events = await collector.collect_all(
-        incident_id=incident_id,
-        start_time=request.start_time,
-        end_time=request.end_time
+        incident_id=incident_id, start_time=request.start_time, end_time=request.end_time
     )
     return await service.reconstruct_timeline(incident_id, events)
 
@@ -221,30 +231,23 @@ async def export_timeline(
     """Export timeline for postmortem."""
     entries = await service.get_timeline(incident_id)
     summary = await service.get_summary(incident_id)
-    
+
     if not entries:
         raise HTTPException(status_code=404, detail="No timeline events found")
-    
+
     exporter = TimelineExporter()
     export_data = TimelineExport(
-        incident_id=incident_id,
-        title=request.title,
-        summary=summary,
-        entries=entries
+        incident_id=incident_id, title=request.title, summary=summary, entries=entries
     )
-    
+
     content = exporter.export(
         export_data,
         format=request.format,
         include_metadata=request.include_metadata,
-        include_raw_data=request.include_raw_data
+        include_raw_data=request.include_raw_data,
     )
-    
-    return {
-        "incident_id": incident_id,
-        "format": request.format.value,
-        "content": content
-    }
+
+    return {"incident_id": incident_id, "format": request.format.value, "content": content}
 
 
 @router.get("/{incident_id}/visualization")
@@ -255,7 +258,7 @@ async def get_visualization_data(
     """Get timeline data in visualization-friendly format."""
     entries = await service.get_timeline(incident_id)
     summary = await service.get_summary(incident_id)
-    
+
     # Group events by time buckets for visualization
     buckets: dict[str, list[dict]] = {}
     for entry in entries:
@@ -271,9 +274,9 @@ async def get_visualization_data(
             "icon": entry.icon,
             "color": entry.color,
             "is_milestone": entry.is_milestone,
-            "relative_time": entry.relative_time
+            "relative_time": entry.relative_time,
         })
-    
+
     return {
         "incident_id": incident_id,
         "summary": {
@@ -282,7 +285,7 @@ async def get_visualization_data(
             "first_event": summary.first_event.isoformat() if summary.first_event else None,
             "last_event": summary.last_event.isoformat() if summary.last_event else None,
             "gaps_count": len(summary.gaps),
-            "milestone_count": len(summary.key_milestones)
+            "milestone_count": len(summary.key_milestones),
         },
         "event_counts": summary.event_counts_by_type,
         "source_counts": summary.event_counts_by_source,
@@ -292,8 +295,8 @@ async def get_visualization_data(
                 "start": gap.start_time.isoformat(),
                 "end": gap.end_time.isoformat(),
                 "duration_seconds": gap.duration_seconds,
-                "severity": gap.severity
+                "severity": gap.severity,
             }
             for gap in summary.gaps
-        ]
+        ],
     }

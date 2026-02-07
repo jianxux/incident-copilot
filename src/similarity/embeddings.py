@@ -103,9 +103,7 @@ class EmbeddingGenerator:
     async def _embed_text(self, text: str) -> list[float]:
         """Call OpenAI API to generate embedding."""
         if not self.api_key:
-            logger.warning(
-                "openai_api_key_not_set", msg="Using zero vector for embedding"
-            )
+            logger.warning("openai_api_key_not_set", msg="Using zero vector for embedding")
             return [0.0] * EMBEDDING_DIMENSION
 
         client = await self._get_client()

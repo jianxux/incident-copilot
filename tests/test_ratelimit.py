@@ -575,15 +575,11 @@ class TestRateLimitMiddleware:
                 # First 3 requests should succeed
                 for i in range(3):
                     response = client.get("/api/test")
-                    assert (
-                        response.status_code == 200
-                    ), f"Request {i + 1} failed unexpectedly"
+                    assert response.status_code == 200, f"Request {i + 1} failed unexpectedly"
 
                 # 4th request should be rate limited
                 response = client.get("/api/test")
-                assert (
-                    response.status_code == 429
-                ), f"Expected 429, got {response.status_code}"
+                assert response.status_code == 429, f"Expected 429, got {response.status_code}"
 
                 # Check response body
                 data = response.json()
@@ -797,12 +793,10 @@ class TestIntegration:
 
         # Make requests
         for i in range(8):
-            result = await limiter.check_multiple(
-                [
-                    (RateLimitScope.IP, "192.168.1.1"),
-                    (RateLimitScope.TENANT, "tenant-123"),
-                ]
-            )
+            result = await limiter.check_multiple([
+                (RateLimitScope.IP, "192.168.1.1"),
+                (RateLimitScope.TENANT, "tenant-123"),
+            ])
             assert result.allowed is True
 
         # Check status

@@ -16,7 +16,7 @@ class JSONFormatter:
     """Formatter for JSON exports."""
 
     SCHEMA_VERSION = "1.0"
-    
+
     def __init__(
         self,
         export_type: ExportType,
@@ -32,7 +32,7 @@ class JSONFormatter:
     def format(self, data: list[dict[str, Any]] | dict[str, Any]) -> str:
         """Format data as JSON string."""
         output = self._prepare_output(data)
-        
+
         return json.dumps(
             output,
             indent=self.options.indent,
@@ -45,9 +45,7 @@ class JSONFormatter:
         json_string = self.format(data)
         return json_string.encode("utf-8")
 
-    def _prepare_output(
-        self, data: list[dict[str, Any]] | dict[str, Any]
-    ) -> dict[str, Any]:
+    def _prepare_output(self, data: list[dict[str, Any]] | dict[str, Any]) -> dict[str, Any]:
         """Prepare output with optional schema and metadata."""
         # Filter columns if specified
         if isinstance(data, list):
@@ -93,9 +91,7 @@ class JSONFormatter:
             elif isinstance(v, list) and v and isinstance(v[0], dict):
                 # Convert list of dicts to indexed keys
                 for i, item in enumerate(v):
-                    items.extend(
-                        self._flatten_dict(item, f"{new_key}_{i}", sep).items()
-                    )
+                    items.extend(self._flatten_dict(item, f"{new_key}_{i}", sep).items())
             else:
                 items.append((new_key, v))
         return dict(items)
@@ -108,14 +104,14 @@ class JSONFormatter:
             elif self.options.date_format == "custom" and self.options.custom_date_format:
                 return obj.strftime(self.options.custom_date_format)
             return obj.isoformat()
-        
+
         if hasattr(obj, "model_dump"):  # Pydantic v2
             return obj.model_dump()
         if hasattr(obj, "dict"):  # Pydantic v1
             return obj.dict()
         if hasattr(obj, "__dict__"):
             return obj.__dict__
-        
+
         raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
     def _generate_schema(self) -> dict[str, Any]:
@@ -287,23 +283,19 @@ class JSONFormatter:
     def _process_incident(self, incident: dict[str, Any]) -> dict[str, Any]:
         """Process incident data for JSON export."""
         result = dict(incident)
-        
+
         # Handle timeline based on related_data config
         if not self.related_data.include_timeline:
             result.pop("timeline", None)
         elif self.related_data.max_timeline_events:
             if "timeline" in result:
-                result["timeline"] = result["timeline"][
-                    : self.related_data.max_timeline_events
-                ]
+                result["timeline"] = result["timeline"][: self.related_data.max_timeline_events]
 
         if not self.related_data.include_comments:
             result.pop("comments", None)
         elif self.related_data.max_comments:
             if "comments" in result:
-                result["comments"] = result["comments"][
-                    : self.related_data.max_comments
-                ]
+                result["comments"] = result["comments"][: self.related_data.max_comments]
 
         if not self.related_data.include_attachments:
             result.pop("attachments", None)

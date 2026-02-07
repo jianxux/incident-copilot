@@ -262,9 +262,7 @@ class TestAnalyticsTracker:
         # Create some resolved incidents
         for i in range(5):
             triggered = now - timedelta(days=i, hours=i)
-            resolved = triggered + timedelta(
-                minutes=20 + i * 5
-            )  # 20, 25, 30, 35, 40 min
+            resolved = triggered + timedelta(minutes=20 + i * 5)  # 20, 25, 30, 35, 40 min
 
             await store.record_event(
                 incident_id=f"test-{i}",

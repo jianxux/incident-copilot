@@ -63,15 +63,9 @@ def client(app):
 async def sample_tags(tag_store):
     """Create sample tags for testing."""
     await tag_store.initialize()
-    payments = await tag_store.create_tag(
-        TagCreate(name="payments", color=TagColor.BLUE)
-    )
-    database = await tag_store.create_tag(
-        TagCreate(name="database", color=TagColor.GREEN)
-    )
-    critical = await tag_store.create_tag(
-        TagCreate(name="critical", color=TagColor.RED)
-    )
+    payments = await tag_store.create_tag(TagCreate(name="payments", color=TagColor.BLUE))
+    database = await tag_store.create_tag(TagCreate(name="database", color=TagColor.GREEN))
+    critical = await tag_store.create_tag(TagCreate(name="critical", color=TagColor.RED))
     stripe = await tag_store.create_tag(
         TagCreate(name="stripe", color=TagColor.PURPLE, parent_id=payments.id)
     )
@@ -91,9 +85,7 @@ class TestTagStore:
         """Test creating a tag."""
         await tag_store.initialize()
         tag = await tag_store.create_tag(
-            TagCreate(
-                name="test-tag", color=TagColor.BLUE, description="Test description"
-            )
+            TagCreate(name="test-tag", color=TagColor.BLUE, description="Test description")
         )
         assert tag.name == "test-tag"
         assert tag.color == TagColor.BLUE
@@ -122,9 +114,7 @@ class TestTagStore:
         """Test updating a tag."""
         await tag_store.initialize()
         tag = await tag_store.create_tag(TagCreate(name="original"))
-        updated = await tag_store.update_tag(
-            tag.id, TagUpdate(name="updated", color=TagColor.RED)
-        )
+        updated = await tag_store.update_tag(tag.id, TagUpdate(name="updated", color=TagColor.RED))
         assert updated is not None
         assert updated.name == "updated"
         assert updated.color == TagColor.RED
@@ -165,9 +155,7 @@ class TestIncidentTagAssociations:
             incident_id="INC-003",
             tag_ids=[sample_tags["payments"].id],
         )
-        removed = await tag_store.remove_tag_from_incident(
-            "INC-003", sample_tags["payments"].id
-        )
+        removed = await tag_store.remove_tag_from_incident("INC-003", sample_tags["payments"].id)
         assert removed is True
         tags = await tag_store.get_incident_tags("INC-003")
         assert len(tags) == 0
@@ -294,16 +282,14 @@ class TestTagSuggester:
         mock_response = MagicMock()
         mock_response.content = [
             MagicMock(
-                text=json.dumps(
-                    [
-                        {
-                            "tag_id": "tag-1",
-                            "tag_name": "payments",
-                            "confidence": 0.95,
-                            "reason": "Service is payments-api",
-                        }
-                    ]
-                )
+                text=json.dumps([
+                    {
+                        "tag_id": "tag-1",
+                        "tag_name": "payments",
+                        "confidence": 0.95,
+                        "reason": "Service is payments-api",
+                    }
+                ])
             )
         ]
         with patch.object(
@@ -356,9 +342,7 @@ class TestTagRoutes:
         """Test PUT /api/tags/{id}."""
         create_response = client.post("/api/tags", json={"name": "update-test"})
         tag_id = create_response.json()["id"]
-        response = client.put(
-            f"/api/tags/{tag_id}", json={"name": "updated-name", "color": "red"}
-        )
+        response = client.put(f"/api/tags/{tag_id}", json={"name": "updated-name", "color": "red"})
         assert response.status_code == 200
         assert response.json()["name"] == "updated-name"
 
@@ -388,9 +372,7 @@ class TestIncidentTagRoutes:
         """Test POST /api/incidents/{id}/tags."""
         tag_response = client.post("/api/tags", json={"name": "incident-tag"})
         tag_id = tag_response.json()["id"]
-        response = client.post(
-            "/api/incidents/INC-001/tags", json={"tag_ids": [tag_id]}
-        )
+        response = client.post("/api/incidents/INC-001/tags", json={"tag_ids": [tag_id]})
         assert response.status_code == 200
         tags = response.json()
         assert len(tags) == 1

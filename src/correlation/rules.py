@@ -128,16 +128,12 @@ class RuleManager:
             return group
         if rule.strategy == CorrelationStrategy.PATTERN_BASED:
             normalized_title = normalize_title_for_matching(alert.title)
-            for candidate in await self.store.get_active_groups(
-                service=alert.service, limit=50
-            ):
+            for candidate in await self.store.get_active_groups(service=alert.service, limit=50):
                 if candidate.rule_id == rule.rule_id and candidate.representative_alert:
                     if (
                         fuzzy_similarity(
                             normalized_title,
-                            normalize_title_for_matching(
-                                candidate.representative_alert.title
-                            ),
+                            normalize_title_for_matching(candidate.representative_alert.title),
                         )
                         >= rule.similarity_threshold
                     ):

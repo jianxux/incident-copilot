@@ -28,16 +28,13 @@ class EscalationScheduler:
         self.engine = engine or get_policy_engine(self.service)
         self.check_interval = check_interval_seconds
         self.rotation_check_interval = rotation_check_interval_seconds
-        
+
         self._running = False
         self._tasks: list[asyncio.Task] = []
         self._callbacks: list[Callable[[EscalationState], Awaitable[None]]] = []
         self._last_rotation_check: datetime | None = None
 
-    def register_callback(
-        self,
-        callback: Callable[[EscalationState], Awaitable[None]]
-    ):
+    def register_callback(self, callback: Callable[[EscalationState], Awaitable[None]]):
         """Register a callback to be called when escalation occurs."""
         self._callbacks.append(callback)
 
@@ -82,13 +79,13 @@ class EscalationScheduler:
                 await self._check_escalations()
             except Exception as e:
                 logger.error(f"Error in escalation loop: {e}")
-            
+
             await asyncio.sleep(self.check_interval)
 
     async def _check_escalations(self):
         """Check and process pending escalations."""
         pending = await self.service.get_pending_escalations()
-        
+
         if pending:
             logger.debug(f"Found {len(pending)} pending escalations")
 
@@ -106,7 +103,7 @@ class EscalationScheduler:
                 if await self.engine.should_escalate(state, context):
                     logger.info(f"Escalating incident {state.incident_id}")
                     await self.engine.execute_escalation(state, context)
-                    
+
                     # Notify callbacks
                     for callback in self._callbacks:
                         try:
@@ -124,13 +121,13 @@ class EscalationScheduler:
                 await self._check_rotations()
             except Exception as e:
                 logger.error(f"Error in rotation loop: {e}")
-            
+
             await asyncio.sleep(self.rotation_check_interval)
 
     async def _check_rotations(self):
         """Check and apply team rotations."""
         now = datetime.utcnow()
-        
+
         for team_id, rotation in self.service._rotations.items():
             if self._should_rotate(rotation, now):
                 logger.info(f"Rotating on-call for team {team_id}")
@@ -140,7 +137,7 @@ class EscalationScheduler:
         """Determine if a rotation should occur."""
         if not rotation.members:
             return False
-        
+
         if not rotation.last_rotation:
             return True
 
@@ -159,10 +156,10 @@ class EscalationScheduler:
         """Loop for cleaning up old escalation states."""
         cleanup_interval = 3600  # 1 hour
         max_age_hours = 168  # 7 days
-        
+
         while self._running:
             await asyncio.sleep(cleanup_interval)
-            
+
             try:
                 await self._cleanup_old_states(max_age_hours)
             except Exception as e:
@@ -209,7 +206,7 @@ class EscalationScheduler:
     async def get_status(self) -> dict:
         """Get scheduler status information."""
         pending = await self.service.get_pending_escalations()
-        
+
         return {
             "running": self._running,
             "check_interval_seconds": self.check_interval,
@@ -218,8 +215,7 @@ class EscalationScheduler:
             "pending_escalations": len(pending),
             "registered_callbacks": len(self._callbacks),
             "last_rotation_check": (
-                self._last_rotation_check.isoformat() 
-                if self._last_rotation_check else None
+                self._last_rotation_check.isoformat() if self._last_rotation_check else None
             ),
         }
 

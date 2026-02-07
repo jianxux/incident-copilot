@@ -60,9 +60,7 @@ async def opsgenie_webhook(
     settings = get_settings()
     body = await request.body()
     og_adapter = OpsgenieAdapter(settings)
-    if x_opsgenie_signature and not og_adapter.verify_webhook_signature(
-        body, x_opsgenie_signature
-    ):
+    if x_opsgenie_signature and not og_adapter.verify_webhook_signature(body, x_opsgenie_signature):
         logger.warning("opsgenie_invalid_signature")
         raise HTTPException(status_code=401, detail="Invalid signature")
     try:

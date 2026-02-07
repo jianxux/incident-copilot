@@ -277,12 +277,8 @@ async def incident_timeline(request: Request, incident_id: str):
     # Calculate stats
     stats = {
         "alerts": len([e for e in events if "alert" in e.event_type.value]),
-        "deployments": len(
-            [e for e in events if e.event_type == TimelineEventType.DEPLOYMENT]
-        ),
-        "errors": len(
-            [e for e in events if e.event_type == TimelineEventType.LOG_ERROR]
-        ),
+        "deployments": len([e for e in events if e.event_type == TimelineEventType.DEPLOYMENT]),
+        "errors": len([e for e in events if e.event_type == TimelineEventType.LOG_ERROR]),
         "key_events": len([e for e in events if e.is_key_event]),
     }
 
@@ -514,9 +510,7 @@ async def create_demo_incident():
     )
 
     # Simulate async processing
-    asyncio.create_task(
-        _process_demo_incident(incident_id, service, severity, title, triggered_at)
-    )
+    asyncio.create_task(_process_demo_incident(incident_id, service, severity, title, triggered_at))
 
     return {"incident_id": incident_id, "status": "processing"}
 
@@ -549,15 +543,13 @@ async def _process_demo_incident(
             sha=f"{random.randint(0, 0xFFFFFFFF):08x}" * 5,
             short_sha=f"{random.randint(0, 0xFFFFFF):06x}",
             author=random.choice(["alice", "bob", "charlie", "diana"]),
-            message=random.choice(
-                [
-                    "Fix connection pooling issue",
-                    "Update dependencies",
-                    "Add retry logic for external calls",
-                    "Optimize database queries",
-                    "Enable feature flag for new flow",
-                ]
-            ),
+            message=random.choice([
+                "Fix connection pooling issue",
+                "Update dependencies",
+                "Add retry logic for external calls",
+                "Optimize database queries",
+                "Enable feature flag for new flow",
+            ]),
             timestamp=now - timedelta(hours=random.randint(1, 48)),
             files_changed=[f"src/{service.replace('-', '/')}/main.py"],
             additions=random.randint(10, 200),

@@ -254,9 +254,7 @@ class TestBuildFromContextCard:
         """Test that alert triggered event is included."""
         events = builder.build_from_context_card(sample_context_card, {})
 
-        alert_events = [
-            e for e in events if e.event_type == TimelineEventType.ALERT_TRIGGERED
-        ]
+        alert_events = [e for e in events if e.event_type == TimelineEventType.ALERT_TRIGGERED]
         assert len(alert_events) == 1
         assert alert_events[0].is_key_event is True
 
@@ -264,9 +262,7 @@ class TestBuildFromContextCard:
         """Test that deployment events are included."""
         events = builder.build_from_context_card(sample_context_card, {})
 
-        deploy_events = [
-            e for e in events if e.event_type == TimelineEventType.DEPLOYMENT
-        ]
+        deploy_events = [e for e in events if e.event_type == TimelineEventType.DEPLOYMENT]
         assert len(deploy_events) == 1
         assert "v2.1.0" in deploy_events[0].title
 
@@ -274,9 +270,7 @@ class TestBuildFromContextCard:
         """Test that log error events are included."""
         events = builder.build_from_context_card(sample_context_card, {})
 
-        error_events = [
-            e for e in events if e.event_type == TimelineEventType.LOG_ERROR
-        ]
+        error_events = [e for e in events if e.event_type == TimelineEventType.LOG_ERROR]
         assert len(error_events) == 1
         assert "timeout" in error_events[0].title.lower()
 
@@ -284,9 +278,7 @@ class TestBuildFromContextCard:
         """Test that context assembled event is included."""
         events = builder.build_from_context_card(sample_context_card, {})
 
-        context_events = [
-            e for e in events if e.event_type == TimelineEventType.CONTEXT_ASSEMBLED
-        ]
+        context_events = [e for e in events if e.event_type == TimelineEventType.CONTEXT_ASSEMBLED]
         assert len(context_events) == 1
         assert "150ms" in context_events[0].description
 

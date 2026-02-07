@@ -62,16 +62,14 @@ class IncidentStore:
                 old_id = self._order.pop()
                 self._incidents.pop(old_id, None)
 
-            await self._notify_subscribers(
-                {
-                    "type": "new_incident",
-                    "incident_id": incident_id,
-                    "title": title,
-                    "service": service_name,
-                    "severity": severity.value,
-                    "status": "processing",
-                }
-            )
+            await self._notify_subscribers({
+                "type": "new_incident",
+                "incident_id": incident_id,
+                "title": title,
+                "service": service_name,
+                "severity": severity.value,
+                "status": "processing",
+            })
 
             return incident
 
@@ -90,14 +88,12 @@ class IncidentStore:
             incident.processed_at = datetime.utcnow()
             incident.context_card = context_card
 
-            await self._notify_subscribers(
-                {
-                    "type": "incident_completed",
-                    "incident_id": incident_id,
-                    "status": "completed",
-                    "assembly_time_ms": context_card.assembly_time_ms,
-                }
-            )
+            await self._notify_subscribers({
+                "type": "incident_completed",
+                "incident_id": incident_id,
+                "status": "completed",
+                "assembly_time_ms": context_card.assembly_time_ms,
+            })
 
             return incident
 
@@ -116,14 +112,12 @@ class IncidentStore:
             incident.processed_at = datetime.utcnow()
             incident.error_message = error_message
 
-            await self._notify_subscribers(
-                {
-                    "type": "incident_error",
-                    "incident_id": incident_id,
-                    "status": "error",
-                    "error": error_message,
-                }
-            )
+            await self._notify_subscribers({
+                "type": "incident_error",
+                "incident_id": incident_id,
+                "status": "error",
+                "error": error_message,
+            })
 
             return incident
 
@@ -143,9 +137,7 @@ class IncidentStore:
 
         for incident in self._incidents.values():
             by_status[incident.status] = by_status.get(incident.status, 0) + 1
-            by_severity[incident.severity.value] = (
-                by_severity.get(incident.severity.value, 0) + 1
-            )
+            by_severity[incident.severity.value] = by_severity.get(incident.severity.value, 0) + 1
 
         return {
             "total": total,

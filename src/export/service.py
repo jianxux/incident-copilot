@@ -3,6 +3,7 @@
 import asyncio
 import hashlib
 import os
+import tempfile
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -29,13 +30,15 @@ class ExportService:
 
     def __init__(
         self,
-        export_dir: str = "/tmp/exports",
+        export_dir: str | None = None,
         base_url: str = "http://localhost:8000",
     ):
+        if export_dir is None:
+            export_dir = os.path.join(tempfile.gettempdir(), "exports")
         self.export_dir = Path(export_dir)
         self.export_dir.mkdir(parents=True, exist_ok=True)
         self.base_url = base_url
-        
+
         # In-memory storage (replace with database in production)
         self._jobs: dict[str, ExportJob] = {}
         self._templates: dict[str, ExportTemplate] = {}
@@ -125,12 +128,12 @@ class ExportService:
         job = self._jobs.get(job_id)
         if not job:
             return False
-        
+
         if job.status in [ExportJobStatus.PENDING, ExportJobStatus.PROCESSING]:
             job.status = ExportJobStatus.FAILED
             job.error_message = "Cancelled by user"
             return True
-        
+
         return False
 
     async def delete_job(self, job_id: str) -> bool:
@@ -196,8 +199,7 @@ class ExportService:
 
         if organization_id:
             templates = [
-                t for t in templates 
-                if t.organization_id == organization_id or t.is_default
+                t for t in templates if t.organization_id == organization_id or t.is_default
             ]
         if export_type:
             templates = [t for t in templates if t.export_type == export_type]
@@ -558,6 +560,7 @@ class ExportService:
         # Webhook notification
         if job.request.notification_webhook:
             import aiohttp
+
             async with aiohttp.ClientSession() as session:
                 try:
                     await session.post(
@@ -588,7 +591,7 @@ class ExportService:
                 # Would use croniter in production
                 return now + timedelta(hours=1)
             return now + timedelta(days=1)
-        
+
         return now + timedelta(days=1)
 
     def _get_file_extension(self, format: ExportFormat) -> str:
