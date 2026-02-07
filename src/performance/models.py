@@ -1,25 +1,29 @@
-"""Performance analytics data models."""
+"""Performance analytics data models.
 
+Provides Pydantic v2 models for team and engineer performance tracking,
+including DORA-style metrics, burnout indicators, and industry benchmarks.
+"""
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional
 from pydantic import BaseModel, Field, computed_field
+import statistics
 
 
 class PerformanceTier(str, Enum):
-    """Performance tier classification."""
-    ELITE = "elite"
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
+    """Performance tier classification based on DORA research."""
+    ELITE = "elite"      # Top 10% performers
+    HIGH = "high"        # Top 30% performers  
+    MEDIUM = "medium"    # Average performers
+    LOW = "low"          # Below average
 
 
 class BurnoutRisk(str, Enum):
-    """Burnout risk levels."""
-    LOW = "low"
-    MODERATE = "moderate"
-    HIGH = "high"
-    CRITICAL = "critical"
+    """Burnout risk levels for engineers."""
+    LOW = "low"          # Healthy workload
+    MODERATE = "moderate" # Monitor closely
+    HIGH = "high"        # Intervention recommended
+    CRITICAL = "critical" # Immediate action needed
 
 
 class PerformancePeriod(BaseModel):
@@ -31,110 +35,112 @@ class PerformancePeriod(BaseModel):
     @computed_field
     @property
     def days(self) -> int:
+        """Number of days in the period."""
         return (self.end - self.start).days
+    
+    @computed_field
+    @property
+    def hours(self) -> float:
+        """Total hours in the period."""
+        return (self.end - self.start).total_seconds() / 3600
     
     @classmethod
     def last_n_days(cls, n: int, label: str = "") -> "PerformancePeriod":
+        """Create a period for the last N days."""
         end = datetime.utcnow()
-        start = end - timedelta(days=n)
-        return cls(start=start, end=end, label=label or f"Last {n} days")
+        return cls(start=end - timedelta(days=n), end=end, label=label or f"Last {n} days")
     
     @classmethod
-    def week(cls) -> "PerformancePeriod":
-        return cls.last_n_days(7, "Last 7 days")
-    
+    def week(cls) -> "PerformancePeriod": return cls.last_n_days(7, "Last 7 days")
     @classmethod
-    def month(cls) -> "PerformancePeriod":
-        return cls.last_n_days(30, "Last 30 days")
-    
+    def month(cls) -> "PerformancePeriod": return cls.last_n_days(30, "Last 30 days")
     @classmethod
-    def quarter(cls) -> "PerformancePeriod":
-        return cls.last_n_days(90, "Last 90 days")
+    def quarter(cls) -> "PerformancePeriod": return cls.last_n_days(90, "Last 90 days")
+    
+    def previous(self) -> "PerformancePeriod":
+        """Get the previous period of same duration."""
+        duration = self.end - self.start
+        return PerformancePeriod(start=self.start - duration, end=self.start, label=f"Previous {self.label}")
 
 
 class MetricValue(BaseModel):
-    """Single metric with value and metadata."""
+    """Single metric with value, trend, and benchmark classification."""
     name: str
     value: float
     unit: str = ""
-    trend: Optional[float] = None  # % change from previous period
+    trend: Optional[float] = None  # Percentage change (positive = improvement)
     tier: Optional[PerformanceTier] = None
     
     @computed_field
     @property
     def trend_direction(self) -> Optional[str]:
-        if self.trend is None:
-            return None
-        if self.trend > 5:
-            return "up"
-        elif self.trend < -5:
-            return "down"
-        return "stable"
+        """Get trend direction: up, down, or stable."""
+        if self.trend is None: return None
+        return "up" if self.trend > 5 else ("down" if self.trend < -5 else "stable")
+    
+    @computed_field
+    @property
+    def display_value(self) -> str:
+        """Formatted value with unit for display."""
+        if self.unit == "%": return f"{self.value:.1f}%"
+        if self.unit == "min": return f"{self.value:.0f} min"
+        return f"{self.value:.2f}{' ' + self.unit if self.unit else ''}"
 
 
 class WorkloadDistribution(BaseModel):
-    """Workload distribution metrics."""
+    """Workload distribution metrics using Gini coefficient.
+    
+    Gini coefficient: 0 = perfectly equal distribution, 1 = one person does all work.
+    A healthy team should have Gini < 0.3.
+    """
     gini_coefficient: float = Field(ge=0, le=1, description="0=equal, 1=unequal")
     top_10_pct_share: float = Field(description="% of work done by top 10%")
     bottom_50_pct_share: float = Field(description="% of work done by bottom 50%")
     std_deviation: float
-    is_balanced: bool = Field(default=True)
+    is_balanced: bool = True
     
     @classmethod
     def from_workloads(cls, workloads: list[float]) -> "WorkloadDistribution":
-        if not workloads:
+        """Calculate distribution metrics from list of workload values."""
+        if not workloads or sum(workloads) == 0:
             return cls(gini_coefficient=0, top_10_pct_share=0, bottom_50_pct_share=0, std_deviation=0)
-        
-        import statistics
-        n = len(workloads)
+        n, total = len(workloads), sum(workloads)
         sorted_loads = sorted(workloads)
-        total = sum(sorted_loads)
-        
-        if total == 0:
-            return cls(gini_coefficient=0, top_10_pct_share=0, bottom_50_pct_share=0, std_deviation=0)
-        
-        # Gini coefficient
-        cumulative = 0
-        gini_sum = 0
-        for i, load in enumerate(sorted_loads):
-            cumulative += load
-            gini_sum += (2 * (i + 1) - n - 1) * load
-        gini = gini_sum / (n * total) if n > 0 else 0
-        gini = max(0, min(1, gini))
-        
-        # Top 10% share
+        cumsum = sum((2*(i+1) - n - 1) * load for i, load in enumerate(sorted_loads))
+        gini = max(0, min(1, cumsum / (n * total)))
         top_n = max(1, n // 10)
-        top_share = sum(sorted_loads[-top_n:]) / total * 100
-        
-        # Bottom 50% share
-        bottom_n = n // 2
-        bottom_share = sum(sorted_loads[:bottom_n]) / total * 100 if bottom_n > 0 else 0
-        
-        std_dev = statistics.stdev(workloads) if len(workloads) > 1 else 0
-        
         return cls(
             gini_coefficient=round(gini, 3),
-            top_10_pct_share=round(top_share, 1),
-            bottom_50_pct_share=round(bottom_share, 1),
-            std_deviation=round(std_dev, 2),
+            top_10_pct_share=round(sum(sorted_loads[-top_n:]) / total * 100, 1),
+            bottom_50_pct_share=round(sum(sorted_loads[:n//2]) / total * 100, 1) if n > 1 else 0,
+            std_deviation=round(statistics.stdev(workloads) if n > 1 else 0, 2),
             is_balanced=gini < 0.3
         )
 
 
 class BurnoutIndicators(BaseModel):
-    """Burnout risk assessment."""
+    """Burnout risk assessment for an engineer.
+    
+    Factors considered: after-hours pages, consecutive oncall days,
+    high-severity incidents, and average incident duration.
+    """
     risk_level: BurnoutRisk
-    risk_score: float = Field(ge=0, le=100)
-    factors: list[str] = Field(default_factory=list)
+    risk_score: float = Field(ge=0, le=100, description="0-100 risk score")
+    factors: list[str] = Field(default_factory=list, description="Contributing factors")
     consecutive_oncall_days: int = 0
     after_hours_incidents: int = 0
     high_severity_count: int = 0
     avg_incident_duration_hours: float = 0
     recommendations: list[str] = Field(default_factory=list)
+    
+    @property
+    def needs_attention(self) -> bool:
+        """Check if engineer needs immediate attention."""
+        return self.risk_level in (BurnoutRisk.HIGH, BurnoutRisk.CRITICAL)
 
 
 class EngineerMetrics(BaseModel):
-    """Individual engineer performance metrics."""
+    """Individual engineer performance metrics with privacy controls."""
     engineer_id: str
     engineer_name: str
     period: PerformancePeriod
@@ -149,45 +155,52 @@ class EngineerMetrics(BaseModel):
     escalations_made: int = 0
     escalations_received: int = 0
     # Quality
-    reopen_rate: float = 0  # %
+    reopen_rate: float = 0
     customer_impact_score: float = 0
-    # Privacy flag
+    # Privacy
     is_anonymized: bool = False
-    # Burnout
+    # Risk
     burnout: Optional[BurnoutIndicators] = None
     
     @computed_field
     @property
     def resolution_rate(self) -> float:
-        if self.incidents_handled == 0:
-            return 0
-        return round(self.incidents_resolved / self.incidents_handled * 100, 1)
+        """Percentage of handled incidents that were resolved."""
+        return round(self.incidents_resolved / self.incidents_handled * 100, 1) if self.incidents_handled else 0
+    
+    @computed_field
+    @property
+    def efficiency_score(self) -> float:
+        """Composite efficiency score (0-100)."""
+        if not self.incidents_handled: return 0
+        # Weighted: 50% resolution rate, 30% response time, 20% reopen rate
+        resp_score = max(0, 100 - self.avg_response_time_min * 2)  # Penalize slow response
+        reopen_score = max(0, 100 - self.reopen_rate * 5)  # Penalize reopens
+        return round(self.resolution_rate * 0.5 + resp_score * 0.3 + reopen_score * 0.2, 1)
     
     def anonymize(self) -> "EngineerMetrics":
-        """Return anonymized copy for privacy."""
-        return self.model_copy(update={
-            "engineer_id": f"eng_{hash(self.engineer_id) % 10000:04d}",
-            "engineer_name": "Anonymous",
-            "is_anonymized": True
-        })
+        """Return anonymized copy for privacy-safe sharing."""
+        return self.model_copy(update={"engineer_id": f"eng_{hash(self.engineer_id) % 10000:04d}", 
+                                        "engineer_name": "Anonymous", "is_anonymized": True})
 
 
 class TeamMetrics(BaseModel):
-    """Team-level performance metrics."""
+    """Team-level performance metrics aligned with DORA framework."""
     team_id: str
     team_name: str
     period: PerformancePeriod
-    # Aggregate metrics
+    # Incident counts
     total_incidents: int = 0
     incidents_by_severity: dict[str, int] = Field(default_factory=dict)
+    # DORA metrics
     mttr_minutes: float = Field(default=0, description="Mean Time To Resolve")
     mtta_minutes: float = Field(default=0, description="Mean Time To Acknowledge")
     mttd_minutes: float = Field(default=0, description="Mean Time To Detect")
     # Rates
-    sla_compliance_rate: float = 0  # %
-    first_call_resolution_rate: float = 0  # %
-    escalation_rate: float = 0  # %
-    reopen_rate: float = 0  # %
+    sla_compliance_rate: float = 0
+    first_call_resolution_rate: float = 0
+    escalation_rate: float = 0
+    reopen_rate: float = 0
     # Workload
     workload_distribution: Optional[WorkloadDistribution] = None
     oncall_burden_hours: float = 0
@@ -195,20 +208,36 @@ class TeamMetrics(BaseModel):
     # Team health
     team_burnout_risk: BurnoutRisk = BurnoutRisk.LOW
     engineers_at_risk: int = 0
-    # Comparisons
+    # Benchmarks
     tier: PerformanceTier = PerformanceTier.MEDIUM
     industry_percentile: Optional[int] = None
     
     @computed_field
     @property
     def change_failure_rate(self) -> float:
-        """DORA metric: incidents caused by changes."""
-        deploy_related = self.incidents_by_severity.get("deploy", 0)
-        return round(deploy_related / self.total_incidents * 100, 1) if self.total_incidents else 0
+        """DORA metric: percentage of incidents caused by deployments."""
+        return round(self.incidents_by_severity.get("deploy", 0) / self.total_incidents * 100, 1) if self.total_incidents else 0
+    
+    @computed_field
+    @property
+    def incidents_per_day(self) -> float:
+        """Average incidents per day in period."""
+        return round(self.total_incidents / max(1, self.period.days), 2)
+    
+    @computed_field  
+    @property
+    def critical_incident_ratio(self) -> float:
+        """Percentage of incidents that were critical severity."""
+        critical = self.incidents_by_severity.get("critical", 0) + self.incidents_by_severity.get("sev1", 0)
+        return round(critical / self.total_incidents * 100, 1) if self.total_incidents else 0
 
 
 class Benchmark(BaseModel):
-    """Industry benchmark for comparison."""
+    """Industry benchmark for metric comparison.
+    
+    Thresholds define boundaries between performance tiers.
+    Based on DORA State of DevOps research.
+    """
     name: str
     metric: str
     elite_threshold: float
@@ -219,54 +248,79 @@ class Benchmark(BaseModel):
     source: str = "DORA"
     
     def classify(self, value: float) -> PerformanceTier:
-        if self.lower_is_better:
-            if value <= self.elite_threshold:
-                return PerformanceTier.ELITE
-            elif value <= self.high_threshold:
-                return PerformanceTier.HIGH
-            elif value <= self.medium_threshold:
-                return PerformanceTier.MEDIUM
-            return PerformanceTier.LOW
-        else:
-            if value >= self.elite_threshold:
-                return PerformanceTier.ELITE
-            elif value >= self.high_threshold:
-                return PerformanceTier.HIGH
-            elif value >= self.medium_threshold:
-                return PerformanceTier.MEDIUM
-            return PerformanceTier.LOW
+        """Classify a value against this benchmark."""
+        thresholds = [(self.elite_threshold, PerformanceTier.ELITE), 
+                      (self.high_threshold, PerformanceTier.HIGH), 
+                      (self.medium_threshold, PerformanceTier.MEDIUM)]
+        for thresh, tier in thresholds:
+            if (value <= thresh) if self.lower_is_better else (value >= thresh):
+                return tier
+        return PerformanceTier.LOW
+    
+    def distance_to_next_tier(self, value: float) -> tuple[PerformanceTier | None, float]:
+        """Calculate distance to next performance tier."""
+        current = self.classify(value)
+        if current == PerformanceTier.ELITE:
+            return None, 0
+        thresholds = {PerformanceTier.HIGH: self.elite_threshold, PerformanceTier.MEDIUM: self.high_threshold, PerformanceTier.LOW: self.medium_threshold}
+        target = thresholds.get(current, self.medium_threshold)
+        distance = abs(value - target)
+        next_tier = {PerformanceTier.HIGH: PerformanceTier.ELITE, PerformanceTier.MEDIUM: PerformanceTier.HIGH, PerformanceTier.LOW: PerformanceTier.MEDIUM}
+        return next_tier.get(current), distance
 
 
 class PeriodComparison(BaseModel):
-    """Comparison between two periods."""
+    """Comparison between two time periods."""
     current: PerformancePeriod
     previous: PerformancePeriod
     metrics: dict[str, MetricValue] = Field(default_factory=dict)
-    improved: list[str] = Field(default_factory=list)
-    degraded: list[str] = Field(default_factory=list)
-    stable: list[str] = Field(default_factory=list)
+    improved: list[str] = Field(default_factory=list, description="Metrics that improved")
+    degraded: list[str] = Field(default_factory=list, description="Metrics that degraded")
+    stable: list[str] = Field(default_factory=list, description="Metrics with minimal change")
     summary: str = ""
+    
+    @computed_field
+    @property
+    def overall_trend(self) -> str:
+        """Overall trend direction."""
+        if len(self.improved) > len(self.degraded) + 1: return "improving"
+        if len(self.degraded) > len(self.improved) + 1: return "declining"
+        return "stable"
 
 
 class LeaderboardEntry(BaseModel):
-    """Leaderboard entry for gamification."""
+    """Leaderboard entry for gamification features."""
     rank: int
     engineer_id: str
     engineer_name: str
     score: float
     metric_name: str
-    badge: Optional[str] = None
+    badge: Optional[str] = None  # Emoji badge: 🥇🥈🥉🏅
     is_anonymized: bool = False
+    
+    @computed_field
+    @property
+    def display_rank(self) -> str:
+        """Formatted rank with badge."""
+        return f"{self.badge} #{self.rank}" if self.badge else f"#{self.rank}"
 
 
 class PerformanceReport(BaseModel):
-    """Comprehensive performance report."""
+    """Comprehensive performance report for management review."""
     generated_at: datetime = Field(default_factory=datetime.utcnow)
     period: PerformancePeriod
     team_metrics: TeamMetrics
     engineer_metrics: list[EngineerMetrics] = Field(default_factory=list)
     comparison: Optional[PeriodComparison] = None
     benchmarks: dict[str, PerformanceTier] = Field(default_factory=dict)
-    highlights: list[str] = Field(default_factory=list)
-    concerns: list[str] = Field(default_factory=list)
-    recommendations: list[str] = Field(default_factory=list)
+    highlights: list[str] = Field(default_factory=list, description="Positive observations")
+    concerns: list[str] = Field(default_factory=list, description="Areas needing attention")
+    recommendations: list[str] = Field(default_factory=list, description="Actionable recommendations")
+    
+    @computed_field
+    @property
+    def executive_summary(self) -> str:
+        """One-line executive summary."""
+        tier = self.team_metrics.tier.value.upper()
+        pct = self.team_metrics.industry_percentile or 50
+        return f"{self.team_metrics.team_name}: {tier} performer ({pct}th percentile) with {self.team_metrics.total_incidents} incidents"
