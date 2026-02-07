@@ -17,7 +17,6 @@ from .models import (
 )
 from .service import OnCallService
 
-
 router = APIRouter(prefix="/oncall", tags=["oncall"])
 
 # Dependency injection for service

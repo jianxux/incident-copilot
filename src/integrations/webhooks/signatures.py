@@ -5,7 +5,6 @@ import hmac
 import time
 from typing import Literal
 
-
 SIGNATURE_VERSION = "v1"
 TIMESTAMP_TOLERANCE_SECONDS = 300  # 5 minutes
 
