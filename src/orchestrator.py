@@ -13,9 +13,9 @@ from .integrations import (
     DatadogAdapter,
     GitHubAdapter,
     GitLabAdapter,
-    OnCallAdapter,
     SlackAdapter,
 )
+from .integrations.oncall_legacy import OnCallAdapter
 from .models import ContextCard, OnCallRoster, PagerDutyIncident, RunbookLink
 from .runbooks import RunbookLinker
 
