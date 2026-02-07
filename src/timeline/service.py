@@ -1,12 +1,10 @@
 """Timeline service for managing incident timelines."""
 
-from datetime import datetime, timedelta
-from typing import Callable
+from collections.abc import Callable
+from datetime import datetime
 from uuid import UUID
 
 from .models import (
-    EventSeverity,
-    EventSource,
     EventType,
     TimelineEntry,
     TimelineEvent,

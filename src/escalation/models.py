@@ -4,14 +4,14 @@ Pydantic v2 models for escalation policies, levels, actions, and history.
 """
 
 from datetime import datetime, time
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_validator
 
 
-class ActionType(str, Enum):
+class ActionType(StrEnum):
     """Types of escalation actions."""
 
     PAGE = "page"
@@ -22,7 +22,7 @@ class ActionType(str, Enum):
     SMS = "sms"
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     """Incident severity levels."""
 
     CRITICAL = "critical"
@@ -32,7 +32,7 @@ class Severity(str, Enum):
     INFO = "info"
 
 
-class EscalationStatus(str, Enum):
+class EscalationStatus(StrEnum):
     """Status of an escalation."""
 
     PENDING = "pending"
@@ -43,7 +43,7 @@ class EscalationStatus(str, Enum):
     OVERRIDDEN = "overridden"
 
 
-class ConditionOperator(str, Enum):
+class ConditionOperator(StrEnum):
     """Operators for condition evaluation."""
 
     EQUALS = "eq"

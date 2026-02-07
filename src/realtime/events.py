@@ -5,13 +5,13 @@ Event definitions for incident updates, comments, status changes, and SLA warnin
 """
 
 from datetime import datetime
-from enum import Enum
-from typing import Any, Optional
+from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class EventType(str, Enum):
+class EventType(StrEnum):
     """Types of realtime events."""
 
     # Incident events
@@ -53,9 +53,9 @@ class BaseEvent(BaseModel):
     source: str = "system"  # Who triggered the event
 
     # Routing info
-    incident_id: Optional[str] = None
-    service_id: Optional[str] = None
-    team_id: Optional[str] = None
+    incident_id: str | None = None
+    service_id: str | None = None
+    team_id: str | None = None
 
     def get_room_keys(self) -> list[str]:
         """Get all room keys this event should be broadcast to."""
@@ -89,7 +89,7 @@ class IncidentCreated(BaseEvent):
     event_type: EventType = EventType.INCIDENT_CREATED
     title: str
     severity: str
-    description: Optional[str] = None
+    description: str | None = None
     created_by: str
 
     def get_event_data(self) -> dict[str, Any]:
@@ -121,9 +121,9 @@ class IncidentResolved(BaseEvent):
     """Event when an incident is resolved."""
 
     event_type: EventType = EventType.INCIDENT_RESOLVED
-    resolution_summary: Optional[str] = None
+    resolution_summary: str | None = None
     resolved_by: str
-    resolution_time_minutes: Optional[int] = None
+    resolution_time_minutes: int | None = None
 
     def get_event_data(self) -> dict[str, Any]:
         return {
@@ -141,7 +141,7 @@ class IncidentAssigned(BaseEvent):
     assignee_id: str
     assignee_name: str
     assigned_by: str
-    previous_assignee_id: Optional[str] = None
+    previous_assignee_id: str | None = None
 
     def get_event_data(self) -> dict[str, Any]:
         return {
@@ -172,7 +172,7 @@ class IncidentEscalated(BaseEvent):
     event_type: EventType = EventType.INCIDENT_ESCALATED
     escalated_by: str
     escalation_level: int
-    reason: Optional[str] = None
+    reason: str | None = None
 
     def get_event_data(self) -> dict[str, Any]:
         return {
@@ -260,7 +260,7 @@ class SeverityChanged(BaseEvent):
     old_severity: str
     new_severity: str
     changed_by: str
-    reason: Optional[str] = None
+    reason: str | None = None
 
     def get_event_data(self) -> dict[str, Any]:
         return {
@@ -312,8 +312,8 @@ class TimelineEntry(BaseEvent):
     event_type: EventType = EventType.TIMELINE_ENTRY
     entry_type: str
     content: str
-    actor_id: Optional[str] = None
-    actor_name: Optional[str] = None
+    actor_id: str | None = None
+    actor_name: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     def get_event_data(self) -> dict[str, Any]:

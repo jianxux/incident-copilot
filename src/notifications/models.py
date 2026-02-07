@@ -1,13 +1,13 @@
 """Notification preference models using Pydantic v2."""
 
 from datetime import datetime, time
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
-class ChannelType(str, Enum):
+class ChannelType(StrEnum):
     """Supported notification channel types."""
 
     EMAIL = "email"
@@ -17,7 +17,7 @@ class ChannelType(str, Enum):
     WEBHOOK = "webhook"
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     """Incident severity levels."""
 
     P1 = "P1"  # Critical
@@ -27,7 +27,7 @@ class Severity(str, Enum):
     P5 = "P5"  # Informational
 
 
-class UserRole(str, Enum):
+class UserRole(StrEnum):
     """User roles for default preference assignment."""
 
     ON_CALL = "on_call"
@@ -37,7 +37,7 @@ class UserRole(str, Enum):
     OBSERVER = "observer"
 
 
-class NotificationType(str, Enum):
+class NotificationType(StrEnum):
     """Types of notifications that can be sent."""
 
     INCIDENT_CREATED = "incident_created"
@@ -51,7 +51,7 @@ class NotificationType(str, Enum):
     DIGEST = "digest"
 
 
-class DigestFrequency(str, Enum):
+class DigestFrequency(StrEnum):
     """Frequency options for digest notifications."""
 
     REALTIME = "realtime"

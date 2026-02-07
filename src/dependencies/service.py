@@ -2,7 +2,6 @@
 
 import uuid
 from datetime import datetime
-from typing import Any
 
 from .graph import DependencyGraphAnalyzer
 from .models import (

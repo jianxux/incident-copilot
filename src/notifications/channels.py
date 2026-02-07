@@ -6,7 +6,6 @@ import hmac
 import json
 import logging
 from abc import ABC, abstractmethod
-from datetime import datetime
 from typing import Any
 
 import httpx
@@ -96,10 +95,10 @@ class EmailChannel(BaseChannel):
         rendered = self._render(payload)
 
         # Get SMTP settings from config
-        smtp_host = self.config.settings.get("smtp_host", "localhost")
-        smtp_port = self.config.settings.get("smtp_port", 587)
-        smtp_user = self.config.settings.get("smtp_user", "")
-        smtp_pass = self.config.settings.get("smtp_pass", "")
+        self.config.settings.get("smtp_host", "localhost")
+        self.config.settings.get("smtp_port", 587)
+        self.config.settings.get("smtp_user", "")
+        self.config.settings.get("smtp_pass", "")
         from_addr = self.config.settings.get(
             "from_address", "notifications@example.com"
         )

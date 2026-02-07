@@ -7,7 +7,6 @@ Pydantic models for PagerDuty API integration.
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, HttpUrl
@@ -56,21 +55,19 @@ class PagerDutyConfig(BaseModel):
 
     # API credentials
     api_token: str = Field(..., description="REST API token")
-    integration_key: Optional[str] = Field(
-        None, description="Events API integration key"
-    )
+    integration_key: str | None = Field(None, description="Events API integration key")
 
     # OAuth credentials (alternative)
-    client_id: Optional[str] = None
-    client_secret: Optional[str] = None
-    refresh_token: Optional[str] = None
+    client_id: str | None = None
+    client_secret: str | None = None
+    refresh_token: str | None = None
 
     # Webhook settings
-    webhook_url: Optional[HttpUrl] = None
-    webhook_secret: Optional[str] = None
+    webhook_url: HttpUrl | None = None
+    webhook_secret: str | None = None
 
     # Mapping
-    default_escalation_policy_id: Optional[str] = None
+    default_escalation_policy_id: str | None = None
     service_mapping: dict[str, str] = Field(
         default_factory=dict, description="Internal service ID -> PagerDuty service ID"
     )
@@ -92,9 +89,9 @@ class PDReference(BaseModel):
 
     id: str
     type: str
-    summary: Optional[str] = None
-    self_url: Optional[str] = Field(None, alias="self")
-    html_url: Optional[str] = None
+    summary: str | None = None
+    self_url: str | None = Field(None, alias="self")
+    html_url: str | None = None
 
 
 class PDUser(BaseModel):
@@ -103,16 +100,16 @@ class PDUser(BaseModel):
     id: str
     type: str = "user"
     summary: str = ""
-    self_url: Optional[str] = Field(None, alias="self")
-    html_url: Optional[str] = None
+    self_url: str | None = Field(None, alias="self")
+    html_url: str | None = None
 
     name: str = ""
     email: str = ""
-    time_zone: Optional[str] = None
-    color: Optional[str] = None
-    avatar_url: Optional[str] = None
-    role: Optional[str] = None
-    job_title: Optional[str] = None
+    time_zone: str | None = None
+    color: str | None = None
+    avatar_url: str | None = None
+    role: str | None = None
+    job_title: str | None = None
 
     # Contact methods
     contact_methods: list[dict] = Field(default_factory=list)
@@ -128,27 +125,27 @@ class PDService(BaseModel):
     id: str
     type: str = "service"
     summary: str = ""
-    self_url: Optional[str] = Field(None, alias="self")
-    html_url: Optional[str] = None
+    self_url: str | None = Field(None, alias="self")
+    html_url: str | None = None
 
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     status: str = "active"  # active, warning, critical, maintenance, disabled
 
     # Configuration
-    auto_resolve_timeout: Optional[int] = None
-    acknowledgement_timeout: Optional[int] = None
+    auto_resolve_timeout: int | None = None
+    acknowledgement_timeout: int | None = None
     alert_creation: str = "create_alerts_and_incidents"
-    alert_grouping: Optional[str] = None
-    alert_grouping_timeout: Optional[int] = None
+    alert_grouping: str | None = None
+    alert_grouping_timeout: int | None = None
 
     # References
-    escalation_policy: Optional[PDReference] = None
+    escalation_policy: PDReference | None = None
     teams: list[PDReference] = Field(default_factory=list)
     integrations: list[PDReference] = Field(default_factory=list)
 
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class PDPriority(BaseModel):
@@ -157,12 +154,12 @@ class PDPriority(BaseModel):
     id: str
     type: str = "priority"
     summary: str
-    self_url: Optional[str] = Field(None, alias="self")
+    self_url: str | None = Field(None, alias="self")
 
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     order: int = 0
-    color: Optional[str] = None
+    color: str | None = None
 
 
 class PDIncident(BaseModel):
@@ -171,43 +168,43 @@ class PDIncident(BaseModel):
     id: str
     type: str = "incident"
     summary: str = ""
-    self_url: Optional[str] = Field(None, alias="self")
-    html_url: Optional[str] = None
+    self_url: str | None = Field(None, alias="self")
+    html_url: str | None = None
 
     incident_number: int
     title: str
-    description: Optional[str] = None
+    description: str | None = None
 
     status: PDStatus = PDStatus.TRIGGERED
     urgency: PDUrgency = PDUrgency.HIGH
-    priority: Optional[PDPriority] = None
+    priority: PDPriority | None = None
 
     # References
     service: PDReference
-    escalation_policy: Optional[PDReference] = None
+    escalation_policy: PDReference | None = None
     teams: list[PDReference] = Field(default_factory=list)
 
     # Assignments
     assignments: list[dict] = Field(default_factory=list)
     acknowledgements: list[dict] = Field(default_factory=list)
-    last_status_change_at: Optional[datetime] = None
-    last_status_change_by: Optional[PDReference] = None
+    last_status_change_at: datetime | None = None
+    last_status_change_by: PDReference | None = None
 
     # Responders
-    first_trigger_log_entry: Optional[PDReference] = None
+    first_trigger_log_entry: PDReference | None = None
     escalation_level: int = 1
     pending_actions: list[dict] = Field(default_factory=list)
 
     # Alerts
-    alert_counts: Optional[dict] = None
+    alert_counts: dict | None = None
 
     # Conference bridge
-    conference_bridge: Optional[dict] = None
+    conference_bridge: dict | None = None
 
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = None
-    resolved_at: Optional[datetime] = None
+    updated_at: datetime | None = None
+    resolved_at: datetime | None = None
 
     # Custom fields
     custom_fields: list[dict] = Field(default_factory=list)
@@ -227,11 +224,11 @@ class PDEscalationPolicy(BaseModel):
     id: str
     type: str = "escalation_policy"
     summary: str = ""
-    self_url: Optional[str] = Field(None, alias="self")
-    html_url: Optional[str] = None
+    self_url: str | None = Field(None, alias="self")
+    html_url: str | None = None
 
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     num_loops: int = 0
     on_call_handoff_notifications: str = "if_has_services"
 
@@ -249,7 +246,7 @@ class PDScheduleLayer(BaseModel):
     id: str
     name: str
     start: datetime
-    end: Optional[datetime] = None
+    end: datetime | None = None
     rotation_virtual_start: datetime
     rotation_turn_length_seconds: int
     users: list[PDReference] = Field(default_factory=list)
@@ -262,19 +259,19 @@ class PDSchedule(BaseModel):
     id: str
     type: str = "schedule"
     summary: str = ""
-    self_url: Optional[str] = Field(None, alias="self")
-    html_url: Optional[str] = None
+    self_url: str | None = Field(None, alias="self")
+    html_url: str | None = None
 
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     time_zone: str = "UTC"
 
     # Layers
     schedule_layers: list[PDScheduleLayer] = Field(default_factory=list)
-    final_schedule: Optional[dict] = None
+    final_schedule: dict | None = None
 
     # Overrides
-    overrides_subschedule: Optional[dict] = None
+    overrides_subschedule: dict | None = None
 
     # References
     escalation_policies: list[PDReference] = Field(default_factory=list)
@@ -286,7 +283,7 @@ class PDOnCall(BaseModel):
     """PagerDuty on-call entry."""
 
     user: PDUser
-    schedule: Optional[PDReference] = None
+    schedule: PDReference | None = None
     escalation_policy: PDReference
     escalation_level: int = 1
     start: datetime
@@ -298,8 +295,8 @@ class PDWebhookMessage(BaseModel):
 
     event: PDWebhookType
     log_entries: list[dict] = Field(default_factory=list)
-    incident: Optional[PDIncident] = None
-    service: Optional[PDService] = None
+    incident: PDIncident | None = None
+    service: PDService | None = None
     created_on: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -307,17 +304,17 @@ class PDWebhookEvent(BaseModel):
     """PagerDuty V3 webhook event."""
 
     id: str
-    routing_key: Optional[str] = None
+    routing_key: str | None = None
     event_type: str
     resource_type: str
     occurred_at: datetime
-    agent: Optional[dict] = None
-    client: Optional[dict] = None
+    agent: dict | None = None
+    client: dict | None = None
     data: dict = Field(default_factory=dict)
 
     # Parsed data
-    incident: Optional[PDIncident] = None
-    service: Optional[PDService] = None
+    incident: PDIncident | None = None
+    service: PDService | None = None
 
 
 class PDEventsAPIPayload(BaseModel):
@@ -325,9 +322,9 @@ class PDEventsAPIPayload(BaseModel):
 
     routing_key: str
     event_action: str = "trigger"  # trigger, acknowledge, resolve
-    dedup_key: Optional[str] = None
+    dedup_key: str | None = None
 
-    payload: Optional[dict] = None
+    payload: dict | None = None
     images: list[dict] = Field(default_factory=list)
     links: list[dict] = Field(default_factory=list)
 
@@ -341,25 +338,25 @@ class CreateIncidentRequest(BaseModel):
     title: str
     service_id: str
     urgency: PDUrgency = PDUrgency.HIGH
-    priority_id: Optional[str] = None
-    escalation_policy_id: Optional[str] = None
-    body: Optional[str] = None
-    incident_key: Optional[str] = None
+    priority_id: str | None = None
+    escalation_policy_id: str | None = None
+    body: str | None = None
+    incident_key: str | None = None
     assignments: list[str] = Field(default_factory=list)
-    conference_bridge: Optional[dict] = None
+    conference_bridge: dict | None = None
 
 
 class UpdateIncidentRequest(BaseModel):
     """Request to update a PagerDuty incident."""
 
-    status: Optional[PDStatus] = None
-    title: Optional[str] = None
-    urgency: Optional[PDUrgency] = None
-    priority_id: Optional[str] = None
-    escalation_policy_id: Optional[str] = None
-    escalation_level: Optional[int] = None
-    assignments: Optional[list[str]] = None
-    resolution: Optional[str] = None
+    status: PDStatus | None = None
+    title: str | None = None
+    urgency: PDUrgency | None = None
+    priority_id: str | None = None
+    escalation_policy_id: str | None = None
+    escalation_level: int | None = None
+    assignments: list[str] | None = None
+    resolution: str | None = None
 
 
 class SyncResult(BaseModel):

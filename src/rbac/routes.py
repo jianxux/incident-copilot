@@ -6,20 +6,18 @@ FastAPI routes for role and permission management.
 """
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from .decorators import PermissionChecker, RoleChecker
+from .decorators import RoleChecker
 from .models import (
     Action,
     Permission,
     PermissionCheck,
     ResourceScope,
     ResourceType,
-    Role,
     RoleAssignment,
     RolePermission,
     ScopeType,
@@ -48,9 +46,9 @@ class CreateRoleRequest(BaseModel):
 class UpdateRoleRequest(BaseModel):
     """Request to update a role."""
 
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-    description: Optional[str] = Field(None, max_length=500)
-    permissions: Optional[list[dict]] = None
+    name: str | None = Field(None, min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=500)
+    permissions: list[dict] | None = None
 
 
 class AssignRoleRequest(BaseModel):
@@ -58,10 +56,10 @@ class AssignRoleRequest(BaseModel):
 
     user_id: UUID
     role_id: UUID
-    scope_type: Optional[ScopeType] = None
-    team_id: Optional[UUID] = None
-    service_id: Optional[UUID] = None
-    expires_at: Optional[datetime] = None
+    scope_type: ScopeType | None = None
+    team_id: UUID | None = None
+    service_id: UUID | None = None
+    expires_at: datetime | None = None
 
 
 class RevokeRoleRequest(BaseModel):
@@ -77,11 +75,11 @@ class CheckPermissionRequest(BaseModel):
     user_id: UUID
     resource_type: ResourceType
     action: Action
-    organization_id: Optional[UUID] = None
-    team_id: Optional[UUID] = None
-    service_id: Optional[UUID] = None
-    resource_id: Optional[UUID] = None
-    owner_id: Optional[UUID] = None
+    organization_id: UUID | None = None
+    team_id: UUID | None = None
+    service_id: UUID | None = None
+    resource_id: UUID | None = None
+    owner_id: UUID | None = None
 
 
 class RoleResponse(BaseModel):
@@ -90,7 +88,7 @@ class RoleResponse(BaseModel):
     id: UUID
     name: str
     description: str
-    organization_id: Optional[UUID]
+    organization_id: UUID | None
     is_system: bool
     is_default: bool
     permissions: list[dict]
@@ -104,7 +102,7 @@ class RoleResponse(BaseModel):
 
 @router.get("/roles", response_model=list[RoleResponse])
 async def list_roles(
-    organization_id: Optional[UUID] = None,
+    organization_id: UUID | None = None,
     include_system: bool = True,
     _: None = Depends(RoleChecker("Admin")),
 ) -> list[RoleResponse]:
@@ -312,7 +310,7 @@ async def delete_role(
 @router.post("/assignments", response_model=RoleAssignment, status_code=201)
 async def assign_role(
     request: AssignRoleRequest,
-    assigned_by: Optional[UUID] = None,
+    assigned_by: UUID | None = None,
     _: None = Depends(RoleChecker("Admin")),
 ) -> RoleAssignment:
     """
@@ -410,7 +408,7 @@ async def check_permission(request: CheckPermissionRequest) -> PermissionCheck:
 @router.get("/users/{user_id}/permissions", response_model=UserPermissions)
 async def get_user_permissions(
     user_id: UUID,
-    organization_id: Optional[UUID] = None,
+    organization_id: UUID | None = None,
 ) -> UserPermissions:
     """
     Get aggregated permissions for a user.

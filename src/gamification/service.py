@@ -5,9 +5,7 @@ Gamification Service
 Core service for managing achievements, badges, points, and leaderboards.
 """
 
-import asyncio
 from datetime import datetime, timedelta
-from typing import Optional
 from uuid import UUID
 
 from .models import (
@@ -263,7 +261,7 @@ class GamificationService:
         points: int,
         reason: str,
         source_type: str,
-        source_id: Optional[UUID] = None,
+        source_id: UUID | None = None,
     ) -> PointTransaction:
         """
         Award points to a user.
@@ -446,7 +444,7 @@ class GamificationService:
         self,
         user_id: UUID,
         achievement_id: UUID,
-    ) -> Optional[UserAchievement]:
+    ) -> UserAchievement | None:
         """Get user's progress on a specific achievement."""
         user_achievements = self._user_achievements.get(user_id, [])
         for ua in user_achievements:
@@ -485,8 +483,8 @@ class GamificationService:
         self,
         user_id: UUID,
         badge_id: UUID,
-        reason: Optional[str] = None,
-    ) -> Optional[UserBadge]:
+        reason: str | None = None,
+    ) -> UserBadge | None:
         """
         Award a badge to a user.
 
@@ -538,13 +536,13 @@ class GamificationService:
         """Get all badges a user has earned."""
         return self._user_badges.get(user_id, [])
 
-    async def get_badge_details(self, badge_id: UUID) -> Optional[Badge]:
+    async def get_badge_details(self, badge_id: UUID) -> Badge | None:
         """Get badge definition by ID."""
         return self._badges.get(badge_id)
 
     async def list_badges(
         self,
-        category: Optional[AchievementCategory] = None,
+        category: AchievementCategory | None = None,
         include_hidden: bool = False,
     ) -> list[Badge]:
         """List all available badges."""
@@ -564,7 +562,7 @@ class GamificationService:
         self,
         metric: LeaderboardMetric,
         period: LeaderboardPeriod = LeaderboardPeriod.WEEKLY,
-        team_id: Optional[UUID] = None,
+        team_id: UUID | None = None,
         limit: int = 10,
     ) -> Leaderboard:
         """
@@ -584,7 +582,6 @@ class GamificationService:
         period_start, period_end = self._calculate_period_dates(period, now)
 
         # Build cache key
-        cache_key = f"{metric}:{period}:{team_id or 'all'}"
 
         # Create leaderboard
         leaderboard = Leaderboard(
@@ -653,7 +650,7 @@ class GamificationService:
         metric: LeaderboardMetric,
         period_start: datetime,
         period_end: datetime,
-        team_id: Optional[UUID],
+        team_id: UUID | None,
         limit: int,
     ) -> list[LeaderboardEntry]:
         """Calculate leaderboard entries for a metric."""

@@ -4,14 +4,13 @@ Policy Engine - Condition evaluation and action execution.
 
 import asyncio
 import logging
-import re
+from collections.abc import Awaitable, Callable
 from datetime import datetime
-from typing import Any, Awaitable, Callable
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from .models import (
     ActionType,
-    ConditionOperator,
     EscalationAction,
     EscalationCondition,
     EscalationLevel,
@@ -123,7 +122,7 @@ class ActionExecutor:
     ) -> bool:
         """Send an email notification."""
         target = context["_target"]
-        message = self._render_template(action.template, context)
+        self._render_template(action.template, context)
         subject = f"[ESCALATION] Incident {context.get('incident_id', 'unknown')}"
         logger.info(f"[MOCK] Emailing {target}: {subject}")
         # TODO: Integrate with email service

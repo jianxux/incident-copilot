@@ -1,13 +1,13 @@
 """Status Page Integration - Data Models."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class StatusPageProvider(str, Enum):
+class StatusPageProvider(StrEnum):
     """Supported status page providers."""
 
     ATLASSIAN = "atlassian"
@@ -15,7 +15,7 @@ class StatusPageProvider(str, Enum):
     CACHET = "cachet"
 
 
-class ComponentStatus(str, Enum):
+class ComponentStatus(StrEnum):
     """Standard component status levels."""
 
     OPERATIONAL = "operational"
@@ -25,7 +25,7 @@ class ComponentStatus(str, Enum):
     MAINTENANCE = "under_maintenance"
 
 
-class IncidentStatus(str, Enum):
+class IncidentStatus(StrEnum):
     """Status page incident status."""
 
     INVESTIGATING = "investigating"
@@ -37,7 +37,7 @@ class IncidentStatus(str, Enum):
     COMPLETED = "completed"
 
 
-class IncidentImpact(str, Enum):
+class IncidentImpact(StrEnum):
     """Incident impact level."""
 
     NONE = "none"

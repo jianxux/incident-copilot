@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 

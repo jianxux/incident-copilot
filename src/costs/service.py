@@ -11,7 +11,6 @@ from .models import (
     CostEntry,
     CostReport,
     CostTrend,
-    Currency,
     EngineerRate,
     IncidentCost,
     ROIAnalysis,

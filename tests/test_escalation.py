@@ -1,7 +1,6 @@
 """Tests for escalation policies and engine module."""
 
 from datetime import datetime, time, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -10,23 +9,18 @@ from fastapi.testclient import TestClient
 from src.escalation.models import (
     ActionType,
     ConditionOperator,
-    CreatePolicyRequest,
     DeescalationRule,
     EscalationAction,
     EscalationCondition,
     EscalationHistoryEntry,
-    EscalationHistoryFilter,
     EscalationLevel,
     EscalationPolicy,
     EscalationState,
     EscalationStatus,
     OnCallAssignment,
-    OverrideEscalationRequest,
     Severity,
     TeamRotation,
     TimeWindow,
-    TriggerEscalationRequest,
-    UpdatePolicyRequest,
 )
 from src.main import app
 

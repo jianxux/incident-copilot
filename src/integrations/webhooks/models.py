@@ -1,14 +1,14 @@
 """Pydantic models for webhook outbound system."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 
-class WebhookEventType(str, Enum):
+class WebhookEventType(StrEnum):
     """Supported webhook event types."""
 
     INCIDENT_CREATED = "incident.created"
@@ -25,7 +25,7 @@ class WebhookEventType(str, Enum):
     STATUS_CHANGED = "status.changed"
 
 
-class DeliveryStatus(str, Enum):
+class DeliveryStatus(StrEnum):
     """Webhook delivery status."""
 
     PENDING = "pending"
@@ -34,7 +34,7 @@ class DeliveryStatus(str, Enum):
     RETRYING = "retrying"
 
 
-class CircuitState(str, Enum):
+class CircuitState(StrEnum):
     """Circuit breaker states."""
 
     CLOSED = "closed"  # Normal operation

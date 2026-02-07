@@ -1,7 +1,6 @@
 """Tests for search engine and indexing module."""
 
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient

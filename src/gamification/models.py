@@ -8,7 +8,6 @@ Motivates engineers through recognition and friendly competition.
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -75,7 +74,7 @@ class Badge(BaseModel):
     category: AchievementCategory = Field(default=AchievementCategory.RESPONSE)
 
     # Unlock criteria
-    achievement_id: Optional[UUID] = Field(None, description="Linked achievement")
+    achievement_id: UUID | None = Field(None, description="Linked achievement")
 
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -102,11 +101,11 @@ class Achievement(BaseModel):
 
     # Rewards
     points: int = Field(default=100, description="Points awarded")
-    badge_id: Optional[UUID] = Field(None, description="Badge awarded on unlock")
+    badge_id: UUID | None = Field(None, description="Badge awarded on unlock")
 
     # Tiered achievements
     tier: int = Field(default=1, description="Achievement tier (1-5)")
-    next_tier_id: Optional[UUID] = Field(None, description="Next tier achievement")
+    next_tier_id: UUID | None = Field(None, description="Next tier achievement")
 
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -130,7 +129,7 @@ class UserAchievement(BaseModel):
 
     # Unlock status
     is_unlocked: bool = Field(default=False)
-    unlocked_at: Optional[datetime] = Field(None)
+    unlocked_at: datetime | None = Field(None)
 
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -148,7 +147,7 @@ class UserBadge(BaseModel):
 
     # Award details
     awarded_at: datetime = Field(default_factory=datetime.utcnow)
-    awarded_for: Optional[str] = Field(None, description="Specific reason/incident")
+    awarded_for: str | None = Field(None, description="Specific reason/incident")
 
     # Display options
     is_featured: bool = Field(default=False, description="Show on profile")
@@ -190,11 +189,11 @@ class PointTransaction(BaseModel):
 
     # Source
     source_type: str = Field(..., description="incident, achievement, badge, manual")
-    source_id: Optional[UUID] = Field(None, description="Related entity ID")
+    source_id: UUID | None = Field(None, description="Related entity ID")
 
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    created_by: Optional[UUID] = Field(None, description="Admin who made manual award")
+    created_by: UUID | None = Field(None, description="Admin who made manual award")
 
 
 class LeaderboardEntry(BaseModel):
@@ -205,14 +204,14 @@ class LeaderboardEntry(BaseModel):
     rank: int = Field(..., description="Current rank")
     user_id: UUID = Field(..., description="User ID")
     user_name: str = Field(..., description="Display name")
-    user_avatar: Optional[str] = Field(None)
+    user_avatar: str | None = Field(None)
 
     # Score
     value: float = Field(..., description="Metric value")
     formatted_value: str = Field(..., description="Human-readable value")
 
     # Trend
-    previous_rank: Optional[int] = Field(None)
+    previous_rank: int | None = Field(None)
     rank_change: int = Field(default=0, description="Positive=moved up")
 
     # Badges preview
@@ -230,8 +229,8 @@ class Leaderboard(BaseModel):
     period: LeaderboardPeriod = Field(default=LeaderboardPeriod.WEEKLY)
 
     # Scope
-    organization_id: Optional[UUID] = Field(None)
-    team_id: Optional[UUID] = Field(None, description="Team-specific leaderboard")
+    organization_id: UUID | None = Field(None)
+    team_id: UUID | None = Field(None, description="Team-specific leaderboard")
 
     # Entries
     entries: list[LeaderboardEntry] = Field(default_factory=list)
@@ -263,7 +262,7 @@ class GamificationSettings(BaseModel):
     opt_out_allowed: bool = Field(default=True)
 
     # Customization
-    custom_badge_prefix: Optional[str] = Field(None)
+    custom_badge_prefix: str | None = Field(None)
     point_multiplier: float = Field(default=1.0)
 
     # Notifications

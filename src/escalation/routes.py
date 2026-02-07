@@ -13,7 +13,6 @@ from .engine import PolicyEngine, get_policy_engine
 from .models import (
     CreatePolicyRequest,
     EscalationHistoryEntry,
-    EscalationHistoryFilter,
     EscalationPolicy,
     EscalationState,
     EscalationStatus,

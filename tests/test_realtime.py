@@ -1,7 +1,6 @@
 """Tests for WebSocket connections and realtime events."""
 
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient

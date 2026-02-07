@@ -5,7 +5,7 @@ Change Tracking Service - Core logic for tracking and correlating changes.
 import asyncio
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Optional, Protocol
+from typing import Protocol
 
 from .models import (
     ChangeCorrelation,
@@ -15,9 +15,7 @@ from .models import (
     ChangeStatus,
     ChangeTimeline,
     ChangeType,
-    ConfigChange,
     Deployment,
-    FeatureFlag,
     RiskLevel,
 )
 
@@ -28,12 +26,12 @@ class ChangeCollector(Protocol):
     source: ChangeSource
 
     async def collect_changes(
-        self, since: datetime, until: Optional[datetime] = None
+        self, since: datetime, until: datetime | None = None
     ) -> list[ChangeEvent]:
         """Collect changes from the source."""
         ...
 
-    async def get_deployment(self, deployment_id: str) -> Optional[Deployment]:
+    async def get_deployment(self, deployment_id: str) -> Deployment | None:
         """Get a specific deployment by ID."""
         ...
 
@@ -55,7 +53,7 @@ class ChangeTrackingService:
         """Register a change collector."""
         self._collectors[collector.source] = collector
 
-    def get_collector(self, source: ChangeSource) -> Optional[ChangeCollector]:
+    def get_collector(self, source: ChangeSource) -> ChangeCollector | None:
         """Get a registered collector."""
         return self._collectors.get(source)
 
@@ -78,7 +76,7 @@ class ChangeTrackingService:
 
         return change
 
-    async def get_change(self, change_id: str) -> Optional[ChangeEvent]:
+    async def get_change(self, change_id: str) -> ChangeEvent | None:
         """Get a change by ID."""
         return self._changes.get(change_id)
 
@@ -86,8 +84,8 @@ class ChangeTrackingService:
         self,
         change_id: str,
         status: ChangeStatus,
-        completed_at: Optional[datetime] = None,
-    ) -> Optional[ChangeEvent]:
+        completed_at: datetime | None = None,
+    ) -> ChangeEvent | None:
         """Update the status of a change."""
         change = self._changes.get(change_id)
         if change:
@@ -107,9 +105,9 @@ class ChangeTrackingService:
     async def get_recent_changes(
         self,
         hours: int = 24,
-        environment: Optional[str] = None,
-        service: Optional[str] = None,
-        change_types: Optional[list[ChangeType]] = None,
+        environment: str | None = None,
+        service: str | None = None,
+        change_types: list[ChangeType] | None = None,
         limit: int = 100,
     ) -> list[ChangeEvent]:
         """Get recent changes within a time window."""
@@ -170,7 +168,7 @@ class ChangeTrackingService:
         incident_id: str,
         incident_started_at: datetime,
         window_minutes: int = 60,
-        service: Optional[str] = None,
+        service: str | None = None,
         environment: str = "production",
     ) -> ChangeCorrelation:
         """
@@ -210,7 +208,7 @@ class ChangeTrackingService:
         self,
         changes: list[ChangeEvent],
         incident_time: datetime,
-        service: Optional[str],
+        service: str | None,
     ) -> list[ChangeEvent]:
         """Score changes based on likelihood of causing incident."""
         for change in changes:
@@ -263,7 +261,7 @@ class ChangeTrackingService:
         return await self.store_change(rollback)
 
     async def get_rollbacks(
-        self, hours: int = 24, environment: Optional[str] = None
+        self, hours: int = 24, environment: str | None = None
     ) -> list[ChangeEvent]:
         """Get recent rollbacks."""
         changes = await self.get_recent_changes(hours=hours, environment=environment)
@@ -277,7 +275,7 @@ class ChangeTrackingService:
         return freeze
 
     async def get_active_freezes(
-        self, environment: Optional[str] = None, at_time: Optional[datetime] = None
+        self, environment: str | None = None, at_time: datetime | None = None
     ) -> list[ChangeFreeze]:
         """Get currently active change freezes."""
         check_time = at_time or datetime.utcnow()
@@ -294,9 +292,7 @@ class ChangeTrackingService:
 
         return active
 
-    async def check_freeze_violation(
-        self, change: ChangeEvent
-    ) -> Optional[ChangeFreeze]:
+    async def check_freeze_violation(self, change: ChangeEvent) -> ChangeFreeze | None:
         """Check if a change violates any active freeze."""
         freezes = await self.get_active_freezes(
             environment=change.environment, at_time=change.started_at
@@ -308,7 +304,7 @@ class ChangeTrackingService:
 
         return None
 
-    async def end_freeze(self, freeze_id: str) -> Optional[ChangeFreeze]:
+    async def end_freeze(self, freeze_id: str) -> ChangeFreeze | None:
         """End a change freeze early."""
         freeze = self._freezes.get(freeze_id)
         if freeze:
@@ -321,8 +317,8 @@ class ChangeTrackingService:
     async def get_timeline(
         self,
         hours: int = 24,
-        environment: Optional[str] = None,
-        services: Optional[list[str]] = None,
+        environment: str | None = None,
+        services: list[str] | None = None,
     ) -> ChangeTimeline:
         """Get a change timeline for visualization."""
         end_time = datetime.utcnow()
@@ -354,7 +350,7 @@ class ChangeTrackingService:
     # ========== Collection ==========
 
     async def collect_all(
-        self, since: datetime, until: Optional[datetime] = None
+        self, since: datetime, until: datetime | None = None
     ) -> list[ChangeEvent]:
         """Collect changes from all registered collectors."""
         all_changes = []
@@ -425,7 +421,7 @@ class ChangeTrackingService:
     # ========== Statistics ==========
 
     async def get_change_stats(
-        self, hours: int = 24, environment: Optional[str] = None
+        self, hours: int = 24, environment: str | None = None
     ) -> dict:
         """Get statistics about recent changes."""
         changes = await self.get_recent_changes(
@@ -467,7 +463,7 @@ class ChangeTrackingService:
 
 
 # Singleton instance
-_service: Optional[ChangeTrackingService] = None
+_service: ChangeTrackingService | None = None
 
 
 def get_change_service() -> ChangeTrackingService:

@@ -3,7 +3,6 @@ LaunchDarkly Collector - Collect feature flag changes.
 """
 
 from datetime import datetime
-from typing import Optional
 
 import httpx
 
@@ -19,14 +18,14 @@ class LaunchDarklyCollector:
         self,
         api_key: str,
         project_key: str,
-        environments: Optional[list[str]] = None,
+        environments: list[str] | None = None,
         base_url: str = "https://app.launchdarkly.com/api/v2",
     ):
         self.api_key = api_key
         self.project_key = project_key
         self.environments = environments or ["production"]
         self.base_url = base_url
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -46,7 +45,7 @@ class LaunchDarklyCollector:
             self._client = None
 
     async def collect_changes(
-        self, since: datetime, until: Optional[datetime] = None
+        self, since: datetime, until: datetime | None = None
     ) -> list[FeatureFlag]:
         """Collect feature flag changes from audit log."""
         changes: list[FeatureFlag] = []
@@ -62,7 +61,7 @@ class LaunchDarklyCollector:
         return changes
 
     async def _get_audit_log(
-        self, since: datetime, until: Optional[datetime]
+        self, since: datetime, until: datetime | None
     ) -> list[dict]:
         """Get audit log entries for flag changes."""
         client = await self._get_client()
@@ -111,7 +110,7 @@ class LaunchDarklyCollector:
 
     async def get_flag_state(
         self, flag_key: str, environment: str = "production"
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """Get current state of a feature flag."""
         client = await self._get_client()
 
@@ -134,13 +133,13 @@ class LaunchDarklyCollector:
             "off_variation": env_config.get("offVariation"),
         }
 
-    async def get_deployment(self, deployment_id: str) -> Optional[FeatureFlag]:
+    async def get_deployment(self, deployment_id: str) -> FeatureFlag | None:
         """Get a specific flag change by ID (from audit log)."""
         # LaunchDarkly doesn't have a direct way to get a single audit entry
         # This would require storing/caching audit entries
         return None
 
-    def _parse_audit_entry(self, entry: dict) -> Optional[FeatureFlag]:
+    def _parse_audit_entry(self, entry: dict) -> FeatureFlag | None:
         """Parse an audit log entry into a FeatureFlag change."""
         try:
             # Extract flag key from target
@@ -231,7 +230,7 @@ class LaunchDarklyCollector:
             return None
 
     def _assess_flag_risk(
-        self, entry: dict, new_state: bool, previous_state: Optional[bool]
+        self, entry: dict, new_state: bool, previous_state: bool | None
     ) -> RiskLevel:
         """Assess risk level of a flag change."""
         # Turning off a flag in production is high risk
