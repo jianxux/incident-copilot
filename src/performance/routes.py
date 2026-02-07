@@ -63,7 +63,9 @@ async def get_team_metrics(
     period = PerformancePeriod(
         start=request.period.start, end=request.period.end, label=request.period.label
     )
-    return await service.calculate_team_metrics(request.team_id, request.team_name, period)
+    return await service.calculate_team_metrics(
+        request.team_id, request.team_name, period
+    )
 
 
 @router.get("/team/{team_id}/metrics")
@@ -94,13 +96,15 @@ async def get_team_trends(
             label=f"P{periods - i}",
         )
         m = await service.calculate_team_metrics(team_id, team_name, p)
-        trends.append({
-            "period": p.model_dump(),
-            "mttr": m.mttr_minutes,
-            "mtta": m.mtta_minutes,
-            "incidents": m.total_incidents,
-            "tier": m.tier.value,
-        })
+        trends.append(
+            {
+                "period": p.model_dump(),
+                "mttr": m.mttr_minutes,
+                "mtta": m.mtta_minutes,
+                "incidents": m.total_incidents,
+                "tier": m.tier.value,
+            }
+        )
     return {"team_id": team_id, "trends": list(reversed(trends))}
 
 
@@ -146,7 +150,9 @@ async def get_burnout_summary(
     days: int = Query(30, ge=1, le=90),
     service: PerformanceService = Depends(get_service),
 ):
-    return await service.get_team_burnout_summary(team_id, PerformancePeriod.last_n_days(days))
+    return await service.get_team_burnout_summary(
+        team_id, PerformancePeriod.last_n_days(days)
+    )
 
 
 @router.get("/team/{team_id}/workload")
@@ -161,7 +167,9 @@ async def get_workload_distribution(
     )
     return {
         "team_id": team_id,
-        "distribution": m.workload_distribution.model_dump() if m.workload_distribution else None,
+        "distribution": (
+            m.workload_distribution.model_dump() if m.workload_distribution else None
+        ),
         "avg_per_engineer": m.avg_incidents_per_engineer,
     }
 

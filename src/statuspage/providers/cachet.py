@@ -76,14 +76,21 @@ class CachetProvider:
             for c in r.json().get("data", [])
         ]
 
-    async def update_component(self, component_id: str, status: ComponentStatus) -> Component:
+    async def update_component(
+        self, component_id: str, status: ComponentStatus
+    ) -> Component:
         r = await self.client.put(
-            f"{self.base_url}/components/{component_id}", json={"status": STATUS_MAP[status]}
+            f"{self.base_url}/components/{component_id}",
+            json={"status": STATUS_MAP[status]},
         )
         c = r.json().get("data", {})
-        return Component(id=str(c.get("id", component_id)), name=c.get("name", ""), status=status)
+        return Component(
+            id=str(c.get("id", component_id)), name=c.get("name", ""), status=status
+        )
 
-    async def get_incidents(self, unresolved_only: bool = True) -> list[StatusPageIncident]:
+    async def get_incidents(
+        self, unresolved_only: bool = True
+    ) -> list[StatusPageIncident]:
         params = {"status": "1,2,3"} if unresolved_only else {}
         r = await self.client.get(f"{self.base_url}/incidents", params=params)
         return [
@@ -94,9 +101,11 @@ class CachetProvider:
                 status=INC_REV.get(i.get("status", 1), IncidentStatus.INVESTIGATING),
                 message=i.get("message", ""),
                 component_ids=[str(i["component_id"])] if i.get("component_id") else [],
-                created_at=datetime.fromisoformat(i["created_at"].replace("Z", "+00:00"))
-                if i.get("created_at")
-                else datetime.utcnow(),
+                created_at=(
+                    datetime.fromisoformat(i["created_at"].replace("Z", "+00:00"))
+                    if i.get("created_at")
+                    else datetime.utcnow()
+                ),
             )
             for i in r.json().get("data", [])
         ]
@@ -121,10 +130,15 @@ class CachetProvider:
         incident.external_id = incident.id
         return incident
 
-    async def update_incident(self, incident_id: str, update: StatusUpdate) -> StatusPageIncident:
+    async def update_incident(
+        self, incident_id: str, update: StatusUpdate
+    ) -> StatusPageIncident:
         await self.client.post(
             f"{self.base_url}/incidents/{incident_id}/updates",
-            json={"status": INC_STATUS.get(update.status, 1), "message": update.message},
+            json={
+                "status": INC_STATUS.get(update.status, 1),
+                "message": update.message,
+            },
         )
         await self.client.put(
             f"{self.base_url}/incidents/{incident_id}",
@@ -140,12 +154,16 @@ class CachetProvider:
             message=update.message,
         )
 
-    async def resolve_incident(self, incident_id: str, message: str) -> StatusPageIncident:
+    async def resolve_incident(
+        self, incident_id: str, message: str
+    ) -> StatusPageIncident:
         await self.client.post(
             f"{self.base_url}/incidents/{incident_id}/updates",
             json={"status": 4, "message": message},
         )
-        await self.client.put(f"{self.base_url}/incidents/{incident_id}", json={"status": 4})
+        await self.client.put(
+            f"{self.base_url}/incidents/{incident_id}", json={"status": 4}
+        )
         return StatusPageIncident(
             id=incident_id,
             external_id=incident_id,
@@ -161,12 +179,16 @@ class CachetProvider:
                 id=str(m["id"]),
                 name=m.get("name", ""),
                 description=m.get("message", ""),
-                scheduled_start=datetime.fromisoformat(m["scheduled_at"].replace("Z", "+00:00"))
-                if m.get("scheduled_at")
-                else datetime.utcnow(),
-                scheduled_end=datetime.fromisoformat(m["scheduled_at"].replace("Z", "+00:00"))
-                if m.get("scheduled_at")
-                else datetime.utcnow(),
+                scheduled_start=(
+                    datetime.fromisoformat(m["scheduled_at"].replace("Z", "+00:00"))
+                    if m.get("scheduled_at")
+                    else datetime.utcnow()
+                ),
+                scheduled_end=(
+                    datetime.fromisoformat(m["scheduled_at"].replace("Z", "+00:00"))
+                    if m.get("scheduled_at")
+                    else datetime.utcnow()
+                ),
                 component_ids=[str(m["component_id"])] if m.get("component_id") else [],
             )
             for m in r.json().get("data", [])

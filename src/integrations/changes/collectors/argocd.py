@@ -15,7 +15,9 @@ class ArgoCDCollector:
 
     source = ChangeSource.ARGOCD
 
-    def __init__(self, base_url: str, token: str, applications: Optional[list[str]] = None):
+    def __init__(
+        self, base_url: str, token: str, applications: Optional[list[str]] = None
+    ):
         self.base_url = base_url.rstrip("/")
         self.token = token
         self.applications = applications
@@ -107,8 +109,12 @@ class ArgoCDCollector:
                     ]
 
             # Get sync status
-            sync_status = app_data.get("status", {}).get("sync", {}).get("status", "Unknown")
-            health_status = app_data.get("status", {}).get("health", {}).get("status", "Unknown")
+            sync_status = (
+                app_data.get("status", {}).get("sync", {}).get("status", "Unknown")
+            )
+            health_status = (
+                app_data.get("status", {}).get("health", {}).get("status", "Unknown")
+            )
 
             status = self._determine_status(sync_status, health_status)
 
@@ -132,7 +138,9 @@ class ArgoCDCollector:
                 is_rollback=is_rollback,
                 risk_level=RiskLevel.HIGH if is_rollback else RiskLevel.MEDIUM,
                 cluster=app_data.get("spec", {}).get("destination", {}).get("server"),
-                namespace=app_data.get("spec", {}).get("destination", {}).get("namespace"),
+                namespace=app_data.get("spec", {})
+                .get("destination", {})
+                .get("namespace"),
                 external_url=f"{self.base_url}/applications/{app_name}",
                 metadata={
                     "argocd_app": app_name,

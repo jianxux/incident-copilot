@@ -55,7 +55,9 @@ class EscalationService:
         if service:
             policies = [p for p in policies if not p.services or service in p.services]
         if severity:
-            policies = [p for p in policies if not p.severities or severity in p.severities]
+            policies = [
+                p for p in policies if not p.severities or severity in p.severities
+            ]
         if tags:
             policies = [p for p in policies if any(t in p.tags for t in tags)]
 
@@ -94,7 +96,9 @@ class EscalationService:
         severity = incident_context.get("severity")
 
         policies = await self.list_policies(
-            enabled_only=True, service=service, severity=Severity(severity) if severity else None
+            enabled_only=True,
+            service=service,
+            severity=Severity(severity) if severity else None,
         )
 
         for policy in policies:
@@ -103,7 +107,9 @@ class EscalationService:
 
         return policies[0] if policies else None
 
-    def _matches_conditions(self, policy: EscalationPolicy, context: dict[str, Any]) -> bool:
+    def _matches_conditions(
+        self, policy: EscalationPolicy, context: dict[str, Any]
+    ) -> bool:
         """Check if all policy conditions match."""
         if not policy.conditions:
             return True
@@ -114,7 +120,10 @@ class EscalationService:
         return self._states.get(incident_id)
 
     async def start_escalation(
-        self, incident_id: str, policy: EscalationPolicy, context: dict[str, Any] | None = None
+        self,
+        incident_id: str,
+        policy: EscalationPolicy,
+        context: dict[str, Any] | None = None,
     ) -> EscalationState:
         """Start escalation for an incident."""
         if incident_id in self._states:
@@ -123,7 +132,9 @@ class EscalationService:
         first_level = policy.levels[0] if policy.levels else None
         next_escalation = None
         if first_level:
-            next_escalation = datetime.utcnow() + timedelta(minutes=first_level.delay_minutes)
+            next_escalation = datetime.utcnow() + timedelta(
+                minutes=first_level.delay_minutes
+            )
 
         state = EscalationState(
             incident_id=incident_id,
@@ -193,7 +204,9 @@ class EscalationService:
 
         return state
 
-    async def get_next_level(self, incident_id: str) -> tuple[EscalationLevel | None, int | None]:
+    async def get_next_level(
+        self, incident_id: str
+    ) -> tuple[EscalationLevel | None, int | None]:
         """Get the next escalation level for an incident."""
         state = self._states.get(incident_id)
         if not state:
@@ -212,14 +225,18 @@ class EscalationService:
 
         return level, next_level_num if level else None
 
-    def _get_level(self, policy: EscalationPolicy, level_num: int) -> EscalationLevel | None:
+    def _get_level(
+        self, policy: EscalationPolicy, level_num: int
+    ) -> EscalationLevel | None:
         """Get a specific level from a policy."""
         for level in policy.levels:
             if level.level == level_num:
                 return level
         return None
 
-    async def acknowledge(self, incident_id: str, acknowledged_by: str) -> EscalationState | None:
+    async def acknowledge(
+        self, incident_id: str, acknowledged_by: str
+    ) -> EscalationState | None:
         """Acknowledge an escalation."""
         state = self._states.get(incident_id)
         if not state:
@@ -235,7 +252,9 @@ class EscalationService:
 
         return state
 
-    async def resolve(self, incident_id: str, resolved_by: str) -> EscalationState | None:
+    async def resolve(
+        self, incident_id: str, resolved_by: str
+    ) -> EscalationState | None:
         """Resolve an escalation."""
         state = self._states.get(incident_id)
         if not state:
@@ -305,7 +324,9 @@ class EscalationService:
         return state
 
     # On-call management
-    async def set_oncall(self, team_id: str, assignment: OnCallAssignment) -> OnCallAssignment:
+    async def set_oncall(
+        self, team_id: str, assignment: OnCallAssignment
+    ) -> OnCallAssignment:
         """Set the current on-call for a team."""
         self._oncall[team_id] = assignment
         return assignment

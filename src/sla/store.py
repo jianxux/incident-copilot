@@ -246,7 +246,9 @@ class SLAStore:
             if policy and self._use_redis:
                 # Cache for next time
                 key = f"{self.POLICY_PREFIX}:{policy_id}"
-                await self.redis.set(key, json.dumps(policy.model_dump(mode="json")), ex=3600)
+                await self.redis.set(
+                    key, json.dumps(policy.model_dump(mode="json")), ex=3600
+                )
             return policy
 
         return None
@@ -272,7 +274,9 @@ class SLAStore:
         if not self._use_db:
             return []
 
-        return await self._get_policies_db(organization_id, team_id, service_id, active_only)
+        return await self._get_policies_db(
+            organization_id, team_id, service_id, active_only
+        )
 
     async def delete_policy(self, policy_id: str) -> bool:
         """Delete an SLA policy.
@@ -451,7 +455,9 @@ class SLAStore:
                 timer.completed_at,
             )
 
-    async def _get_timer_db(self, incident_id: str, sla_type: SLAType) -> SLATimer | None:
+    async def _get_timer_db(
+        self, incident_id: str, sla_type: SLAType
+    ) -> SLATimer | None:
         """Get timer from PostgreSQL."""
         if not self.db:
             return None
@@ -718,7 +724,9 @@ class SLAStore:
             rows = await conn.fetch(query, *params)
             return [self._row_to_breach(row) for row in rows]
 
-    async def _acknowledge_breach_db(self, breach_id: str, user: str) -> SLABreach | None:
+    async def _acknowledge_breach_db(
+        self, breach_id: str, user: str
+    ) -> SLABreach | None:
         """Acknowledge breach in PostgreSQL."""
         if not self.db:
             return None

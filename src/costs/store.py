@@ -165,7 +165,9 @@ class InMemoryCostStore:
         self._service_configs[config.service_name] = config
         return config.service_name
 
-    async def get_service_config(self, service_name: str) -> ServiceRevenueConfig | None:
+    async def get_service_config(
+        self, service_name: str
+    ) -> ServiceRevenueConfig | None:
         """Get service configuration."""
         return self._service_configs.get(service_name)
 
@@ -207,11 +209,15 @@ class InMemoryCostStore:
         self._team_allocations[key] = allocation
         return key
 
-    async def get_team_allocation(self, team: str, period: str) -> TeamCostAllocation | None:
+    async def get_team_allocation(
+        self, team: str, period: str
+    ) -> TeamCostAllocation | None:
         """Get team allocation."""
         return self._team_allocations.get(f"{team}:{period}")
 
-    async def get_all_team_allocations(self, period: str | None = None) -> list[TeamCostAllocation]:
+    async def get_all_team_allocations(
+        self, period: str | None = None
+    ) -> list[TeamCostAllocation]:
         """Get all team allocations, optionally filtered by period."""
         allocations = list(self._team_allocations.values())
         if period:
@@ -267,15 +273,23 @@ class FileCostStore(InMemoryCostStore):
                     if item.get("started_at"):
                         item["started_at"] = datetime.fromisoformat(item["started_at"])
                     if item.get("resolved_at"):
-                        item["resolved_at"] = datetime.fromisoformat(item["resolved_at"])
-                    item["calculated_at"] = datetime.fromisoformat(item["calculated_at"])
+                        item["resolved_at"] = datetime.fromisoformat(
+                            item["resolved_at"]
+                        )
+                    item["calculated_at"] = datetime.fromisoformat(
+                        item["calculated_at"]
+                    )
                     # Reconstruct entries
                     entries = []
                     for entry_data in item.get("entries", []):
                         entry_data["amount"] = Decimal(entry_data["amount"])
                         if entry_data.get("hourly_rate"):
-                            entry_data["hourly_rate"] = Decimal(entry_data["hourly_rate"])
-                        entry_data["created_at"] = datetime.fromisoformat(entry_data["created_at"])
+                            entry_data["hourly_rate"] = Decimal(
+                                entry_data["hourly_rate"]
+                            )
+                        entry_data["created_at"] = datetime.fromisoformat(
+                            entry_data["created_at"]
+                        )
                         entries.append(CostEntry(**entry_data))
                     item["entries"] = entries
                     cost = IncidentCost(**item)
@@ -288,12 +302,15 @@ class FileCostStore(InMemoryCostStore):
                 data = json.load(f)
                 for item in data:
                     item["total_cost"] = Decimal(item["total_cost"])
-                    item["avg_cost_per_incident"] = Decimal(item["avg_cost_per_incident"])
+                    item["avg_cost_per_incident"] = Decimal(
+                        item["avg_cost_per_incident"]
+                    )
                     item["start_date"] = datetime.fromisoformat(item["start_date"])
                     item["end_date"] = datetime.fromisoformat(item["end_date"])
                     item["generated_at"] = datetime.fromisoformat(item["generated_at"])
                     item["by_category"] = {
-                        CostCategory(k): Decimal(v) for k, v in item.get("by_category", {}).items()
+                        CostCategory(k): Decimal(v)
+                        for k, v in item.get("by_category", {}).items()
                     }
                     item["by_severity"] = {
                         k: Decimal(v) for k, v in item.get("by_severity", {}).items()
@@ -301,7 +318,9 @@ class FileCostStore(InMemoryCostStore):
                     item["by_service"] = {
                         k: Decimal(v) for k, v in item.get("by_service", {}).items()
                     }
-                    item["by_team"] = {k: Decimal(v) for k, v in item.get("by_team", {}).items()}
+                    item["by_team"] = {
+                        k: Decimal(v) for k, v in item.get("by_team", {}).items()
+                    }
                     item["by_department"] = {
                         k: Decimal(v) for k, v in item.get("by_department", {}).items()
                     }
@@ -316,21 +335,29 @@ class FileCostStore(InMemoryCostStore):
 
                 for item in data.get("engineer_rates", []):
                     item["hourly_rate"] = Decimal(item["hourly_rate"])
-                    item["effective_from"] = datetime.fromisoformat(item["effective_from"])
+                    item["effective_from"] = datetime.fromisoformat(
+                        item["effective_from"]
+                    )
                     if item.get("effective_to"):
-                        item["effective_to"] = datetime.fromisoformat(item["effective_to"])
+                        item["effective_to"] = datetime.fromisoformat(
+                            item["effective_to"]
+                        )
                     rate = EngineerRate(**item)
                     self._engineer_rates[rate.id] = rate
 
                 for item in data.get("service_configs", []):
-                    item["hourly_revenue_impact"] = Decimal(item["hourly_revenue_impact"])
+                    item["hourly_revenue_impact"] = Decimal(
+                        item["hourly_revenue_impact"]
+                    )
                     if item.get("monthly_revenue"):
                         item["monthly_revenue"] = Decimal(item["monthly_revenue"])
                     config = ServiceRevenueConfig(**item)
                     self._service_configs[config.service_name] = config
 
                 for item in data.get("sla_configs", []):
-                    item["penalty_per_violation_pct"] = Decimal(item["penalty_per_violation_pct"])
+                    item["penalty_per_violation_pct"] = Decimal(
+                        item["penalty_per_violation_pct"]
+                    )
                     item["monthly_fee"] = Decimal(item["monthly_fee"])
                     item["max_penalty_pct"] = Decimal(item["max_penalty_pct"])
                     config = SLAConfig(**item)
@@ -356,7 +383,9 @@ class FileCostStore(InMemoryCostStore):
         for cost in self._incident_costs.values():
             item = cost.model_dump()
             item["total_cost"] = str(item["total_cost"])
-            item["totals_by_category"] = {k: str(v) for k, v in item["totals_by_category"].items()}
+            item["totals_by_category"] = {
+                k: str(v) for k, v in item["totals_by_category"].items()
+            }
             if item.get("started_at"):
                 item["started_at"] = item["started_at"].isoformat()
             if item.get("resolved_at"):

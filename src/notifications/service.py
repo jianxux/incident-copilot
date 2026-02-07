@@ -76,7 +76,9 @@ class NotificationService:
             return self._apply_role_defaults(prefs.role, notification_type, severity)
 
         # Get channels from rule or preference defaults
-        channel_types = matching_rule.channels or [c.type for c in prefs.get_enabled_channels()]
+        channel_types = matching_rule.channels or [
+            c.type for c in prefs.get_enabled_channels()
+        ]
 
         return True, channel_types, matching_rule.digest_frequency
 
@@ -101,11 +103,19 @@ class NotificationService:
         if role == UserRole.ON_CALL:
             # On-call gets P1-P3 in realtime
             if severity_order[severity] <= 3:
-                return True, [ChannelType.SLACK, ChannelType.SMS], DigestFrequency.REALTIME
+                return (
+                    True,
+                    [ChannelType.SLACK, ChannelType.SMS],
+                    DigestFrequency.REALTIME,
+                )
         elif role == UserRole.MANAGER:
             # Managers get P1-P2 in realtime, rest as digest
             if severity_order[severity] <= 2:
-                return True, [ChannelType.SLACK, ChannelType.EMAIL], DigestFrequency.REALTIME
+                return (
+                    True,
+                    [ChannelType.SLACK, ChannelType.EMAIL],
+                    DigestFrequency.REALTIME,
+                )
             elif notification_type == NotificationType.DIGEST:
                 return True, [ChannelType.EMAIL], DigestFrequency.DAILY
         elif role == UserRole.EXECUTIVE:
@@ -180,7 +190,9 @@ class NotificationService:
         results = {}
         for channel_config in channels:
             try:
-                channel = create_channel(channel_config, self._get_renderer(user_id, prefs))
+                channel = create_channel(
+                    channel_config, self._get_renderer(user_id, prefs)
+                )
                 result = await channel.send(payload)
                 results[channel_config.type.value] = {"success": True, "result": result}
                 payload.channels_succeeded.append(channel_config.type)
@@ -285,7 +297,9 @@ class NotificationService:
         critical = len(by_severity[Severity.P1]) + len(by_severity[Severity.P2])
 
         # Format incident list
-        incident_list = "\n".join(f"- [{p.severity.value}] {p.title}" for p in payloads[:10])
+        incident_list = "\n".join(
+            f"- [{p.severity.value}] {p.title}" for p in payloads[:10]
+        )
         if len(payloads) > 10:
             incident_list += f"\n... and {len(payloads) - 10} more"
 

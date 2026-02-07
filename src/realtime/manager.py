@@ -62,7 +62,9 @@ class ConnectionManager:
         self._room_connections: dict[str, set[str]] = {}  # room_key -> connection_ids
 
         # Presence tracking
-        self._presence: dict[str, dict[str, PresenceInfo]] = {}  # room_key -> {user_id: presence}
+        self._presence: dict[str, dict[str, PresenceInfo]] = (
+            {}
+        )  # room_key -> {user_id: presence}
 
         # Rate limiting
         self._rate_limiter = RateLimiter()
@@ -95,7 +97,9 @@ class ConnectionManager:
             )
 
         # Start ping task
-        self._ping_tasks[connection_id] = asyncio.create_task(self._ping_loop(connection_id))
+        self._ping_tasks[connection_id] = asyncio.create_task(
+            self._ping_loop(connection_id)
+        )
 
         # Send connected message
         await self._send_message(
@@ -363,7 +367,10 @@ class ConnectionManager:
 
                 # Check if last ping was responded to
                 time_since_ping = datetime.utcnow() - conn_info.last_ping
-                if time_since_ping.total_seconds() > self._ping_interval + self._ping_timeout:
+                if (
+                    time_since_ping.total_seconds()
+                    > self._ping_interval + self._ping_timeout
+                ):
                     logger.warning(f"Connection {connection_id} ping timeout")
                     await self.disconnect(connection_id)
                     break

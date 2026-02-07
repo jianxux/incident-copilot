@@ -8,7 +8,14 @@ from typing import Optional
 
 import httpx
 
-from ..models import ChangeEvent, ChangeSource, ChangeStatus, ChangeType, Deployment, RiskLevel
+from ..models import (
+    ChangeEvent,
+    ChangeSource,
+    ChangeStatus,
+    ChangeType,
+    Deployment,
+    RiskLevel,
+)
 
 
 class GitHubCollector:
@@ -95,13 +102,17 @@ class GitHubCollector:
         client = await self._get_client()
         deployments = []
 
-        resp = await client.get(f"/repos/{self.org}/{repo}/deployments", params={"per_page": 100})
+        resp = await client.get(
+            f"/repos/{self.org}/{repo}/deployments", params={"per_page": 100}
+        )
 
         if resp.status_code != 200:
             return deployments
 
         for dep in resp.json():
-            created_at = datetime.fromisoformat(dep["created_at"].replace("Z", "+00:00"))
+            created_at = datetime.fromisoformat(
+                dep["created_at"].replace("Z", "+00:00")
+            )
 
             if created_at < since:
                 continue
@@ -160,7 +171,12 @@ class GitHubCollector:
 
         resp = await client.get(
             f"/repos/{self.org}/{repo}/pulls",
-            params={"state": "closed", "sort": "updated", "direction": "desc", "per_page": 50},
+            params={
+                "state": "closed",
+                "sort": "updated",
+                "direction": "desc",
+                "per_page": 50,
+            },
         )
 
         if resp.status_code != 200:
@@ -187,7 +203,9 @@ class GitHubCollector:
                 status=ChangeStatus.COMPLETED,
                 title=pr["title"],
                 description=pr.get("body", "")[:500] if pr.get("body") else None,
-                started_at=datetime.fromisoformat(pr["created_at"].replace("Z", "+00:00")),
+                started_at=datetime.fromisoformat(
+                    pr["created_at"].replace("Z", "+00:00")
+                ),
                 completed_at=merged_at,
                 author=pr["user"]["login"],
                 service=repo,
@@ -228,7 +246,9 @@ class GitHubCollector:
                     source=ChangeSource.GITHUB,
                     status=ChangeStatus.COMPLETED,
                     title=f"Deploy {dep['ref']} to {dep['environment']}",
-                    started_at=datetime.fromisoformat(dep["created_at"].replace("Z", "+00:00")),
+                    started_at=datetime.fromisoformat(
+                        dep["created_at"].replace("Z", "+00:00")
+                    ),
                     author=dep["creator"]["login"] if dep.get("creator") else "unknown",
                     environment=dep["environment"],
                     service=repo,

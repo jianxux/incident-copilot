@@ -183,7 +183,9 @@ async def trigger_escalation(
         context = {"incident_id": request.incident_id}
         policy = await engine.evaluate_incident(request.incident_id, context)
         if not policy:
-            raise HTTPException(status_code=400, detail="No matching policy found for incident")
+            raise HTTPException(
+                status_code=400, detail="No matching policy found for incident"
+            )
 
     # Start or get existing escalation
     state = await service.get_escalation_state(request.incident_id)
@@ -324,7 +326,8 @@ async def rotate_oncall(
     oncall = await service.rotate_oncall(team_id)
     if not oncall:
         raise HTTPException(
-            status_code=400, detail="Unable to rotate - no rotation configured or no members"
+            status_code=400,
+            detail="Unable to rotate - no rotation configured or no members",
         )
     return oncall
 

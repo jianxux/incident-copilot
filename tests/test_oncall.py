@@ -145,7 +145,9 @@ async def test_get_pagerduty_oncall_success(pagerduty_adapter):
                 "name": "Jane Doe",
                 "email": "jane@example.com",
                 "avatar_url": "https://example.com/avatar.png",
-                "contact_methods": [{"type": "phone_contact_method", "address": "+1234567890"}],
+                "contact_methods": [
+                    {"type": "phone_contact_method", "address": "+1234567890"}
+                ],
             },
             {
                 "id": "PUSER456",
@@ -194,7 +196,9 @@ async def test_get_pagerduty_oncall_success(pagerduty_adapter):
 async def test_get_pagerduty_oncall_empty(pagerduty_adapter):
     """Test PagerDuty on-call fetch with no users on-call."""
     mock_users_response = {"users": []}
-    mock_schedule_response = {"schedule": {"id": "SCHEDULE123", "name": "Empty Schedule"}}
+    mock_schedule_response = {
+        "schedule": {"id": "SCHEDULE123", "name": "Empty Schedule"}
+    }
 
     with patch.object(httpx.AsyncClient, "get") as mock_get:
         mock_response_users = MagicMock()

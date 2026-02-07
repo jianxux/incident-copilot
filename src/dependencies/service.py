@@ -63,7 +63,9 @@ class DependencyService:
 
         return services
 
-    async def update_service_health(self, service_id: str, health: HealthStatus) -> Service | None:
+    async def update_service_health(
+        self, service_id: str, health: HealthStatus
+    ) -> Service | None:
         """Update a service's health status."""
         service = self._analyzer.get_service(service_id)
         if not service:
@@ -242,7 +244,9 @@ class DependencyService:
         services = self._analyzer.get_all_services()
         stats = self._analyzer.get_graph_stats()
 
-        critical_count = sum(1 for s in services if s.criticality == CriticalityLevel.CRITICAL)
+        critical_count = sum(
+            1 for s in services if s.criticality == CriticalityLevel.CRITICAL
+        )
         healthy_count = sum(1 for s in services if s.health == HealthStatus.HEALTHY)
         unhealthy_count = sum(1 for s in services if s.health == HealthStatus.UNHEALTHY)
 
@@ -271,12 +275,14 @@ class DependencyService:
         for service in self._analyzer.get_all_services():
             score = self._analyzer.calculate_risk_score(service.id)
             if score >= threshold:
-                result.append({
-                    "service": service,
-                    "risk_score": score,
-                    "fan_in": self._analyzer.get_fan_in(service.id),
-                    "fan_out": self._analyzer.get_fan_out(service.id),
-                })
+                result.append(
+                    {
+                        "service": service,
+                        "risk_score": score,
+                        "fan_in": self._analyzer.get_fan_in(service.id),
+                        "fan_out": self._analyzer.get_fan_out(service.id),
+                    }
+                )
 
         return sorted(result, key=lambda x: x["risk_score"], reverse=True)
 

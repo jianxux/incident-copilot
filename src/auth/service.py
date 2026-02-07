@@ -143,7 +143,9 @@ class AuthService:
         # Check user limit
         tenant_users = [u for u in self._users.values() if u.tenant_id == tenant_id]
         if tenant.max_users > 0 and len(tenant_users) >= tenant.max_users:
-            raise ValueError(f"Tenant has reached maximum user limit ({tenant.max_users})")
+            raise ValueError(
+                f"Tenant has reached maximum user limit ({tenant.max_users})"
+            )
 
         password_hash = None
         if password:

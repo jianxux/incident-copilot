@@ -394,7 +394,9 @@ class SSOService:
         if not idp:
             return False
 
-        config.identity_providers = [p for p in config.identity_providers if p.id != idp_id]
+        config.identity_providers = [
+            p for p in config.identity_providers if p.id != idp_id
+        ]
         config.updated_at = datetime.utcnow()
 
         # Disable SSO if no providers left
@@ -454,7 +456,9 @@ class SSOService:
 
         # JIT provisioning
         if not config.jit_provisioning_enabled:
-            raise ValueError(f"User {user_info.email} not found and JIT provisioning is disabled")
+            raise ValueError(
+                f"User {user_info.email} not found and JIT provisioning is disabled"
+            )
 
         # Determine role from SSO groups
         role = self._map_sso_role(user_info, idp, config.jit_default_role)

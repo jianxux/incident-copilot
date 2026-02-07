@@ -52,17 +52,27 @@ DATABASE_OUTAGE = _t(
     "critical",
     ["https://runbooks.example.com/database/connection-issues"],
     [
-        InitialAction(order=1, title="Check database cluster health", estimated_minutes=2),
-        InitialAction(order=2, title="Verify connection pool status", estimated_minutes=2),
+        InitialAction(
+            order=1, title="Check database cluster health", estimated_minutes=2
+        ),
+        InitialAction(
+            order=2, title="Verify connection pool status", estimated_minutes=2
+        ),
         InitialAction(order=3, title="Check replication lag", estimated_minutes=3),
         InitialAction(
-            order=4, title="Initiate failover if primary down", assignee_role="dba_oncall"
+            order=4,
+            title="Initiate failover if primary down",
+            assignee_role="dba_oncall",
         ),
     ],
     [
-        StakeholderRole(role="dba_oncall", notification_channel="pagerduty", required=True),
         StakeholderRole(
-            role="platform_lead", notification_channel="slack", escalation_delay_minutes=15
+            role="dba_oncall", notification_channel="pagerduty", required=True
+        ),
+        StakeholderRole(
+            role="platform_lead",
+            notification_channel="slack",
+            escalation_delay_minutes=15,
         ),
     ],
     [
@@ -71,7 +81,13 @@ DATABASE_OUTAGE = _t(
             name="issue_type",
             label="Issue Type",
             field_type=FieldType.SELECT,
-            options=["Connection Timeout", "High Latency", "Replication Lag", "Disk Full", "OOM"],
+            options=[
+                "Connection Timeout",
+                "High Latency",
+                "Replication Lag",
+                "Disk Full",
+                "OOM",
+            ],
         ),
     ],
     [
@@ -92,9 +108,13 @@ DEPLOYMENT_FAILURE = _t(
     "high",
     ["https://runbooks.example.com/deployment/rollback-procedure"],
     [
-        InitialAction(order=1, title="Identify failing deployment", estimated_minutes=2),
+        InitialAction(
+            order=1, title="Identify failing deployment", estimated_minutes=2
+        ),
         InitialAction(order=2, title="Check deployment logs", estimated_minutes=3),
-        InitialAction(order=3, title="Evaluate rollback vs fix-forward", estimated_minutes=5),
+        InitialAction(
+            order=3, title="Evaluate rollback vs fix-forward", estimated_minutes=5
+        ),
         InitialAction(
             order=4,
             title="Execute rollback if needed",
@@ -107,7 +127,9 @@ DEPLOYMENT_FAILURE = _t(
         StakeholderRole(role="release_manager", notification_channel="slack"),
     ],
     [
-        TemplateField(name="service", label="Service", field_type=FieldType.SERVICE, required=True),
+        TemplateField(
+            name="service", label="Service", field_type=FieldType.SERVICE, required=True
+        ),
         TemplateField(
             name="status",
             label="Status",
@@ -134,16 +156,26 @@ SECURITY_INCIDENT = _t(
     ["https://runbooks.example.com/security/incident-response"],
     [
         InitialAction(order=1, title="Assess scope and impact", estimated_minutes=10),
-        InitialAction(order=2, title="Initiate containment measures", estimated_minutes=5),
+        InitialAction(
+            order=2, title="Initiate containment measures", estimated_minutes=5
+        ),
         InitialAction(order=3, title="Preserve evidence and logs", estimated_minutes=5),
         InitialAction(
-            order=4, title="Notify security team lead", assignee_role="incident_commander"
+            order=4,
+            title="Notify security team lead",
+            assignee_role="incident_commander",
         ),
     ],
     [
-        StakeholderRole(role="security_oncall", notification_channel="pagerduty", required=True),
-        StakeholderRole(role="security_lead", notification_channel="pagerduty", required=True),
-        StakeholderRole(role="legal", notification_channel="email", escalation_delay_minutes=30),
+        StakeholderRole(
+            role="security_oncall", notification_channel="pagerduty", required=True
+        ),
+        StakeholderRole(
+            role="security_lead", notification_channel="pagerduty", required=True
+        ),
+        StakeholderRole(
+            role="legal", notification_channel="email", escalation_delay_minutes=30
+        ),
     ],
     [
         TemplateField(
@@ -151,7 +183,13 @@ SECURITY_INCIDENT = _t(
             label="Incident Type",
             field_type=FieldType.SELECT,
             required=True,
-            options=["Data Breach", "Unauthorized Access", "Malware", "DDoS", "Phishing"],
+            options=[
+                "Data Breach",
+                "Unauthorized Access",
+                "Malware",
+                "DDoS",
+                "Phishing",
+            ],
         ),
         TemplateField(
             name="severity_level",
@@ -163,7 +201,9 @@ SECURITY_INCIDENT = _t(
     [
         MatchPattern(field="title", operator="contains", value="security", weight=3.0),
         MatchPattern(field="title", operator="contains", value="breach", weight=3.0),
-        MatchPattern(field="source", operator="equals", value="crowdstrike", weight=2.0),
+        MatchPattern(
+            field="source", operator="equals", value="crowdstrike", weight=2.0
+        ),
     ],
     ["security", "critical", "compliance"],
 )
@@ -177,19 +217,31 @@ API_OUTAGE = _t(
     "high",
     ["https://runbooks.example.com/services/general-troubleshooting"],
     [
-        InitialAction(order=1, title="Check service health endpoints", estimated_minutes=2),
-        InitialAction(order=2, title="Review error rates and latency", estimated_minutes=3),
-        InitialAction(order=3, title="Check upstream dependencies", estimated_minutes=5),
-        InitialAction(order=4, title="Scale up if resource constrained", estimated_minutes=5),
+        InitialAction(
+            order=1, title="Check service health endpoints", estimated_minutes=2
+        ),
+        InitialAction(
+            order=2, title="Review error rates and latency", estimated_minutes=3
+        ),
+        InitialAction(
+            order=3, title="Check upstream dependencies", estimated_minutes=5
+        ),
+        InitialAction(
+            order=4, title="Scale up if resource constrained", estimated_minutes=5
+        ),
     ],
     [
         StakeholderRole(role="oncall", notification_channel="pagerduty", required=True),
         StakeholderRole(
-            role="service_owner", notification_channel="slack", escalation_delay_minutes=10
+            role="service_owner",
+            notification_channel="slack",
+            escalation_delay_minutes=10,
         ),
     ],
     [
-        TemplateField(name="service", label="Service", field_type=FieldType.SERVICE, required=True),
+        TemplateField(
+            name="service", label="Service", field_type=FieldType.SERVICE, required=True
+        ),
         TemplateField(
             name="symptom",
             label="Symptom",
@@ -214,11 +266,19 @@ NETWORK_ISSUE = _t(
     "high",
     ["https://runbooks.example.com/network/connectivity-issues"],
     [
-        InitialAction(order=1, title="Identify affected network segment", estimated_minutes=5),
-        InitialAction(order=2, title="Check cloud provider status", estimated_minutes=2),
+        InitialAction(
+            order=1, title="Identify affected network segment", estimated_minutes=5
+        ),
+        InitialAction(
+            order=2, title="Check cloud provider status", estimated_minutes=2
+        ),
         InitialAction(order=3, title="Check DNS resolution", estimated_minutes=3),
     ],
-    [StakeholderRole(role="network_oncall", notification_channel="pagerduty", required=True)],
+    [
+        StakeholderRole(
+            role="network_oncall", notification_channel="pagerduty", required=True
+        )
+    ],
     [
         TemplateField(
             name="issue_type",
@@ -236,7 +296,9 @@ NETWORK_ISSUE = _t(
     [
         MatchPattern(field="title", operator="contains", value="network", weight=2.0),
         MatchPattern(field="title", operator="contains", value="dns", weight=1.5),
-        MatchPattern(field="title", operator="contains", value="connectivity", weight=1.5),
+        MatchPattern(
+            field="title", operator="contains", value="connectivity", weight=1.5
+        ),
     ],
     ["network", "infrastructure"],
 )
@@ -251,7 +313,9 @@ THIRD_PARTY_OUTAGE = _t(
     ["https://runbooks.example.com/vendors/outage-response"],
     [
         InitialAction(order=1, title="Confirm vendor status page", estimated_minutes=2),
-        InitialAction(order=2, title="Identify affected internal services", estimated_minutes=5),
+        InitialAction(
+            order=2, title="Identify affected internal services", estimated_minutes=5
+        ),
         InitialAction(order=3, title="Evaluate fallback options", estimated_minutes=10),
     ],
     [StakeholderRole(role="oncall", notification_channel="slack", required=True)],
@@ -261,12 +325,18 @@ THIRD_PARTY_OUTAGE = _t(
             name="impact",
             label="Impact",
             field_type=FieldType.SELECT,
-            options=["Complete Outage", "Degraded Performance", "Partial Functionality"],
+            options=[
+                "Complete Outage",
+                "Degraded Performance",
+                "Partial Functionality",
+            ],
         ),
     ],
     [
         MatchPattern(field="title", operator="contains", value="vendor", weight=2.0),
-        MatchPattern(field="title", operator="contains", value="third-party", weight=2.0),
+        MatchPattern(
+            field="title", operator="contains", value="third-party", weight=2.0
+        ),
         MatchPattern(field="source", operator="equals", value="statuspage", weight=1.5),
     ],
     ["vendor", "third-party", "external"],
@@ -281,11 +351,17 @@ INFRASTRUCTURE_SCALING = _t(
     "high",
     ["https://runbooks.example.com/infrastructure/scaling"],
     [
-        InitialAction(order=1, title="Identify resource bottleneck", estimated_minutes=3),
+        InitialAction(
+            order=1, title="Identify resource bottleneck", estimated_minutes=3
+        ),
         InitialAction(order=2, title="Check autoscaling status", estimated_minutes=2),
         InitialAction(order=3, title="Manual scale-up if needed", estimated_minutes=5),
     ],
-    [StakeholderRole(role="platform_oncall", notification_channel="pagerduty", required=True)],
+    [
+        StakeholderRole(
+            role="platform_oncall", notification_channel="pagerduty", required=True
+        )
+    ],
     [
         TemplateField(
             name="resource_type",

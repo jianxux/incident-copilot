@@ -76,7 +76,9 @@ class Permission(BaseModel):
     action: Action
 
     # Optional conditions
-    conditions: Optional[dict] = Field(None, description="JSON conditions for the permission")
+    conditions: Optional[dict] = Field(
+        None, description="JSON conditions for the permission"
+    )
 
     @property
     def permission_string(self) -> str:
@@ -141,7 +143,9 @@ class RolePermission(BaseModel):
     """A permission granted to a role with optional scope."""
 
     permission: Permission
-    scope: ResourceScope = Field(default_factory=lambda: ResourceScope(scope_type=ScopeType.GLOBAL))
+    scope: ResourceScope = Field(
+        default_factory=lambda: ResourceScope(scope_type=ScopeType.GLOBAL)
+    )
 
 
 class Role(BaseModel):
@@ -238,7 +242,9 @@ SYSTEM_ROLES = {
         description="Full access to all resources and settings",
         is_system=True,
         permissions=[
-            RolePermission(permission=Permission(resource_type=rt, action=Action.MANAGE))
+            RolePermission(
+                permission=Permission(resource_type=rt, action=Action.MANAGE)
+            )
             for rt in ResourceType
         ],
     ),
@@ -249,7 +255,13 @@ SYSTEM_ROLES = {
         permissions=[
             RolePermission(permission=Permission(resource_type=rt, action=a))
             for rt in ResourceType
-            for a in [Action.CREATE, Action.READ, Action.UPDATE, Action.DELETE, Action.LIST]
+            for a in [
+                Action.CREATE,
+                Action.READ,
+                Action.UPDATE,
+                Action.DELETE,
+                Action.LIST,
+            ]
         ],
     ),
     "responder": Role(
@@ -260,13 +272,19 @@ SYSTEM_ROLES = {
         permissions=[
             # Incidents
             RolePermission(
-                permission=Permission(resource_type=ResourceType.INCIDENT, action=Action.READ)
+                permission=Permission(
+                    resource_type=ResourceType.INCIDENT, action=Action.READ
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.INCIDENT, action=Action.LIST)
+                permission=Permission(
+                    resource_type=ResourceType.INCIDENT, action=Action.LIST
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.INCIDENT, action=Action.UPDATE)
+                permission=Permission(
+                    resource_type=ResourceType.INCIDENT, action=Action.UPDATE
+                )
             ),
             RolePermission(
                 permission=Permission(
@@ -274,47 +292,73 @@ SYSTEM_ROLES = {
                 )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.INCIDENT, action=Action.RESOLVE)
+                permission=Permission(
+                    resource_type=ResourceType.INCIDENT, action=Action.RESOLVE
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.INCIDENT, action=Action.COMMENT)
+                permission=Permission(
+                    resource_type=ResourceType.INCIDENT, action=Action.COMMENT
+                )
             ),
             # Runbooks
             RolePermission(
-                permission=Permission(resource_type=ResourceType.RUNBOOK, action=Action.READ)
+                permission=Permission(
+                    resource_type=ResourceType.RUNBOOK, action=Action.READ
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.RUNBOOK, action=Action.LIST)
+                permission=Permission(
+                    resource_type=ResourceType.RUNBOOK, action=Action.LIST
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.RUNBOOK, action=Action.EXECUTE)
+                permission=Permission(
+                    resource_type=ResourceType.RUNBOOK, action=Action.EXECUTE
+                )
             ),
             # Postmortems
             RolePermission(
-                permission=Permission(resource_type=ResourceType.POSTMORTEM, action=Action.READ)
+                permission=Permission(
+                    resource_type=ResourceType.POSTMORTEM, action=Action.READ
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.POSTMORTEM, action=Action.LIST)
+                permission=Permission(
+                    resource_type=ResourceType.POSTMORTEM, action=Action.LIST
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.POSTMORTEM, action=Action.CREATE)
+                permission=Permission(
+                    resource_type=ResourceType.POSTMORTEM, action=Action.CREATE
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.POSTMORTEM, action=Action.COMMENT)
+                permission=Permission(
+                    resource_type=ResourceType.POSTMORTEM, action=Action.COMMENT
+                )
             ),
             # Services
             RolePermission(
-                permission=Permission(resource_type=ResourceType.SERVICE, action=Action.READ)
+                permission=Permission(
+                    resource_type=ResourceType.SERVICE, action=Action.READ
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.SERVICE, action=Action.LIST)
+                permission=Permission(
+                    resource_type=ResourceType.SERVICE, action=Action.LIST
+                )
             ),
             # Dashboards
             RolePermission(
-                permission=Permission(resource_type=ResourceType.DASHBOARD, action=Action.READ)
+                permission=Permission(
+                    resource_type=ResourceType.DASHBOARD, action=Action.READ
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.DASHBOARD, action=Action.LIST)
+                permission=Permission(
+                    resource_type=ResourceType.DASHBOARD, action=Action.LIST
+                )
             ),
         ],
     ),
@@ -353,16 +397,24 @@ SYSTEM_ROLES = {
         permissions=[
             # Team management
             RolePermission(
-                permission=Permission(resource_type=ResourceType.TEAM, action=Action.READ)
+                permission=Permission(
+                    resource_type=ResourceType.TEAM, action=Action.READ
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.TEAM, action=Action.UPDATE)
+                permission=Permission(
+                    resource_type=ResourceType.TEAM, action=Action.UPDATE
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.USER, action=Action.READ)
+                permission=Permission(
+                    resource_type=ResourceType.USER, action=Action.READ
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.USER, action=Action.LIST)
+                permission=Permission(
+                    resource_type=ResourceType.USER, action=Action.LIST
+                )
             ),
             # Escalation policies
             RolePermission(
@@ -403,10 +455,14 @@ SYSTEM_ROLES = {
             ),
             # Reports
             RolePermission(
-                permission=Permission(resource_type=ResourceType.REPORT, action=Action.CREATE)
+                permission=Permission(
+                    resource_type=ResourceType.REPORT, action=Action.CREATE
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.REPORT, action=Action.EXPORT)
+                permission=Permission(
+                    resource_type=ResourceType.REPORT, action=Action.EXPORT
+                )
             ),
         ],
     ),
@@ -417,53 +473,83 @@ SYSTEM_ROLES = {
         permissions=[
             # Service management
             RolePermission(
-                permission=Permission(resource_type=ResourceType.SERVICE, action=Action.MANAGE)
+                permission=Permission(
+                    resource_type=ResourceType.SERVICE, action=Action.MANAGE
+                )
             ),
             # Integrations
             RolePermission(
-                permission=Permission(resource_type=ResourceType.INTEGRATION, action=Action.CREATE)
+                permission=Permission(
+                    resource_type=ResourceType.INTEGRATION, action=Action.CREATE
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.INTEGRATION, action=Action.READ)
+                permission=Permission(
+                    resource_type=ResourceType.INTEGRATION, action=Action.READ
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.INTEGRATION, action=Action.UPDATE)
+                permission=Permission(
+                    resource_type=ResourceType.INTEGRATION, action=Action.UPDATE
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.INTEGRATION, action=Action.DELETE)
+                permission=Permission(
+                    resource_type=ResourceType.INTEGRATION, action=Action.DELETE
+                )
             ),
             # Webhooks
             RolePermission(
-                permission=Permission(resource_type=ResourceType.WEBHOOK, action=Action.CREATE)
+                permission=Permission(
+                    resource_type=ResourceType.WEBHOOK, action=Action.CREATE
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.WEBHOOK, action=Action.READ)
+                permission=Permission(
+                    resource_type=ResourceType.WEBHOOK, action=Action.READ
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.WEBHOOK, action=Action.UPDATE)
+                permission=Permission(
+                    resource_type=ResourceType.WEBHOOK, action=Action.UPDATE
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.WEBHOOK, action=Action.DELETE)
+                permission=Permission(
+                    resource_type=ResourceType.WEBHOOK, action=Action.DELETE
+                )
             ),
             # SLA policies
             RolePermission(
-                permission=Permission(resource_type=ResourceType.SLA_POLICY, action=Action.CREATE)
+                permission=Permission(
+                    resource_type=ResourceType.SLA_POLICY, action=Action.CREATE
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.SLA_POLICY, action=Action.READ)
+                permission=Permission(
+                    resource_type=ResourceType.SLA_POLICY, action=Action.READ
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.SLA_POLICY, action=Action.UPDATE)
+                permission=Permission(
+                    resource_type=ResourceType.SLA_POLICY, action=Action.UPDATE
+                )
             ),
             # Runbooks
             RolePermission(
-                permission=Permission(resource_type=ResourceType.RUNBOOK, action=Action.CREATE)
+                permission=Permission(
+                    resource_type=ResourceType.RUNBOOK, action=Action.CREATE
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.RUNBOOK, action=Action.UPDATE)
+                permission=Permission(
+                    resource_type=ResourceType.RUNBOOK, action=Action.UPDATE
+                )
             ),
             RolePermission(
-                permission=Permission(resource_type=ResourceType.RUNBOOK, action=Action.DELETE)
+                permission=Permission(
+                    resource_type=ResourceType.RUNBOOK, action=Action.DELETE
+                )
             ),
         ],
     ),

@@ -42,7 +42,9 @@ class IncidentAnalyzer:
         sorted_incidents = sorted(incidents, key=lambda x: x.triggered_at)
 
         # Track co-occurrences
-        co_occurrences: dict[tuple[str, str], list[tuple[datetime, float]]] = defaultdict(list)
+        co_occurrences: dict[tuple[str, str], list[tuple[datetime, float]]] = (
+            defaultdict(list)
+        )
 
         # Find incidents that occur within the correlation window
         for i, incident_a in enumerate(sorted_incidents):
@@ -58,7 +60,9 @@ class IncidentAnalyzer:
                     continue
 
                 # Record the co-occurrence with time lag
-                time_lag = (incident_b.triggered_at - incident_a.triggered_at).total_seconds()
+                time_lag = (
+                    incident_b.triggered_at - incident_a.triggered_at
+                ).total_seconds()
 
                 # Use ordered pair to track direction
                 pair = (incident_a.service_name, incident_b.service_name)
@@ -138,7 +142,9 @@ class IncidentAnalyzer:
 
         Returns list of (service_name, incident_count, severity_score).
         """
-        service_stats: dict[str, dict] = defaultdict(lambda: {"count": 0, "severity_sum": 0})
+        service_stats: dict[str, dict] = defaultdict(
+            lambda: {"count": 0, "severity_sum": 0}
+        )
 
         severity_weights = {
             "critical": 5,
@@ -150,9 +156,9 @@ class IncidentAnalyzer:
 
         for incident in incidents:
             service_stats[incident.service_name]["count"] += 1
-            service_stats[incident.service_name]["severity_sum"] += severity_weights.get(
-                incident.severity, 3
-            )
+            service_stats[incident.service_name][
+                "severity_sum"
+            ] += severity_weights.get(incident.severity, 3)
 
         # Calculate ranking
         ranking = []
@@ -223,26 +229,38 @@ class IncidentAnalyzer:
             # Count incidents in this window
             window_incidents = []
             j = i
-            while j < len(sorted_incidents) and sorted_incidents[j].triggered_at < window_end:
+            while (
+                j < len(sorted_incidents)
+                and sorted_incidents[j].triggered_at < window_end
+            ):
                 window_incidents.append(sorted_incidents[j])
                 j += 1
 
             # Check if this is a hotspot (significantly above average)
             avg_per_window = len(incidents) / max(
                 1,
-                (sorted_incidents[-1].triggered_at - sorted_incidents[0].triggered_at).days
+                (
+                    sorted_incidents[-1].triggered_at - sorted_incidents[0].triggered_at
+                ).days
                 / (window_hours / 24),
             )
 
-            if len(window_incidents) > avg_per_window * 2 and len(window_incidents) >= 3:
-                services_affected = list(set(inc.service_name for inc in window_incidents))
-                hotspots.append({
-                    "window_start": window_start,
-                    "window_end": window_end,
-                    "incident_count": len(window_incidents),
-                    "services_affected": services_affected,
-                    "spike_factor": len(window_incidents) / max(1, avg_per_window),
-                })
+            if (
+                len(window_incidents) > avg_per_window * 2
+                and len(window_incidents) >= 3
+            ):
+                services_affected = list(
+                    set(inc.service_name for inc in window_incidents)
+                )
+                hotspots.append(
+                    {
+                        "window_start": window_start,
+                        "window_end": window_end,
+                        "incident_count": len(window_incidents),
+                        "services_affected": services_affected,
+                        "spike_factor": len(window_incidents) / max(1, avg_per_window),
+                    }
+                )
 
             # Move to next non-overlapping window
             i = j if j > i else i + 1

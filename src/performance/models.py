@@ -52,7 +52,9 @@ class PerformancePeriod(BaseModel):
     def last_n_days(cls, n: int, label: str = "") -> "PerformancePeriod":
         """Create a period for the last N days."""
         end = datetime.utcnow()
-        return cls(start=end - timedelta(days=n), end=end, label=label or f"Last {n} days")
+        return cls(
+            start=end - timedelta(days=n), end=end, label=label or f"Last {n} days"
+        )
 
     @classmethod
     def week(cls) -> "PerformancePeriod":
@@ -120,17 +122,24 @@ class WorkloadDistribution(BaseModel):
         """Calculate distribution metrics from list of workload values."""
         if not workloads or sum(workloads) == 0:
             return cls(
-                gini_coefficient=0, top_10_pct_share=0, bottom_50_pct_share=0, std_deviation=0
+                gini_coefficient=0,
+                top_10_pct_share=0,
+                bottom_50_pct_share=0,
+                std_deviation=0,
             )
         n, total = len(workloads), sum(workloads)
         sorted_loads = sorted(workloads)
-        cumsum = sum((2 * (i + 1) - n - 1) * load for i, load in enumerate(sorted_loads))
+        cumsum = sum(
+            (2 * (i + 1) - n - 1) * load for i, load in enumerate(sorted_loads)
+        )
         gini = max(0, min(1, cumsum / (n * total)))
         top_n = max(1, n // 10)
         return cls(
             gini_coefficient=round(gini, 3),
             top_10_pct_share=round(sum(sorted_loads[-top_n:]) / total * 100, 1),
-            bottom_50_pct_share=round(sum(sorted_loads[: n // 2]) / total * 100, 1) if n > 1 else 0,
+            bottom_50_pct_share=(
+                round(sum(sorted_loads[: n // 2]) / total * 100, 1) if n > 1 else 0
+            ),
             std_deviation=round(statistics.stdev(workloads) if n > 1 else 0, 2),
             is_balanced=gini < 0.3,
         )
@@ -199,9 +208,13 @@ class EngineerMetrics(BaseModel):
         if not self.incidents_handled:
             return 0
         # Weighted: 50% resolution rate, 30% response time, 20% reopen rate
-        resp_score = max(0, 100 - self.avg_response_time_min * 2)  # Penalize slow response
+        resp_score = max(
+            0, 100 - self.avg_response_time_min * 2
+        )  # Penalize slow response
         reopen_score = max(0, 100 - self.reopen_rate * 5)  # Penalize reopens
-        return round(self.resolution_rate * 0.5 + resp_score * 0.3 + reopen_score * 0.2, 1)
+        return round(
+            self.resolution_rate * 0.5 + resp_score * 0.3 + reopen_score * 0.2, 1
+        )
 
     def anonymize(self) -> "EngineerMetrics":
         """Return anonymized copy for privacy-safe sharing."""
@@ -248,7 +261,12 @@ class TeamMetrics(BaseModel):
     def change_failure_rate(self) -> float:
         """DORA metric: percentage of incidents caused by deployments."""
         return (
-            round(self.incidents_by_severity.get("deploy", 0) / self.total_incidents * 100, 1)
+            round(
+                self.incidents_by_severity.get("deploy", 0)
+                / self.total_incidents
+                * 100,
+                1,
+            )
             if self.total_incidents
             else 0
         )
@@ -263,10 +281,14 @@ class TeamMetrics(BaseModel):
     @property
     def critical_incident_ratio(self) -> float:
         """Percentage of incidents that were critical severity."""
-        critical = self.incidents_by_severity.get("critical", 0) + self.incidents_by_severity.get(
-            "sev1", 0
+        critical = self.incidents_by_severity.get(
+            "critical", 0
+        ) + self.incidents_by_severity.get("sev1", 0)
+        return (
+            round(critical / self.total_incidents * 100, 1)
+            if self.total_incidents
+            else 0
         )
-        return round(critical / self.total_incidents * 100, 1) if self.total_incidents else 0
 
 
 class Benchmark(BaseModel):
@@ -297,7 +319,9 @@ class Benchmark(BaseModel):
                 return tier
         return PerformanceTier.LOW
 
-    def distance_to_next_tier(self, value: float) -> tuple[PerformanceTier | None, float]:
+    def distance_to_next_tier(
+        self, value: float
+    ) -> tuple[PerformanceTier | None, float]:
         """Calculate distance to next performance tier."""
         current = self.classify(value)
         if current == PerformanceTier.ELITE:
@@ -323,9 +347,15 @@ class PeriodComparison(BaseModel):
     current: PerformancePeriod
     previous: PerformancePeriod
     metrics: dict[str, MetricValue] = Field(default_factory=dict)
-    improved: list[str] = Field(default_factory=list, description="Metrics that improved")
-    degraded: list[str] = Field(default_factory=list, description="Metrics that degraded")
-    stable: list[str] = Field(default_factory=list, description="Metrics with minimal change")
+    improved: list[str] = Field(
+        default_factory=list, description="Metrics that improved"
+    )
+    degraded: list[str] = Field(
+        default_factory=list, description="Metrics that degraded"
+    )
+    stable: list[str] = Field(
+        default_factory=list, description="Metrics with minimal change"
+    )
     summary: str = ""
 
     @computed_field
@@ -366,8 +396,12 @@ class PerformanceReport(BaseModel):
     engineer_metrics: list[EngineerMetrics] = Field(default_factory=list)
     comparison: Optional[PeriodComparison] = None
     benchmarks: dict[str, PerformanceTier] = Field(default_factory=dict)
-    highlights: list[str] = Field(default_factory=list, description="Positive observations")
-    concerns: list[str] = Field(default_factory=list, description="Areas needing attention")
+    highlights: list[str] = Field(
+        default_factory=list, description="Positive observations"
+    )
+    concerns: list[str] = Field(
+        default_factory=list, description="Areas needing attention"
+    )
     recommendations: list[str] = Field(
         default_factory=list, description="Actionable recommendations"
     )

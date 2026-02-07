@@ -25,7 +25,9 @@ from .providers.opsgenie import OpsgenieProvider
 class OnCallService:
     """Service for managing on-call schedules, lookups, and overrides."""
 
-    def __init__(self, pagerduty_key: Optional[str] = None, opsgenie_key: Optional[str] = None):
+    def __init__(
+        self, pagerduty_key: Optional[str] = None, opsgenie_key: Optional[str] = None
+    ):
         self._pagerduty = PagerDutyProvider(pagerduty_key) if pagerduty_key else None
         self._opsgenie = OpsgenieProvider(opsgenie_key) if opsgenie_key else None
 
@@ -54,7 +56,9 @@ class OnCallService:
                 schedules = await self._pagerduty.get_schedules()
                 for sched in schedules:
                     self._schedules[sched.id] = sched
-                    result = await self._pagerduty.sync_schedule(sched.provider_schedule_id)
+                    result = await self._pagerduty.sync_schedule(
+                        sched.provider_schedule_id
+                    )
                     results.append(result)
             except Exception as e:
                 results.append(
@@ -71,7 +75,9 @@ class OnCallService:
                 schedules = await self._opsgenie.get_schedules()
                 for sched in schedules:
                     self._schedules[sched.id] = sched
-                    result = await self._opsgenie.sync_schedule(sched.provider_schedule_id)
+                    result = await self._opsgenie.sync_schedule(
+                        sched.provider_schedule_id
+                    )
                     results.append(result)
             except Exception as e:
                 results.append(
@@ -89,7 +95,9 @@ class OnCallService:
         """Get a schedule by ID."""
         return self._schedules.get(schedule_id)
 
-    async def list_schedules(self, team_id: Optional[str] = None) -> list[OnCallSchedule]:
+    async def list_schedules(
+        self, team_id: Optional[str] = None
+    ) -> list[OnCallSchedule]:
         """List all schedules, optionally filtered by team."""
         schedules = list(self._schedules.values())
         if team_id:
@@ -165,7 +173,9 @@ class OnCallService:
 
     # === Shifts ===
 
-    async def get_upcoming_shifts(self, schedule_id: str, days: int = 7) -> list[OnCallShift]:
+    async def get_upcoming_shifts(
+        self, schedule_id: str, days: int = 7
+    ) -> list[OnCallShift]:
         """Get upcoming shifts for a schedule."""
         schedule = await self.get_schedule(schedule_id)
         if not schedule:
@@ -267,7 +277,9 @@ class OnCallService:
                 schedule.provider_schedule_id, override
             )
         elif schedule.provider == ProviderType.OPSGENIE and self._opsgenie:
-            override = await self._opsgenie.create_override(schedule.provider_schedule_id, override)
+            override = await self._opsgenie.create_override(
+                schedule.provider_schedule_id, override
+            )
         else:
             override.activate()
 
@@ -319,13 +331,17 @@ class OnCallService:
         self._notifications.append(notification)
         return notification
 
-    async def get_pending_handoffs(self, lookahead_hours: int = 2) -> list[HandoffNotification]:
+    async def get_pending_handoffs(
+        self, lookahead_hours: int = 2
+    ) -> list[HandoffNotification]:
         """Get handoffs happening in the next N hours that haven't been sent."""
         now = datetime.utcnow()
         cutoff = now + timedelta(hours=lookahead_hours)
 
         return [
-            n for n in self._notifications if n.sent_at is None and now <= n.handoff_time <= cutoff
+            n
+            for n in self._notifications
+            if n.sent_at is None and now <= n.handoff_time <= cutoff
         ]
 
     async def mark_handoff_sent(self, notification_id: str) -> bool:
@@ -384,7 +400,9 @@ class OnCallService:
 
     # === Rotation Visualization ===
 
-    async def get_rotation_visualization(self, schedule_id: str, days: int = 14) -> dict:
+    async def get_rotation_visualization(
+        self, schedule_id: str, days: int = 14
+    ) -> dict:
         """Get rotation data for visualization."""
         schedule = await self.get_schedule(schedule_id)
         if not schedule:
@@ -397,11 +415,13 @@ class OnCallService:
         for shift in shifts:
             if shift.user.id not in user_shifts:
                 user_shifts[shift.user.id] = []
-            user_shifts[shift.user.id].append({
-                "start": shift.start_time.isoformat(),
-                "end": shift.end_time.isoformat(),
-                "is_override": shift.is_override,
-            })
+            user_shifts[shift.user.id].append(
+                {
+                    "start": shift.start_time.isoformat(),
+                    "end": shift.end_time.isoformat(),
+                    "is_override": shift.is_override,
+                }
+            )
 
         return {
             "schedule_id": schedule_id,
@@ -409,7 +429,8 @@ class OnCallService:
             "timezone": schedule.timezone,
             "range_days": days,
             "participants": [
-                {"user_id": uid, "shifts": shifts_data} for uid, shifts_data in user_shifts.items()
+                {"user_id": uid, "shifts": shifts_data}
+                for uid, shifts_data in user_shifts.items()
             ],
             "rotations": [
                 {

@@ -41,7 +41,9 @@ class TemplateField(BaseModel):
     field_type: FieldType = FieldType.TEXT
     required: bool = False
     default_value: Any = None
-    options: list[str] = Field(default_factory=list, description="Options for select fields")
+    options: list[str] = Field(
+        default_factory=list, description="Options for select fields"
+    )
     placeholder: str | None = None
     description: str | None = None
 

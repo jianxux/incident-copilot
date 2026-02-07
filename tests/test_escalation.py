@@ -269,7 +269,9 @@ class TestEscalationLevel:
             level=1,
             name="L1",
             actions=[
-                EscalationAction(action_type=ActionType.EMAIL, target="default@example.com"),
+                EscalationAction(
+                    action_type=ActionType.EMAIL, target="default@example.com"
+                ),
                 EscalationAction(action_type=ActionType.SLACK, target="#default"),
             ],
             use_oncall=True,

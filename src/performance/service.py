@@ -24,26 +24,34 @@ from .benchmarks import classify_team, calculate_overall_tier, estimate_percenti
 
 
 class IncidentRepository(Protocol):
-    async def get_incidents(self, team_id: str, start: datetime, end: datetime) -> list[Any]: ...
+    async def get_incidents(
+        self, team_id: str, start: datetime, end: datetime
+    ) -> list[Any]: ...
     async def get_engineer_incidents(
         self, engineer_id: str, start: datetime, end: datetime
     ) -> list[Any]: ...
 
 
 class OncallRepository(Protocol):
-    async def get_shifts(self, team_id: str, start: datetime, end: datetime) -> list[dict]: ...
+    async def get_shifts(
+        self, team_id: str, start: datetime, end: datetime
+    ) -> list[dict]: ...
 
 
 class PerformanceService:
     def __init__(
-        self, incident_repo: IncidentRepository, oncall_repo: OncallRepository | None = None
+        self,
+        incident_repo: IncidentRepository,
+        oncall_repo: OncallRepository | None = None,
     ):
         self.incident_repo, self.oncall_repo = incident_repo, oncall_repo
 
     async def calculate_team_metrics(
         self, team_id: str, team_name: str, period: PerformancePeriod
     ) -> TeamMetrics:
-        incidents = await self.incident_repo.get_incidents(team_id, period.start, period.end)
+        incidents = await self.incident_repo.get_incidents(
+            team_id, period.start, period.end
+        )
         oncall_shifts = (
             await self.oncall_repo.get_shifts(team_id, period.start, period.end)
             if self.oncall_repo
@@ -53,17 +61,22 @@ class PerformanceService:
         severity_counts = count_incidents_by_severity(incidents, period)
         total = sum(severity_counts.values())
         unique_engs = set(
-            getattr(i, "assignee_id", None) for i in incidents if getattr(i, "assignee_id", None)
+            getattr(i, "assignee_id", None)
+            for i in incidents
+            if getattr(i, "assignee_id", None)
         )
         resolved = sum(
-            1 for i in incidents if i.resolved_at and period.start <= i.created_at <= period.end
+            1
+            for i in incidents
+            if i.resolved_at and period.start <= i.created_at <= period.end
         )
         reopened = sum(1 for i in incidents if getattr(i, "reopened", False))
         escalated = sum(1 for i in incidents if getattr(i, "escalated", False))
         sla_ok = sum(
             1
             for i in incidents
-            if i.acknowledged_at and (i.acknowledged_at - i.created_at).total_seconds() < 900
+            if i.acknowledged_at
+            and (i.acknowledged_at - i.created_at).total_seconds() < 900
         )
 
         metrics = TeamMetrics(
@@ -80,12 +93,17 @@ class PerformanceService:
             workload_distribution=calculate_workload_distribution(incidents, period),
             oncall_burden_hours=round(
                 sum(
-                    (s.get("end", period.end) - s.get("start", period.start)).total_seconds() / 3600
+                    (
+                        s.get("end", period.end) - s.get("start", period.start)
+                    ).total_seconds()
+                    / 3600
                     for s in oncall_shifts
                 ),
                 1,
             ),
-            avg_incidents_per_engineer=round(total / len(unique_engs), 1) if unique_engs else 0,
+            avg_incidents_per_engineer=(
+                round(total / len(unique_engs), 1) if unique_engs else 0
+            ),
         )
         classifications = classify_team(metrics)
         metrics.tier = calculate_overall_tier(classifications)
@@ -116,7 +134,9 @@ class PerformanceService:
             for i in incidents
             if i.acknowledged_at
         ]
-        res_times = [(i.resolved_at - i.created_at).total_seconds() / 60 for i in resolved_inc]
+        res_times = [
+            (i.resolved_at - i.created_at).total_seconds() / 60 for i in resolved_inc
+        ]
 
         metrics = EngineerMetrics(
             engineer_id=engineer_id,
@@ -124,32 +144,48 @@ class PerformanceService:
             period=period,
             incidents_handled=len(incidents),
             incidents_resolved=len(resolved_inc),
-            avg_response_time_min=round(sum(ack_times) / len(ack_times), 2) if ack_times else 0,
-            avg_resolution_time_min=round(sum(res_times) / len(res_times), 2) if res_times else 0,
+            avg_response_time_min=(
+                round(sum(ack_times) / len(ack_times), 2) if ack_times else 0
+            ),
+            avg_resolution_time_min=(
+                round(sum(res_times) / len(res_times), 2) if res_times else 0
+            ),
             oncall_hours=calculate_oncall_burden(oncall_shifts, engineer_id, period),
-            after_hours_pages=calculate_after_hours_incidents(incidents, engineer_id, period),
+            after_hours_pages=calculate_after_hours_incidents(
+                incidents, engineer_id, period
+            ),
             escalations_made=sum(
                 1 for i in incidents if getattr(i, "escalated_by", None) == engineer_id
             ),
             escalations_received=sum(
                 1 for i in incidents if getattr(i, "escalated_to", None) == engineer_id
             ),
-            reopen_rate=round(
-                sum(1 for i in incidents if getattr(i, "reopened", False))
-                / len(resolved_inc)
-                * 100,
-                1,
-            )
-            if resolved_inc
-            else 0,
+            reopen_rate=(
+                round(
+                    sum(1 for i in incidents if getattr(i, "reopened", False))
+                    / len(resolved_inc)
+                    * 100,
+                    1,
+                )
+                if resolved_inc
+                else 0
+            ),
         )
         if include_burnout:
-            all_inc = await self.incident_repo.get_incidents(team_id, period.start, period.end)
-            metrics.burnout = calculate_burnout_risk(engineer_id, all_inc, oncall_shifts, period)
+            all_inc = await self.incident_repo.get_incidents(
+                team_id, period.start, period.end
+            )
+            metrics.burnout = calculate_burnout_risk(
+                engineer_id, all_inc, oncall_shifts, period
+            )
         return metrics.anonymize() if anonymize else metrics
 
     async def compare_periods(
-        self, team_id: str, team_name: str, current: PerformancePeriod, previous: PerformancePeriod
+        self,
+        team_id: str,
+        team_name: str,
+        current: PerformancePeriod,
+        previous: PerformancePeriod,
     ) -> PeriodComparison:
         curr_m, prev_m = (
             await self.calculate_team_metrics(team_id, team_name, current),
@@ -185,26 +221,34 @@ class PerformanceService:
             summary=". ".join(parts) or "Performance stable",
         )
 
-    async def get_team_burnout_summary(self, team_id: str, period: PerformancePeriod) -> dict:
-        incidents = await self.incident_repo.get_incidents(team_id, period.start, period.end)
+    async def get_team_burnout_summary(
+        self, team_id: str, period: PerformancePeriod
+    ) -> dict:
+        incidents = await self.incident_repo.get_incidents(
+            team_id, period.start, period.end
+        )
         oncall_shifts = (
             await self.oncall_repo.get_shifts(team_id, period.start, period.end)
             if self.oncall_repo
             else []
         )
         eng_ids = set(
-            getattr(i, "assignee_id", None) for i in incidents if getattr(i, "assignee_id", None)
+            getattr(i, "assignee_id", None)
+            for i in incidents
+            if getattr(i, "assignee_id", None)
         )
         risk_counts, high_risk = {r: 0 for r in BurnoutRisk}, []
         for eid in eng_ids:
             risk = calculate_burnout_risk(eid, incidents, oncall_shifts, period)
             risk_counts[risk.risk_level] += 1
             if risk.risk_level in (BurnoutRisk.HIGH, BurnoutRisk.CRITICAL):
-                high_risk.append({
-                    "id": eid,
-                    "risk_level": risk.risk_level.value,
-                    "score": risk.risk_score,
-                })
+                high_risk.append(
+                    {
+                        "id": eid,
+                        "risk_level": risk.risk_level.value,
+                        "score": risk.risk_score,
+                    }
+                )
         return {
             "total_engineers": len(eng_ids),
             "risk_distribution": {k.value: v for k, v in risk_counts.items()},
@@ -220,7 +264,9 @@ class PerformanceService:
         top_n: int = 10,
         anonymize: bool = False,
     ) -> list[LeaderboardEntry]:
-        incidents = await self.incident_repo.get_incidents(team_id, period.start, period.end)
+        incidents = await self.incident_repo.get_incidents(
+            team_id, period.start, period.end
+        )
         stats: dict[str, dict] = {}
         for i in incidents:
             if not (eid := getattr(i, "assignee_id", None)):
@@ -245,9 +291,15 @@ class PerformanceService:
             return (
                 (s["resolved"] / s["handled"] * 100)
                 if s["handled"] and metric == "resolution_rate"
-                else (s["resp_time"] / s["resp_cnt"] / 60 if s["resp_cnt"] else float("inf"))
-                if metric == "response_time"
-                else s.get("resolved", s["handled"])
+                else (
+                    (
+                        s["resp_time"] / s["resp_cnt"] / 60
+                        if s["resp_cnt"]
+                        else float("inf")
+                    )
+                    if metric == "response_time"
+                    else s.get("resolved", s["handled"])
+                )
             )
 
         scored = sorted(

@@ -35,8 +35,12 @@ class RBACService:
     def __init__(self):
         # In-memory stores (replace with database in production)
         self._roles: dict[UUID, Role] = {}
-        self._assignments: dict[UUID, list[RoleAssignment]] = {}  # user_id -> assignments
-        self._cached_permissions: dict[UUID, UserPermissions] = {}  # user_id -> permissions
+        self._assignments: dict[UUID, list[RoleAssignment]] = (
+            {}
+        )  # user_id -> assignments
+        self._cached_permissions: dict[UUID, UserPermissions] = (
+            {}
+        )  # user_id -> permissions
 
         # Initialize system roles
         self._init_system_roles()
@@ -94,7 +98,11 @@ class RBACService:
         for role in self._roles.values():
             if role.is_system and not include_system:
                 continue
-            if organization_id and role.organization_id and role.organization_id != organization_id:
+            if (
+                organization_id
+                and role.organization_id
+                and role.organization_id != organization_id
+            ):
                 continue
             roles.append(role)
         return roles
@@ -131,7 +139,9 @@ class RBACService:
 
         # Remove assignments
         for user_id, assignments in self._assignments.items():
-            self._assignments[user_id] = [a for a in assignments if a.role_id != role_id]
+            self._assignments[user_id] = [
+                a for a in assignments if a.role_id != role_id
+            ]
 
         del self._roles[role_id]
         return True
@@ -193,7 +203,9 @@ class RBACService:
         # Filter out expired assignments
         now = datetime.utcnow()
         active = [
-            a for a in assignments if a.is_active and (a.expires_at is None or a.expires_at > now)
+            a
+            for a in assignments
+            if a.is_active and (a.expires_at is None or a.expires_at > now)
         ]
 
         return active

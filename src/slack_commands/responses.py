@@ -39,10 +39,12 @@ class BlockKitBuilder:
             }
         ]
         if not incidents:
-            blocks.append({
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": "_No active incidents._"},
-            })
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": "_No active incidents._"},
+                }
+            )
         return {
             "response_type": "ephemeral",
             "blocks": blocks,
@@ -62,10 +64,12 @@ class BlockKitBuilder:
             }
         ]
         if not results:
-            blocks.append({
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": "_No incidents found._"},
-            })
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": "_No incidents found._"},
+                }
+            )
         return {
             "response_type": "ephemeral",
             "blocks": blocks,
@@ -85,10 +89,12 @@ class BlockKitBuilder:
             }
         ]
         if not incidents:
-            blocks.append({
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": "_No recent incidents._"},
-            })
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": "_No recent incidents._"},
+                }
+            )
         return {"response_type": "ephemeral", "blocks": blocks, "text": "Recent"}
 
     @classmethod
@@ -104,10 +110,12 @@ class BlockKitBuilder:
             }
         ]
         if not runbooks:
-            blocks.append({
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": "_No runbooks found._"},
-            })
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": "_No runbooks found._"},
+                }
+            )
         return {
             "response_type": "ephemeral",
             "blocks": blocks,

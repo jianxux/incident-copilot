@@ -404,7 +404,9 @@ class TestDependenciesAPI:
 
     def test_find_path(self, client):
         """Test GET /api/dependencies/path endpoint."""
-        response = client.get("/api/dependencies/path?source=api-gateway&target=database")
+        response = client.get(
+            "/api/dependencies/path?source=api-gateway&target=database"
+        )
         assert response.status_code in (200, 404)
 
     def test_get_graph_stats(self, client):

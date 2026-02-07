@@ -197,7 +197,11 @@ class DependencyGraphAnalyzer:
             return []
 
         try:
-            paths = list(nx.all_simple_paths(self._graph, source_id, target_id, cutoff=max_length))
+            paths = list(
+                nx.all_simple_paths(
+                    self._graph, source_id, target_id, cutoff=max_length
+                )
+            )
         except nx.NetworkXError:
             return []
 

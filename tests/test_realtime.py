@@ -318,10 +318,12 @@ class TestWebSocketEndpoints:
             websocket.receive_json()
 
             # Subscribe to incident room
-            websocket.send_json({
-                "type": "subscribe",
-                "payload": {"room_type": "incident", "room_id": "inc-123"},
-            })
+            websocket.send_json(
+                {
+                    "type": "subscribe",
+                    "payload": {"room_type": "incident", "room_id": "inc-123"},
+                }
+            )
 
             # Should receive subscribed confirmation
             data = websocket.receive_json()

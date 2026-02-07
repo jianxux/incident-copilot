@@ -92,7 +92,9 @@ def classify_team(metrics: TeamMetrics) -> dict[str, PerformanceTier]:
     }
 
 
-def calculate_overall_tier(classifications: dict[str, PerformanceTier]) -> PerformanceTier:
+def calculate_overall_tier(
+    classifications: dict[str, PerformanceTier],
+) -> PerformanceTier:
     if not classifications:
         return PerformanceTier.MEDIUM
     scores = {
@@ -135,7 +137,8 @@ def get_benchmark_context(metric_name: str) -> dict:
         "available": True,
         "name": b.name,
         "thresholds": {
-            t: f"{op} {getattr(b, f'{t}_threshold')}{b.unit}" for t in ["elite", "high", "medium"]
+            t: f"{op} {getattr(b, f'{t}_threshold')}{b.unit}"
+            for t in ["elite", "high", "medium"]
         },
         "source": b.source,
     }
@@ -154,7 +157,11 @@ def compare_to_industry(metrics: TeamMetrics) -> dict:
         "overall_tier": overall,
         "description": descs[overall],
         "metric_tiers": {k: v.value for k, v in classifications.items()},
-        "strengths": [k for k, v in classifications.items() if v == PerformanceTier.ELITE],
-        "improvement_areas": [k for k, v in classifications.items() if v == PerformanceTier.LOW],
+        "strengths": [
+            k for k, v in classifications.items() if v == PerformanceTier.ELITE
+        ],
+        "improvement_areas": [
+            k for k, v in classifications.items() if v == PerformanceTier.LOW
+        ],
         "percentile_estimate": estimate_percentile("mttr", metrics.mttr_minutes),
     }

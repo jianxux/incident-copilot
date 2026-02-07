@@ -38,16 +38,25 @@ class TemplateService:
             templates = [t for t in templates if t.is_active]
         return sorted(templates, key=lambda t: (not t.is_builtin, t.name))
 
-    async def get(self, template_id: str, org_id: str | None = None) -> IncidentTemplate | None:
+    async def get(
+        self, template_id: str, org_id: str | None = None
+    ) -> IncidentTemplate | None:
         """Get a template by ID."""
         if template_id in self._templates:
             return self._templates[template_id].model_copy(deep=True)
-        if org_id and org_id in self._org_templates and template_id in self._org_templates[org_id]:
+        if (
+            org_id
+            and org_id in self._org_templates
+            and template_id in self._org_templates[org_id]
+        ):
             return self._org_templates[org_id][template_id].model_copy(deep=True)
         return None
 
     async def create(
-        self, req: TemplateCreateRequest, org_id: str | None = None, created_by: str | None = None
+        self,
+        req: TemplateCreateRequest,
+        org_id: str | None = None,
+        created_by: str | None = None,
     ) -> IncidentTemplate:
         """Create a new template."""
         now = datetime.utcnow()
@@ -94,7 +103,9 @@ class TemplateService:
                 created_at=template.updated_at,
                 created_by=template.created_by,
                 changes=f"Updated by {updated_by}" if updated_by else "Updated",
-                template_snapshot=template.model_dump(exclude={"version_history", "analytics"}),
+                template_snapshot=template.model_dump(
+                    exclude={"version_history", "analytics"}
+                ),
             )
         )
 
@@ -109,11 +120,15 @@ class TemplateService:
 
     def _save(self, template: IncidentTemplate) -> None:
         if template.organization_id:
-            self._org_templates.setdefault(template.organization_id, {})[template.id] = template
+            self._org_templates.setdefault(template.organization_id, {})[
+                template.id
+            ] = template
         else:
             self._templates[template.id] = template
 
-    async def delete(self, template_id: str, org_id: str | None = None, hard: bool = False) -> bool:
+    async def delete(
+        self, template_id: str, org_id: str | None = None, hard: bool = False
+    ) -> bool:
         """Delete a template (soft by default)."""
         template = await self.get(template_id, org_id)
         if not template or template.is_builtin:
@@ -223,7 +238,9 @@ class TemplateService:
 
         success = 0.0 if escalated else 1.0
         a.success_rate = (
-            success if a.success_rate is None else (a.success_rate * (count - 1) + success) / count
+            success
+            if a.success_rate is None
+            else (a.success_rate * (count - 1) + success) / count
         )
         self._save(template)
 

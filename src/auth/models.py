@@ -169,7 +169,9 @@ class Session(BaseModel):
     refresh_token: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
 
     # Expiry
-    expires_at: datetime = Field(default_factory=lambda: datetime.utcnow() + timedelta(hours=24))
+    expires_at: datetime = Field(
+        default_factory=lambda: datetime.utcnow() + timedelta(hours=24)
+    )
     refresh_expires_at: datetime = Field(
         default_factory=lambda: datetime.utcnow() + timedelta(days=30)
     )

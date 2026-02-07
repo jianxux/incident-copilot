@@ -50,15 +50,17 @@ class TimelineExporter:
 
         # Summary section
         s = data.summary
-        lines.extend([
-            "## Summary",
-            "",
-            f"- **Total Events:** {s.total_events}",
-            f"- **Duration:** {self._format_duration(s.duration_seconds)}",
-            f"- **First Event:** {s.first_event.strftime('%Y-%m-%d %H:%M:%S UTC') if s.first_event else 'N/A'}",
-            f"- **Last Event:** {s.last_event.strftime('%Y-%m-%d %H:%M:%S UTC') if s.last_event else 'N/A'}",
-            "",
-        ])
+        lines.extend(
+            [
+                "## Summary",
+                "",
+                f"- **Total Events:** {s.total_events}",
+                f"- **Duration:** {self._format_duration(s.duration_seconds)}",
+                f"- **First Event:** {s.first_event.strftime('%Y-%m-%d %H:%M:%S UTC') if s.first_event else 'N/A'}",
+                f"- **Last Event:** {s.last_event.strftime('%Y-%m-%d %H:%M:%S UTC') if s.last_event else 'N/A'}",
+                "",
+            ]
+        )
 
         # Event breakdown
         if s.event_counts_by_type:
@@ -142,12 +144,16 @@ class TimelineExporter:
             "summary": {
                 "total_events": data.summary.total_events,
                 "duration_seconds": data.summary.duration_seconds,
-                "first_event": data.summary.first_event.isoformat()
-                if data.summary.first_event
-                else None,
-                "last_event": data.summary.last_event.isoformat()
-                if data.summary.last_event
-                else None,
+                "first_event": (
+                    data.summary.first_event.isoformat()
+                    if data.summary.first_event
+                    else None
+                ),
+                "last_event": (
+                    data.summary.last_event.isoformat()
+                    if data.summary.last_event
+                    else None
+                ),
                 "event_counts_by_type": data.summary.event_counts_by_type,
                 "event_counts_by_source": data.summary.event_counts_by_source,
                 "gaps": [
@@ -206,15 +212,17 @@ class TimelineExporter:
 
         # Summary
         s = data.summary
-        html_parts.extend([
-            "<div class='summary'>",
-            "<h2>Summary</h2>",
-            "<div class='stats'>",
-            f"<div class='stat'><span class='label'>Events</span><span class='value'>{s.total_events}</span></div>",
-            f"<div class='stat'><span class='label'>Duration</span><span class='value'>{self._format_duration(s.duration_seconds)}</span></div>",
-            f"<div class='stat'><span class='label'>Gaps</span><span class='value'>{len(s.gaps)}</span></div>",
-            "</div></div>",
-        ])
+        html_parts.extend(
+            [
+                "<div class='summary'>",
+                "<h2>Summary</h2>",
+                "<div class='stats'>",
+                f"<div class='stat'><span class='label'>Events</span><span class='value'>{s.total_events}</span></div>",
+                f"<div class='stat'><span class='label'>Duration</span><span class='value'>{self._format_duration(s.duration_seconds)}</span></div>",
+                f"<div class='stat'><span class='label'>Gaps</span><span class='value'>{len(s.gaps)}</span></div>",
+                "</div></div>",
+            ]
+        )
 
         # Timeline
         html_parts.append("<div class='timeline'>")
@@ -225,23 +233,29 @@ class TimelineExporter:
             milestone_class = " milestone" if entry.is_milestone else ""
             color = entry.color or "#3498db"
 
-            html_parts.extend([
-                f"<div class='event{milestone_class}' style='border-left-color: {color}'>",
-                f"<div class='event-header'>",
-                f"<span class='icon'>{entry.icon or '•'}</span>",
-                f"<span class='time'>{event.timestamp.strftime('%H:%M:%S')}</span>",
-                f"<span class='relative'>({entry.relative_time})</span>",
-                "</div>",
-                f"<h3>{event.title}</h3>",
-            ])
+            html_parts.extend(
+                [
+                    f"<div class='event{milestone_class}' style='border-left-color: {color}'>",
+                    f"<div class='event-header'>",
+                    f"<span class='icon'>{entry.icon or '•'}</span>",
+                    f"<span class='time'>{event.timestamp.strftime('%H:%M:%S')}</span>",
+                    f"<span class='relative'>({entry.relative_time})</span>",
+                    "</div>",
+                    f"<h3>{event.title}</h3>",
+                ]
+            )
 
             if event.description:
                 html_parts.append(f"<p class='description'>{event.description}</p>")
 
             if include_metadata:
                 html_parts.append("<div class='metadata'>")
-                html_parts.append(f"<span class='badge source'>{event.source.value}</span>")
-                html_parts.append(f"<span class='badge type'>{event.event_type.value}</span>")
+                html_parts.append(
+                    f"<span class='badge source'>{event.source.value}</span>"
+                )
+                html_parts.append(
+                    f"<span class='badge type'>{event.event_type.value}</span>"
+                )
                 if event.actor:
                     html_parts.append(f"<span class='badge actor'>{event.actor}</span>")
                 for tag in event.tags:
@@ -255,7 +269,9 @@ class TimelineExporter:
 
     def _export_csv(self, data: TimelineExport) -> str:
         """Export timeline as CSV."""
-        lines = ["timestamp,relative_time,event_type,source,severity,title,description,actor,tags"]
+        lines = [
+            "timestamp,relative_time,event_type,source,severity,title,description,actor,tags"
+        ]
 
         for entry in data.entries:
             event = entry.event

@@ -44,7 +44,9 @@ class GitHubAdapter:
 
         return None
 
-    async def get_context(self, service_name: str, since_hours: int = 24) -> GitHubContext | None:
+    async def get_context(
+        self, service_name: str, since_hours: int = 24
+    ) -> GitHubContext | None:
         """Get GitHub context for a service."""
         repo = self._get_repo_for_service(service_name)
         if not repo:
@@ -112,7 +114,9 @@ class GitHubAdapter:
 
         return deploys
 
-    async def _fetch_codeowners(self, client: httpx.AsyncClient, repo: str) -> list[str]:
+    async def _fetch_codeowners(
+        self, client: httpx.AsyncClient, repo: str
+    ) -> list[str]:
         """Fetch CODEOWNERS file and extract owners."""
         # Try common CODEOWNERS locations
         paths = [".github/CODEOWNERS", "CODEOWNERS", "docs/CODEOWNERS"]

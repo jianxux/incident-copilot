@@ -25,7 +25,9 @@ class GitLabAdapter:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.token = settings.gitlab_token
-        self.base_url = settings.gitlab_url.rstrip("/") if settings.gitlab_url else self.DEFAULT_URL
+        self.base_url = (
+            settings.gitlab_url.rstrip("/") if settings.gitlab_url else self.DEFAULT_URL
+        )
         self.project_map = settings.gitlab_project_map
 
     @property
@@ -66,7 +68,9 @@ class GitLabAdapter:
         """
         return quote(project_path, safe="")
 
-    async def get_context(self, service_name: str, since_hours: int = 24) -> GitLabContext | None:
+    async def get_context(
+        self, service_name: str, since_hours: int = 24
+    ) -> GitLabContext | None:
         """Get GitLab context for a service.
 
         Fetches:
@@ -86,11 +90,15 @@ class GitLabAdapter:
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 # Fetch data in parallel
-                deploys = await self._fetch_recent_commits(client, project_path, since_hours)
+                deploys = await self._fetch_recent_commits(
+                    client, project_path, since_hours
+                )
                 merge_requests = await self._fetch_recent_merge_requests(
                     client, project_path, since_hours
                 )
-                pipelines = await self._fetch_recent_pipelines(client, project_path, since_hours)
+                pipelines = await self._fetch_recent_pipelines(
+                    client, project_path, since_hours
+                )
                 codeowners = await self._fetch_codeowners(client, project_path)
 
                 return GitLabContext(
@@ -142,7 +150,9 @@ class GitLabAdapter:
             sha = commit.get("id", "")
 
             # Parse timestamp
-            timestamp_str = commit.get("committed_date", "") or commit.get("created_at", "")
+            timestamp_str = commit.get("committed_date", "") or commit.get(
+                "created_at", ""
+            )
             try:
                 timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
             except (ValueError, AttributeError):
@@ -253,7 +263,9 @@ class GitLabAdapter:
             # Parse timestamp
             created_at_str = pipeline.get("created_at", "")
             try:
-                created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+                created_at = datetime.fromisoformat(
+                    created_at_str.replace("Z", "+00:00")
+                )
             except (ValueError, AttributeError):
                 created_at = datetime.now(UTC)
 
@@ -323,7 +335,9 @@ class GitLabAdapter:
 
         return resp.json()
 
-    async def _fetch_codeowners(self, client: httpx.AsyncClient, project_path: str) -> list[str]:
+    async def _fetch_codeowners(
+        self, client: httpx.AsyncClient, project_path: str
+    ) -> list[str]:
         """Fetch CODEOWNERS file and extract owners."""
         encoded_path = self._encode_project_path(project_path)
 
@@ -394,5 +408,7 @@ class GitLabAdapter:
                 return None
 
         except Exception as e:
-            logger.error("gitlab_project_info_error", project=project_path, error=str(e))
+            logger.error(
+                "gitlab_project_info_error", project=project_path, error=str(e)
+            )
             return None

@@ -40,7 +40,8 @@ class CreateRoleRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: str = Field("", max_length=500)
     permissions: list[dict] = Field(
-        default_factory=list, description="List of permission objects with resource_type and action"
+        default_factory=list,
+        description="List of permission objects with resource_type and action",
     )
     inherits_from: list[UUID] = Field(default_factory=list)
 
@@ -461,7 +462,10 @@ async def get_allowed_resources(
 @router.get("/resource-types")
 async def list_resource_types() -> list[dict]:
     """List all resource types."""
-    return [{"type": rt.value, "name": rt.value.replace("_", " ").title()} for rt in ResourceType]
+    return [
+        {"type": rt.value, "name": rt.value.replace("_", " ").title()}
+        for rt in ResourceType
+    ]
 
 
 @router.get("/actions")
@@ -473,4 +477,6 @@ async def list_actions() -> list[dict]:
 @router.get("/scope-types")
 async def list_scope_types() -> list[dict]:
     """List all scope types."""
-    return [{"scope": s.value, "name": s.value.replace("_", " ").title()} for s in ScopeType]
+    return [
+        {"scope": s.value, "name": s.value.replace("_", " ").title()} for s in ScopeType
+    ]

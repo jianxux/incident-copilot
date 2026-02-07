@@ -164,7 +164,9 @@ class InMemorySearchBackend(SearchBackend):
             return False
         return True
 
-    def _highlight_text(self, text: str, query_tokens: list[str], max_len: int = 200) -> str:
+    def _highlight_text(
+        self, text: str, query_tokens: list[str], max_len: int = 200
+    ) -> str:
         """Create highlighted snippet from text."""
         if not query_tokens or not text:
             return text[:max_len] + "..." if len(text) > max_len else text
@@ -247,7 +249,9 @@ class InMemorySearchBackend(SearchBackend):
 
         # Sort results
         if query.sort_by == SortField.RELEVANCE:
-            scored_docs.sort(key=lambda x: x[1], reverse=query.sort_order == SortOrder.DESC)
+            scored_docs.sort(
+                key=lambda x: x[1], reverse=query.sort_order == SortOrder.DESC
+            )
         elif query.sort_by == SortField.CREATED_AT:
             scored_docs.sort(
                 key=lambda x: x[0].created_at or datetime.min,
@@ -266,7 +270,8 @@ class InMemorySearchBackend(SearchBackend):
             )
         elif query.sort_by == SortField.TITLE:
             scored_docs.sort(
-                key=lambda x: x[0].title.lower(), reverse=query.sort_order == SortOrder.DESC
+                key=lambda x: x[0].title.lower(),
+                reverse=query.sort_order == SortOrder.DESC,
             )
 
         # Paginate
@@ -283,7 +288,9 @@ class InMemorySearchBackend(SearchBackend):
             snippet = ""
             if query.highlight and query_tokens:
                 snippet = self._highlight_text(doc.content, query_tokens)
-                highlights["title"] = [self._highlight_text(doc.title, query_tokens, 100)]
+                highlights["title"] = [
+                    self._highlight_text(doc.title, query_tokens, 100)
+                ]
                 highlights["content"] = [snippet]
 
             hits.append(
@@ -301,20 +308,32 @@ class InMemorySearchBackend(SearchBackend):
             )
 
         # Build facets
-        def make_facet_values(counter: Counter, selected: list[str] | None) -> list[FacetValue]:
+        def make_facet_values(
+            counter: Counter, selected: list[str] | None
+        ) -> list[FacetValue]:
             return [
                 FacetValue(value=v, count=c, selected=v in (selected or []))
                 for v, c in counter.most_common(20)
             ]
 
         facets = SearchFacets(
-            statuses=make_facet_values(facet_counts["statuses"], query.filters.statuses),
-            severities=make_facet_values(facet_counts["severities"], query.filters.severities),
-            services=make_facet_values(facet_counts["services"], query.filters.services),
+            statuses=make_facet_values(
+                facet_counts["statuses"], query.filters.statuses
+            ),
+            severities=make_facet_values(
+                facet_counts["severities"], query.filters.severities
+            ),
+            services=make_facet_values(
+                facet_counts["services"], query.filters.services
+            ),
             tags=make_facet_values(facet_counts["tags"], query.filters.tags),
             doc_types=make_facet_values(
                 facet_counts["doc_types"],
-                [t.value for t in query.filters.doc_types] if query.filters.doc_types else None,
+                (
+                    [t.value for t in query.filters.doc_types]
+                    if query.filters.doc_types
+                    else None
+                ),
             ),
         )
 
@@ -355,7 +374,9 @@ class InMemorySearchBackend(SearchBackend):
         for title, score, doc_type in suggestions:
             if title not in seen:
                 seen.add(title)
-                highlight = re.sub(re.escape(prefix), f"**{prefix}**", title, flags=re.IGNORECASE)
+                highlight = re.sub(
+                    re.escape(prefix), f"**{prefix}**", title, flags=re.IGNORECASE
+                )
                 results.append(
                     SearchSuggestion(
                         text=title,
@@ -395,17 +416,24 @@ class InMemorySearchBackend(SearchBackend):
 
         return SearchFacets(
             statuses=[
-                FacetValue(value=v, count=c) for v, c in facet_counts["statuses"].most_common(20)
+                FacetValue(value=v, count=c)
+                for v, c in facet_counts["statuses"].most_common(20)
             ],
             severities=[
-                FacetValue(value=v, count=c) for v, c in facet_counts["severities"].most_common(20)
+                FacetValue(value=v, count=c)
+                for v, c in facet_counts["severities"].most_common(20)
             ],
             services=[
-                FacetValue(value=v, count=c) for v, c in facet_counts["services"].most_common(20)
+                FacetValue(value=v, count=c)
+                for v, c in facet_counts["services"].most_common(20)
             ],
-            tags=[FacetValue(value=v, count=c) for v, c in facet_counts["tags"].most_common(20)],
+            tags=[
+                FacetValue(value=v, count=c)
+                for v, c in facet_counts["tags"].most_common(20)
+            ],
             doc_types=[
-                FacetValue(value=v, count=c) for v, c in facet_counts["doc_types"].most_common(20)
+                FacetValue(value=v, count=c)
+                for v, c in facet_counts["doc_types"].most_common(20)
             ],
         )
 
@@ -441,14 +469,16 @@ class ElasticsearchBackend(SearchBackend):
         filter_clauses = []
 
         if query.query:
-            must_clauses.append({
-                "multi_match": {
-                    "query": query.query,
-                    "fields": ["title^3", "content", "tags^2", "service"],
-                    "type": "best_fields",
-                    "fuzziness": "AUTO",
+            must_clauses.append(
+                {
+                    "multi_match": {
+                        "query": query.query,
+                        "fields": ["title^3", "content", "tags^2", "service"],
+                        "type": "best_fields",
+                        "fuzziness": "AUTO",
+                    }
                 }
-            })
+            )
 
         # Apply filters
         if query.filters.statuses:
@@ -460,9 +490,9 @@ class ElasticsearchBackend(SearchBackend):
         if query.filters.tags:
             filter_clauses.append({"terms": {"tags": query.filters.tags}})
         if query.filters.doc_types:
-            filter_clauses.append({
-                "terms": {"doc_type": [t.value for t in query.filters.doc_types]}
-            })
+            filter_clauses.append(
+                {"terms": {"doc_type": [t.value for t in query.filters.doc_types]}}
+            )
         if query.filters.date_from or query.filters.date_to:
             range_filter = {"created_at": {}}
             if query.filters.date_from:
@@ -539,16 +569,22 @@ class ElasticsearchBackend(SearchBackend):
                     id=source["id"],
                     doc_type=SearchableType(source["doc_type"]),
                     title=source["title"],
-                    snippet=highlights.get("content", [source.get("content", "")[:200]])[0],
+                    snippet=highlights.get(
+                        "content", [source.get("content", "")[:200]]
+                    )[0],
                     score=hit["_score"] or 0.0,
                     highlights=highlights,
                     metadata=source.get("metadata", {}),
-                    created_at=datetime.fromisoformat(source["created_at"])
-                    if source.get("created_at")
-                    else None,
-                    updated_at=datetime.fromisoformat(source["updated_at"])
-                    if source.get("updated_at")
-                    else None,
+                    created_at=(
+                        datetime.fromisoformat(source["created_at"])
+                        if source.get("created_at")
+                        else None
+                    ),
+                    updated_at=(
+                        datetime.fromisoformat(source["updated_at"])
+                        if source.get("updated_at")
+                        else None
+                    ),
                 )
             )
 
@@ -641,7 +677,11 @@ class ElasticsearchBackend(SearchBackend):
             suggestions.append(
                 SearchSuggestion(
                     text=source["title"],
-                    doc_type=SearchableType(source["doc_type"]) if source.get("doc_type") else None,
+                    doc_type=(
+                        SearchableType(source["doc_type"])
+                        if source.get("doc_type")
+                        else None
+                    ),
                     score=hit["_score"] or 0.0,
                     highlight=highlights.get("title", [source["title"]])[0],
                 )
@@ -660,7 +700,9 @@ class SearchEngine:
 
     def __init__(self, backend: SearchBackend | None = None):
         self._backend = backend or InMemorySearchBackend()
-        self._query_log: list[tuple[datetime, str, int]] = []  # (time, query, result_count)
+        self._query_log: list[tuple[datetime, str, int]] = (
+            []
+        )  # (time, query, result_count)
 
     @property
     def backend(self) -> SearchBackend:

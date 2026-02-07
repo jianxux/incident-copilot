@@ -39,7 +39,9 @@ class PostmortemStore:
             return self._postmortems.get(postmortem_id)
         return None
 
-    async def update(self, incident_id: str, updates: PostmortemUpdateRequest) -> Postmortem | None:
+    async def update(
+        self, incident_id: str, updates: PostmortemUpdateRequest
+    ) -> Postmortem | None:
         """Update an existing postmortem."""
         postmortem = await self.get_by_incident(incident_id)
         if not postmortem:

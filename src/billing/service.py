@@ -33,7 +33,9 @@ class BillingService:
     @property
     def is_configured(self) -> bool:
         """Check if Stripe is configured."""
-        return bool(self.settings.stripe_api_key and self.settings.stripe_publishable_key)
+        return bool(
+            self.settings.stripe_api_key and self.settings.stripe_publishable_key
+        )
 
     def get_price_id(self, plan: PlanTier) -> str | None:
         """Get Stripe Price ID for a plan."""

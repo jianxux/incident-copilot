@@ -335,7 +335,9 @@ class GamificationService:
         offset: int = 0,
     ) -> list[PointTransaction]:
         """Get user's point transaction history."""
-        user_transactions = [t for t in self._point_transactions if t.user_id == user_id]
+        user_transactions = [
+            t for t in self._point_transactions if t.user_id == user_id
+        ]
         # Sort by most recent first
         user_transactions.sort(key=lambda t: t.created_at, reverse=True)
         return user_transactions[offset : offset + limit]
@@ -628,13 +630,17 @@ class GamificationService:
         elif period == LeaderboardPeriod.QUARTERLY:
             quarter = (now.month - 1) // 3
             start_month = quarter * 3 + 1
-            start = now.replace(month=start_month, day=1, hour=0, minute=0, second=0, microsecond=0)
+            start = now.replace(
+                month=start_month, day=1, hour=0, minute=0, second=0, microsecond=0
+            )
             if start_month + 3 > 12:
                 end = start.replace(year=now.year + 1, month=(start_month + 3 - 12))
             else:
                 end = start.replace(month=start_month + 3)
         elif period == LeaderboardPeriod.YEARLY:
-            start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            start = now.replace(
+                month=1, day=1, hour=0, minute=0, second=0, microsecond=0
+            )
             end = start.replace(year=now.year + 1)
         else:  # ALL_TIME
             start = datetime(2000, 1, 1)
@@ -659,10 +665,12 @@ class GamificationService:
             # Rank by points earned in period
             for user_id, points in self._user_points.items():
                 if points.weekly_points > 0:  # Simple filter
-                    entries.append({
-                        "user_id": user_id,
-                        "value": points.weekly_points,
-                    })
+                    entries.append(
+                        {
+                            "user_id": user_id,
+                            "value": points.weekly_points,
+                        }
+                    )
 
         # Sort by value descending
         entries.sort(key=lambda x: x["value"], reverse=True)

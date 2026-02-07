@@ -14,9 +14,7 @@ class TestRunbookIndexer:
         """Test keyword extraction from text."""
         indexer = RunbookIndexer()
 
-        text = (
-            "The payments service is experiencing high CPU usage. Check the database connections."
-        )
+        text = "The payments service is experiencing high CPU usage. Check the database connections."
         keywords = indexer._extract_keywords(text)
 
         assert "payments" in keywords

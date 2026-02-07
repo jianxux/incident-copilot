@@ -215,7 +215,9 @@ class EscalationScheduler:
             "pending_escalations": len(pending),
             "registered_callbacks": len(self._callbacks),
             "last_rotation_check": (
-                self._last_rotation_check.isoformat() if self._last_rotation_check else None
+                self._last_rotation_check.isoformat()
+                if self._last_rotation_check
+                else None
             ),
         }
 

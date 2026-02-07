@@ -29,7 +29,10 @@ class OpsgenieProvider:
 
     @property
     def headers(self) -> dict:
-        return {"Authorization": f"GenieKey {self.api_key}", "Content-Type": "application/json"}
+        return {
+            "Authorization": f"GenieKey {self.api_key}",
+            "Content-Type": "application/json",
+        }
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
@@ -70,7 +73,9 @@ class OpsgenieProvider:
         """Get currently on-call users for a schedule."""
         client = await self._get_client()
 
-        resp = await client.get(f"/schedules/{schedule_id}/on-calls", params={"flat": "true"})
+        resp = await client.get(
+            f"/schedules/{schedule_id}/on-calls", params={"flat": "true"}
+        )
         resp.raise_for_status()
         data = resp.json()
 
@@ -128,7 +133,9 @@ class OpsgenieProvider:
                         start_time=datetime.fromisoformat(
                             period["startDate"].replace("Z", "+00:00")
                         ),
-                        end_time=datetime.fromisoformat(period["endDate"].replace("Z", "+00:00")),
+                        end_time=datetime.fromisoformat(
+                            period["endDate"].replace("Z", "+00:00")
+                        ),
                         timezone=tz,
                     )
                 )
@@ -186,7 +193,9 @@ class OpsgenieProvider:
 
         return rotations
 
-    async def create_override(self, schedule_id: str, override: OnCallOverride) -> OnCallOverride:
+    async def create_override(
+        self, schedule_id: str, override: OnCallOverride
+    ) -> OnCallOverride:
         """Create a schedule override in Opsgenie."""
         client = await self._get_client()
 
@@ -203,7 +212,8 @@ class OpsgenieProvider:
         if rotations:
             rotation_id = rotations[0].id.replace(f"og_rot_{schedule_id}_", "")
             resp = await client.post(
-                f"/schedules/{schedule_id}/rotations/{rotation_id}/overrides", json=payload
+                f"/schedules/{schedule_id}/rotations/{rotation_id}/overrides",
+                json=payload,
             )
             resp.raise_for_status()
 
@@ -228,7 +238,9 @@ class OpsgenieProvider:
         try:
             now = datetime.utcnow()
             shifts = await self.get_schedule_timeline(
-                schedule_id, since=now - timedelta(days=7), until=now + timedelta(days=30)
+                schedule_id,
+                since=now - timedelta(days=7),
+                until=now + timedelta(days=30),
             )
             shifts_count = len(shifts)
         except Exception as e:

@@ -257,7 +257,9 @@ class CostService:
         by_team: dict[str, Decimal] = {}
         for entry in current_entries:
             if entry.team:
-                by_team[entry.team] = by_team.get(entry.team, Decimal("0")) + entry.amount_usd
+                by_team[entry.team] = (
+                    by_team.get(entry.team, Decimal("0")) + entry.amount_usd
+                )
 
         # By department
         by_department: dict[str, Decimal] = {}
@@ -317,7 +319,9 @@ class CostService:
         # Calculate totals
         total_cost = sum(e.amount_usd for e in entries)
         incident_count = (
-            len(incident_costs) if incident_costs else len(set(e.incident_id for e in entries))
+            len(incident_costs)
+            if incident_costs
+            else len(set(e.incident_id for e in entries))
         )
         avg_cost = total_cost / Decimal(str(max(1, incident_count)))
 
@@ -348,7 +352,9 @@ class CostService:
         by_team: dict[str, Decimal] = {}
         for entry in entries:
             if entry.team:
-                by_team[entry.team] = by_team.get(entry.team, Decimal("0")) + entry.amount_usd
+                by_team[entry.team] = (
+                    by_team.get(entry.team, Decimal("0")) + entry.amount_usd
+                )
 
         # By department
         by_department: dict[str, Decimal] = {}
@@ -436,11 +442,14 @@ class CostService:
 
         if prevention_investment > 0:
             roi_pct = float(
-                (projected_savings - prevention_investment) / prevention_investment * 100
+                (projected_savings - prevention_investment)
+                / prevention_investment
+                * 100
             )
             if projected_savings > 0:
                 payback_months = float(
-                    prevention_investment / (projected_savings / Decimal(str(days / 30)))
+                    prevention_investment
+                    / (projected_savings / Decimal(str(days / 30)))
                 )
 
         analysis = ROIAnalysis(
@@ -561,11 +570,15 @@ class CostService:
             },
             "comparison": {
                 "cost_change": trend1.total_cost - trend2.total_cost,
-                "cost_change_pct": float(
-                    (trend1.total_cost - trend2.total_cost) / trend2.total_cost * 100
-                )
-                if trend2.total_cost
-                else None,
+                "cost_change_pct": (
+                    float(
+                        (trend1.total_cost - trend2.total_cost)
+                        / trend2.total_cost
+                        * 100
+                    )
+                    if trend2.total_cost
+                    else None
+                ),
                 "incident_count_change": trend1.incident_count - trend2.incident_count,
             },
         }

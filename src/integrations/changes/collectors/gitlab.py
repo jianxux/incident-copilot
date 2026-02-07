@@ -7,7 +7,14 @@ from typing import Optional
 
 import httpx
 
-from ..models import ChangeEvent, ChangeSource, ChangeStatus, ChangeType, Deployment, RiskLevel
+from ..models import (
+    ChangeEvent,
+    ChangeSource,
+    ChangeStatus,
+    ChangeType,
+    Deployment,
+    RiskLevel,
+)
 
 
 class GitLabCollector:
@@ -31,7 +38,9 @@ class GitLabCollector:
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
             self._client = httpx.AsyncClient(
-                base_url=self.base_url, headers={"PRIVATE-TOKEN": self.token}, timeout=30.0
+                base_url=self.base_url,
+                headers={"PRIVATE-TOKEN": self.token},
+                timeout=30.0,
             )
         return self._client
 
@@ -107,7 +116,9 @@ class GitLabCollector:
             project_name = project_resp.json().get("name", project_id)
 
         for dep in resp.json():
-            created_at = datetime.fromisoformat(dep["created_at"].replace("Z", "+00:00"))
+            created_at = datetime.fromisoformat(
+                dep["created_at"].replace("Z", "+00:00")
+            )
 
             if created_at < since:
                 continue
@@ -116,7 +127,9 @@ class GitLabCollector:
 
             finished_at = None
             if dep.get("finished_at"):
-                finished_at = datetime.fromisoformat(dep["finished_at"].replace("Z", "+00:00"))
+                finished_at = datetime.fromisoformat(
+                    dep["finished_at"].replace("Z", "+00:00")
+                )
 
             deployment = Deployment(
                 id=f"gl-deploy-{dep['id']}",
@@ -157,7 +170,12 @@ class GitLabCollector:
 
         resp = await client.get(
             f"/projects/{project_id}/merge_requests",
-            params={"state": "merged", "order_by": "updated_at", "sort": "desc", "per_page": 50},
+            params={
+                "state": "merged",
+                "order_by": "updated_at",
+                "sort": "desc",
+                "per_page": 50,
+            },
         )
 
         if resp.status_code != 200:
@@ -182,8 +200,12 @@ class GitLabCollector:
                 source=ChangeSource.GITLAB,
                 status=ChangeStatus.COMPLETED,
                 title=mr["title"],
-                description=mr.get("description", "")[:500] if mr.get("description") else None,
-                started_at=datetime.fromisoformat(mr["created_at"].replace("Z", "+00:00")),
+                description=(
+                    mr.get("description", "")[:500] if mr.get("description") else None
+                ),
+                started_at=datetime.fromisoformat(
+                    mr["created_at"].replace("Z", "+00:00")
+                ),
                 completed_at=merged_at,
                 author=mr["author"]["username"] if mr.get("author") else "unknown",
                 service=project_name,
@@ -225,7 +247,9 @@ class GitLabCollector:
                     source=ChangeSource.GITLAB,
                     status=self._map_status(dep["status"]),
                     title=f"Deploy {dep['ref']} to {dep['environment']}",
-                    started_at=datetime.fromisoformat(dep["created_at"].replace("Z", "+00:00")),
+                    started_at=datetime.fromisoformat(
+                        dep["created_at"].replace("Z", "+00:00")
+                    ),
                     author=dep["user"]["username"] if dep.get("user") else "unknown",
                     environment=dep["environment"],
                     service=project_id,

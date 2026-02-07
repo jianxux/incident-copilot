@@ -27,7 +27,10 @@ class MaintenanceScheduler:
         return parts
 
     def get_next_occurrences(
-        self, schedule: MaintenanceSchedule, from_time: Optional[datetime] = None, count: int = 10
+        self,
+        schedule: MaintenanceSchedule,
+        from_time: Optional[datetime] = None,
+        count: int = 10,
     ) -> list[RecurrenceInstance]:
         if not schedule.is_recurring or not schedule.rrule:
             return []
@@ -83,7 +86,9 @@ class MaintenanceScheduler:
     ) -> Optional[RecurrenceInstance]:
         if not schedule.is_recurring:
             if schedule.start_time <= target <= schedule.end_time:
-                return RecurrenceInstance(UUID(int=0), schedule.start_time, schedule.end_time, 0)
+                return RecurrenceInstance(
+                    UUID(int=0), schedule.start_time, schedule.end_time, 0
+                )
             return None
         for occ in self.get_next_occurrences(
             schedule, target - schedule.duration - timedelta(days=1), 5
@@ -94,7 +99,10 @@ class MaintenanceScheduler:
 
     def generate_ical_event(self, window: MaintenanceWindow) -> str:
         esc = lambda t: (
-            t.replace("\\", "\\\\").replace("\n", "\\n").replace(",", "\\,").replace(";", "\\;")
+            t.replace("\\", "\\\\")
+            .replace("\n", "\\n")
+            .replace(",", "\\,")
+            .replace(";", "\\;")
         )
         lines = [
             "BEGIN:VEVENT",
@@ -138,7 +146,8 @@ class MaintenanceScheduler:
             elif "FREQ" not in self.parse_rrule(schedule.rrule):
                 warnings.append("RRULE missing FREQ")
             if (
-                "COUNT" not in (self.parse_rrule(schedule.rrule) if schedule.rrule else {})
+                "COUNT"
+                not in (self.parse_rrule(schedule.rrule) if schedule.rrule else {})
                 and not schedule.recurrence_end
             ):
                 warnings.append("Recurring has no end")
@@ -154,7 +163,11 @@ class MaintenanceScheduler:
         for w in windows:
             if w.status in (MaintenanceStatus.CANCELLED, MaintenanceStatus.COMPLETED):
                 continue
-            if scope_type and identifier and not w.scope.matches(ScopeType(scope_type), identifier):
+            if (
+                scope_type
+                and identifier
+                and not w.scope.matches(ScopeType(scope_type), identifier)
+            ):
                 continue
             start = (
                 self.get_next_occurrences(w.schedule, now, 1)[0].start_time

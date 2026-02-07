@@ -32,7 +32,10 @@ class LaunchDarklyCollector:
         if self._client is None:
             self._client = httpx.AsyncClient(
                 base_url=self.base_url,
-                headers={"Authorization": self.api_key, "Content-Type": "application/json"},
+                headers={
+                    "Authorization": self.api_key,
+                    "Content-Type": "application/json",
+                },
                 timeout=30.0,
             )
         return self._client
@@ -58,7 +61,9 @@ class LaunchDarklyCollector:
 
         return changes
 
-    async def _get_audit_log(self, since: datetime, until: Optional[datetime]) -> list[dict]:
+    async def _get_audit_log(
+        self, since: datetime, until: Optional[datetime]
+    ) -> list[dict]:
         """Get audit log entries for flag changes."""
         client = await self._get_client()
         entries = []
@@ -173,10 +178,16 @@ class LaunchDarklyCollector:
             new_state = True
             previous_state = None
 
-            if "turned on" in title.lower() or "updateon" in entry.get("name", "").lower():
+            if (
+                "turned on" in title.lower()
+                or "updateon" in entry.get("name", "").lower()
+            ):
                 new_state = True
                 previous_state = False
-            elif "turned off" in title.lower() or "updateoff" in entry.get("name", "").lower():
+            elif (
+                "turned off" in title.lower()
+                or "updateoff" in entry.get("name", "").lower()
+            ):
                 new_state = False
                 previous_state = True
 
@@ -242,7 +253,9 @@ class LaunchDarklyCollector:
         """List all feature flags in the project."""
         client = await self._get_client()
 
-        resp = await client.get(f"/flags/{self.project_key}", params={"env": environment})
+        resp = await client.get(
+            f"/flags/{self.project_key}", params={"env": environment}
+        )
 
         if resp.status_code != 200:
             return []
@@ -250,12 +263,14 @@ class LaunchDarklyCollector:
         flags = []
         for item in resp.json().get("items", []):
             env_config = item.get("environments", {}).get(environment, {})
-            flags.append({
-                "key": item.get("key"),
-                "name": item.get("name"),
-                "on": env_config.get("on", False),
-                "archived": item.get("archived", False),
-                "temporary": item.get("temporary", False),
-            })
+            flags.append(
+                {
+                    "key": item.get("key"),
+                    "name": item.get("name"),
+                    "on": env_config.get("on", False),
+                    "archived": item.get("archived", False),
+                    "temporary": item.get("temporary", False),
+                }
+            )
 
         return flags

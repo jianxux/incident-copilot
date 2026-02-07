@@ -164,7 +164,9 @@ class MarkdownFormatter:
                     lines.append(f"- **{ts}** - [{event_type}] {event_title}\n")
 
                 if max_events and len(timeline) > max_events:
-                    lines.append(f"- *... and {len(timeline) - max_events} more events*\n")
+                    lines.append(
+                        f"- *... and {len(timeline) - max_events} more events*\n"
+                    )
                 lines.append("\n")
 
         # Comments
@@ -226,7 +228,10 @@ class MarkdownFormatter:
                     ["Service", pm.get("service_name", "N/A")],
                     ["Severity", pm.get("severity", "N/A")],
                     ["Status", pm.get("status", "N/A")],
-                    ["Duration", f"{pm.get('incident_duration_minutes', 'N/A')} minutes"],
+                    [
+                        "Duration",
+                        f"{pm.get('incident_duration_minutes', 'N/A')} minutes",
+                    ],
                     ["Created", self._format_datetime(pm.get("created_at"))],
                     ["Author", pm.get("created_by", "N/A")],
                 ],
@@ -244,7 +249,9 @@ class MarkdownFormatter:
             root_cause = pm.get("root_cause", {})
             if root_cause:
                 lines.append(self._heading("Root Cause Analysis", 3))
-                lines.append(f"**Primary Cause:** {root_cause.get('primary_cause', 'N/A')}\n\n")
+                lines.append(
+                    f"**Primary Cause:** {root_cause.get('primary_cause', 'N/A')}\n\n"
+                )
 
                 if root_cause.get("trigger"):
                     lines.append(f"**Trigger:** {root_cause['trigger']}\n\n")
@@ -265,8 +272,14 @@ class MarkdownFormatter:
                         ["Metric", "Value"],
                         [
                             ["Severity", impact.get("severity", "N/A")],
-                            ["Duration", f"{impact.get('duration_minutes', 'N/A')} minutes"],
-                            ["Users Affected", str(impact.get("users_affected", "N/A"))],
+                            [
+                                "Duration",
+                                f"{impact.get('duration_minutes', 'N/A')} minutes",
+                            ],
+                            [
+                                "Users Affected",
+                                str(impact.get("users_affected", "N/A")),
+                            ],
                             ["SLA Breach", "Yes" if impact.get("sla_breach") else "No"],
                         ],
                     )
@@ -344,21 +357,27 @@ class MarkdownFormatter:
                     [
                         [
                             "Mean MTTR",
-                            f"{stats.get('mean_mttr_minutes', 'N/A'):.1f} minutes"
-                            if stats.get("mean_mttr_minutes")
-                            else "N/A",
+                            (
+                                f"{stats.get('mean_mttr_minutes', 'N/A'):.1f} minutes"
+                                if stats.get("mean_mttr_minutes")
+                                else "N/A"
+                            ),
                         ],
                         [
                             "Median MTTR",
-                            f"{stats.get('median_mttr_minutes', 'N/A'):.1f} minutes"
-                            if stats.get("median_mttr_minutes")
-                            else "N/A",
+                            (
+                                f"{stats.get('median_mttr_minutes', 'N/A'):.1f} minutes"
+                                if stats.get("median_mttr_minutes")
+                                else "N/A"
+                            ),
                         ],
                         [
                             "P90 MTTR",
-                            f"{stats.get('p90_mttr_minutes', 'N/A'):.1f} minutes"
-                            if stats.get("p90_mttr_minutes")
-                            else "N/A",
+                            (
+                                f"{stats.get('p90_mttr_minutes', 'N/A'):.1f} minutes"
+                                if stats.get("p90_mttr_minutes")
+                                else "N/A"
+                            ),
                         ],
                         ["Total Incidents", str(stats.get("incidents_count", 0))],
                         ["Resolved", str(stats.get("resolved_count", 0))],
@@ -380,7 +399,8 @@ class MarkdownFormatter:
             breakdown = analytics["severity_breakdown"]
             lines.append(
                 self._table(
-                    ["Severity", "Count"], [[sev, str(count)] for sev, count in breakdown.items()]
+                    ["Severity", "Count"],
+                    [[sev, str(count)] for sev, count in breakdown.items()],
                 )
             )
             lines.append("\n")
@@ -391,7 +411,8 @@ class MarkdownFormatter:
             breakdown = analytics["service_breakdown"]
             lines.append(
                 self._table(
-                    ["Service", "Count"], [[svc, str(count)] for svc, count in breakdown.items()]
+                    ["Service", "Count"],
+                    [[svc, str(count)] for svc, count in breakdown.items()],
                 )
             )
             lines.append("\n")

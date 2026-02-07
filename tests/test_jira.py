@@ -242,7 +242,9 @@ class TestJiraClient:
             mock_client.get.return_value = mock_response
             mock_get_client.return_value = mock_client
 
-            issues = await jira_client.search_issues('project = INCIDENT AND status = "Open"')
+            issues = await jira_client.search_issues(
+                'project = INCIDENT AND status = "Open"'
+            )
 
             assert len(issues) == 2
             assert issues[0].key == "INCIDENT-1"
@@ -273,7 +275,9 @@ class TestCreateIncidentTicket:
                     alert_summary="High error rate",
                     severity="HIGH",
                     context_card_url="https://slack.com/card/123",
-                    deployments=[{"sha": "abc1234", "author": "dev", "message": "Fix bug"}],
+                    deployments=[
+                        {"sha": "abc1234", "author": "dev", "message": "Fix bug"}
+                    ],
                     log_summary="Multiple timeout errors detected",
                     similar_incidents=[{"title": "Past incident", "score": 0.85}],
                     runbook_url="https://wiki.example.com/runbook",
@@ -358,7 +362,9 @@ class TestUpdateIncidentResolved:
                 )
 
                 mock_client.add_comment.assert_called_once()
-                mock_client.transition_issue.assert_called_once_with("INCIDENT-123", "2")
+                mock_client.transition_issue.assert_called_once_with(
+                    "INCIDENT-123", "2"
+                )
 
     @pytest.mark.asyncio
     async def test_skips_when_not_configured(self):
