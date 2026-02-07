@@ -113,9 +113,7 @@ async def delete_rule(rule_id: str):
 
 
 @router.get("/groups")
-async def list_groups(
-    service: str | None = Query(None), limit: int = Query(100, ge=1, le=500)
-):
+async def list_groups(service: str | None = Query(None), limit: int = Query(100, ge=1, le=500)):
     engine = await get_correlation_engine(get_settings())
     groups = await engine.get_active_groups(service=service, limit=limit)
     return {
@@ -151,9 +149,7 @@ async def get_group(group_id: str):
 
 
 @router.post("/groups/{group_id}/close")
-async def close_group(
-    group_id: str, status: AlertGroupStatus = Query(AlertGroupStatus.CLOSED)
-):
+async def close_group(group_id: str, status: AlertGroupStatus = Query(AlertGroupStatus.CLOSED)):
     engine = await get_correlation_engine(get_settings())
     if not await engine.close_group(group_id, status=status):
         raise HTTPException(status_code=404, detail="Group not found")

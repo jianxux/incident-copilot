@@ -279,22 +279,16 @@ async def oauth_callback(
     # Verify state
     state_data = _oauth_states.pop(state, None)
     if not state_data or state_data["provider"] != provider:
-        return RedirectResponse(
-            url=f"{settings.app_url}/login?error=oauth_invalid_state"
-        )
+        return RedirectResponse(url=f"{settings.app_url}/login?error=oauth_invalid_state")
 
     oauth = get_oauth_provider(provider)
     if not oauth:
-        return RedirectResponse(
-            url=f"{settings.app_url}/login?error=oauth_not_configured"
-        )
+        return RedirectResponse(url=f"{settings.app_url}/login?error=oauth_not_configured")
 
     # Exchange code for token
     access_token = await oauth.exchange_code(code, state_data["redirect_uri"])
     if not access_token:
-        return RedirectResponse(
-            url=f"{settings.app_url}/login?error=oauth_token_failed"
-        )
+        return RedirectResponse(url=f"{settings.app_url}/login?error=oauth_token_failed")
 
     # Get user info
     oauth_user = await oauth.get_user_info(access_token)

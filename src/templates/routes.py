@@ -121,7 +121,7 @@ async def delete_template(
         success = await service.hard_delete(template_id, organization_id)
     else:
         success = await service.delete(template_id, organization_id)
-    
+
     if not success:
         raise HTTPException(status_code=404, detail="Template not found or is built-in")
 

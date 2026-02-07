@@ -126,13 +126,17 @@ class RevenueImpactCalculator:
         """Initialize with optional service revenue configurations."""
         self.service_configs = service_configs or {}
 
-    def get_hourly_impact(self, service_name: str, criticality: ServiceCriticality | None = None) -> Decimal:
+    def get_hourly_impact(
+        self, service_name: str, criticality: ServiceCriticality | None = None
+    ) -> Decimal:
         """Get hourly revenue impact for a service."""
         if service_name in self.service_configs:
             return self.service_configs[service_name].hourly_revenue_impact
 
         crit = criticality or ServiceCriticality.MEDIUM
-        return self.DEFAULT_HOURLY_IMPACT.get(crit, self.DEFAULT_HOURLY_IMPACT[ServiceCriticality.MEDIUM])
+        return self.DEFAULT_HOURLY_IMPACT.get(
+            crit, self.DEFAULT_HOURLY_IMPACT[ServiceCriticality.MEDIUM]
+        )
 
     async def calculate(
         self,
@@ -154,7 +158,8 @@ class RevenueImpactCalculator:
             category=CostCategory.LOST_REVENUE,
             amount=amount,
             currency=Currency.USD,
-            description=description or f"Revenue impact: {service_name} ({partial_outage_pct}% affected for {duration_hours}h)",
+            description=description
+            or f"Revenue impact: {service_name} ({partial_outage_pct}% affected for {duration_hours}h)",
             source="calculated",
             metadata={
                 "service_name": service_name,
@@ -287,7 +292,8 @@ class SLAPenaltyCalculator:
             category=CostCategory.SLA_PENALTY,
             amount=amount,
             currency=config.currency,
-            description=description or f"SLA penalty for {config.customer_name}: {uptime:.3f}% uptime (target: {config.uptime_target}%)",
+            description=description
+            or f"SLA penalty for {config.customer_name}: {uptime:.3f}% uptime (target: {config.uptime_target}%)",
             source="calculated",
             metadata={
                 "customer_id": customer_id,
@@ -347,14 +353,14 @@ class CustomerImpactCalculator:
     ) -> list[CostEntry]:
         """Calculate costs from support metrics."""
         entries = []
-        
+
         if tickets > 0:
             entries.append(await self.calculate(incident_id, "support_ticket", tickets))
         if escalations > 0:
             entries.append(await self.calculate(incident_id, "escalation", escalations))
         if refunds > 0:
             entries.append(await self.calculate(incident_id, "refund", refunds))
-        
+
         return entries
 
 

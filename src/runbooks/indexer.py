@@ -212,9 +212,7 @@ class RunbookIndexer:
                             continue
 
                         # Get file content
-                        content_resp = await client.get(
-                            file_info["download_url"], headers=headers
-                        )
+                        content_resp = await client.get(file_info["download_url"], headers=headers)
                         content_resp.raise_for_status()
                         content = content_resp.text
 
@@ -240,9 +238,7 @@ class RunbookIndexer:
     async def _fetch_notion(self, source: RunbookSource) -> list[Runbook]:
         """Fetch runbooks from Notion database."""
         if not source.notion_token or not source.notion_database_id:
-            raise ValueError(
-                "Notion source requires 'notion_token' and 'notion_database_id'"
-            )
+            raise ValueError("Notion source requires 'notion_token' and 'notion_database_id'")
 
         runbooks = []
         async with httpx.AsyncClient() as client:
@@ -253,9 +249,7 @@ class RunbookIndexer:
             }
 
             # Query database
-            db_url = (
-                f"https://api.notion.com/v1/databases/{source.notion_database_id}/query"
-            )
+            db_url = f"https://api.notion.com/v1/databases/{source.notion_database_id}/query"
 
             try:
                 resp = await client.post(db_url, headers=headers, json={})
@@ -298,9 +292,7 @@ class RunbookIndexer:
 
                     # Create runbook
                     runbook_id = f"notion-{page_id}"
-                    url = page.get(
-                        "url", f"https://notion.so/{page_id.replace('-', '')}"
-                    )
+                    url = page.get("url", f"https://notion.so/{page_id.replace('-', '')}")
 
                     runbook = Runbook(
                         id=runbook_id,
@@ -330,9 +322,7 @@ class RunbookIndexer:
         Note: Basic implementation using REST API. Requires API token auth.
         """
         if not source.confluence_url or not source.confluence_space:
-            raise ValueError(
-                "Confluence source requires 'confluence_url' and 'confluence_space'"
-            )
+            raise ValueError("Confluence source requires 'confluence_url' and 'confluence_space'")
 
         runbooks = []
 
@@ -359,9 +349,7 @@ class RunbookIndexer:
                     # Check if page has runbook-related labels
                     labels = [
                         lbl["name"]
-                        for lbl in page.get("metadata", {})
-                        .get("labels", {})
-                        .get("results", [])
+                        for lbl in page.get("metadata", {}).get("labels", {}).get("results", [])
                     ]
 
                     # Filter for runbook-related pages
@@ -384,9 +372,7 @@ class RunbookIndexer:
                         continue
 
                     # Parse HTML content to plain text
-                    html_content = (
-                        page.get("body", {}).get("storage", {}).get("value", "")
-                    )
+                    html_content = page.get("body", {}).get("storage", {}).get("value", "")
                     content = self._html_to_text(html_content)
 
                     page_url = f"{base_url}{page['_links']['webui']}"
@@ -485,9 +471,7 @@ class RunbookIndexer:
             keywords=self._extract_keywords(f"{title} {content}"),
             tags=self._extract_tags(content),
             services=self._extract_services(content),
-            content_hash=hashlib.md5(
-                content.encode(), usedforsecurity=False
-            ).hexdigest(),
+            content_hash=hashlib.md5(content.encode(), usedforsecurity=False).hexdigest(),
         )
 
     def _extract_keywords(self, text: str) -> list[str]:
@@ -602,9 +586,7 @@ class RunbookIndexer:
             fm_content = frontmatter_match.group(1)
             tags_match = re.search(r"tags:\s*\[(.+?)\]", fm_content)
             if tags_match:
-                tags.extend(
-                    [t.strip().strip("'\"") for t in tags_match.group(1).split(",")]
-                )
+                tags.extend([t.strip().strip("'\"") for t in tags_match.group(1).split(",")])
             # Also try YAML list format
             tags_list = re.findall(r"tags:\s*\n((?:\s*-\s*.+\n?)+)", fm_content)
             for tag_block in tags_list:

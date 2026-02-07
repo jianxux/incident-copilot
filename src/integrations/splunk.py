@@ -42,9 +42,7 @@ class SplunkAdapter:
             headers["Authorization"] = f"Bearer {self.token}"
         elif self.username and self.password:
             # Basic auth fallback
-            credentials = base64.b64encode(
-                f"{self.username}:{self.password}".encode()
-            ).decode()
+            credentials = base64.b64encode(f"{self.username}:{self.password}".encode()).decode()
             headers["Authorization"] = f"Basic {credentials}"
 
         return headers
@@ -73,9 +71,7 @@ class SplunkAdapter:
         latest_time: str = "now",
     ) -> str:
         """Create an async search job and return the job SID."""
-        async with httpx.AsyncClient(
-            timeout=60.0, verify=self.verify_ssl
-        ) as client:  # nosec B501 - SSL verification intentionally configurable for internal Splunk deployments
+        async with httpx.AsyncClient(timeout=60.0, verify=self.verify_ssl) as client:  # nosec B501 - SSL verification intentionally configurable for internal Splunk deployments
             response = await client.post(
                 f"{self.base_url}/services/search/jobs",
                 headers=self._get_headers(),
@@ -100,9 +96,7 @@ class SplunkAdapter:
         """Wait for a search job to complete."""
         start_time = datetime.now()
 
-        async with httpx.AsyncClient(
-            timeout=30.0, verify=self.verify_ssl
-        ) as client:  # nosec B501 - SSL verification intentionally configurable for internal Splunk deployments
+        async with httpx.AsyncClient(timeout=30.0, verify=self.verify_ssl) as client:  # nosec B501 - SSL verification intentionally configurable for internal Splunk deployments
             while (datetime.now() - start_time).seconds < timeout_seconds:
                 response = await client.get(
                     f"{self.base_url}/services/search/jobs/{sid}",
@@ -133,9 +127,7 @@ class SplunkAdapter:
         offset: int = 0,
     ) -> list[dict]:
         """Get results from a completed search job."""
-        async with httpx.AsyncClient(
-            timeout=30.0, verify=self.verify_ssl
-        ) as client:  # nosec B501 - SSL verification intentionally configurable for internal Splunk deployments
+        async with httpx.AsyncClient(timeout=30.0, verify=self.verify_ssl) as client:  # nosec B501 - SSL verification intentionally configurable for internal Splunk deployments
             response = await client.get(
                 f"{self.base_url}/services/search/jobs/{sid}/results",
                 headers=self._get_headers(),
@@ -241,9 +233,7 @@ class SplunkAdapter:
                     LogEntry(
                         timestamp=timestamp or datetime.now(UTC),
                         message=result.get("_raw", result.get("message", "")),
-                        level=result.get(
-                            "level", result.get("severity", "INFO")
-                        ).upper(),
+                        level=result.get("level", result.get("severity", "INFO")).upper(),
                         service=service_name,
                         metadata={
                             "host": result.get("host", ""),
@@ -335,9 +325,7 @@ class SplunkAdapter:
             return []
 
         try:
-            async with httpx.AsyncClient(
-                timeout=60.0, verify=self.verify_ssl
-            ) as client:  # nosec B501 - SSL verification intentionally configurable for internal Splunk deployments
+            async with httpx.AsyncClient(timeout=60.0, verify=self.verify_ssl) as client:  # nosec B501 - SSL verification intentionally configurable for internal Splunk deployments
                 # Dispatch the saved search
                 dispatch_params = {}
                 if earliest_time:
@@ -378,9 +366,7 @@ class SplunkAdapter:
             return {"status": "unconfigured"}
 
         try:
-            async with httpx.AsyncClient(
-                timeout=10.0, verify=self.verify_ssl
-            ) as client:  # nosec B501 - SSL verification intentionally configurable for internal Splunk deployments
+            async with httpx.AsyncClient(timeout=10.0, verify=self.verify_ssl) as client:  # nosec B501 - SSL verification intentionally configurable for internal Splunk deployments
                 response = await client.get(
                     f"{self.base_url}/services/server/info",
                     headers=self._get_headers(),

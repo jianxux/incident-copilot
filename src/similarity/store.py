@@ -180,9 +180,7 @@ class IncidentStore:
         Returns list of (incident, embedding) tuples.
         """
         with self._get_connection() as conn:
-            rows = conn.execute(
-                "SELECT * FROM incidents WHERE embedding IS NOT NULL"
-            ).fetchall()
+            rows = conn.execute("SELECT * FROM incidents WHERE embedding IS NOT NULL").fetchall()
 
         results = []
         for row in rows:
@@ -238,9 +236,7 @@ class IncidentStore:
             resolution=row["resolution"],
             occurred_at=datetime.fromisoformat(row["occurred_at"]),
             resolved_at=(
-                datetime.fromisoformat(row["resolved_at"])
-                if row["resolved_at"]
-                else None
+                datetime.fromisoformat(row["resolved_at"]) if row["resolved_at"] else None
             ),
         )
 

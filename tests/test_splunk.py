@@ -90,12 +90,8 @@ class TestFetchLogs:
             },
         ]
 
-        with patch.object(
-            adapter, "_create_search_job", new_callable=AsyncMock
-        ) as mock_create:
-            with patch.object(
-                adapter, "_wait_for_job", new_callable=AsyncMock
-            ) as mock_wait:
+        with patch.object(adapter, "_create_search_job", new_callable=AsyncMock) as mock_create:
+            with patch.object(adapter, "_wait_for_job", new_callable=AsyncMock) as mock_wait:
                 with patch.object(
                     adapter, "_get_job_results", new_callable=AsyncMock
                 ) as mock_results_fn:
@@ -126,12 +122,8 @@ class TestFetchLogs:
     @pytest.mark.asyncio
     async def test_fetch_logs_job_timeout(self, adapter):
         """Test when search job times out."""
-        with patch.object(
-            adapter, "_create_search_job", new_callable=AsyncMock
-        ) as mock_create:
-            with patch.object(
-                adapter, "_wait_for_job", new_callable=AsyncMock
-            ) as mock_wait:
+        with patch.object(adapter, "_create_search_job", new_callable=AsyncMock) as mock_create:
+            with patch.object(adapter, "_wait_for_job", new_callable=AsyncMock) as mock_wait:
                 mock_create.return_value = "test-sid-123"
                 mock_wait.return_value = False  # Timeout
 
@@ -142,12 +134,8 @@ class TestFetchLogs:
     @pytest.mark.asyncio
     async def test_fetch_logs_with_severity_filter(self, adapter):
         """Test log fetch with severity filter."""
-        with patch.object(
-            adapter, "_create_search_job", new_callable=AsyncMock
-        ) as mock_create:
-            with patch.object(
-                adapter, "_wait_for_job", new_callable=AsyncMock
-            ) as mock_wait:
+        with patch.object(adapter, "_create_search_job", new_callable=AsyncMock) as mock_create:
+            with patch.object(adapter, "_wait_for_job", new_callable=AsyncMock) as mock_wait:
                 with patch.object(
                     adapter, "_get_job_results", new_callable=AsyncMock
                 ) as mock_results:
@@ -217,9 +205,7 @@ class TestSavedSearch:
             mock_dispatch_response.raise_for_status = MagicMock()
             mock_client.post.return_value = mock_dispatch_response
 
-            with patch.object(
-                adapter, "_wait_for_job", new_callable=AsyncMock
-            ) as mock_wait:
+            with patch.object(adapter, "_wait_for_job", new_callable=AsyncMock) as mock_wait:
                 with patch.object(
                     adapter, "_get_job_results", new_callable=AsyncMock
                 ) as mock_results:
@@ -302,12 +288,8 @@ class TestAlertSearch:
     @pytest.mark.asyncio
     async def test_search_alerts_success(self, adapter):
         """Test searching for triggered alerts."""
-        with patch.object(
-            adapter, "_create_search_job", new_callable=AsyncMock
-        ) as mock_create:
-            with patch.object(
-                adapter, "_wait_for_job", new_callable=AsyncMock
-            ) as mock_wait:
+        with patch.object(adapter, "_create_search_job", new_callable=AsyncMock) as mock_create:
+            with patch.object(adapter, "_wait_for_job", new_callable=AsyncMock) as mock_wait:
                 with patch.object(
                     adapter, "_get_job_results", new_callable=AsyncMock
                 ) as mock_results:

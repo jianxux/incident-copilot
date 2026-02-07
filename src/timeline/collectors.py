@@ -23,7 +23,7 @@ class EventCollector(ABC):
         incident_id: str,
         start_time: datetime | None = None,
         end_time: datetime | None = None,
-        **kwargs
+        **kwargs,
     ) -> list[TimelineEvent]:
         """Collect events from the source."""
         pass
@@ -43,7 +43,7 @@ class PagerDutyCollector(EventCollector):
         start_time: datetime | None = None,
         end_time: datetime | None = None,
         pd_incident_id: str | None = None,
-        **kwargs
+        **kwargs,
     ) -> list[TimelineEvent]:
         """Collect PagerDuty incident log entries."""
         events = []
@@ -54,7 +54,7 @@ class PagerDutyCollector(EventCollector):
     def _parse_log_entry(self, incident_id: str, entry: dict[str, Any]) -> TimelineEvent:
         """Parse a PagerDuty log entry into a TimelineEvent."""
         entry_type = entry.get("type", "")
-        
+
         event_type = EventType.MANUAL
         if "trigger" in entry_type:
             event_type = EventType.ALERT
@@ -71,7 +71,9 @@ class PagerDutyCollector(EventCollector):
 
         return TimelineEvent(
             incident_id=incident_id,
-            timestamp=datetime.fromisoformat(entry.get("created_at", datetime.utcnow().isoformat())),
+            timestamp=datetime.fromisoformat(
+                entry.get("created_at", datetime.utcnow().isoformat())
+            ),
             event_type=event_type,
             source=EventSource.PAGERDUTY,
             severity=self._map_severity(entry.get("urgency", "low")),
@@ -79,7 +81,7 @@ class PagerDutyCollector(EventCollector):
             description=entry.get("message"),
             actor=entry.get("agent", {}).get("summary"),
             metadata={"pd_id": entry.get("id")},
-            raw_data=entry
+            raw_data=entry,
         )
 
     def _map_severity(self, urgency: str) -> EventSeverity:
@@ -100,7 +102,7 @@ class SlackCollector(EventCollector):
         start_time: datetime | None = None,
         end_time: datetime | None = None,
         channel_id: str | None = None,
-        **kwargs
+        **kwargs,
     ) -> list[TimelineEvent]:
         """Collect messages from incident Slack channel."""
         events = []
@@ -110,7 +112,7 @@ class SlackCollector(EventCollector):
     def _parse_message(self, incident_id: str, message: dict[str, Any]) -> TimelineEvent:
         """Parse a Slack message into a TimelineEvent."""
         text = message.get("text", "")
-        
+
         # Detect special message types
         event_type = EventType.COMMENT
         if any(kw in text.lower() for kw in ["deployed", "deploy", "release"]):
@@ -130,7 +132,7 @@ class SlackCollector(EventCollector):
             description=text,
             actor=message.get("user"),
             metadata={"channel": message.get("channel"), "ts": message.get("ts")},
-            raw_data=message
+            raw_data=message,
         )
 
 
@@ -148,7 +150,7 @@ class GitHubCollector(EventCollector):
         start_time: datetime | None = None,
         end_time: datetime | None = None,
         repo: str | None = None,
-        **kwargs
+        **kwargs,
     ) -> list[TimelineEvent]:
         """Collect GitHub deployments and related events."""
         events = []
@@ -159,7 +161,9 @@ class GitHubCollector(EventCollector):
         """Parse a GitHub deployment into a TimelineEvent."""
         return TimelineEvent(
             incident_id=incident_id,
-            timestamp=datetime.fromisoformat(deployment.get("created_at", "").replace("Z", "+00:00")),
+            timestamp=datetime.fromisoformat(
+                deployment.get("created_at", "").replace("Z", "+00:00")
+            ),
             event_type=EventType.DEPLOYMENT,
             source=EventSource.GITHUB,
             severity=EventSeverity.INFO,
@@ -169,9 +173,9 @@ class GitHubCollector(EventCollector):
             metadata={
                 "sha": deployment.get("sha"),
                 "ref": deployment.get("ref"),
-                "environment": deployment.get("environment")
+                "environment": deployment.get("environment"),
             },
-            raw_data=deployment
+            raw_data=deployment,
         )
 
 
@@ -190,7 +194,7 @@ class DatadogCollector(EventCollector):
         start_time: datetime | None = None,
         end_time: datetime | None = None,
         query: str | None = None,
-        **kwargs
+        **kwargs,
     ) -> list[TimelineEvent]:
         """Collect Datadog events and alerts."""
         events = []
@@ -204,13 +208,15 @@ class DatadogCollector(EventCollector):
             "error": EventSeverity.ERROR,
             "warning": EventSeverity.WARNING,
             "success": EventSeverity.INFO,
-            "info": EventSeverity.INFO
+            "info": EventSeverity.INFO,
         }.get(alert_type, EventSeverity.INFO)
 
         return TimelineEvent(
             incident_id=incident_id,
             timestamp=datetime.fromtimestamp(dd_event.get("date_happened", 0)),
-            event_type=EventType.ALERT if alert_type in ("error", "warning") else EventType.METRIC_ANOMALY,
+            event_type=EventType.ALERT
+            if alert_type in ("error", "warning")
+            else EventType.METRIC_ANOMALY,
             source=EventSource.DATADOG,
             severity=severity,
             title=dd_event.get("title", "Datadog event"),
@@ -218,7 +224,7 @@ class DatadogCollector(EventCollector):
             actor=dd_event.get("host"),
             tags=dd_event.get("tags", []),
             metadata={"dd_id": dd_event.get("id")},
-            raw_data=dd_event
+            raw_data=dd_event,
         )
 
 
@@ -235,7 +241,7 @@ class PrometheusCollector(EventCollector):
         incident_id: str,
         start_time: datetime | None = None,
         end_time: datetime | None = None,
-        **kwargs
+        **kwargs,
     ) -> list[TimelineEvent]:
         """Collect Prometheus alerts."""
         events = []
@@ -259,7 +265,7 @@ class PrometheusCollector(EventCollector):
             actor=labels.get("instance"),
             tags=list(labels.keys()),
             metadata={"labels": labels, "fingerprint": alert.get("fingerprint")},
-            raw_data=alert
+            raw_data=alert,
         )
 
 
@@ -274,7 +280,7 @@ class KubernetesCollector(EventCollector):
         start_time: datetime | None = None,
         end_time: datetime | None = None,
         namespace: str | None = None,
-        **kwargs
+        **kwargs,
     ) -> list[TimelineEvent]:
         """Collect Kubernetes events."""
         events = []
@@ -283,20 +289,16 @@ class KubernetesCollector(EventCollector):
 
     def _parse_k8s_event(self, incident_id: str, k8s_event: dict[str, Any]) -> TimelineEvent:
         """Parse a Kubernetes event into a TimelineEvent."""
-        event_type_map = {
-            "Normal": EventType.ACTION_TAKEN,
-            "Warning": EventType.ALERT
-        }
-        severity_map = {
-            "Normal": EventSeverity.INFO,
-            "Warning": EventSeverity.WARNING
-        }
+        event_type_map = {"Normal": EventType.ACTION_TAKEN, "Warning": EventType.ALERT}
+        severity_map = {"Normal": EventSeverity.INFO, "Warning": EventSeverity.WARNING}
 
         k8s_type = k8s_event.get("type", "Normal")
-        
+
         return TimelineEvent(
             incident_id=incident_id,
-            timestamp=datetime.fromisoformat(k8s_event.get("lastTimestamp", "").replace("Z", "+00:00")),
+            timestamp=datetime.fromisoformat(
+                k8s_event.get("lastTimestamp", "").replace("Z", "+00:00")
+            ),
             event_type=event_type_map.get(k8s_type, EventType.MANUAL),
             source=EventSource.KUBERNETES,
             severity=severity_map.get(k8s_type, EventSeverity.INFO),
@@ -306,9 +308,9 @@ class KubernetesCollector(EventCollector):
             metadata={
                 "namespace": k8s_event.get("involvedObject", {}).get("namespace"),
                 "kind": k8s_event.get("involvedObject", {}).get("kind"),
-                "count": k8s_event.get("count", 1)
+                "count": k8s_event.get("count", 1),
             },
-            raw_data=k8s_event
+            raw_data=k8s_event,
         )
 
 
@@ -327,34 +329,33 @@ class CompositeCollector:
         incident_id: str,
         start_time: datetime | None = None,
         end_time: datetime | None = None,
-        **kwargs
+        **kwargs,
     ) -> list[TimelineEvent]:
         """Collect events from all registered collectors."""
         all_events = []
-        
+
         for collector in self.collectors:
             try:
                 events = await collector.collect(
-                    incident_id=incident_id,
-                    start_time=start_time,
-                    end_time=end_time,
-                    **kwargs
+                    incident_id=incident_id, start_time=start_time, end_time=end_time, **kwargs
                 )
                 all_events.extend(events)
             except Exception as e:
                 # Log error but continue with other collectors
-                all_events.append(TimelineEvent(
-                    id=uuid4(),
-                    incident_id=incident_id,
-                    timestamp=datetime.utcnow(),
-                    event_type=EventType.MANUAL,
-                    source=EventSource.SYSTEM,
-                    severity=EventSeverity.WARNING,
-                    title=f"Failed to collect from {collector.source.value}",
-                    description=str(e),
-                    tags=["collection_error"]
-                ))
-        
+                all_events.append(
+                    TimelineEvent(
+                        id=uuid4(),
+                        incident_id=incident_id,
+                        timestamp=datetime.utcnow(),
+                        event_type=EventType.MANUAL,
+                        source=EventSource.SYSTEM,
+                        severity=EventSeverity.WARNING,
+                        title=f"Failed to collect from {collector.source.value}",
+                        description=str(e),
+                        tags=["collection_error"],
+                    )
+                )
+
         # Sort by timestamp
         all_events.sort(key=lambda e: e.timestamp)
         return all_events

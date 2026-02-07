@@ -34,14 +34,11 @@ class CSVFormatter:
             return ""
 
         output = io.StringIO()
-        
+
         # Determine columns from config or data
         if self.columns:
             fieldnames = [col.field for col in self.columns if col.include]
-            headers = {
-                col.field: col.header or col.field 
-                for col in self.columns if col.include
-            }
+            headers = {col.field: col.header or col.field for col in self.columns if col.include}
         else:
             fieldnames = list(data[0].keys()) if data else []
             headers = {f: f for f in fieldnames}
@@ -71,54 +68,53 @@ class CSVFormatter:
         csv_string = self.format(data)
         return csv_string.encode(self.options.encoding)
 
-    def _format_row(
-        self, row: dict[str, Any], fieldnames: list[str]
-    ) -> dict[str, str]:
+    def _format_row(self, row: dict[str, Any], fieldnames: list[str]) -> dict[str, str]:
         """Format a single row with proper value handling."""
         formatted = {}
-        
+
         column_formats = {col.field: col.format for col in self.columns}
-        
+
         for field in fieldnames:
             value = row.get(field)
             col_format = column_formats.get(field)
             formatted[field] = self._format_value(value, col_format)
-        
+
         return formatted
 
     def _format_value(self, value: Any, format_type: str | None = None) -> str:
         """Format a single value for CSV output."""
         if value is None:
             return ""
-        
+
         if isinstance(value, datetime):
             if format_type == "date":
                 return value.strftime("%Y-%m-%d")
             elif format_type == "time":
                 return value.strftime("%H:%M:%S")
             return value.isoformat()
-        
+
         if isinstance(value, bool):
             return "Yes" if value else "No"
-        
+
         if isinstance(value, (list, dict)):
             import json
+
             return json.dumps(value)
-        
+
         if isinstance(value, float):
             if format_type == "percentage":
                 return f"{value * 100:.2f}%"
             elif format_type == "currency":
                 return f"${value:,.2f}"
             return str(value)
-        
+
         str_value = str(value)
-        
+
         # Escape formulas to prevent CSV injection
         if self.options.escape_formulas:
             if str_value.startswith(("=", "+", "-", "@", "\t", "\r")):
                 str_value = "'" + str_value
-        
+
         return str_value
 
     def format_incidents(self, incidents: list[dict[str, Any]]) -> str:
@@ -178,9 +174,7 @@ class CSVFormatter:
         if self.related_data.include_action_items:
             actions = incident.get("action_items", [])
             flat["action_items_count"] = len(actions)
-            flat["action_items_open"] = sum(
-                1 for a in actions if a.get("status") != "done"
-            )
+            flat["action_items_open"] = sum(1 for a in actions if a.get("status") != "done")
 
         return flat
 
@@ -205,32 +199,26 @@ class CSVFormatter:
             if root_cause:
                 flat["primary_cause"] = root_cause.get("primary_cause")
                 flat["trigger"] = root_cause.get("trigger")
-                flat["contributing_factors"] = ", ".join(
-                    root_cause.get("contributing_factors", [])
-                )
+                flat["contributing_factors"] = ", ".join(root_cause.get("contributing_factors", []))
 
         if self.related_data.include_impact:
             impact = pm.get("impact", {})
             if impact:
                 flat["users_affected"] = impact.get("users_affected")
                 flat["sla_breach"] = impact.get("sla_breach")
-                flat["services_affected"] = ", ".join(
-                    impact.get("services_affected", [])
-                )
+                flat["services_affected"] = ", ".join(impact.get("services_affected", []))
 
         if self.related_data.include_action_items:
             actions = pm.get("action_items", [])
             flat["action_items_count"] = len(actions)
-            flat["action_items_done"] = sum(
-                1 for a in actions if a.get("status") == "done"
-            )
+            flat["action_items_done"] = sum(1 for a in actions if a.get("status") == "done")
 
         return flat
 
     def _flatten_analytics(self, analytics: dict[str, Any]) -> list[dict[str, Any]]:
         """Flatten analytics data into rows."""
         rows = []
-        
+
         # MTTR stats
         if "mttr_stats" in analytics:
             stats = analytics["mttr_stats"]

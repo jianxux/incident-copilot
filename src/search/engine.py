@@ -65,14 +65,14 @@ class InMemorySearchBackend(SearchBackend):
     def _tokenize(self, text: str) -> list[str]:
         """Tokenize text into searchable terms."""
         text = text.lower()
-        text = re.sub(r'[^\w\s-]', ' ', text)
+        text = re.sub(r"[^\w\s-]", " ", text)
         tokens = text.split()
         return [t for t in tokens if len(t) >= 2]
 
     def _build_ngrams(self, text: str, n: int = 3) -> set[str]:
         """Build character n-grams for fuzzy matching."""
         text = text.lower()
-        return {text[i:i+n] for i in range(len(text) - n + 1)}
+        return {text[i : i + n] for i in range(len(text) - n + 1)}
 
     async def index(self, doc: IndexedDocument) -> None:
         """Index a document."""
@@ -183,7 +183,7 @@ class InMemorySearchBackend(SearchBackend):
                     best_pos = max(0, pos - 50)
 
         # Extract snippet
-        snippet = text[best_pos:best_pos + max_len]
+        snippet = text[best_pos : best_pos + max_len]
         if best_pos > 0:
             snippet = "..." + snippet
         if best_pos + max_len < len(text):
@@ -251,23 +251,22 @@ class InMemorySearchBackend(SearchBackend):
         elif query.sort_by == SortField.CREATED_AT:
             scored_docs.sort(
                 key=lambda x: x[0].created_at or datetime.min,
-                reverse=query.sort_order == SortOrder.DESC
+                reverse=query.sort_order == SortOrder.DESC,
             )
         elif query.sort_by == SortField.UPDATED_AT:
             scored_docs.sort(
                 key=lambda x: x[0].updated_at or datetime.min,
-                reverse=query.sort_order == SortOrder.DESC
+                reverse=query.sort_order == SortOrder.DESC,
             )
         elif query.sort_by == SortField.SEVERITY:
             severity_order = {"critical": 4, "high": 3, "medium": 2, "low": 1}
             scored_docs.sort(
                 key=lambda x: severity_order.get((x[0].severity or "").lower(), 0),
-                reverse=query.sort_order == SortOrder.DESC
+                reverse=query.sort_order == SortOrder.DESC,
             )
         elif query.sort_by == SortField.TITLE:
             scored_docs.sort(
-                key=lambda x: x[0].title.lower(),
-                reverse=query.sort_order == SortOrder.DESC
+                key=lambda x: x[0].title.lower(), reverse=query.sort_order == SortOrder.DESC
             )
 
         # Paginate
@@ -287,17 +286,19 @@ class InMemorySearchBackend(SearchBackend):
                 highlights["title"] = [self._highlight_text(doc.title, query_tokens, 100)]
                 highlights["content"] = [snippet]
 
-            hits.append(SearchHit(
-                id=doc.id,
-                doc_type=doc.doc_type,
-                title=doc.title,
-                snippet=snippet or doc.content[:200],
-                score=score,
-                highlights=highlights,
-                metadata=doc.metadata,
-                created_at=doc.created_at,
-                updated_at=doc.updated_at,
-            ))
+            hits.append(
+                SearchHit(
+                    id=doc.id,
+                    doc_type=doc.doc_type,
+                    title=doc.title,
+                    snippet=snippet or doc.content[:200],
+                    score=score,
+                    highlights=highlights,
+                    metadata=doc.metadata,
+                    created_at=doc.created_at,
+                    updated_at=doc.updated_at,
+                )
+            )
 
         # Build facets
         def make_facet_values(counter: Counter, selected: list[str] | None) -> list[FacetValue]:
@@ -313,7 +314,7 @@ class InMemorySearchBackend(SearchBackend):
             tags=make_facet_values(facet_counts["tags"], query.filters.tags),
             doc_types=make_facet_values(
                 facet_counts["doc_types"],
-                [t.value for t in query.filters.doc_types] if query.filters.doc_types else None
+                [t.value for t in query.filters.doc_types] if query.filters.doc_types else None,
             ),
         )
 
@@ -354,18 +355,15 @@ class InMemorySearchBackend(SearchBackend):
         for title, score, doc_type in suggestions:
             if title not in seen:
                 seen.add(title)
-                highlight = re.sub(
-                    re.escape(prefix),
-                    f"**{prefix}**",
-                    title,
-                    flags=re.IGNORECASE
+                highlight = re.sub(re.escape(prefix), f"**{prefix}**", title, flags=re.IGNORECASE)
+                results.append(
+                    SearchSuggestion(
+                        text=title,
+                        doc_type=doc_type,
+                        score=score,
+                        highlight=highlight,
+                    )
                 )
-                results.append(SearchSuggestion(
-                    text=title,
-                    doc_type=doc_type,
-                    score=score,
-                    highlight=highlight,
-                ))
                 if len(results) >= limit:
                     break
 
@@ -396,11 +394,19 @@ class InMemorySearchBackend(SearchBackend):
                 facet_counts["tags"][tag] += 1
 
         return SearchFacets(
-            statuses=[FacetValue(value=v, count=c) for v, c in facet_counts["statuses"].most_common(20)],
-            severities=[FacetValue(value=v, count=c) for v, c in facet_counts["severities"].most_common(20)],
-            services=[FacetValue(value=v, count=c) for v, c in facet_counts["services"].most_common(20)],
+            statuses=[
+                FacetValue(value=v, count=c) for v, c in facet_counts["statuses"].most_common(20)
+            ],
+            severities=[
+                FacetValue(value=v, count=c) for v, c in facet_counts["severities"].most_common(20)
+            ],
+            services=[
+                FacetValue(value=v, count=c) for v, c in facet_counts["services"].most_common(20)
+            ],
             tags=[FacetValue(value=v, count=c) for v, c in facet_counts["tags"].most_common(20)],
-            doc_types=[FacetValue(value=v, count=c) for v, c in facet_counts["doc_types"].most_common(20)],
+            doc_types=[
+                FacetValue(value=v, count=c) for v, c in facet_counts["doc_types"].most_common(20)
+            ],
         )
 
 
@@ -417,6 +423,7 @@ class ElasticsearchBackend(SearchBackend):
         if self._client is None:
             try:
                 from elasticsearch import AsyncElasticsearch
+
                 self._client = AsyncElasticsearch(hosts=self._hosts)
             except ImportError:
                 raise RuntimeError(
@@ -428,7 +435,7 @@ class ElasticsearchBackend(SearchBackend):
     async def search(self, query: SearchQuery) -> SearchResult:
         """Execute search using Elasticsearch."""
         client = await self._get_client()
-        
+
         # Build ES query
         must_clauses = []
         filter_clauses = []
@@ -527,17 +534,23 @@ class ElasticsearchBackend(SearchBackend):
         for hit in response["hits"]["hits"]:
             source = hit["_source"]
             highlights = hit.get("highlight", {})
-            hits.append(SearchHit(
-                id=source["id"],
-                doc_type=SearchableType(source["doc_type"]),
-                title=source["title"],
-                snippet=highlights.get("content", [source.get("content", "")[:200]])[0],
-                score=hit["_score"] or 0.0,
-                highlights=highlights,
-                metadata=source.get("metadata", {}),
-                created_at=datetime.fromisoformat(source["created_at"]) if source.get("created_at") else None,
-                updated_at=datetime.fromisoformat(source["updated_at"]) if source.get("updated_at") else None,
-            ))
+            hits.append(
+                SearchHit(
+                    id=source["id"],
+                    doc_type=SearchableType(source["doc_type"]),
+                    title=source["title"],
+                    snippet=highlights.get("content", [source.get("content", "")[:200]])[0],
+                    score=hit["_score"] or 0.0,
+                    highlights=highlights,
+                    metadata=source.get("metadata", {}),
+                    created_at=datetime.fromisoformat(source["created_at"])
+                    if source.get("created_at")
+                    else None,
+                    updated_at=datetime.fromisoformat(source["updated_at"])
+                    if source.get("updated_at")
+                    else None,
+                )
+            )
 
         total_hits = response["hits"]["total"]["value"]
         total_pages = math.ceil(total_hits / query.page_size)
@@ -545,11 +558,26 @@ class ElasticsearchBackend(SearchBackend):
         # Parse aggregations
         aggs = response.get("aggregations", {})
         facets = SearchFacets(
-            statuses=[FacetValue(value=b["key"], count=b["doc_count"]) for b in aggs.get("statuses", {}).get("buckets", [])],
-            severities=[FacetValue(value=b["key"], count=b["doc_count"]) for b in aggs.get("severities", {}).get("buckets", [])],
-            services=[FacetValue(value=b["key"], count=b["doc_count"]) for b in aggs.get("services", {}).get("buckets", [])],
-            tags=[FacetValue(value=b["key"], count=b["doc_count"]) for b in aggs.get("tags", {}).get("buckets", [])],
-            doc_types=[FacetValue(value=b["key"], count=b["doc_count"]) for b in aggs.get("doc_types", {}).get("buckets", [])],
+            statuses=[
+                FacetValue(value=b["key"], count=b["doc_count"])
+                for b in aggs.get("statuses", {}).get("buckets", [])
+            ],
+            severities=[
+                FacetValue(value=b["key"], count=b["doc_count"])
+                for b in aggs.get("severities", {}).get("buckets", [])
+            ],
+            services=[
+                FacetValue(value=b["key"], count=b["doc_count"])
+                for b in aggs.get("services", {}).get("buckets", [])
+            ],
+            tags=[
+                FacetValue(value=b["key"], count=b["doc_count"])
+                for b in aggs.get("tags", {}).get("buckets", [])
+            ],
+            doc_types=[
+                FacetValue(value=b["key"], count=b["doc_count"])
+                for b in aggs.get("doc_types", {}).get("buckets", [])
+            ],
         )
 
         return SearchResult(
@@ -603,19 +631,21 @@ class ElasticsearchBackend(SearchBackend):
                 "size": limit,
                 "_source": ["title", "doc_type"],
                 "highlight": {"fields": {"title": {}}},
-            }
+            },
         )
 
         suggestions = []
         for hit in response["hits"]["hits"]:
             source = hit["_source"]
             highlights = hit.get("highlight", {})
-            suggestions.append(SearchSuggestion(
-                text=source["title"],
-                doc_type=SearchableType(source["doc_type"]) if source.get("doc_type") else None,
-                score=hit["_score"] or 0.0,
-                highlight=highlights.get("title", [source["title"]])[0],
-            ))
+            suggestions.append(
+                SearchSuggestion(
+                    text=source["title"],
+                    doc_type=SearchableType(source["doc_type"]) if source.get("doc_type") else None,
+                    score=hit["_score"] or 0.0,
+                    highlight=highlights.get("title", [source["title"]])[0],
+                )
+            )
         return suggestions
 
     async def get_facets(self, filters: SearchFilter | None = None) -> SearchFacets:

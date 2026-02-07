@@ -161,12 +161,8 @@ class StatusIncident(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     resolved_at: datetime | None = None
-    scheduled_for: datetime | None = Field(
-        default=None, description="For scheduled maintenance"
-    )
-    scheduled_until: datetime | None = Field(
-        default=None, description="For scheduled maintenance"
-    )
+    scheduled_for: datetime | None = Field(default=None, description="For scheduled maintenance")
+    scheduled_until: datetime | None = Field(default=None, description="For scheduled maintenance")
 
     # Updates/messages
     updates: list[StatusIncidentUpdate] = Field(default_factory=list)

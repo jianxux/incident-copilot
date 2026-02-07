@@ -118,9 +118,7 @@ RUNBOOK_MATCHES_TOTAL = Counter(
     ["match_type"],  # match_type: exact, fuzzy, keyword
 )
 
-RUNBOOK_INDEX_SIZE = Gauge(
-    "incident_copilot_runbook_index_size", "Number of runbooks in the index"
-)
+RUNBOOK_INDEX_SIZE = Gauge("incident_copilot_runbook_index_size", "Number of runbooks in the index")
 
 # HTTP request metrics (for API endpoints)
 HTTP_REQUESTS_TOTAL = Counter(

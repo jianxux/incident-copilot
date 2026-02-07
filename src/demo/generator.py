@@ -100,11 +100,7 @@ class DemoGenerator:
         logs = scenario["logs"]
         log_summaries = [
             LogSummary(
-                pattern=(
-                    e["message"][:50] + "..."
-                    if len(e["message"]) > 50
-                    else e["message"]
-                ),
+                pattern=(e["message"][:50] + "..." if len(e["message"]) > 50 else e["message"]),
                 count=e["count"],
                 level=e["level"],
                 sample_message=e["message"],
@@ -130,9 +126,7 @@ class DemoGenerator:
         ai_summary = AILogSummary(
             top_issues=ai_data["key_findings"],
             explanation=ai_data["summary"],
-            likely_cause=(
-                ai_data["key_findings"][0] if ai_data["key_findings"] else None
-            ),
+            likely_cause=(ai_data["key_findings"][0] if ai_data["key_findings"] else None),
             suggested_actions=ai_data.get("suggested_runbooks", []),
         )
 
@@ -144,9 +138,7 @@ class DemoGenerator:
                 title=si["title"],
                 service=alert["service"],
                 resolution=si.get("resolution"),
-                occurred_at=datetime.fromisoformat(
-                    si["occurred_at"].replace("Z", "+00:00")
-                ),
+                occurred_at=datetime.fromisoformat(si["occurred_at"].replace("Z", "+00:00")),
                 similarity_score=si["similarity_score"],
             )
             for si in scenario.get("similar_incidents", [])
@@ -244,9 +236,7 @@ class DemoGenerator:
             "data": {
                 "deployment_count": len(scenario["deployments"]),
                 "latest_deploy": (
-                    scenario["deployments"][0]["sha"][:7]
-                    if scenario["deployments"]
-                    else None
+                    scenario["deployments"][0]["sha"][:7] if scenario["deployments"] else None
                 ),
             },
             "elapsed_ms": self._elapsed_ms(start_time),

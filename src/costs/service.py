@@ -249,7 +249,9 @@ class CostService:
         # By category
         by_category: dict[CostCategory, Decimal] = {}
         for entry in current_entries:
-            by_category[entry.category] = by_category.get(entry.category, Decimal("0")) + entry.amount_usd
+            by_category[entry.category] = (
+                by_category.get(entry.category, Decimal("0")) + entry.amount_usd
+            )
 
         # By team
         by_team: dict[str, Decimal] = {}
@@ -261,7 +263,9 @@ class CostService:
         by_department: dict[str, Decimal] = {}
         for entry in current_entries:
             if entry.department:
-                by_department[entry.department] = by_department.get(entry.department, Decimal("0")) + entry.amount_usd
+                by_department[entry.department] = (
+                    by_department.get(entry.department, Decimal("0")) + entry.amount_usd
+                )
 
         # Calculate change
         change_pct = None
@@ -273,7 +277,11 @@ class CostService:
             elif change_pct < -10:
                 trend = "improving"
 
-        incident_count = len(current_costs) if current_costs else len(set(e.incident_id for e in current_entries))
+        incident_count = (
+            len(current_costs)
+            if current_costs
+            else len(set(e.incident_id for e in current_entries))
+        )
         avg_cost = current_total / Decimal(str(max(1, incident_count)))
 
         return CostTrend(
@@ -308,25 +316,33 @@ class CostService:
 
         # Calculate totals
         total_cost = sum(e.amount_usd for e in entries)
-        incident_count = len(incident_costs) if incident_costs else len(set(e.incident_id for e in entries))
+        incident_count = (
+            len(incident_costs) if incident_costs else len(set(e.incident_id for e in entries))
+        )
         avg_cost = total_cost / Decimal(str(max(1, incident_count)))
 
         # By category
         by_category: dict[CostCategory, Decimal] = {}
         for entry in entries:
-            by_category[entry.category] = by_category.get(entry.category, Decimal("0")) + entry.amount_usd
+            by_category[entry.category] = (
+                by_category.get(entry.category, Decimal("0")) + entry.amount_usd
+            )
 
         # By severity (from incident costs)
         by_severity: dict[str, Decimal] = {}
         for cost in incident_costs:
             if cost.severity:
-                by_severity[cost.severity] = by_severity.get(cost.severity, Decimal("0")) + cost.total_cost
+                by_severity[cost.severity] = (
+                    by_severity.get(cost.severity, Decimal("0")) + cost.total_cost
+                )
 
         # By service
         by_service: dict[str, Decimal] = {}
         for cost in incident_costs:
             if cost.service_name:
-                by_service[cost.service_name] = by_service.get(cost.service_name, Decimal("0")) + cost.total_cost
+                by_service[cost.service_name] = (
+                    by_service.get(cost.service_name, Decimal("0")) + cost.total_cost
+                )
 
         # By team
         by_team: dict[str, Decimal] = {}
@@ -338,7 +354,9 @@ class CostService:
         by_department: dict[str, Decimal] = {}
         for entry in entries:
             if entry.department:
-                by_department[entry.department] = by_department.get(entry.department, Decimal("0")) + entry.amount_usd
+                by_department[entry.department] = (
+                    by_department.get(entry.department, Decimal("0")) + entry.amount_usd
+                )
 
         # Top incidents
         sorted_costs = sorted(incident_costs, key=lambda c: c.total_cost, reverse=True)
@@ -402,7 +420,11 @@ class CostService:
         incident_count = len(incident_costs)
 
         # Calculate average cost per incident
-        avg_cost = total_incident_cost / Decimal(str(max(1, incident_count))) if incident_count > 0 else Decimal("0")
+        avg_cost = (
+            total_incident_cost / Decimal(str(max(1, incident_count)))
+            if incident_count > 0
+            else Decimal("0")
+        )
 
         # Projected savings
         projected_savings = avg_cost * Decimal(str(projected_incidents_prevented))
@@ -413,9 +435,13 @@ class CostService:
         payback_months = None
 
         if prevention_investment > 0:
-            roi_pct = float((projected_savings - prevention_investment) / prevention_investment * 100)
+            roi_pct = float(
+                (projected_savings - prevention_investment) / prevention_investment * 100
+            )
             if projected_savings > 0:
-                payback_months = float(prevention_investment / (projected_savings / Decimal(str(days / 30))))
+                payback_months = float(
+                    prevention_investment / (projected_savings / Decimal(str(days / 30)))
+                )
 
         analysis = ROIAnalysis(
             analysis_id=str(uuid.uuid4()),
@@ -473,7 +499,9 @@ class CostService:
             else:
                 support_costs += entry.amount_usd
 
-            by_category[entry.category] = by_category.get(entry.category, Decimal("0")) + entry.amount_usd
+            by_category[entry.category] = (
+                by_category.get(entry.category, Decimal("0")) + entry.amount_usd
+            )
 
         total_costs = direct_costs + support_costs
         prev_total = sum(e.amount_usd for e in prev_entries)
@@ -533,7 +561,11 @@ class CostService:
             },
             "comparison": {
                 "cost_change": trend1.total_cost - trend2.total_cost,
-                "cost_change_pct": float((trend1.total_cost - trend2.total_cost) / trend2.total_cost * 100) if trend2.total_cost else None,
+                "cost_change_pct": float(
+                    (trend1.total_cost - trend2.total_cost) / trend2.total_cost * 100
+                )
+                if trend2.total_cost
+                else None,
                 "incident_count_change": trend1.incident_count - trend2.incident_count,
             },
         }

@@ -36,27 +36,21 @@ async def list_audit_events(
             try:
                 event_types = [EventType(event_type)]
             except ValueError:
-                raise HTTPException(
-                    status_code=400, detail=f"Invalid event type: {event_type}"
-                )
+                raise HTTPException(status_code=400, detail=f"Invalid event type: {event_type}")
 
         categories = None
         if category:
             try:
                 categories = [EventCategory(category)]
             except ValueError:
-                raise HTTPException(
-                    status_code=400, detail=f"Invalid category: {category}"
-                )
+                raise HTTPException(status_code=400, detail=f"Invalid category: {category}")
 
         outcome_filter = None
         if outcome:
             try:
                 outcome_filter = Outcome(outcome)
             except ValueError:
-                raise HTTPException(
-                    status_code=400, detail=f"Invalid outcome: {outcome}"
-                )
+                raise HTTPException(status_code=400, detail=f"Invalid outcome: {outcome}")
 
         query = AuditLogQuery(
             tenant_id=tenant_id,
@@ -84,9 +78,7 @@ async def list_audit_events(
         raise
     except Exception as e:
         logger.error("audit_query_failed", error=str(e))
-        raise HTTPException(
-            status_code=500, detail=f"Failed to query audit events: {e}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to query audit events: {e}")
 
 
 @router.get("/events/{event_id}")

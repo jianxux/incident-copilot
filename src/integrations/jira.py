@@ -286,10 +286,7 @@ class JiraClient:
 
         data = response.json()
 
-        return [
-            JiraTransition(id=t["id"], name=t["name"])
-            for t in data.get("transitions", [])
-        ]
+        return [JiraTransition(id=t["id"], name=t["name"]) for t in data.get("transitions", [])]
 
     async def transition_issue(
         self,
@@ -477,13 +474,11 @@ async def create_incident_ticket(
         description_parts.append("")
 
     if log_summary:
-        description_parts.extend(
-            [
-                "## Log Analysis",
-                log_summary,
-                "",
-            ]
-        )
+        description_parts.extend([
+            "## Log Analysis",
+            log_summary,
+            "",
+        ])
 
     if deployments:
         description_parts.append("## Recent Deployments")

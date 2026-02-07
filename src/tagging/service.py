@@ -38,9 +38,7 @@ class TaggingService:
         self.settings = settings or get_settings()
         self.suggester = suggester or get_tag_suggester(self.settings)
 
-    async def create_tag(
-        self, request: TagCreate, created_by: str | None = None
-    ) -> Tag:
+    async def create_tag(self, request: TagCreate, created_by: str | None = None) -> Tag:
         """Create a new tag."""
         if request.parent_id:
             parent = await self.store.get_tag(request.parent_id)
@@ -112,12 +110,9 @@ class TaggingService:
                 return []
             children = await self._build_hierarchy(root_id)
             return [TagHierarchy(tag=tag, children=children)]
-        root_tags, _ = await self.store.list_tags(
-            parent_id=None, include_children=False
-        )
+        root_tags, _ = await self.store.list_tags(parent_id=None, include_children=False)
         return [
-            TagHierarchy(tag=tag, children=await self._build_hierarchy(tag.id))
-            for tag in root_tags
+            TagHierarchy(tag=tag, children=await self._build_hierarchy(tag.id)) for tag in root_tags
         ]
 
     async def _build_hierarchy(self, parent_id: str) -> list[TagHierarchy]:
@@ -282,9 +277,7 @@ class TaggingService:
         tag = await self.store.get_tag(tag_id)
         if not tag:
             return None
-        _, total = await self.store.get_incidents_by_tag(
-            tag_id=tag_id, include_children=True
-        )
+        _, total = await self.store.get_incidents_by_tag(tag_id=tag_id, include_children=True)
         return TagStats(tag_id=tag_id, tag_name=tag.name, incident_count=total)
 
     async def get_popular_tags(self, limit: int = 10) -> list[TagStats]:
@@ -292,12 +285,8 @@ class TaggingService:
         tags, _ = await self.store.list_tags(include_children=True, limit=1000)
         stats = []
         for tag in tags:
-            _, total = await self.store.get_incidents_by_tag(
-                tag_id=tag.id, include_children=False
-            )
-            stats.append(
-                TagStats(tag_id=tag.id, tag_name=tag.name, incident_count=total)
-            )
+            _, total = await self.store.get_incidents_by_tag(tag_id=tag.id, include_children=False)
+            stats.append(TagStats(tag_id=tag.id, tag_name=tag.name, incident_count=total))
         stats.sort(key=lambda s: s.incident_count, reverse=True)
         return stats[:limit]
 

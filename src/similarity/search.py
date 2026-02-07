@@ -97,9 +97,7 @@ class SimilaritySearch:
             similarity = cosine_similarity(query_vector, embedding)
 
             if similarity >= min_similarity:
-                incident.similarity_score = round(
-                    similarity * 100, 1
-                )  # Convert to percentage
+                incident.similarity_score = round(similarity * 100, 1)  # Convert to percentage
                 scored_incidents.append((incident, similarity))
 
         # Sort by similarity (highest first) and take top N

@@ -66,9 +66,7 @@ class AcknowledgeRequest(BaseModel):
 
 @router.get("", response_model=InsightsListResponse)
 async def list_insights(
-    insight_type: InsightType | None = Query(
-        None, description="Filter by insight type"
-    ),
+    insight_type: InsightType | None = Query(None, description="Filter by insight type"),
     severity: Severity | None = Query(None, description="Filter by severity"),
     service: str | None = Query(None, description="Filter by service name"),
     limit: int = Query(50, ge=1, le=200, description="Maximum insights to return"),
@@ -182,18 +180,14 @@ async def get_digest(
     Returns a comprehensive digest including statistics, patterns,
     anomalies, and AI-generated insights.
     """
-    logger.info(
-        "api_get_digest", period=period, generate=generate, include_ai=include_ai
-    )
+    logger.info("api_get_digest", period=period, generate=generate, include_ai=include_ai)
 
     # Try to get existing digest
     digest = await insights_service.get_latest_digest(period=period.value)
 
     # Generate if requested and none exists
     if not digest and generate:
-        digest = await insights_service.generate_digest(
-            period=period, generate_ai=include_ai
-        )
+        digest = await insights_service.generate_digest(period=period, generate_ai=include_ai)
 
     return digest
 
@@ -212,18 +206,14 @@ async def generate_digest(
     """
     logger.info("api_generate_digest", period=period, include_ai=include_ai)
 
-    digest = await insights_service.generate_digest(
-        period=period, generate_ai=include_ai
-    )
+    digest = await insights_service.generate_digest(period=period, generate_ai=include_ai)
 
     return digest
 
 
 @router.post("/analyze", response_model=AnalysisResult)
 async def trigger_analysis(
-    service: str | None = Query(
-        None, description="Service to analyze (all if not specified)"
-    ),
+    service: str | None = Query(None, description="Service to analyze (all if not specified)"),
     days: int = Query(30, ge=1, le=365, description="Days of data to analyze"),
     include_patterns: bool = Query(True, description="Detect patterns"),
     include_anomalies: bool = Query(True, description="Detect anomalies"),

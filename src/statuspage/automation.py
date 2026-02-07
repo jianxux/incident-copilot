@@ -2,7 +2,15 @@
 
 import logging
 from typing import Any, Callable
-from .models import ComponentStatus, IncidentImpact, IncidentStatus, SEVERITY_TO_COMPONENT_STATUS, SEVERITY_TO_IMPACT, StatusPageIncident, StatusUpdate
+from .models import (
+    ComponentStatus,
+    IncidentImpact,
+    IncidentStatus,
+    SEVERITY_TO_COMPONENT_STATUS,
+    SEVERITY_TO_IMPACT,
+    StatusPageIncident,
+    StatusUpdate,
+)
 from .service import StatusPageService, get_statuspage_service
 
 logger = logging.getLogger(__name__)
@@ -89,7 +97,9 @@ class StatusPageAutomation:
             except Exception as e:
                 logger.error(f"Hook error for {event}: {e}")
 
-    def generate_message(self, key: str, context: dict[str, Any] | None = None, use_simple: bool = True) -> str:
+    def generate_message(
+        self, key: str, context: dict[str, Any] | None = None, use_simple: bool = True
+    ) -> str:
         """Generate status update message from template."""
         # Check custom templates first
         if key in self._custom_templates:
@@ -118,7 +128,9 @@ class StatusPageAutomation:
     ) -> dict[str, StatusPageIncident]:
         """Handle new incident creation - create on all status pages."""
         impact = SEVERITY_TO_IMPACT.get(severity.lower(), IncidentImpact.MINOR)
-        component_status = SEVERITY_TO_COMPONENT_STATUS.get(severity.lower(), ComponentStatus.DEGRADED)
+        component_status = SEVERITY_TO_COMPONENT_STATUS.get(
+            severity.lower(), ComponentStatus.DEGRADED
+        )
         message = description or self.generate_message("investigating", context)
 
         incident = StatusPageIncident(
@@ -155,7 +167,9 @@ class StatusPageAutomation:
         )
 
         results = await self.service.update_incident_all(incident_id, update)
-        await self._trigger_hooks("incident_updated", incident_id=incident_id, status=new_status, results=results)
+        await self._trigger_hooks(
+            "incident_updated", incident_id=incident_id, status=new_status, results=results
+        )
         logger.info(f"Updated incident {incident_id} to status: {new_status}")
         return results
 
@@ -181,7 +195,11 @@ class StatusPageAutomation:
     ) -> dict[str, StatusPageIncident]:
         """Handle incident severity change."""
         context = {"severity": new_severity}
-        template_key = "severity_upgrade" if self._is_severity_upgrade(old_severity, new_severity) else "severity_downgrade"
+        template_key = (
+            "severity_upgrade"
+            if self._is_severity_upgrade(old_severity, new_severity)
+            else "severity_downgrade"
+        )
         update_message = message or self.generate_message(template_key, context)
 
         update = StatusUpdate(
@@ -211,11 +229,15 @@ class StatusPageAutomation:
         """Handle service status change - update component status."""
         component_status = COMPONENT_MAP.get(status.lower(), ComponentStatus.OPERATIONAL)
         results = await self.service.update_service_status(service_id, component_status)
-        await self._trigger_hooks("component_updated", service_id=service_id, status=status, results=results)
+        await self._trigger_hooks(
+            "component_updated", service_id=service_id, status=status, results=results
+        )
         logger.info(f"Updated service {service_id} status to {status}")
         return results
 
-    async def sync_incident(self, internal_incident: dict[str, Any]) -> dict[str, StatusPageIncident]:
+    async def sync_incident(
+        self, internal_incident: dict[str, Any]
+    ) -> dict[str, StatusPageIncident]:
         """Sync an internal incident to all status pages."""
         incident_id = internal_incident.get("id", "")
         status = internal_incident.get("status", "investigating")

@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 class SearchableType(str, Enum):
     """Types of searchable documents."""
+
     INCIDENT = "incident"
     RUNBOOK = "runbook"
     POSTMORTEM = "postmortem"
@@ -17,6 +18,7 @@ class SearchableType(str, Enum):
 
 class SortField(str, Enum):
     """Fields available for sorting."""
+
     RELEVANCE = "relevance"
     CREATED_AT = "created_at"
     UPDATED_AT = "updated_at"
@@ -26,31 +28,33 @@ class SortField(str, Enum):
 
 class SortOrder(str, Enum):
     """Sort order options."""
+
     ASC = "asc"
     DESC = "desc"
 
 
 class SearchFilter(BaseModel):
     """Faceted filter for search queries."""
+
     statuses: list[str] | None = Field(default=None, description="Filter by status values")
     severities: list[str] | None = Field(default=None, description="Filter by severity levels")
     services: list[str] | None = Field(default=None, description="Filter by service names")
     tags: list[str] | None = Field(default=None, description="Filter by tags")
-    doc_types: list[SearchableType] | None = Field(default=None, description="Filter by document type")
+    doc_types: list[SearchableType] | None = Field(
+        default=None, description="Filter by document type"
+    )
     date_from: datetime | None = Field(default=None, description="Filter from date")
     date_to: datetime | None = Field(default=None, description="Filter to date")
     authors: list[str] | None = Field(default=None, description="Filter by author IDs")
 
     def is_empty(self) -> bool:
         """Check if filter has any constraints."""
-        return all(
-            getattr(self, f) is None
-            for f in self.model_fields
-        )
+        return all(getattr(self, f) is None for f in self.model_fields)
 
 
 class SearchQuery(BaseModel):
     """Search query with filters and pagination."""
+
     query: str = Field(default="", description="Full-text search query")
     filters: SearchFilter = Field(default_factory=SearchFilter)
     sort_by: SortField = Field(default=SortField.RELEVANCE)
@@ -67,6 +71,7 @@ class SearchQuery(BaseModel):
 
 class SearchHit(BaseModel):
     """A single search result hit."""
+
     id: str
     doc_type: SearchableType
     title: str
@@ -80,6 +85,7 @@ class SearchHit(BaseModel):
 
 class FacetValue(BaseModel):
     """A facet value with count."""
+
     value: str
     count: int
     selected: bool = False
@@ -87,6 +93,7 @@ class FacetValue(BaseModel):
 
 class SearchFacets(BaseModel):
     """Aggregated facet counts from search results."""
+
     statuses: list[FacetValue] = Field(default_factory=list)
     severities: list[FacetValue] = Field(default_factory=list)
     services: list[FacetValue] = Field(default_factory=list)
@@ -96,6 +103,7 @@ class SearchFacets(BaseModel):
 
 class SearchResult(BaseModel):
     """Complete search result with hits, facets, and pagination info."""
+
     query: str
     total_hits: int
     page: int
@@ -104,7 +112,7 @@ class SearchResult(BaseModel):
     hits: list[SearchHit]
     facets: SearchFacets = Field(default_factory=SearchFacets)
     took_ms: float = Field(default=0.0, description="Search execution time in ms")
-    
+
     @classmethod
     def empty(cls, query: str = "", page: int = 1, page_size: int = 20) -> "SearchResult":
         """Create an empty result."""
@@ -120,6 +128,7 @@ class SearchResult(BaseModel):
 
 class SavedSearch(BaseModel):
     """A saved search query for a user."""
+
     id: UUID = Field(default_factory=uuid4)
     user_id: str
     name: str = Field(min_length=1, max_length=100)
@@ -135,6 +144,7 @@ class SavedSearch(BaseModel):
 
 class SavedSearchCreate(BaseModel):
     """Request to create a saved search."""
+
     name: str = Field(min_length=1, max_length=100)
     description: str = Field(default="")
     query: SearchQuery
@@ -144,6 +154,7 @@ class SavedSearchCreate(BaseModel):
 
 class SavedSearchUpdate(BaseModel):
     """Request to update a saved search."""
+
     name: str | None = None
     description: str | None = None
     query: SearchQuery | None = None
@@ -153,6 +164,7 @@ class SavedSearchUpdate(BaseModel):
 
 class SearchSuggestion(BaseModel):
     """Autocomplete suggestion."""
+
     text: str
     doc_type: SearchableType | None = None
     score: float = 0.0
@@ -161,6 +173,7 @@ class SearchSuggestion(BaseModel):
 
 class SearchAnalytics(BaseModel):
     """Search analytics data."""
+
     popular_queries: list[tuple[str, int]] = Field(default_factory=list)
     zero_result_queries: list[tuple[str, int]] = Field(default_factory=list)
     avg_results_per_query: float = 0.0
@@ -171,6 +184,7 @@ class SearchAnalytics(BaseModel):
 
 class IndexedDocument(BaseModel):
     """Document stored in the search index."""
+
     id: str
     doc_type: SearchableType
     title: str

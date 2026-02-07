@@ -35,9 +35,7 @@ class EmailTemplateRenderer:
         self.env.filters["severity_emoji"] = self._severity_emoji
         self.env.filters["truncate_text"] = self._truncate_text
 
-    def render_context_card(
-        self, card: ContextCard, config: EmailConfig
-    ) -> tuple[str, str]:
+    def render_context_card(self, card: ContextCard, config: EmailConfig) -> tuple[str, str]:
         """Render context card email.
 
         Returns:
@@ -145,14 +143,12 @@ class EmailTemplateRenderer:
 
         for template_file in self.templates_dir.glob("*.html"):
             template_name = template_file.stem
-            templates.append(
-                {
-                    "id": template_name,
-                    "name": template_name.replace("_", " ").title(),
-                    "type": self._infer_template_type(template_name),
-                    "file": template_file.name,
-                }
-            )
+            templates.append({
+                "id": template_name,
+                "name": template_name.replace("_", " ").title(),
+                "type": self._infer_template_type(template_name),
+                "file": template_file.name,
+            })
 
         return templates
 
@@ -166,9 +162,7 @@ class EmailTemplateRenderer:
             # Return a basic fallback
             return self._fallback_html(context)
 
-    def _build_context_card_context(
-        self, card: ContextCard, config: EmailConfig
-    ) -> dict[str, Any]:
+    def _build_context_card_context(self, card: ContextCard, config: EmailConfig) -> dict[str, Any]:
         """Build template context for context card."""
         return {
             "card": card,
@@ -248,9 +242,7 @@ class EmailTemplateRenderer:
             lines.append("SIMILAR PAST INCIDENTS:")
             lines.append("-" * 40)
             for inc in card.similar_incidents[:3]:
-                lines.append(
-                    f"  • {inc.title[:50]} ({inc.occurred_at.strftime('%Y-%m-%d')})"
-                )
+                lines.append(f"  • {inc.title[:50]} ({inc.occurred_at.strftime('%Y-%m-%d')})")
                 if inc.resolution:
                     lines.append(f"    Resolution: {inc.resolution[:80]}")
             lines.append("")
@@ -280,9 +272,7 @@ class EmailTemplateRenderer:
 
         return "\n".join(lines)
 
-    def _render_text_digest(
-        self, data: DigestData, config: EmailConfig, weekly: bool
-    ) -> str:
+    def _render_text_digest(self, data: DigestData, config: EmailConfig, weekly: bool) -> str:
         """Render plain text version of digest."""
         period = "Weekly" if weekly else "Daily"
         lines = [
@@ -302,9 +292,7 @@ class EmailTemplateRenderer:
         ]
 
         if data.mttr_minutes:
-            lines.append(
-                f"  Mean Time to Resolve: {self._format_duration(data.mttr_minutes)}"
-            )
+            lines.append(f"  Mean Time to Resolve: {self._format_duration(data.mttr_minutes)}")
             lines.append("")
 
         if data.services_affected:
@@ -319,9 +307,7 @@ class EmailTemplateRenderer:
             lines.append("-" * 40)
             for inc in data.incidents[:20]:
                 status_icon = "✓" if inc.status == "resolved" else "○"
-                lines.append(
-                    f"  {status_icon} [{inc.severity.upper()}] {inc.title[:50]}"
-                )
+                lines.append(f"  {status_icon} [{inc.severity.upper()}] {inc.title[:50]}")
                 lines.append(
                     f"    Service: {inc.service_name} | {inc.triggered_at.strftime('%m/%d %H:%M')}"
                 )
@@ -366,7 +352,7 @@ class EmailTemplateRenderer:
         <body style="font-family: sans-serif; padding: 20px;">
             <h1>Incident Notification</h1>
             <p>Template rendering failed. Please check your email templates.</p>
-            <p>Context keys: {', '.join(context.keys())}</p>
+            <p>Context keys: {", ".join(context.keys())}</p>
         </body>
         </html>
         """

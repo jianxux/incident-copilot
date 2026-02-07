@@ -102,39 +102,39 @@ class IncidentTemplate(BaseModel):
     name: str = Field(..., description="Template name")
     description: str | None = None
     category: TemplateCategory = TemplateCategory.CUSTOM
-    
+
     # Template content
     title_pattern: str = Field(..., description="Title pattern with {placeholders}")
     severity_default: str = "medium"
-    
+
     # Runbooks and documentation
     runbook_urls: list[str] = Field(default_factory=list)
     documentation_urls: list[str] = Field(default_factory=list)
-    
+
     # Actions and stakeholders
     initial_actions: list[InitialAction] = Field(default_factory=list)
     stakeholders: list[StakeholderRole] = Field(default_factory=list)
-    
+
     # Custom fields
     fields: list[TemplateField] = Field(default_factory=list)
-    
+
     # Auto-matching
     match_patterns: list[MatchPattern] = Field(default_factory=list)
     match_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
-    
+
     # Organization
     organization_id: str | None = None
     is_builtin: bool = False
     is_active: bool = True
     tags: list[str] = Field(default_factory=list)
-    
+
     # Versioning
     version: int = 1
     version_history: list[TemplateVersion] = Field(default_factory=list)
-    
+
     # Analytics
     analytics: TemplateAnalytics = Field(default_factory=TemplateAnalytics)
-    
+
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

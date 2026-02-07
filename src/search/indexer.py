@@ -236,7 +236,7 @@ class IndexingService:
             errors = 0
 
             for i in range(0, total, batch_size):
-                batch = all_docs[i:i + batch_size]
+                batch = all_docs[i : i + batch_size]
                 for doc_data in batch:
                     try:
                         indexed_doc = adapter.to_indexed_doc(doc_data)
@@ -288,9 +288,7 @@ class IndexingService:
         """Get indexing statistics."""
         return {
             **self._index_stats,
-            "last_index_times": {
-                k.value: v.isoformat() for k, v in self._last_index_time.items()
-            },
+            "last_index_times": {k.value: v.isoformat() for k, v in self._last_index_time.items()},
             "registered_sources": [t.value for t in self._sources],
         }
 

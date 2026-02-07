@@ -16,9 +16,7 @@ class TeamsAdapter:
         self.settings = settings
         self.webhook_url = settings.teams_webhook_url
 
-    async def send_context_card(
-        self, card: ContextCard, webhook_url: str | None = None
-    ) -> bool:
+    async def send_context_card(self, card: ContextCard, webhook_url: str | None = None) -> bool:
         """Send a context card to Teams via Incoming Webhook."""
         target_url = webhook_url or self.webhook_url
 
@@ -41,9 +39,7 @@ class TeamsAdapter:
             return True
 
         except httpx.HTTPStatusError as e:
-            logger.error(
-                "teams_send_failed", status=e.response.status_code, error=str(e)
-            )
+            logger.error("teams_send_failed", status=e.response.status_code, error=str(e))
             return False
         except Exception as e:
             logger.error("teams_send_failed", error=str(e))
@@ -75,81 +71,69 @@ class TeamsAdapter:
         body = []
 
         # Header with incident title
-        body.append(
-            {
-                "type": "TextBlock",
-                "size": "Large",
-                "weight": "Bolder",
-                "text": f"{emoji} {card.service_name}: {card.title[:100]}",
-                "wrap": True,
-                "color": color,
-            }
-        )
+        body.append({
+            "type": "TextBlock",
+            "size": "Large",
+            "weight": "Bolder",
+            "text": f"{emoji} {card.service_name}: {card.title[:100]}",
+            "wrap": True,
+            "color": color,
+        })
 
         # Alert info row
         triggered_time = card.triggered_at.strftime("%Y-%m-%d %H:%M:%S UTC")
-        body.append(
-            {
-                "type": "ColumnSet",
-                "columns": [
-                    {
-                        "type": "Column",
-                        "width": "auto",
-                        "items": [
-                            {
-                                "type": "TextBlock",
-                                "text": f"**Severity:** {card.severity.value.upper()}",
-                                "wrap": True,
-                            }
-                        ],
-                    },
-                    {
-                        "type": "Column",
-                        "width": "stretch",
-                        "items": [
-                            {
-                                "type": "TextBlock",
-                                "text": f"**Triggered:** {triggered_time}",
-                                "wrap": True,
-                            }
-                        ],
-                    },
-                ],
-            }
-        )
+        body.append({
+            "type": "ColumnSet",
+            "columns": [
+                {
+                    "type": "Column",
+                    "width": "auto",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": f"**Severity:** {card.severity.value.upper()}",
+                            "wrap": True,
+                        }
+                    ],
+                },
+                {
+                    "type": "Column",
+                    "width": "stretch",
+                    "items": [
+                        {
+                            "type": "TextBlock",
+                            "text": f"**Triggered:** {triggered_time}",
+                            "wrap": True,
+                        }
+                    ],
+                },
+            ],
+        })
 
         # Divider
-        body.append(
-            {
-                "type": "TextBlock",
-                "text": "─" * 40,
-                "wrap": True,
-                "spacing": "Small",
-            }
-        )
+        body.append({
+            "type": "TextBlock",
+            "text": "─" * 40,
+            "wrap": True,
+            "spacing": "Small",
+        })
 
         # Recent Deployments section
         if card.github and card.github.recent_deploys:
             deploy_items = ["**🚀 Recent Deployments:**"]
             for deploy in card.github.recent_deploys[:3]:
                 time_str = deploy.timestamp.strftime("%H:%M")
-                msg = (
-                    deploy.message[:60] + "..."
-                    if len(deploy.message) > 60
-                    else deploy.message
-                )
+                msg = deploy.message[:60] + "..." if len(deploy.message) > 60 else deploy.message
                 deploy_items.append(
                     f"• `{deploy.short_sha}` by {deploy.author} - _{msg}_ ({time_str})"
                 )
 
-            body.append(
-                {
-                    "type": "TextBlock",
-                    "text": "\n".join(deploy_items),
-                    "wrap": True,
-                    "spacing": "Medium",
-                }
-            )
+            body.append({
+                "type": "TextBlock",
+                "text": "\n".join(deploy_items),
+                "wrap": True,
+                "spacing": "Medium",
+            })
 
         # Log Summary section (AI or basic)
         if card.ai_summary:
@@ -162,14 +146,12 @@ class TeamsAdapter:
                     explanation += "..."
                 summary_lines.append(f"\n_{explanation}_")
 
-            body.append(
-                {
-                    "type": "TextBlock",
-                    "text": "\n".join(summary_lines),
-                    "wrap": True,
-                    "spacing": "Medium",
-                }
-            )
+            body.append({
+                "type": "TextBlock",
+                "text": "\n".join(summary_lines),
+                "wrap": True,
+                "spacing": "Medium",
+            })
         elif card.datadog and card.datadog.log_summaries:
             summary_lines = ["**📋 Top Error Patterns:**"]
             for summary in card.datadog.log_summaries[:5]:
@@ -178,14 +160,12 @@ class TeamsAdapter:
                     pattern += "..."
                 summary_lines.append(f"• ({summary.count}x) {pattern}")
 
-            body.append(
-                {
-                    "type": "TextBlock",
-                    "text": "\n".join(summary_lines),
-                    "wrap": True,
-                    "spacing": "Medium",
-                }
-            )
+            body.append({
+                "type": "TextBlock",
+                "text": "\n".join(summary_lines),
+                "wrap": True,
+                "spacing": "Medium",
+            })
 
         # Similar Past Incidents section
         if card.similar_incidents:
@@ -200,14 +180,12 @@ class TeamsAdapter:
                     line += f"\n  _Resolution: {resolution}_"
                 incident_lines.append(line)
 
-            body.append(
-                {
-                    "type": "TextBlock",
-                    "text": "\n".join(incident_lines),
-                    "wrap": True,
-                    "spacing": "Medium",
-                }
-            )
+            body.append({
+                "type": "TextBlock",
+                "text": "\n".join(incident_lines),
+                "wrap": True,
+                "spacing": "Medium",
+            })
 
         # On-Call Information section
         if card.oncall and card.oncall.has_oncall:
@@ -216,107 +194,87 @@ class TeamsAdapter:
                 mention = person.teams_mention
                 oncall_lines.append(f"• {mention}")
 
-            body.append(
-                {
-                    "type": "TextBlock",
-                    "text": "\n".join(oncall_lines),
-                    "wrap": True,
-                    "spacing": "Medium",
-                }
-            )
+            body.append({
+                "type": "TextBlock",
+                "text": "\n".join(oncall_lines),
+                "wrap": True,
+                "spacing": "Medium",
+            })
 
         # Divider before footer
-        body.append(
-            {
-                "type": "TextBlock",
-                "text": "─" * 40,
-                "wrap": True,
-                "spacing": "Small",
-            }
-        )
+        body.append({
+            "type": "TextBlock",
+            "text": "─" * 40,
+            "wrap": True,
+            "spacing": "Small",
+        })
 
         # On-Call or Owners section
         if card.oncall and card.oncall.primary_oncall:
             oncall_text = f"**On-Call:** {card.oncall.primary_oncall.name}"
-            body.append(
-                {
-                    "type": "TextBlock",
-                    "text": oncall_text,
-                    "wrap": True,
-                    "spacing": "Small",
-                }
-            )
+            body.append({
+                "type": "TextBlock",
+                "text": oncall_text,
+                "wrap": True,
+                "spacing": "Small",
+            })
         elif card.owners:
             owners_text = f"**Owners:** {', '.join(card.owners[:5])}"
-            body.append(
-                {
-                    "type": "TextBlock",
-                    "text": owners_text,
-                    "wrap": True,
-                    "spacing": "Small",
-                }
-            )
+            body.append({
+                "type": "TextBlock",
+                "text": owners_text,
+                "wrap": True,
+                "spacing": "Small",
+            })
 
         # Assembly time footer
         if card.assembly_time_ms:
-            body.append(
-                {
-                    "type": "TextBlock",
-                    "text": f"_Context assembled in {card.assembly_time_ms}ms_",
-                    "wrap": True,
-                    "size": "Small",
-                    "isSubtle": True,
-                    "spacing": "Small",
-                }
-            )
+            body.append({
+                "type": "TextBlock",
+                "text": f"_Context assembled in {card.assembly_time_ms}ms_",
+                "wrap": True,
+                "size": "Small",
+                "isSubtle": True,
+                "spacing": "Small",
+            })
 
         # Build action buttons
         actions = []
 
         if card.alert_url:
-            actions.append(
-                {
-                    "type": "Action.OpenUrl",
-                    "title": "View in PagerDuty",
-                    "url": card.alert_url,
-                }
-            )
+            actions.append({
+                "type": "Action.OpenUrl",
+                "title": "View in PagerDuty",
+                "url": card.alert_url,
+            })
 
         if card.runbook_url:
-            actions.append(
-                {
-                    "type": "Action.OpenUrl",
-                    "title": "📖 View Runbook",
-                    "url": card.runbook_url,
-                }
-            )
+            actions.append({
+                "type": "Action.OpenUrl",
+                "title": "📖 View Runbook",
+                "url": card.runbook_url,
+            })
         elif card.runbooks:
             # Use first runbook from the list
-            actions.append(
-                {
-                    "type": "Action.OpenUrl",
-                    "title": "📖 View Runbook",
-                    "url": card.runbooks[0].url,
-                }
-            )
+            actions.append({
+                "type": "Action.OpenUrl",
+                "title": "📖 View Runbook",
+                "url": card.runbooks[0].url,
+            })
 
         if card.dashboard_url:
-            actions.append(
-                {
-                    "type": "Action.OpenUrl",
-                    "title": "📊 Open Dashboard",
-                    "url": card.dashboard_url,
-                }
-            )
+            actions.append({
+                "type": "Action.OpenUrl",
+                "title": "📊 Open Dashboard",
+                "url": card.dashboard_url,
+            })
 
         if card.oncall and card.oncall.schedule_url:
-            actions.append(
-                {
-                    "type": "Action.OpenUrl",
-                    "title": "👤 On-Call Schedule",
-                    "url": card.oncall.schedule_url,
-                }
-            )
+            actions.append({
+                "type": "Action.OpenUrl",
+                "title": "👤 On-Call Schedule",
+                "url": card.oncall.schedule_url,
+            })
 
         # Construct the full Adaptive Card message
         adaptive_card = {

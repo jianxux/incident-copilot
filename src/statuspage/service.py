@@ -3,7 +3,20 @@
 import logging
 from datetime import datetime
 from typing import Any
-from .models import Component, ComponentStatus, IncidentStatus, MaintenanceWindow, SEVERITY_TO_COMPONENT_STATUS, SEVERITY_TO_IMPACT, StatusPageConfig, StatusPageIncident, StatusPageMetrics, StatusPageProvider, StatusUpdate, SyncResult
+from .models import (
+    Component,
+    ComponentStatus,
+    IncidentStatus,
+    MaintenanceWindow,
+    SEVERITY_TO_COMPONENT_STATUS,
+    SEVERITY_TO_IMPACT,
+    StatusPageConfig,
+    StatusPageIncident,
+    StatusPageMetrics,
+    StatusPageProvider,
+    StatusUpdate,
+    SyncResult,
+)
 from .providers.atlassian import AtlassianProvider
 from .providers.cachet import CachetProvider
 from .providers.statusio import StatusIOProvider
@@ -21,7 +34,11 @@ class StatusPageService:
 
     def _get_provider(self, config: StatusPageConfig):
         if config.id not in self._providers:
-            providers = {StatusPageProvider.ATLASSIAN: AtlassianProvider, StatusPageProvider.STATUSIO: StatusIOProvider, StatusPageProvider.CACHET: CachetProvider}
+            providers = {
+                StatusPageProvider.ATLASSIAN: AtlassianProvider,
+                StatusPageProvider.STATUSIO: StatusIOProvider,
+                StatusPageProvider.CACHET: CachetProvider,
+            }
             self._providers[config.id] = providers[config.provider](config)
         return self._providers[config.id]
 
@@ -61,25 +78,39 @@ class StatusPageService:
         config = self._configs.get(config_id)
         return await self._get_provider(config).get_components() if config else []
 
-    async def update_component_status(self, config_id: str, component_id: str, status: ComponentStatus) -> Component | None:
+    async def update_component_status(
+        self, config_id: str, component_id: str, status: ComponentStatus
+    ) -> Component | None:
         config = self._configs.get(config_id)
-        return await self._get_provider(config).update_component(component_id, status) if config else None
+        return (
+            await self._get_provider(config).update_component(component_id, status)
+            if config
+            else None
+        )
 
-    async def update_service_status(self, service_id: str, status: ComponentStatus) -> dict[str, Component]:
+    async def update_service_status(
+        self, service_id: str, status: ComponentStatus
+    ) -> dict[str, Component]:
         results = {}
         for config_id, config in self._configs.items():
             if config.enabled and (component_id := config.component_mapping.get(service_id)):
                 try:
-                    results[config_id] = await self._get_provider(config).update_component(component_id, status)
+                    results[config_id] = await self._get_provider(config).update_component(
+                        component_id, status
+                    )
                 except Exception as e:
                     logger.error(f"Failed to update {service_id} on {config_id}: {e}")
         return results
 
-    async def create_incident(self, config_id: str, incident: StatusPageIncident) -> StatusPageIncident | None:
+    async def create_incident(
+        self, config_id: str, incident: StatusPageIncident
+    ) -> StatusPageIncident | None:
         config = self._configs.get(config_id)
         return await self._get_provider(config).create_incident(incident) if config else None
 
-    async def create_incident_all(self, incident: StatusPageIncident, internal_id: str) -> dict[str, StatusPageIncident]:
+    async def create_incident_all(
+        self, incident: StatusPageIncident, internal_id: str
+    ) -> dict[str, StatusPageIncident]:
         results = {}
         self._incident_mapping[internal_id] = {}
         for config_id, config in self._configs.items():
@@ -87,7 +118,11 @@ class StatusPageService:
                 continue
             try:
                 mapped = incident.model_copy()
-                mapped.component_ids = [config.component_mapping[sid] for sid in incident.component_ids if sid in config.component_mapping]
+                mapped.component_ids = [
+                    config.component_mapping[sid]
+                    for sid in incident.component_ids
+                    if sid in config.component_mapping
+                ]
                 created = await self._get_provider(config).create_incident(mapped)
                 results[config_id] = created
                 self._incident_mapping[internal_id][config_id] = created.external_id or created.id
@@ -95,32 +130,52 @@ class StatusPageService:
                 logger.error(f"Failed to create incident on {config_id}: {e}")
         return results
 
-    async def update_incident(self, config_id: str, incident_id: str, update: StatusUpdate) -> StatusPageIncident | None:
+    async def update_incident(
+        self, config_id: str, incident_id: str, update: StatusUpdate
+    ) -> StatusPageIncident | None:
         config = self._configs.get(config_id)
-        return await self._get_provider(config).update_incident(incident_id, update) if config else None
+        return (
+            await self._get_provider(config).update_incident(incident_id, update)
+            if config
+            else None
+        )
 
-    async def update_incident_all(self, internal_id: str, update: StatusUpdate) -> dict[str, StatusPageIncident]:
+    async def update_incident_all(
+        self, internal_id: str, update: StatusUpdate
+    ) -> dict[str, StatusPageIncident]:
         results = {}
         for config_id, external_id in self._incident_mapping.get(internal_id, {}).items():
             config = self._configs.get(config_id)
             if config and config.enabled:
                 try:
-                    results[config_id] = await self._get_provider(config).update_incident(external_id, update)
+                    results[config_id] = await self._get_provider(config).update_incident(
+                        external_id, update
+                    )
                 except Exception as e:
                     logger.error(f"Failed to update on {config_id}: {e}")
         return results
 
-    async def resolve_incident(self, config_id: str, incident_id: str, message: str) -> StatusPageIncident | None:
+    async def resolve_incident(
+        self, config_id: str, incident_id: str, message: str
+    ) -> StatusPageIncident | None:
         config = self._configs.get(config_id)
-        return await self._get_provider(config).resolve_incident(incident_id, message) if config else None
+        return (
+            await self._get_provider(config).resolve_incident(incident_id, message)
+            if config
+            else None
+        )
 
-    async def resolve_incident_all(self, internal_id: str, message: str) -> dict[str, StatusPageIncident]:
+    async def resolve_incident_all(
+        self, internal_id: str, message: str
+    ) -> dict[str, StatusPageIncident]:
         results = {}
         for config_id, external_id in self._incident_mapping.get(internal_id, {}).items():
             config = self._configs.get(config_id)
             if config and config.enabled:
                 try:
-                    results[config_id] = await self._get_provider(config).resolve_incident(external_id, message)
+                    results[config_id] = await self._get_provider(config).resolve_incident(
+                        external_id, message
+                    )
                 except Exception as e:
                     logger.error(f"Failed to resolve on {config_id}: {e}")
         self._incident_mapping.pop(internal_id, None)
@@ -130,7 +185,9 @@ class StatusPageService:
         config = self._configs.get(config_id)
         return await self._get_provider(config).get_incidents(True) if config else []
 
-    async def create_maintenance(self, config_id: str, maintenance: MaintenanceWindow) -> MaintenanceWindow | None:
+    async def create_maintenance(
+        self, config_id: str, maintenance: MaintenanceWindow
+    ) -> MaintenanceWindow | None:
         config = self._configs.get(config_id)
         return await self._get_provider(config).create_maintenance(maintenance) if config else None
 
@@ -145,7 +202,23 @@ class StatusPageService:
         try:
             components = await self._get_provider(config).get_components()
             incidents = await self._get_provider(config).get_incidents(True)
-            return StatusPageMetrics(config_id=config_id, total_components=len(components), operational_components=sum(1 for c in components if c.status == ComponentStatus.OPERATIONAL), degraded_components=sum(1 for c in components if c.status == ComponentStatus.DEGRADED), outage_components=sum(1 for c in components if c.status in (ComponentStatus.PARTIAL_OUTAGE, ComponentStatus.MAJOR_OUTAGE)), active_incidents=len(incidents), last_sync=datetime.utcnow())
+            return StatusPageMetrics(
+                config_id=config_id,
+                total_components=len(components),
+                operational_components=sum(
+                    1 for c in components if c.status == ComponentStatus.OPERATIONAL
+                ),
+                degraded_components=sum(
+                    1 for c in components if c.status == ComponentStatus.DEGRADED
+                ),
+                outage_components=sum(
+                    1
+                    for c in components
+                    if c.status in (ComponentStatus.PARTIAL_OUTAGE, ComponentStatus.MAJOR_OUTAGE)
+                ),
+                active_incidents=len(incidents),
+                last_sync=datetime.utcnow(),
+            )
         except Exception:
             return StatusPageMetrics(config_id=config_id)
 

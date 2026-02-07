@@ -32,8 +32,10 @@ router = APIRouter(prefix="/gamification", tags=["gamification"])
 
 # ==================== Request/Response Models ====================
 
+
 class AwardPointsRequest(BaseModel):
     """Request to manually award points."""
+
     user_id: UUID
     points: int = Field(..., description="Points to award (can be negative)")
     reason: str = Field(..., description="Reason for the award")
@@ -41,6 +43,7 @@ class AwardPointsRequest(BaseModel):
 
 class AwardBadgeRequest(BaseModel):
     """Request to manually award a badge."""
+
     user_id: UUID
     badge_id: UUID
     reason: Optional[str] = None
@@ -48,12 +51,14 @@ class AwardBadgeRequest(BaseModel):
 
 class CheckAchievementsRequest(BaseModel):
     """Request to check achievements with metrics."""
+
     user_id: UUID
     metrics: dict[str, int] = Field(..., description="Metric name -> current value")
 
 
 class UpdateSettingsRequest(BaseModel):
     """Request to update gamification settings."""
+
     is_enabled: bool = True
     show_leaderboards: bool = True
     show_badges: bool = True
@@ -68,6 +73,7 @@ class UpdateSettingsRequest(BaseModel):
 
 class UserProfileResponse(BaseModel):
     """User's complete gamification profile."""
+
     user_id: UUID
     points: UserPoints
     badges: list[UserBadge]
@@ -77,6 +83,7 @@ class UserProfileResponse(BaseModel):
 
 class LeaderboardResponse(BaseModel):
     """Leaderboard response with additional metadata."""
+
     leaderboard: Leaderboard
     user_rank: Optional[int] = None
     user_entry: Optional[dict] = None
@@ -84,11 +91,12 @@ class LeaderboardResponse(BaseModel):
 
 # ==================== Points Routes ====================
 
+
 @router.get("/users/{user_id}/points", response_model=UserPoints)
 async def get_user_points(user_id: UUID) -> UserPoints:
     """
     Get user's current point balance and level.
-    
+
     Returns total points, current level, and period-specific points.
     """
     return await gamification_service.get_user_points(user_id)
@@ -102,7 +110,7 @@ async def get_point_history(
 ) -> list[PointTransaction]:
     """
     Get user's point transaction history.
-    
+
     Returns recent point awards and deductions with reasons.
     """
     return await gamification_service.get_point_history(
@@ -116,7 +124,7 @@ async def get_point_history(
 async def award_points(request: AwardPointsRequest) -> PointTransaction:
     """
     Manually award points to a user (admin only).
-    
+
     Use for special recognitions or corrections.
     """
     return await gamification_service.award_points(
@@ -129,6 +137,7 @@ async def award_points(request: AwardPointsRequest) -> PointTransaction:
 
 # ==================== Achievement Routes ====================
 
+
 @router.get("/achievements", response_model=list[Achievement])
 async def list_achievements(
     category: Optional[AchievementCategory] = None,
@@ -136,17 +145,17 @@ async def list_achievements(
 ) -> list[Achievement]:
     """
     List all available achievements.
-    
+
     Optionally filter by category.
     """
     achievements = list(gamification_service._achievements.values())
-    
+
     if category:
         achievements = [a for a in achievements if a.category == category]
-    
+
     if not include_hidden:
         achievements = [a for a in achievements if not a.is_hidden]
-    
+
     return achievements
 
 
@@ -157,7 +166,7 @@ async def get_user_achievements(
 ) -> list[UserAchievement]:
     """
     Get user's achievement progress.
-    
+
     Returns all achievements with progress percentages.
     """
     return await gamification_service.get_user_achievements(
@@ -170,7 +179,7 @@ async def get_user_achievements(
 async def check_achievements(request: CheckAchievementsRequest) -> list[Achievement]:
     """
     Check and unlock achievements based on current metrics.
-    
+
     Pass a dict of metric names to current values.
     Returns list of newly unlocked achievements.
     """
@@ -182,6 +191,7 @@ async def check_achievements(request: CheckAchievementsRequest) -> list[Achievem
 
 # ==================== Badge Routes ====================
 
+
 @router.get("/badges", response_model=list[Badge])
 async def list_badges(
     category: Optional[AchievementCategory] = None,
@@ -189,7 +199,7 @@ async def list_badges(
 ) -> list[Badge]:
     """
     List all available badges.
-    
+
     Badges are earned through achievements or special actions.
     """
     return await gamification_service.list_badges(
@@ -211,7 +221,7 @@ async def get_badge(badge_id: UUID) -> Badge:
 async def get_user_badges(user_id: UUID) -> list[UserBadge]:
     """
     Get all badges earned by a user.
-    
+
     Includes award date and reason.
     """
     return await gamification_service.get_user_badges(user_id)
@@ -221,7 +231,7 @@ async def get_user_badges(user_id: UUID) -> list[UserBadge]:
 async def award_badge(request: AwardBadgeRequest) -> UserBadge:
     """
     Manually award a badge to a user (admin only).
-    
+
     Use for special recognitions.
     """
     user_badge = await gamification_service.award_badge(
@@ -236,6 +246,7 @@ async def award_badge(request: AwardBadgeRequest) -> UserBadge:
 
 # ==================== Leaderboard Routes ====================
 
+
 @router.get("/leaderboards", response_model=LeaderboardResponse)
 async def get_leaderboard(
     metric: LeaderboardMetric = LeaderboardMetric.POINTS_EARNED,
@@ -246,7 +257,7 @@ async def get_leaderboard(
 ) -> LeaderboardResponse:
     """
     Get leaderboard rankings.
-    
+
     Supports various metrics and time periods.
     Optionally includes the requesting user's rank.
     """
@@ -256,9 +267,9 @@ async def get_leaderboard(
         team_id=team_id,
         limit=limit,
     )
-    
+
     response = LeaderboardResponse(leaderboard=leaderboard)
-    
+
     # Find user's rank if requested
     if user_id:
         for entry in leaderboard.entries:
@@ -266,7 +277,7 @@ async def get_leaderboard(
                 response.user_rank = entry.rank
                 response.user_entry = entry.model_dump()
                 break
-    
+
     return response
 
 
@@ -274,12 +285,11 @@ async def get_leaderboard(
 async def list_leaderboard_metrics() -> list[dict]:
     """
     List available leaderboard metrics.
-    
+
     Returns metric names with descriptions.
     """
     return [
-        {"metric": m.value, "name": m.value.replace("_", " ").title()}
-        for m in LeaderboardMetric
+        {"metric": m.value, "name": m.value.replace("_", " ").title()} for m in LeaderboardMetric
     ]
 
 
@@ -289,25 +299,25 @@ async def list_leaderboard_periods() -> list[dict]:
     List available leaderboard time periods.
     """
     return [
-        {"period": p.value, "name": p.value.replace("_", " ").title()}
-        for p in LeaderboardPeriod
+        {"period": p.value, "name": p.value.replace("_", " ").title()} for p in LeaderboardPeriod
     ]
 
 
 # ==================== User Profile Routes ====================
 
+
 @router.get("/users/{user_id}/profile", response_model=UserProfileResponse)
 async def get_user_profile(user_id: UUID) -> UserProfileResponse:
     """
     Get user's complete gamification profile.
-    
+
     Includes points, badges, achievements, and recent activity.
     """
     points = await gamification_service.get_user_points(user_id)
     badges = await gamification_service.get_user_badges(user_id)
     achievements = await gamification_service.get_user_achievements(user_id)
     transactions = await gamification_service.get_point_history(user_id, limit=10)
-    
+
     return UserProfileResponse(
         user_id=user_id,
         points=points,
@@ -318,6 +328,7 @@ async def get_user_profile(user_id: UUID) -> UserProfileResponse:
 
 
 # ==================== Settings Routes ====================
+
 
 @router.get("/settings/{organization_id}", response_model=GamificationSettings)
 async def get_settings(organization_id: UUID) -> GamificationSettings:
@@ -344,6 +355,7 @@ async def update_settings(
 
 # ==================== Event Hooks (Internal) ====================
 
+
 @router.post("/events/incident-acknowledged")
 async def on_incident_acknowledged(
     user_id: UUID,
@@ -352,7 +364,7 @@ async def on_incident_acknowledged(
 ) -> dict:
     """
     Internal hook for incident acknowledgment events.
-    
+
     Awards points and checks relevant achievements.
     """
     return await gamification_service.on_incident_acknowledged(
@@ -371,7 +383,7 @@ async def on_incident_resolved(
 ) -> dict:
     """
     Internal hook for incident resolution events.
-    
+
     Awards points based on speed and severity.
     """
     return await gamification_service.on_incident_resolved(

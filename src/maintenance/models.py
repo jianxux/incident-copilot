@@ -1,4 +1,5 @@
 """Maintenance Windows - Pydantic Models"""
+
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional
@@ -34,12 +35,13 @@ class NotificationType(str, Enum):
 
 class MaintenanceScope(BaseModel):
     """Defines what is affected by a maintenance window."""
+
     scope_type: ScopeType
     identifiers: list[str] = Field(default_factory=list)
     exclude_identifiers: list[str] = Field(default_factory=list)
     suppress_alerts: bool = True
     suppress_incidents: bool = False
-    
+
     def matches(self, scope_type: ScopeType, identifier: str) -> bool:
         if self.scope_type == ScopeType.GLOBAL:
             return identifier not in self.exclude_identifiers
@@ -50,20 +52,21 @@ class MaintenanceScope(BaseModel):
 
 class MaintenanceSchedule(BaseModel):
     """Schedule for maintenance windows with RRULE support."""
+
     start_time: datetime
     end_time: datetime
     timezone: str = "UTC"
     is_recurring: bool = False
     rrule: Optional[str] = None
     recurrence_end: Optional[datetime] = None
-    
+
     @field_validator("rrule")
     @classmethod
     def validate_rrule(cls, v: Optional[str]) -> Optional[str]:
         if v and not any(v.upper().startswith(p) for p in ("FREQ=", "RRULE:")):
             raise ValueError("RRULE must start with FREQ= or RRULE:")
         return v.upper().replace("RRULE:", "") if v else None
-    
+
     @model_validator(mode="after")
     def validate_schedule(self) -> "MaintenanceSchedule":
         if self.end_time <= self.start_time:
@@ -71,7 +74,7 @@ class MaintenanceSchedule(BaseModel):
         if self.is_recurring and not self.rrule:
             raise ValueError("rrule required for recurring schedules")
         return self
-    
+
     @property
     def duration(self) -> timedelta:
         return self.end_time - self.start_time
@@ -86,6 +89,7 @@ class ApprovalRecord(BaseModel):
 
 class MaintenanceWindow(BaseModel):
     """A scheduled maintenance window."""
+
     id: UUID = Field(default_factory=uuid4)
     title: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = None
@@ -110,11 +114,18 @@ class MaintenanceWindow(BaseModel):
         if not self.requires_approval:
             return True
         approved_by = {a.approver_id for a in self.approvals if a.approved}
-        return bool(approved_by) if not self.required_approvers else all(a in approved_by for a in self.required_approvers)
-    
+        return (
+            bool(approved_by)
+            if not self.required_approvers
+            else all(a in approved_by for a in self.required_approvers)
+        )
+
     def is_active(self, at_time: Optional[datetime] = None) -> bool:
         now = at_time or datetime.utcnow()
-        return self.status in (MaintenanceStatus.IN_PROGRESS, MaintenanceStatus.EXTENDED) and self.schedule.start_time <= now <= self.schedule.end_time
+        return (
+            self.status in (MaintenanceStatus.IN_PROGRESS, MaintenanceStatus.EXTENDED)
+            and self.schedule.start_time <= now <= self.schedule.end_time
+        )
 
 
 class MaintenanceWindowCreate(BaseModel):

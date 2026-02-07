@@ -15,12 +15,14 @@ from pydantic import BaseModel, Field, HttpUrl
 
 class PDUrgency(StrEnum):
     """PagerDuty incident urgency levels."""
+
     HIGH = "high"
     LOW = "low"
 
 
 class PDStatus(StrEnum):
     """PagerDuty incident status."""
+
     TRIGGERED = "triggered"
     ACKNOWLEDGED = "acknowledged"
     RESOLVED = "resolved"
@@ -28,6 +30,7 @@ class PDStatus(StrEnum):
 
 class PDWebhookType(StrEnum):
     """PagerDuty webhook event types."""
+
     INCIDENT_TRIGGER = "incident.trigger"
     INCIDENT_ACKNOWLEDGE = "incident.acknowledge"
     INCIDENT_UNACKNOWLEDGE = "incident.unacknowledge"
@@ -47,35 +50,35 @@ class PDWebhookType(StrEnum):
 
 class PagerDutyConfig(BaseModel):
     """PagerDuty integration configuration."""
+
     id: UUID = Field(default_factory=uuid4)
     organization_id: UUID
-    
+
     # API credentials
     api_token: str = Field(..., description="REST API token")
     integration_key: Optional[str] = Field(None, description="Events API integration key")
-    
+
     # OAuth credentials (alternative)
     client_id: Optional[str] = None
     client_secret: Optional[str] = None
     refresh_token: Optional[str] = None
-    
+
     # Webhook settings
     webhook_url: Optional[HttpUrl] = None
     webhook_secret: Optional[str] = None
-    
+
     # Mapping
     default_escalation_policy_id: Optional[str] = None
     service_mapping: dict[str, str] = Field(
-        default_factory=dict,
-        description="Internal service ID -> PagerDuty service ID"
+        default_factory=dict, description="Internal service ID -> PagerDuty service ID"
     )
-    
+
     # Sync settings
     sync_incidents: bool = True
     sync_services: bool = True
     sync_schedules: bool = True
     auto_create_services: bool = False
-    
+
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -84,6 +87,7 @@ class PagerDutyConfig(BaseModel):
 
 class PDReference(BaseModel):
     """PagerDuty object reference."""
+
     id: str
     type: str
     summary: Optional[str] = None
@@ -93,12 +97,13 @@ class PDReference(BaseModel):
 
 class PDUser(BaseModel):
     """PagerDuty user."""
+
     id: str
     type: str = "user"
     summary: str = ""
     self_url: Optional[str] = Field(None, alias="self")
     html_url: Optional[str] = None
-    
+
     name: str = ""
     email: str = ""
     time_zone: Optional[str] = None
@@ -106,50 +111,52 @@ class PDUser(BaseModel):
     avatar_url: Optional[str] = None
     role: Optional[str] = None
     job_title: Optional[str] = None
-    
+
     # Contact methods
     contact_methods: list[dict] = Field(default_factory=list)
     notification_rules: list[dict] = Field(default_factory=list)
-    
+
     # Teams
     teams: list[PDReference] = Field(default_factory=list)
 
 
 class PDService(BaseModel):
     """PagerDuty service."""
+
     id: str
     type: str = "service"
     summary: str = ""
     self_url: Optional[str] = Field(None, alias="self")
     html_url: Optional[str] = None
-    
+
     name: str
     description: Optional[str] = None
     status: str = "active"  # active, warning, critical, maintenance, disabled
-    
+
     # Configuration
     auto_resolve_timeout: Optional[int] = None
     acknowledgement_timeout: Optional[int] = None
     alert_creation: str = "create_alerts_and_incidents"
     alert_grouping: Optional[str] = None
     alert_grouping_timeout: Optional[int] = None
-    
+
     # References
     escalation_policy: Optional[PDReference] = None
     teams: list[PDReference] = Field(default_factory=list)
     integrations: list[PDReference] = Field(default_factory=list)
-    
+
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
 
 class PDPriority(BaseModel):
     """PagerDuty priority."""
+
     id: str
     type: str = "priority"
     summary: str
     self_url: Optional[str] = Field(None, alias="self")
-    
+
     name: str
     description: Optional[str] = None
     order: int = 0
@@ -158,53 +165,55 @@ class PDPriority(BaseModel):
 
 class PDIncident(BaseModel):
     """PagerDuty incident."""
+
     id: str
     type: str = "incident"
     summary: str = ""
     self_url: Optional[str] = Field(None, alias="self")
     html_url: Optional[str] = None
-    
+
     incident_number: int
     title: str
     description: Optional[str] = None
-    
+
     status: PDStatus = PDStatus.TRIGGERED
     urgency: PDUrgency = PDUrgency.HIGH
     priority: Optional[PDPriority] = None
-    
+
     # References
     service: PDReference
     escalation_policy: Optional[PDReference] = None
     teams: list[PDReference] = Field(default_factory=list)
-    
+
     # Assignments
     assignments: list[dict] = Field(default_factory=list)
     acknowledgements: list[dict] = Field(default_factory=list)
     last_status_change_at: Optional[datetime] = None
     last_status_change_by: Optional[PDReference] = None
-    
+
     # Responders
     first_trigger_log_entry: Optional[PDReference] = None
     escalation_level: int = 1
     pending_actions: list[dict] = Field(default_factory=list)
-    
+
     # Alerts
     alert_counts: Optional[dict] = None
-    
+
     # Conference bridge
     conference_bridge: Optional[dict] = None
-    
+
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None
-    
+
     # Custom fields
     custom_fields: list[dict] = Field(default_factory=list)
 
 
 class PDEscalationRule(BaseModel):
     """Escalation policy rule."""
+
     id: str
     escalation_delay_in_minutes: int = 30
     targets: list[PDReference] = Field(default_factory=list)
@@ -212,20 +221,21 @@ class PDEscalationRule(BaseModel):
 
 class PDEscalationPolicy(BaseModel):
     """PagerDuty escalation policy."""
+
     id: str
     type: str = "escalation_policy"
     summary: str = ""
     self_url: Optional[str] = Field(None, alias="self")
     html_url: Optional[str] = None
-    
+
     name: str
     description: Optional[str] = None
     num_loops: int = 0
     on_call_handoff_notifications: str = "if_has_services"
-    
+
     # Rules
     escalation_rules: list[PDEscalationRule] = Field(default_factory=list)
-    
+
     # References
     services: list[PDReference] = Field(default_factory=list)
     teams: list[PDReference] = Field(default_factory=list)
@@ -233,6 +243,7 @@ class PDEscalationPolicy(BaseModel):
 
 class PDScheduleLayer(BaseModel):
     """Schedule layer within a schedule."""
+
     id: str
     name: str
     start: datetime
@@ -245,23 +256,24 @@ class PDScheduleLayer(BaseModel):
 
 class PDSchedule(BaseModel):
     """PagerDuty schedule."""
+
     id: str
     type: str = "schedule"
     summary: str = ""
     self_url: Optional[str] = Field(None, alias="self")
     html_url: Optional[str] = None
-    
+
     name: str
     description: Optional[str] = None
     time_zone: str = "UTC"
-    
+
     # Layers
     schedule_layers: list[PDScheduleLayer] = Field(default_factory=list)
     final_schedule: Optional[dict] = None
-    
+
     # Overrides
     overrides_subschedule: Optional[dict] = None
-    
+
     # References
     escalation_policies: list[PDReference] = Field(default_factory=list)
     users: list[PDReference] = Field(default_factory=list)
@@ -270,6 +282,7 @@ class PDSchedule(BaseModel):
 
 class PDOnCall(BaseModel):
     """PagerDuty on-call entry."""
+
     user: PDUser
     schedule: Optional[PDReference] = None
     escalation_policy: PDReference
@@ -280,6 +293,7 @@ class PDOnCall(BaseModel):
 
 class PDWebhookMessage(BaseModel):
     """Individual message within a webhook payload."""
+
     event: PDWebhookType
     log_entries: list[dict] = Field(default_factory=list)
     incident: Optional[PDIncident] = None
@@ -289,6 +303,7 @@ class PDWebhookMessage(BaseModel):
 
 class PDWebhookEvent(BaseModel):
     """PagerDuty V3 webhook event."""
+
     id: str
     routing_key: Optional[str] = None
     event_type: str
@@ -297,7 +312,7 @@ class PDWebhookEvent(BaseModel):
     agent: Optional[dict] = None
     client: Optional[dict] = None
     data: dict = Field(default_factory=dict)
-    
+
     # Parsed data
     incident: Optional[PDIncident] = None
     service: Optional[PDService] = None
@@ -305,20 +320,22 @@ class PDWebhookEvent(BaseModel):
 
 class PDEventsAPIPayload(BaseModel):
     """Payload for PagerDuty Events API v2."""
+
     routing_key: str
     event_action: str = "trigger"  # trigger, acknowledge, resolve
     dedup_key: Optional[str] = None
-    
+
     payload: Optional[dict] = None
     images: list[dict] = Field(default_factory=list)
     links: list[dict] = Field(default_factory=list)
-    
+
     class Config:
         extra = "allow"
 
 
 class CreateIncidentRequest(BaseModel):
     """Request to create an incident via PagerDuty."""
+
     title: str
     service_id: str
     urgency: PDUrgency = PDUrgency.HIGH
@@ -332,6 +349,7 @@ class CreateIncidentRequest(BaseModel):
 
 class UpdateIncidentRequest(BaseModel):
     """Request to update a PagerDuty incident."""
+
     status: Optional[PDStatus] = None
     title: Optional[str] = None
     urgency: Optional[PDUrgency] = None
@@ -344,6 +362,7 @@ class UpdateIncidentRequest(BaseModel):
 
 class SyncResult(BaseModel):
     """Result of a sync operation."""
+
     success: bool
     synced_count: int = 0
     error_count: int = 0

@@ -203,9 +203,7 @@ class TestSSOModels:
         assert "auth0" in OIDC_PROVIDER_PRESETS
 
         # Google preset should have issuer
-        assert (
-            OIDC_PROVIDER_PRESETS["google"]["issuer"] == "https://accounts.google.com"
-        )
+        assert OIDC_PROVIDER_PRESETS["google"]["issuer"] == "https://accounts.google.com"
 
 
 # --- Session Management Tests ---

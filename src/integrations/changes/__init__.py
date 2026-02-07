@@ -16,11 +16,11 @@ Usage:
         GitHubCollector,
         router,
     )
-    
+
     # Register collectors
     service = get_change_service()
     service.register_collector(GitHubCollector(token="...", org="myorg"))
-    
+
     # Include routes
     app.include_router(router)
 """
@@ -58,7 +58,7 @@ from .routes import router
 __all__ = [
     # Enums
     "ChangeType",
-    "ChangeStatus", 
+    "ChangeStatus",
     "ChangeSource",
     "RiskLevel",
     # Models

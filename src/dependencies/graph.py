@@ -37,15 +37,16 @@ class DependencyGraphAnalyzer:
         """Remove a service and all its dependencies."""
         if service_id not in self._services:
             return False
-        
+
         # Remove related dependencies
         to_remove = [
-            dep_id for dep_id, dep in self._dependencies.items()
+            dep_id
+            for dep_id, dep in self._dependencies.items()
             if dep.source_id == service_id or dep.target_id == service_id
         ]
         for dep_id in to_remove:
             del self._dependencies[dep_id]
-        
+
         self._graph.remove_node(service_id)
         del self._services[service_id]
         return True
@@ -67,7 +68,7 @@ class DependencyGraphAnalyzer:
         """Remove a dependency edge."""
         if dependency_id not in self._dependencies:
             return False
-        
+
         dep = self._dependencies[dependency_id]
         if self._graph.has_edge(dep.source_id, dep.target_id):
             self._graph.remove_edge(dep.source_id, dep.target_id)
@@ -76,56 +77,56 @@ class DependencyGraphAnalyzer:
 
     def get_downstream(self, service_id: str, max_depth: int | None = None) -> set[str]:
         """Get all services that depend on this service (upstream perspective).
-        
+
         If service X fails, which services are affected?
         Returns services that call this service (predecessors in call graph).
         """
         if service_id not in self._graph:
             return set()
-        
+
         # In a call graph, edges go from caller to callee
         # So predecessors are the ones that depend on us
         affected = set()
         to_visit = [(service_id, 0)]
         visited = {service_id}
-        
+
         while to_visit:
             current, depth = to_visit.pop(0)
             if max_depth is not None and depth >= max_depth:
                 continue
-            
+
             for pred in self._graph.predecessors(current):
                 if pred not in visited:
                     visited.add(pred)
                     affected.add(pred)
                     to_visit.append((pred, depth + 1))
-        
+
         return affected
 
     def get_upstream(self, service_id: str, max_depth: int | None = None) -> set[str]:
         """Get all services this service depends on.
-        
+
         What does service X need to function?
         Returns services this service calls (successors in call graph).
         """
         if service_id not in self._graph:
             return set()
-        
+
         dependencies = set()
         to_visit = [(service_id, 0)]
         visited = {service_id}
-        
+
         while to_visit:
             current, depth = to_visit.pop(0)
             if max_depth is not None and depth >= max_depth:
                 continue
-            
+
             for succ in self._graph.successors(current):
                 if succ not in visited:
                     visited.add(succ)
                     dependencies.add(succ)
                     to_visit.append((succ, depth + 1))
-        
+
         return dependencies
 
     def detect_cycles(self) -> list[CycleInfo]:
@@ -134,20 +135,22 @@ class DependencyGraphAnalyzer:
             cycles = list(nx.simple_cycles(self._graph))
         except nx.NetworkXError:
             return []
-        
+
         result = []
         for cycle in cycles:
             involves_critical = any(
-                self._services.get(svc_id, Service(id=svc_id, name=svc_id)).criticality 
+                self._services.get(svc_id, Service(id=svc_id, name=svc_id)).criticality
                 == CriticalityLevel.CRITICAL
                 for svc_id in cycle
             )
-            result.append(CycleInfo(
-                cycle=cycle,
-                length=len(cycle),
-                involves_critical=involves_critical,
-            ))
-        
+            result.append(
+                CycleInfo(
+                    cycle=cycle,
+                    length=len(cycle),
+                    involves_critical=involves_critical,
+                )
+            )
+
         return result
 
     def has_cycles(self) -> bool:
@@ -160,7 +163,7 @@ class DependencyGraphAnalyzer:
 
     def topological_sort(self) -> list[str] | None:
         """Return topological ordering of services (for deployment order).
-        
+
         Returns None if graph has cycles.
         """
         try:
@@ -172,7 +175,7 @@ class DependencyGraphAnalyzer:
         """Find shortest path between two services."""
         if source_id not in self._graph or target_id not in self._graph:
             return None
-        
+
         try:
             path = nx.shortest_path(self._graph, source_id, target_id)
             has_critical = self._path_has_critical_hop(path)
@@ -192,14 +195,12 @@ class DependencyGraphAnalyzer:
         """Find all paths between two services up to max_length."""
         if source_id not in self._graph or target_id not in self._graph:
             return []
-        
+
         try:
-            paths = list(nx.all_simple_paths(
-                self._graph, source_id, target_id, cutoff=max_length
-            ))
+            paths = list(nx.all_simple_paths(self._graph, source_id, target_id, cutoff=max_length))
         except nx.NetworkXError:
             return []
-        
+
         return [
             DependencyPath(
                 source_id=source_id,
@@ -221,7 +222,7 @@ class DependencyGraphAnalyzer:
 
     def calculate_risk_score(self, service_id: str) -> float:
         """Calculate risk score for a service failure (0-100).
-        
+
         Factors:
         - Number of dependent services
         - Criticality of dependent services
@@ -230,30 +231,32 @@ class DependencyGraphAnalyzer:
         """
         if service_id not in self._graph:
             return 0.0
-        
+
         affected = self.get_downstream(service_id)
         if not affected:
             return 0.0
-        
+
         base_score = min(len(affected) * 5, 30)  # Up to 30 points for count
-        
+
         # Criticality bonus
         critical_count = sum(
-            1 for svc_id in affected
+            1
+            for svc_id in affected
             if self._services.get(svc_id, Service(id=svc_id, name=svc_id)).criticality
             == CriticalityLevel.CRITICAL
         )
         high_count = sum(
-            1 for svc_id in affected
+            1
+            for svc_id in affected
             if self._services.get(svc_id, Service(id=svc_id, name=svc_id)).criticality
             == CriticalityLevel.HIGH
         )
         criticality_score = min(critical_count * 15 + high_count * 8, 40)
-        
+
         # Depth score
         max_depth = self._calculate_max_depth(service_id, affected)
         depth_score = min(max_depth * 5, 20)
-        
+
         # Self criticality bonus
         self_criticality = self._services.get(
             service_id, Service(id=service_id, name=service_id)
@@ -264,14 +267,14 @@ class DependencyGraphAnalyzer:
             CriticalityLevel.MEDIUM: 2,
             CriticalityLevel.LOW: 0,
         }.get(self_criticality, 0)
-        
+
         return min(base_score + criticality_score + depth_score + self_score, 100.0)
 
     def _calculate_max_depth(self, service_id: str, affected: set[str]) -> int:
         """Calculate maximum depth of impact."""
         if not affected:
             return 0
-        
+
         max_depth = 0
         for target in affected:
             path = self.find_path(target, service_id)
@@ -293,22 +296,21 @@ class DependencyGraphAnalyzer:
 
     def get_isolated_services(self) -> list[str]:
         """Get services with no dependencies (in or out)."""
-        return [
-            node for node in self._graph.nodes()
-            if self._graph.degree(node) == 0
-        ]
+        return [node for node in self._graph.nodes() if self._graph.degree(node) == 0]
 
     def get_leaf_services(self) -> list[str]:
         """Get services that don't depend on anything else."""
         return [
-            node for node in self._graph.nodes()
+            node
+            for node in self._graph.nodes()
             if self._graph.out_degree(node) == 0 and self._graph.in_degree(node) > 0
         ]
 
     def get_root_services(self) -> list[str]:
         """Get services that nothing depends on (entry points)."""
         return [
-            node for node in self._graph.nodes()
+            node
+            for node in self._graph.nodes()
             if self._graph.in_degree(node) == 0 and self._graph.out_degree(node) > 0
         ]
 
@@ -319,7 +321,7 @@ class DependencyGraphAnalyzer:
     def get_graph_stats(self) -> dict[str, Any]:
         """Get statistics about the graph."""
         nodes = list(self._graph.nodes())
-        
+
         return {
             "total_services": len(nodes),
             "total_dependencies": self._graph.number_of_edges(),

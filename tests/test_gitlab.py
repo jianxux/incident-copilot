@@ -253,9 +253,7 @@ class TestGitLabAdapterFetchCodeowners:
             mock_client.get.return_value = mock_response
             mock_client_class.return_value.__aenter__.return_value = mock_client
 
-            owners = await gitlab_adapter._fetch_codeowners(
-                mock_client, "mygroup/payments"
-            )
+            owners = await gitlab_adapter._fetch_codeowners(mock_client, "mygroup/payments")
 
             assert "@team-leads" in owners
             assert "@dev-team" in owners
@@ -271,9 +269,7 @@ class TestGitLabAdapterFetchCodeowners:
             mock_client.get.return_value = mock_response
             mock_client_class.return_value.__aenter__.return_value = mock_client
 
-            owners = await gitlab_adapter._fetch_codeowners(
-                mock_client, "mygroup/payments"
-            )
+            owners = await gitlab_adapter._fetch_codeowners(mock_client, "mygroup/payments")
 
             assert owners == []
 
@@ -287,15 +283,9 @@ class TestGitLabAdapterGetContext:
         now = datetime.now(UTC)
 
         with patch.object(gitlab_adapter, "_fetch_recent_commits") as mock_commits:
-            with patch.object(
-                gitlab_adapter, "_fetch_recent_merge_requests"
-            ) as mock_mrs:
-                with patch.object(
-                    gitlab_adapter, "_fetch_recent_pipelines"
-                ) as mock_pipelines:
-                    with patch.object(
-                        gitlab_adapter, "_fetch_codeowners"
-                    ) as mock_owners:
+            with patch.object(gitlab_adapter, "_fetch_recent_merge_requests") as mock_mrs:
+                with patch.object(gitlab_adapter, "_fetch_recent_pipelines") as mock_pipelines:
+                    with patch.object(gitlab_adapter, "_fetch_codeowners") as mock_owners:
                         mock_commits.return_value = [
                             Deployment(
                                 sha="abc123",

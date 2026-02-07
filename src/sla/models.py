@@ -46,7 +46,7 @@ class EscalationLevel(StrEnum):
 
 class BusinessHours(BaseModel):
     """Business hours configuration for SLA calculations.
-    
+
     When enabled, SLA timers pause outside of business hours.
     """
 
@@ -86,7 +86,7 @@ class BusinessHours(BaseModel):
 
 class SLATarget(BaseModel):
     """Individual SLA target for a specific severity and type.
-    
+
     Defines the time limit in minutes for response or resolution.
     """
 
@@ -108,7 +108,7 @@ class SLATarget(BaseModel):
 
 class SLAPolicy(BaseModel):
     """Complete SLA policy with targets for all severities.
-    
+
     A policy defines SLA targets for an organization, team, or service.
     """
 
@@ -118,20 +118,20 @@ class SLAPolicy(BaseModel):
     organization_id: str
     team_id: str | None = None
     service_id: str | None = None
-    
+
     # SLA targets by severity
     targets: list[SLATarget] = Field(default_factory=list)
-    
+
     # Business hours configuration
     business_hours: BusinessHours = Field(default_factory=BusinessHours)
-    
+
     # Escalation configuration
     escalation_enabled: bool = True
     escalation_contacts: list[str] = Field(
         default_factory=list,
         description="Email addresses or Slack channels for escalation",
     )
-    
+
     # Metadata
     is_active: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -145,15 +145,11 @@ class SLAPolicy(BaseModel):
         for target in self.targets:
             key = (target.severity, target.sla_type)
             if key in seen:
-                raise ValueError(
-                    f"Duplicate target for {target.severity}/{target.sla_type}"
-                )
+                raise ValueError(f"Duplicate target for {target.severity}/{target.sla_type}")
             seen.add(key)
         return self
 
-    def get_target(
-        self, severity: SLASeverity, sla_type: SLAType
-    ) -> SLATarget | None:
+    def get_target(self, severity: SLASeverity, sla_type: SLAType) -> SLATarget | None:
         """Get specific SLA target by severity and type."""
         for target in self.targets:
             if target.severity == severity and target.sla_type == sla_type:
@@ -163,7 +159,7 @@ class SLAPolicy(BaseModel):
 
 class SLATimer(BaseModel):
     """Active SLA timer for an incident.
-    
+
     Tracks elapsed time and pauses for business hours.
     """
 
@@ -171,7 +167,7 @@ class SLATimer(BaseModel):
     policy_id: str
     severity: SLASeverity
     sla_type: SLAType
-    
+
     # Timing
     started_at: datetime
     target_minutes: int
@@ -179,12 +175,12 @@ class SLATimer(BaseModel):
     paused: bool = False
     paused_at: datetime | None = None
     total_paused_minutes: float = 0.0
-    
+
     # Status
     status: SLAStatus = SLAStatus.ON_TRACK
     breached_at: datetime | None = None
     completed_at: datetime | None = None
-    
+
     @property
     def remaining_minutes(self) -> float:
         """Calculate remaining time until SLA breach."""
@@ -205,7 +201,7 @@ class SLATimer(BaseModel):
 
 class SLABreach(BaseModel):
     """Record of an SLA breach event.
-    
+
     Created when an SLA timer exceeds its target time.
     """
 
@@ -214,26 +210,24 @@ class SLABreach(BaseModel):
     policy_id: str
     severity: SLASeverity
     sla_type: SLAType
-    
+
     # Breach details
     target_minutes: int
     actual_minutes: float
-    breach_amount_minutes: float = Field(
-        description="How much over the SLA target"
-    )
+    breach_amount_minutes: float = Field(description="How much over the SLA target")
     breach_percent: float = Field(description="Percentage over target")
-    
+
     # Escalation
     escalation_level: EscalationLevel = EscalationLevel.BREACH
     escalated_to: list[str] = Field(default_factory=list)
     escalation_sent_at: datetime | None = None
-    
+
     # Timestamps
     breached_at: datetime
     resolved_at: datetime | None = None
     acknowledged_at: datetime | None = None
     acknowledged_by: str | None = None
-    
+
     # Context
     notes: str | None = None
     root_cause: str | None = None
@@ -246,7 +240,7 @@ class SLABreach(BaseModel):
 
 class SLAIncidentStatus(BaseModel):
     """Current SLA status for an incident.
-    
+
     Aggregates response and resolution SLA timers.
     """
 
@@ -254,23 +248,23 @@ class SLAIncidentStatus(BaseModel):
     severity: SLASeverity
     policy_id: str
     policy_name: str
-    
+
     # Response SLA
     response_timer: SLATimer | None = None
     response_breached: bool = False
     response_completed: bool = False
-    
+
     # Resolution SLA
     resolution_timer: SLATimer | None = None
     resolution_breached: bool = False
     resolution_completed: bool = False
-    
+
     # Overall status
     overall_status: SLAStatus = SLAStatus.ON_TRACK
-    
+
     # Breaches
     breaches: list[SLABreach] = Field(default_factory=list)
-    
+
     # Timestamps
     calculated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -282,10 +276,10 @@ class SLAIncidentStatus(BaseModel):
             statuses.append(self.response_timer.status)
         if self.resolution_timer:
             statuses.append(self.resolution_timer.status)
-        
+
         if not statuses:
             return SLAStatus.ON_TRACK
-        
+
         if SLAStatus.BREACHED in statuses:
             return SLAStatus.BREACHED
         if SLAStatus.AT_RISK in statuses:
@@ -295,7 +289,7 @@ class SLAIncidentStatus(BaseModel):
 
 class SLAMetrics(BaseModel):
     """SLA compliance metrics for reporting.
-    
+
     Aggregated metrics over a time period.
     """
 
@@ -304,39 +298,39 @@ class SLAMetrics(BaseModel):
     team_id: str | None = None
     service_id: str | None = None
     policy_id: str | None = None
-    
+
     # Time period
     period_start: datetime
     period_end: datetime
-    
+
     # Counts
     total_incidents: int = 0
     incidents_by_severity: dict[str, int] = Field(default_factory=dict)
-    
+
     # Response SLA
     response_sla_met: int = 0
     response_sla_breached: int = 0
     response_compliance_percent: float = 0.0
     avg_response_minutes: float | None = None
-    
+
     # Resolution SLA
     resolution_sla_met: int = 0
     resolution_sla_breached: int = 0
     resolution_compliance_percent: float = 0.0
     avg_resolution_minutes: float | None = None
-    
+
     # Overall
     overall_compliance_percent: float = 0.0
-    
+
     # Trends
     compliance_trend: list[dict[str, Any]] = Field(
         default_factory=list,
         description="Daily compliance data for trending",
     )
-    
+
     # Top breached
     top_breached_services: list[dict[str, Any]] = Field(default_factory=list)
-    
+
     # Generated timestamp
     generated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -344,27 +338,27 @@ class SLAMetrics(BaseModel):
         """Calculate compliance percentages from counts."""
         total_response = self.response_sla_met + self.response_sla_breached
         total_resolution = self.resolution_sla_met + self.resolution_sla_breached
-        
+
         if total_response > 0:
             self.response_compliance_percent = round(
                 (self.response_sla_met / total_response) * 100, 2
             )
-        
+
         if total_resolution > 0:
             self.resolution_compliance_percent = round(
                 (self.resolution_sla_met / total_resolution) * 100, 2
             )
-        
+
         total = total_response + total_resolution
         met = self.response_sla_met + self.resolution_sla_met
-        
+
         if total > 0:
             self.overall_compliance_percent = round((met / total) * 100, 2)
 
 
 class SLANotification(BaseModel):
     """SLA notification event for escalation.
-    
+
     Tracks notifications sent for SLA warnings and breaches.
     """
 
@@ -373,15 +367,15 @@ class SLANotification(BaseModel):
     sla_type: SLAType
     severity: SLASeverity
     escalation_level: EscalationLevel
-    
+
     # Recipients
     recipients: list[str] = Field(default_factory=list)
     channel: str = Field(description="email, slack, pagerduty, etc.")
-    
+
     # Message
     subject: str
     body: str
-    
+
     # Status
     sent_at: datetime = Field(default_factory=datetime.utcnow)
     delivered: bool = False
@@ -398,8 +392,12 @@ DEFAULT_SLA_TARGETS = [
     SLATarget(severity=SLASeverity.P2, sla_type=SLAType.RESOLUTION, target_minutes=480),  # 8 hours
     # P3 - Medium
     SLATarget(severity=SLASeverity.P3, sla_type=SLAType.RESPONSE, target_minutes=120),  # 2 hours
-    SLATarget(severity=SLASeverity.P3, sla_type=SLAType.RESOLUTION, target_minutes=1440),  # 24 hours
+    SLATarget(
+        severity=SLASeverity.P3, sla_type=SLAType.RESOLUTION, target_minutes=1440
+    ),  # 24 hours
     # P4 - Low
     SLATarget(severity=SLASeverity.P4, sla_type=SLAType.RESPONSE, target_minutes=480),  # 8 hours
-    SLATarget(severity=SLASeverity.P4, sla_type=SLAType.RESOLUTION, target_minutes=4320),  # 72 hours
+    SLATarget(
+        severity=SLASeverity.P4, sla_type=SLAType.RESOLUTION, target_minutes=4320
+    ),  # 72 hours
 ]

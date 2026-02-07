@@ -9,8 +9,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from .models import (
-    ChangeEvent, ChangeType, ChangeSource, ChangeStatus,
-    ChangeFreeze, ChangeCorrelation, ChangeTimeline, RiskLevel
+    ChangeEvent,
+    ChangeType,
+    ChangeSource,
+    ChangeStatus,
+    ChangeFreeze,
+    ChangeCorrelation,
+    ChangeTimeline,
+    RiskLevel,
 )
 from .service import ChangeTrackingService, get_change_service
 
@@ -19,6 +25,7 @@ router = APIRouter(prefix="/changes", tags=["changes"])
 
 
 # ========== Request/Response Models ==========
+
 
 class RecentChangesRequest(BaseModel):
     hours: int = Field(default=24, ge=1, le=168)
@@ -68,11 +75,13 @@ class ChangeStatsResponse(BaseModel):
 
 # ========== Dependency ==========
 
+
 def get_service() -> ChangeTrackingService:
     return get_change_service()
 
 
 # ========== Routes ==========
+
 
 @router.get("/recent", response_model=list[ChangeEvent])
 async def get_recent_changes(
@@ -81,24 +90,19 @@ async def get_recent_changes(
     service: Optional[str] = None,
     change_type: Optional[ChangeType] = None,
     limit: int = Query(default=50, ge=1, le=200),
-    svc: ChangeTrackingService = Depends(get_service)
+    svc: ChangeTrackingService = Depends(get_service),
 ) -> list[ChangeEvent]:
     """Get recent changes within a time window."""
     types = [change_type] if change_type else None
-    
+
     return await svc.get_recent_changes(
-        hours=hours,
-        environment=environment,
-        service=service,
-        change_types=types,
-        limit=limit
+        hours=hours, environment=environment, service=service, change_types=types, limit=limit
     )
 
 
 @router.post("/recent", response_model=list[ChangeEvent])
 async def query_recent_changes(
-    request: RecentChangesRequest,
-    svc: ChangeTrackingService = Depends(get_service)
+    request: RecentChangesRequest, svc: ChangeTrackingService = Depends(get_service)
 ) -> list[ChangeEvent]:
     """Query recent changes with filters."""
     return await svc.get_recent_changes(
@@ -106,14 +110,13 @@ async def query_recent_changes(
         environment=request.environment,
         service=request.service,
         change_types=request.types,
-        limit=request.limit
+        limit=request.limit,
     )
 
 
 @router.get("/{change_id}", response_model=ChangeEvent)
 async def get_change(
-    change_id: str,
-    svc: ChangeTrackingService = Depends(get_service)
+    change_id: str, svc: ChangeTrackingService = Depends(get_service)
 ) -> ChangeEvent:
     """Get a specific change by ID."""
     change = await svc.get_change(change_id)
@@ -124,12 +127,11 @@ async def get_change(
 
 @router.post("/correlate", response_model=ChangeCorrelation)
 async def correlate_changes(
-    request: CorrelateRequest,
-    svc: ChangeTrackingService = Depends(get_service)
+    request: CorrelateRequest, svc: ChangeTrackingService = Depends(get_service)
 ) -> ChangeCorrelation:
     """
     Find changes that might have caused an incident.
-    
+
     Looks for changes in a time window before the incident started
     and scores them by likelihood of being the cause.
     """
@@ -138,7 +140,7 @@ async def correlate_changes(
         incident_started_at=request.incident_started_at,
         window_minutes=request.window_minutes,
         service=request.service,
-        environment=request.environment
+        environment=request.environment,
     )
 
 
@@ -149,7 +151,7 @@ async def correlate_incident(
     window_minutes: int = Query(default=60, ge=5, le=360),
     service: Optional[str] = None,
     environment: str = "production",
-    svc: ChangeTrackingService = Depends(get_service)
+    svc: ChangeTrackingService = Depends(get_service),
 ) -> ChangeCorrelation:
     """Find changes that might have caused an incident (GET version)."""
     return await svc.correlate_changes(
@@ -157,17 +159,18 @@ async def correlate_incident(
         incident_started_at=incident_time,
         window_minutes=window_minutes,
         service=service,
-        environment=environment
+        environment=environment,
     )
 
 
 # ========== Rollbacks ==========
 
+
 @router.get("/rollbacks/recent", response_model=list[ChangeEvent])
 async def get_recent_rollbacks(
     hours: int = Query(default=24, ge=1, le=168),
     environment: Optional[str] = None,
-    svc: ChangeTrackingService = Depends(get_service)
+    svc: ChangeTrackingService = Depends(get_service),
 ) -> list[ChangeEvent]:
     """Get recent rollback events."""
     return await svc.get_rollbacks(hours=hours, environment=environment)
@@ -175,10 +178,10 @@ async def get_recent_rollbacks(
 
 # ========== Change Freezes ==========
 
+
 @router.get("/freezes/active", response_model=list[ChangeFreeze])
 async def get_active_freezes(
-    environment: Optional[str] = None,
-    svc: ChangeTrackingService = Depends(get_service)
+    environment: Optional[str] = None, svc: ChangeTrackingService = Depends(get_service)
 ) -> list[ChangeFreeze]:
     """Get currently active change freezes."""
     return await svc.get_active_freezes(environment=environment)
@@ -186,8 +189,7 @@ async def get_active_freezes(
 
 @router.post("/freezes", response_model=ChangeFreeze)
 async def create_freeze(
-    request: CreateFreezeRequest,
-    svc: ChangeTrackingService = Depends(get_service)
+    request: CreateFreezeRequest, svc: ChangeTrackingService = Depends(get_service)
 ) -> ChangeFreeze:
     """Create a new change freeze period."""
     freeze = ChangeFreeze(
@@ -200,15 +202,14 @@ async def create_freeze(
         services=request.services,
         allowed_change_types=request.allowed_change_types,
         exception_approvers=request.exception_approvers,
-        created_by=request.created_by
+        created_by=request.created_by,
     )
     return await svc.create_freeze(freeze)
 
 
 @router.delete("/freezes/{freeze_id}", response_model=ChangeFreeze)
 async def end_freeze(
-    freeze_id: str,
-    svc: ChangeTrackingService = Depends(get_service)
+    freeze_id: str, svc: ChangeTrackingService = Depends(get_service)
 ) -> ChangeFreeze:
     """End a change freeze early."""
     freeze = await svc.end_freeze(freeze_id)
@@ -219,24 +220,21 @@ async def end_freeze(
 
 @router.post("/freezes/check")
 async def check_freeze_violation(
-    change: ChangeEvent,
-    svc: ChangeTrackingService = Depends(get_service)
+    change: ChangeEvent, svc: ChangeTrackingService = Depends(get_service)
 ) -> dict:
     """Check if a change would violate any active freeze."""
     violation = await svc.check_freeze_violation(change)
-    return {
-        "blocked": violation is not None,
-        "freeze": violation
-    }
+    return {"blocked": violation is not None, "freeze": violation}
 
 
 # ========== Timeline ==========
+
 
 @router.get("/timeline", response_model=ChangeTimeline)
 async def get_timeline(
     hours: int = Query(default=24, ge=1, le=168),
     environment: Optional[str] = None,
-    svc: ChangeTrackingService = Depends(get_service)
+    svc: ChangeTrackingService = Depends(get_service),
 ) -> ChangeTimeline:
     """Get a change timeline for visualization."""
     return await svc.get_timeline(hours=hours, environment=environment)
@@ -244,24 +242,22 @@ async def get_timeline(
 
 @router.post("/timeline", response_model=ChangeTimeline)
 async def query_timeline(
-    request: TimelineRequest,
-    svc: ChangeTrackingService = Depends(get_service)
+    request: TimelineRequest, svc: ChangeTrackingService = Depends(get_service)
 ) -> ChangeTimeline:
     """Get a change timeline with filters."""
     return await svc.get_timeline(
-        hours=request.hours,
-        environment=request.environment,
-        services=request.services
+        hours=request.hours, environment=request.environment, services=request.services
     )
 
 
 # ========== Statistics ==========
 
+
 @router.get("/stats", response_model=ChangeStatsResponse)
 async def get_change_stats(
     hours: int = Query(default=24, ge=1, le=168),
     environment: Optional[str] = None,
-    svc: ChangeTrackingService = Depends(get_service)
+    svc: ChangeTrackingService = Depends(get_service),
 ) -> ChangeStatsResponse:
     """Get statistics about recent changes."""
     stats = await svc.get_change_stats(hours=hours, environment=environment)
@@ -270,34 +266,33 @@ async def get_change_stats(
 
 # ========== Collection ==========
 
+
 @router.post("/collect")
 async def trigger_collection(
-    hours: int = Query(default=24, ge=1, le=168),
-    svc: ChangeTrackingService = Depends(get_service)
+    hours: int = Query(default=24, ge=1, le=168), svc: ChangeTrackingService = Depends(get_service)
 ) -> dict:
     """Trigger collection from all registered sources."""
     since = datetime.utcnow() - timedelta(hours=hours)
     changes = await svc.collect_all(since=since)
-    
+
     return {
         "collected": len(changes),
         "by_source": {
             source.value: sum(1 for c in changes if c.source == source)
             for source in ChangeSource
             if any(c.source == source for c in changes)
-        }
+        },
     }
 
 
 # ========== Health ==========
 
+
 @router.get("/health")
-async def health_check(
-    svc: ChangeTrackingService = Depends(get_service)
-) -> dict:
+async def health_check(svc: ChangeTrackingService = Depends(get_service)) -> dict:
     """Health check for the change tracking service."""
     collectors = list(svc._collectors.keys())
-    
+
     return {
         "status": "healthy",
         "collectors": [c.value for c in collectors],

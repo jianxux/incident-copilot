@@ -9,7 +9,7 @@ from .launchdarkly import LaunchDarklyCollector
 
 __all__ = [
     "GitHubCollector",
-    "GitLabCollector", 
+    "GitLabCollector",
     "ArgoCDCollector",
     "LaunchDarklyCollector",
 ]

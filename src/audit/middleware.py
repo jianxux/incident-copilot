@@ -158,9 +158,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
 
         return actor
 
-    def _determine_event_type(
-        self, method: str, path: str, status_code: int
-    ) -> EventType:
+    def _determine_event_type(self, method: str, path: str, status_code: int) -> EventType:
         """Determine the appropriate event type based on request details."""
         # Auth-related endpoints
         if "/auth/" in path or "/login" in path or "/oauth" in path:
@@ -345,9 +343,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
             metadata={
                 "status_code": status_code,
                 "duration_ms": round(duration_ms, 2),
-                "query_params": (
-                    dict(request.query_params) if request.query_params else None
-                ),
+                "query_params": (dict(request.query_params) if request.query_params else None),
             },
         )
 

@@ -492,10 +492,7 @@ async def readiness(response: Response) -> dict:
     redis_health = await check_redis_health()
     db_health = await check_database_health()
 
-    if (
-        redis_health.status == HealthStatus.HEALTHY
-        and db_health.status == HealthStatus.HEALTHY
-    ):
+    if redis_health.status == HealthStatus.HEALTHY and db_health.status == HealthStatus.HEALTHY:
         return {"status": "ready"}
 
     response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE

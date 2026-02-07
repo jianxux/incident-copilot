@@ -18,31 +18,25 @@ class PayloadTransformer:
             loader=BaseLoader(),
             autoescape=False,  # nosec B701 - intentional for JSON payload transformation trim_blocks=True, lstrip_blocks=True
         )
-        self._env.filters.update(
-            {
-                "json": lambda x: json.dumps(x, default=str),
-                "default": lambda x, d="": d if x is None or x == "" or x == [] else x,
-                "truncate": self._truncate,
-                "upper": lambda x: str(x).upper() if x else "",
-                "lower": lambda x: str(x).lower() if x else "",
-                "timestamp": self._timestamp,
-                "severity_emoji": lambda s: {
-                    "critical": "🔴",
-                    "high": "🟠",
-                    "medium": "🟡",
-                    "low": "🟢",
-                    "info": "🔵",
-                }.get(str(s).lower(), "⚪"),
-            }
-        )
+        self._env.filters.update({
+            "json": lambda x: json.dumps(x, default=str),
+            "default": lambda x, d="": d if x is None or x == "" or x == [] else x,
+            "truncate": self._truncate,
+            "upper": lambda x: str(x).upper() if x else "",
+            "lower": lambda x: str(x).lower() if x else "",
+            "timestamp": self._timestamp,
+            "severity_emoji": lambda s: {
+                "critical": "🔴",
+                "high": "🟠",
+                "medium": "🟡",
+                "low": "🟢",
+                "info": "🔵",
+            }.get(str(s).lower(), "⚪"),
+        })
 
     @staticmethod
     def _truncate(v: str, length: int = 100, suffix: str = "...") -> str:
-        return (
-            ""
-            if not v
-            else v if len(v) <= length else v[: length - len(suffix)] + suffix
-        )
+        return "" if not v else v if len(v) <= length else v[: length - len(suffix)] + suffix
 
     @staticmethod
     def _timestamp(v: datetime | str | None, fmt: str = "iso") -> str:
@@ -59,9 +53,7 @@ class PayloadTransformer:
             "date": lambda: v.strftime("%Y-%m-%d"),
         }.get(fmt, lambda: v.strftime(fmt))()
 
-    def transform(
-        self, template: str, data: dict[str, Any], **extra: Any
-    ) -> dict[str, Any]:
+    def transform(self, template: str, data: dict[str, Any], **extra: Any) -> dict[str, Any]:
         try:
             rendered = self._env.from_string(template).render(
                 data=data, now=datetime.utcnow(), **data, **extra

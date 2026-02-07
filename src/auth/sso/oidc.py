@@ -112,9 +112,7 @@ class OIDCProvider(BaseProvider):
         if self._discovered_config:
             return self._discovered_config
 
-        discovery_url = (
-            f"{self.settings.issuer.rstrip('/')}/.well-known/openid-configuration"
-        )
+        discovery_url = f"{self.settings.issuer.rstrip('/')}/.well-known/openid-configuration"
 
         async with httpx.AsyncClient() as client:
             response = await client.get(discovery_url)
@@ -271,15 +269,11 @@ class OIDCProvider(BaseProvider):
             payload = parts[1]
             # Add padding if needed
             payload += "=" * (4 - len(payload) % 4)
-            claims = __import__("json").loads(
-                base64.urlsafe_b64decode(payload).decode("utf-8")
-            )
+            claims = __import__("json").loads(base64.urlsafe_b64decode(payload).decode("utf-8"))
 
             # Validate issuer
             if claims.get("iss") != self.settings.issuer:
-                raise ValueError(
-                    f"Invalid issuer: {claims.get('iss')} != {self.settings.issuer}"
-                )
+                raise ValueError(f"Invalid issuer: {claims.get('iss')} != {self.settings.issuer}")
 
             # Validate audience
             aud = claims.get("aud")
@@ -287,9 +281,7 @@ class OIDCProvider(BaseProvider):
                 if self.settings.client_id not in aud:
                     raise ValueError("Client ID not in audience")
             elif aud != self.settings.client_id:
-                raise ValueError(
-                    f"Invalid audience: {aud} != {self.settings.client_id}"
-                )
+                raise ValueError(f"Invalid audience: {aud} != {self.settings.client_id}")
 
             # Validate nonce if provided
             if nonce and claims.get("nonce") != nonce:

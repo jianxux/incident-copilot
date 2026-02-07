@@ -81,14 +81,10 @@ class AuditLogger:
         loop = asyncio.get_event_loop()
         if loop.is_running():
             # Schedule in the running loop
-            future = asyncio.ensure_future(
-                self.log_event(category, event_type, action, **kwargs)
-            )
+            future = asyncio.ensure_future(self.log_event(category, event_type, action, **kwargs))
             return future  # type: ignore
         else:
-            return loop.run_until_complete(
-                self.log_event(category, event_type, action, **kwargs)
-            )
+            return loop.run_until_complete(self.log_event(category, event_type, action, **kwargs))
 
     # -------------------------------------------------------------------------
     # Context managers for automatic timing

@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 class SLAService:
     """Service for SLA calculations and management.
-    
+
     Provides methods for:
     - Starting and stopping SLA timers
     - Checking for breaches
@@ -39,7 +39,7 @@ class SLAService:
 
     def __init__(self, store: Any) -> None:
         """Initialize SLA service.
-        
+
         Args:
             store: SLA data store instance (SLAStore)
         """
@@ -54,22 +54,20 @@ class SLAService:
         started_at: datetime | None = None,
     ) -> SLATimer | None:
         """Start an SLA timer for an incident.
-        
+
         Args:
             incident_id: Unique incident identifier
             policy: SLA policy to apply
             severity: Incident severity level
             sla_type: Response or resolution timer
             started_at: Optional start time (defaults to now)
-            
+
         Returns:
             Created SLATimer or None if no target exists
         """
         target = policy.get_target(severity, sla_type)
         if not target:
-            logger.warning(
-                f"No SLA target for {severity}/{sla_type} in policy {policy.id}"
-            )
+            logger.warning(f"No SLA target for {severity}/{sla_type} in policy {policy.id}")
             return None
 
         timer = SLATimer(
@@ -83,9 +81,7 @@ class SLAService:
 
         # Check if we should start paused (outside business hours)
         if policy.business_hours.enabled:
-            if not self._is_business_hours(
-                timer.started_at, policy.business_hours
-            ):
+            if not self._is_business_hours(timer.started_at, policy.business_hours):
                 timer.paused = True
                 timer.paused_at = timer.started_at
 
@@ -103,12 +99,12 @@ class SLAService:
         completed_at: datetime | None = None,
     ) -> SLATimer | None:
         """Stop an SLA timer (marks completion).
-        
+
         Args:
             incident_id: Incident identifier
             sla_type: Which timer to stop
             completed_at: Completion time (defaults to now)
-            
+
         Returns:
             Updated timer or None if not found
         """
@@ -117,33 +113,30 @@ class SLAService:
             return None
 
         now = completed_at or datetime.utcnow()
-        
+
         # Update elapsed time
         timer = await self._update_elapsed(timer, now)
         timer.completed_at = now
-        
+
         # Check final status
         if timer.elapsed_minutes >= timer.target_minutes:
             timer.status = SLAStatus.BREACHED
             if not timer.breached_at:
                 timer.breached_at = now
-        
+
         await self.store.save_timer(timer)
         logger.info(
-            f"Stopped {sla_type} timer for {incident_id}, "
-            f"elapsed: {timer.elapsed_minutes:.1f}min"
+            f"Stopped {sla_type} timer for {incident_id}, elapsed: {timer.elapsed_minutes:.1f}min"
         )
         return timer
 
-    async def pause_timer(
-        self, incident_id: str, sla_type: SLAType
-    ) -> SLATimer | None:
+    async def pause_timer(self, incident_id: str, sla_type: SLAType) -> SLATimer | None:
         """Pause an SLA timer (for business hours or manual pause).
-        
+
         Args:
             incident_id: Incident identifier
             sla_type: Which timer to pause
-            
+
         Returns:
             Updated timer or None if not found
         """
@@ -155,19 +148,17 @@ class SLAService:
         timer = await self._update_elapsed(timer, now)
         timer.paused = True
         timer.paused_at = now
-        
+
         await self.store.save_timer(timer)
         return timer
 
-    async def resume_timer(
-        self, incident_id: str, sla_type: SLAType
-    ) -> SLATimer | None:
+    async def resume_timer(self, incident_id: str, sla_type: SLAType) -> SLATimer | None:
         """Resume a paused SLA timer.
-        
+
         Args:
             incident_id: Incident identifier
             sla_type: Which timer to resume
-            
+
         Returns:
             Updated timer or None if not found
         """
@@ -182,7 +173,7 @@ class SLAService:
 
         timer.paused = False
         timer.paused_at = None
-        
+
         await self.store.save_timer(timer)
         return timer
 
@@ -193,12 +184,12 @@ class SLAService:
         policy: SLAPolicy,
     ) -> SLABreach | None:
         """Check if an SLA timer has breached and create breach record.
-        
+
         Args:
             incident_id: Incident identifier
             sla_type: Which timer to check
             policy: SLA policy for escalation settings
-            
+
         Returns:
             SLABreach if breached, None otherwise
         """
@@ -208,7 +199,7 @@ class SLAService:
 
         # Update elapsed time
         timer = await self._update_elapsed(timer, datetime.utcnow())
-        
+
         # Already breached?
         if timer.status == SLAStatus.BREACHED:
             existing = await self.store.get_breach(incident_id, sla_type)
@@ -243,22 +234,18 @@ class SLAService:
 
         return None
 
-    async def get_incident_status(
-        self, incident_id: str, policy: SLAPolicy
-    ) -> SLAIncidentStatus:
+    async def get_incident_status(self, incident_id: str, policy: SLAPolicy) -> SLAIncidentStatus:
         """Get complete SLA status for an incident.
-        
+
         Args:
             incident_id: Incident identifier
             policy: SLA policy applied
-            
+
         Returns:
             Complete SLA status including all timers and breaches
         """
         response_timer = await self.store.get_timer(incident_id, SLAType.RESPONSE)
-        resolution_timer = await self.store.get_timer(
-            incident_id, SLAType.RESOLUTION
-        )
+        resolution_timer = await self.store.get_timer(incident_id, SLAType.RESOLUTION)
         breaches = await self.store.get_incident_breaches(incident_id)
 
         # Update elapsed times
@@ -281,13 +268,9 @@ class SLAService:
             policy_name=policy.name,
             response_timer=response_timer,
             response_breached=response_timer.is_breached if response_timer else False,
-            response_completed=response_timer.completed_at is not None
-            if response_timer
-            else False,
+            response_completed=response_timer.completed_at is not None if response_timer else False,
             resolution_timer=resolution_timer,
-            resolution_breached=resolution_timer.is_breached
-            if resolution_timer
-            else False,
+            resolution_breached=resolution_timer.is_breached if resolution_timer else False,
             resolution_completed=resolution_timer.completed_at is not None
             if resolution_timer
             else False,
@@ -303,14 +286,14 @@ class SLAService:
         policy: SLAPolicy,
     ) -> dict[str, Any]:
         """Calculate remaining time until SLA breach.
-        
+
         Accounts for business hours if configured.
-        
+
         Args:
             incident_id: Incident identifier
             sla_type: Response or resolution
             policy: SLA policy for business hours
-            
+
         Returns:
             Dict with remaining time info
         """
@@ -334,14 +317,10 @@ class SLAService:
 
         # Calculate ETA to breach in real time (with business hours)
         if remaining > 0 and policy.business_hours.enabled:
-            eta = self._calculate_breach_eta(
-                remaining, policy.business_hours
-            )
+            eta = self._calculate_breach_eta(remaining, policy.business_hours)
             result["breach_eta"] = eta.isoformat()
         elif remaining > 0:
-            result["breach_eta"] = (
-                datetime.utcnow() + timedelta(minutes=remaining)
-            ).isoformat()
+            result["breach_eta"] = (datetime.utcnow() + timedelta(minutes=remaining)).isoformat()
 
         return result
 
@@ -355,7 +334,7 @@ class SLAService:
         policy_id: str | None = None,
     ) -> SLAMetrics:
         """Calculate SLA compliance metrics for a time period.
-        
+
         Args:
             organization_id: Organization scope
             period_start: Start of reporting period
@@ -363,7 +342,7 @@ class SLAService:
             team_id: Optional team filter
             service_id: Optional service filter
             policy_id: Optional policy filter
-            
+
         Returns:
             Aggregated SLA metrics
         """
@@ -414,13 +393,9 @@ class SLAService:
         metrics.incidents_by_severity = by_severity
 
         if response_times:
-            metrics.avg_response_minutes = round(
-                sum(response_times) / len(response_times), 2
-            )
+            metrics.avg_response_minutes = round(sum(response_times) / len(response_times), 2)
         if resolution_times:
-            metrics.avg_resolution_minutes = round(
-                sum(resolution_times) / len(resolution_times), 2
-            )
+            metrics.avg_resolution_minutes = round(sum(resolution_times) / len(resolution_times), 2)
 
         metrics.calculate_compliance()
 
@@ -431,16 +406,14 @@ class SLAService:
 
         return metrics
 
-    async def check_all_active_timers(
-        self, policy_lookup: dict[str, SLAPolicy]
-    ) -> list[SLABreach]:
+    async def check_all_active_timers(self, policy_lookup: dict[str, SLAPolicy]) -> list[SLABreach]:
         """Check all active timers for breaches.
-        
+
         Called periodically by the scheduler.
-        
+
         Args:
             policy_lookup: Dict of policy_id -> SLAPolicy
-            
+
         Returns:
             List of new breaches detected
         """
@@ -454,9 +427,7 @@ class SLAService:
 
             # Handle business hours pausing
             if policy.business_hours.enabled:
-                is_biz_hours = self._is_business_hours(
-                    datetime.utcnow(), policy.business_hours
-                )
+                is_biz_hours = self._is_business_hours(datetime.utcnow(), policy.business_hours)
                 if is_biz_hours and timer.paused:
                     await self.resume_timer(timer.incident_id, timer.sla_type)
                 elif not is_biz_hours and not timer.paused:
@@ -464,9 +435,7 @@ class SLAService:
                     continue  # Skip breach check if paused
 
             # Check for breach
-            breach = await self.check_breach(
-                timer.incident_id, timer.sla_type, policy
-            )
+            breach = await self.check_breach(timer.incident_id, timer.sla_type, policy)
             if breach:
                 breaches.append(breach)
 
@@ -474,11 +443,9 @@ class SLAService:
 
     # --- Private Methods ---
 
-    async def _update_elapsed(
-        self, timer: SLATimer, now: datetime
-    ) -> SLATimer:
+    async def _update_elapsed(self, timer: SLATimer, now: datetime) -> SLATimer:
         """Update elapsed time on a timer.
-        
+
         Accounts for paused time.
         """
         if timer.completed_at or timer.paused:
@@ -496,9 +463,7 @@ class SLAService:
 
         return timer
 
-    async def _create_breach(
-        self, timer: SLATimer, policy: SLAPolicy
-    ) -> SLABreach:
+    async def _create_breach(self, timer: SLATimer, policy: SLAPolicy) -> SLABreach:
         """Create a breach record from a breached timer."""
         import uuid
 
@@ -527,9 +492,7 @@ class SLAService:
         await self.store.save_breach(breach)
         return breach
 
-    def _is_business_hours(
-        self, dt: datetime, config: BusinessHours
-    ) -> bool:
+    def _is_business_hours(self, dt: datetime, config: BusinessHours) -> bool:
         """Check if a datetime falls within business hours."""
         if not config.enabled:
             return True
@@ -553,9 +516,7 @@ class SLAService:
         current_time = local_dt.time()
         return config.start_time <= current_time < config.end_time
 
-    def _calculate_breach_eta(
-        self, remaining_minutes: float, config: BusinessHours
-    ) -> datetime:
+    def _calculate_breach_eta(self, remaining_minutes: float, config: BusinessHours) -> datetime:
         """Calculate when SLA will breach accounting for business hours."""
         if not config.enabled:
             return datetime.utcnow() + timedelta(minutes=remaining_minutes)
@@ -578,13 +539,13 @@ class SLAService:
                     microsecond=0,
                 )
                 minutes_today = (end_of_day - current).total_seconds() / 60
-                
+
                 if remaining <= minutes_today:
                     return current + timedelta(minutes=remaining)
-                
+
                 remaining -= minutes_today
                 current = end_of_day
-            
+
             # Move to next business day start
             current += timedelta(days=1)
             current = current.replace(
@@ -607,10 +568,10 @@ class SLAService:
         """Calculate daily compliance trend."""
         trend: list[dict[str, Any]] = []
         current = period_start.replace(hour=0, minute=0, second=0, microsecond=0)
-        
+
         while current < period_end:
             next_day = current + timedelta(days=1)
-            
+
             timers = await self.store.get_timers_in_period(
                 organization_id=organization_id,
                 period_start=current,
@@ -618,11 +579,11 @@ class SLAService:
                 team_id=team_id,
                 service_id=service_id,
             )
-            
+
             met = sum(1 for t in timers if not t.is_breached)
             total = len(timers)
             compliance = (met / total * 100) if total > 0 else 100.0
-            
+
             trend.append({
                 "date": current.strftime("%Y-%m-%d"),
                 "total": total,
@@ -630,9 +591,9 @@ class SLAService:
                 "breached": total - met,
                 "compliance_percent": round(compliance, 2),
             })
-            
+
             current = next_day
-        
+
         return trend
 
 
@@ -641,11 +602,11 @@ async def create_sla_notification(
     channel: str = "email",
 ) -> SLANotification:
     """Create an SLA breach notification.
-    
+
     Args:
         breach: The breach to notify about
         channel: Notification channel (email, slack, pagerduty)
-        
+
     Returns:
         SLANotification ready to send
     """

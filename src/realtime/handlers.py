@@ -21,14 +21,13 @@ logger = logging.getLogger(__name__)
 
 # Type alias for handlers
 HandlerFunc = Callable[
-    [ConnectionManager, str, dict[str, Any]],
-    Coroutine[Any, Any, Optional[WebSocketMessage]]
+    [ConnectionManager, str, dict[str, Any]], Coroutine[Any, Any, Optional[WebSocketMessage]]
 ]
 
 
 class MessageHandler:
     """Handles incoming WebSocket messages."""
-    
+
     def __init__(self, manager: ConnectionManager):
         self.manager = manager
         self._handlers: dict[MessageType, HandlerFunc] = {
@@ -38,7 +37,7 @@ class MessageHandler:
             MessageType.PONG: self._handle_pong,
             MessageType.PRESENCE_UPDATE: self._handle_presence_update,
         }
-    
+
     async def handle_message(
         self,
         connection_id: str,
@@ -48,19 +47,19 @@ class MessageHandler:
         try:
             if isinstance(raw_message, bytes):
                 raw_message = raw_message.decode("utf-8")
-            
+
             data = json.loads(raw_message)
             message_type = MessageType(data.get("type"))
             payload = data.get("payload", {})
             request_id = data.get("request_id")
-            
+
         except (json.JSONDecodeError, ValueError) as e:
             logger.warning(f"Invalid message from {connection_id}: {e}")
             return WebSocketMessage(
                 type=MessageType.ERROR,
                 payload={"error": "Invalid message format", "code": "INVALID_FORMAT"},
             )
-        
+
         # Check rate limit
         allowed, remaining = self.manager.check_rate_limit(connection_id)
         if not allowed:
@@ -74,7 +73,7 @@ class MessageHandler:
                 },
                 request_id=request_id,
             )
-        
+
         # Get handler
         handler = self._handlers.get(message_type)
         if not handler:
@@ -86,7 +85,7 @@ class MessageHandler:
                 },
                 request_id=request_id,
             )
-        
+
         # Execute handler
         try:
             response = await handler(self.manager, connection_id, payload)
@@ -100,7 +99,7 @@ class MessageHandler:
                 payload={"error": str(e), "code": "HANDLER_ERROR"},
                 request_id=request_id,
             )
-    
+
     async def _handle_subscribe(
         self,
         manager: ConnectionManager,
@@ -111,25 +110,25 @@ class MessageHandler:
         try:
             room_type = RoomType(payload.get("room_type"))
             room_id = payload.get("room_id", "")
-            
+
             if not room_id:
                 return WebSocketMessage(
                     type=MessageType.ERROR,
                     payload={"error": "room_id is required", "code": "MISSING_ROOM_ID"},
                 )
-            
+
             # Check permissions for global room
             if room_type == RoomType.GLOBAL:
                 conn_info = manager.get_connection_info(connection_id)
                 # TODO: Add admin check here
                 # For now, allow all authenticated users
-            
+
             success = await manager.subscribe(connection_id, room_type, room_id)
-            
+
             if success:
                 room_key = f"{room_type.value}:{room_id}"
                 presence = manager.get_room_presence(room_key)
-                
+
                 return WebSocketMessage(
                     type=MessageType.SUBSCRIBED,
                     payload={
@@ -144,13 +143,13 @@ class MessageHandler:
                     type=MessageType.ERROR,
                     payload={"error": "Failed to subscribe", "code": "SUBSCRIBE_FAILED"},
                 )
-                
+
         except ValueError as e:
             return WebSocketMessage(
                 type=MessageType.ERROR,
                 payload={"error": f"Invalid room_type: {e}", "code": "INVALID_ROOM_TYPE"},
             )
-    
+
     async def _handle_unsubscribe(
         self,
         manager: ConnectionManager,
@@ -159,14 +158,14 @@ class MessageHandler:
     ) -> WebSocketMessage:
         """Handle unsubscription request."""
         room_key = payload.get("room_key")
-        
+
         if not room_key:
             # Try to build from room_type and room_id
             room_type = payload.get("room_type")
             room_id = payload.get("room_id")
             if room_type and room_id:
                 room_key = f"{room_type}:{room_id}"
-        
+
         if not room_key:
             return WebSocketMessage(
                 type=MessageType.ERROR,
@@ -175,14 +174,14 @@ class MessageHandler:
                     "code": "MISSING_ROOM",
                 },
             )
-        
+
         success = await manager.unsubscribe(connection_id, room_key)
-        
+
         return WebSocketMessage(
             type=MessageType.UNSUBSCRIBED,
             payload={"room_key": room_key, "success": success},
         )
-    
+
     async def _handle_ping(
         self,
         manager: ConnectionManager,
@@ -195,7 +194,7 @@ class MessageHandler:
             type=MessageType.PONG,
             payload={"echo": payload.get("echo")},
         )
-    
+
     async def _handle_pong(
         self,
         manager: ConnectionManager,
@@ -205,7 +204,7 @@ class MessageHandler:
         """Handle pong response."""
         manager.handle_pong(connection_id)
         return None  # No response needed
-    
+
     async def _handle_presence_update(
         self,
         manager: ConnectionManager,
@@ -215,23 +214,24 @@ class MessageHandler:
         """Handle presence update."""
         room_key = payload.get("room_key")
         status_str = payload.get("status")
-        
+
         if not room_key:
             return WebSocketMessage(
                 type=MessageType.ERROR,
                 payload={"error": "room_key is required", "code": "MISSING_ROOM_KEY"},
             )
-        
+
         try:
             status = PresenceStatus(status_str) if status_str else PresenceStatus.VIEWING
         except ValueError:
             status = PresenceStatus.VIEWING
-        
+
         success = await manager.update_presence(connection_id, room_key, status)
-        
+
         if success:
             # Broadcast presence change to room
             from .events import UserTyping
+
             conn_info = manager.get_connection_info(connection_id)
             if conn_info and status == PresenceStatus.EDITING:
                 await manager.broadcast_to_room(
@@ -244,7 +244,7 @@ class MessageHandler:
                     ),
                     exclude_connection=connection_id,
                 )
-        
+
         return WebSocketMessage(
             type=MessageType.PRESENCE,
             payload={

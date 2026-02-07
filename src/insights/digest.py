@@ -66,9 +66,7 @@ class DigestGenerator:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.client = (
-            AsyncOpenAI(api_key=settings.openai_api_key)
-            if settings.openai_api_key
-            else None
+            AsyncOpenAI(api_key=settings.openai_api_key) if settings.openai_api_key else None
         )
         self.pattern_detector = PatternDetector()
         self.anomaly_detector = AnomalyDetector()
@@ -98,9 +96,7 @@ class DigestGenerator:
         period_end = now
 
         # Filter incidents to period
-        period_incidents = [
-            i for i in incidents if period_start <= i.triggered_at <= period_end
-        ]
+        period_incidents = [i for i in incidents if period_start <= i.triggered_at <= period_end]
 
         # Calculate basic stats
         total = len(period_incidents)
@@ -108,9 +104,7 @@ class DigestGenerator:
 
         # Calculate MTTR
         mttr_values = [
-            i.time_to_resolve_seconds / 60
-            for i in period_incidents
-            if i.time_to_resolve_seconds
+            i.time_to_resolve_seconds / 60 for i in period_incidents if i.time_to_resolve_seconds
         ]
         avg_mttr = sum(mttr_values) / len(mttr_values) if mttr_values else None
 
@@ -132,14 +126,10 @@ class DigestGenerator:
         for i in period_incidents:
             service_counts[i.service_name] = service_counts.get(i.service_name, 0) + 1
 
-        top_services = sorted(service_counts.items(), key=lambda x: x[1], reverse=True)[
-            :5
-        ]
+        top_services = sorted(service_counts.items(), key=lambda x: x[1], reverse=True)[:5]
 
         # Detect patterns
-        patterns = await self.pattern_detector.detect_recurring_patterns(
-            period_incidents
-        )
+        patterns = await self.pattern_detector.detect_recurring_patterns(period_incidents)
         anomalies = await self.anomaly_detector.detect_all_anomalies(period_incidents)
         severity_trend = await self.pattern_detector.detect_severity_trends(
             period_incidents, period_days=(period_end - period_start).days
@@ -221,15 +211,13 @@ class DigestGenerator:
 
             patterns_str = (
                 "\n".join(
-                    f"- {p.title_pattern}: {p.incident_count} occurrences"
-                    for p in patterns[:5]
+                    f"- {p.title_pattern}: {p.incident_count} occurrences" for p in patterns[:5]
                 )
                 or "No significant patterns detected"
             )
 
             anomalies_str = (
-                "\n".join(f"- {a.description}" for a in anomalies[:5])
-                or "No anomalies detected"
+                "\n".join(f"- {a.description}" for a in anomalies[:5]) or "No anomalies detected"
             )
 
             severity_trend_str = (
@@ -314,9 +302,7 @@ class DigestGenerator:
             lines.append(f"🔴 Critical: {critical} | 🟠 High: {high}")
 
         lines.append("\n**By Service:**")
-        for service, incs in sorted(
-            by_service.items(), key=lambda x: len(x[1]), reverse=True
-        )[:5]:
+        for service, incs in sorted(by_service.items(), key=lambda x: len(x[1]), reverse=True)[:5]:
             lines.append(f"- {service}: {len(incs)}")
 
         return "\n".join(lines)

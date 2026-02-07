@@ -29,9 +29,7 @@ def verify_slack_signature(
     sig_basestring = f"v0:{timestamp}:{body.decode('utf-8')}"
     expected_sig = (
         "v0="
-        + hmac.new(
-            signing_secret.encode(), sig_basestring.encode(), hashlib.sha256
-        ).hexdigest()
+        + hmac.new(signing_secret.encode(), sig_basestring.encode(), hashlib.sha256).hexdigest()
     )
     return hmac.compare_digest(expected_sig, signature)
 
@@ -40,9 +38,7 @@ def verify_slack_signature(
 async def handle_slash_command(
     request: Request,
     x_slack_signature: str | None = Header(None, alias="X-Slack-Signature"),
-    x_slack_request_timestamp: str | None = Header(
-        None, alias="X-Slack-Request-Timestamp"
-    ),
+    x_slack_request_timestamp: str | None = Header(None, alias="X-Slack-Request-Timestamp"),
 ):
     settings = get_settings()
     body = await request.body()

@@ -24,9 +24,7 @@ from src.models import PagerDutyIncident, Severity
 
 @pytest.fixture
 def settings():
-    return Settings(
-        redis_url="", correlation_enabled=True, correlation_default_rules=False
-    )
+    return Settings(redis_url="", correlation_enabled=True, correlation_default_rules=False)
 
 
 @pytest.fixture
@@ -71,10 +69,7 @@ class TestFuzzySimilarity:
 
     def test_similar_strings(self):
         assert (
-            fuzzy_similarity(
-                "Database connection timeout", "Database connection timed out"
-            )
-            > 0.7
+            fuzzy_similarity("Database connection timeout", "Database connection timed out") > 0.7
         )
 
     def test_different_strings(self):
@@ -91,11 +86,8 @@ class TestNormalizeTitleForMatching:
         )
 
     def test_removes_uuids(self):
-        assert (
-            "abc12345-1234-5678-abcd-ef1234567890"
-            not in normalize_title_for_matching(
-                "Request abc12345-1234-5678-abcd-ef1234567890 failed"
-            )
+        assert "abc12345-1234-5678-abcd-ef1234567890" not in normalize_title_for_matching(
+            "Request abc12345-1234-5678-abcd-ef1234567890 failed"
         )
 
     def test_removes_ip_addresses(self):
@@ -128,9 +120,7 @@ class TestCorrelationStore:
         )
         await initialized_store.store_group(group)
         await initialized_store.store_fingerprint_mapping("fp456", "grp-002")
-        assert (
-            await initialized_store.get_group_by_fingerprint("fp456")
-        ).group_id == "grp-002"
+        assert (await initialized_store.get_group_by_fingerprint("fp456")).group_id == "grp-002"
 
     @pytest.mark.asyncio
     async def test_store_and_retrieve_rule(self, initialized_store):
@@ -145,9 +135,7 @@ class TestCorrelationStore:
 
 class TestRuleManager:
     @pytest.mark.asyncio
-    async def test_generate_fingerprint(
-        self, initialized_store, sample_alert, sample_rule
-    ):
+    async def test_generate_fingerprint(self, initialized_store, sample_alert, sample_rule):
         manager = RuleManager(initialized_store)
         assert manager.generate_fingerprint(
             sample_alert, sample_rule
@@ -231,14 +219,10 @@ class TestCorrelationEngine:
             )
         )
         result1 = await engine.correlate(
-            IncomingAlert(
-                alert_id="alert-1", source="test", title="CPU high", service="web"
-            )
+            IncomingAlert(alert_id="alert-1", source="test", title="CPU high", service="web")
         )
         result2 = await engine.correlate(
-            IncomingAlert(
-                alert_id="alert-2", source="test", title="CPU high", service="web"
-            )
+            IncomingAlert(alert_id="alert-2", source="test", title="CPU high", service="web")
         )
         assert result1.group.group_id == result2.group.group_id
 
@@ -256,14 +240,10 @@ class TestCorrelationEngine:
             )
         )
         result1 = await engine.correlate(
-            IncomingAlert(
-                alert_id="alert-1", source="test", title="Error", service="svc"
-            )
+            IncomingAlert(alert_id="alert-1", source="test", title="Error", service="svc")
         )
         result2 = await engine.correlate(
-            IncomingAlert(
-                alert_id="alert-2", source="test", title="Error", service="svc"
-            )
+            IncomingAlert(alert_id="alert-2", source="test", title="Error", service="svc")
         )
         assert result1.should_notify and not result2.should_notify
 
@@ -274,9 +254,7 @@ class TestCorrelationEngine:
         engine = CorrelationEngine(settings, store=store)
         engine._initialized = True
         result = await engine.correlate(
-            IncomingAlert(
-                alert_id="alert-1", source="test", title="Orphan", service="orphan"
-            )
+            IncomingAlert(alert_id="alert-1", source="test", title="Orphan", service="orphan")
         )
         assert not result.correlated and result.should_notify
 
@@ -292,14 +270,10 @@ class TestCorrelationEngine:
             )
         )
         result = await engine.correlate(
-            IncomingAlert(
-                alert_id="alert-1", source="test", title="Test", service="svc"
-            )
+            IncomingAlert(alert_id="alert-1", source="test", title="Test", service="svc")
         )
         assert await engine.close_group(result.group.group_id)
-        assert (
-            await engine.get_group(result.group.group_id)
-        ).status == AlertGroupStatus.CLOSED
+        assert (await engine.get_group(result.group.group_id)).status == AlertGroupStatus.CLOSED
 
 
 class TestAlertGroup:
@@ -321,9 +295,7 @@ class TestAlertGroup:
         group.add_alert(sample_alert)
         group.suppressed_count = 5
         group.update_summary()
-        assert (
-            "1 alert" in group.summary and "5 notifications suppressed" in group.summary
-        )
+        assert "1 alert" in group.summary and "5 notifications suppressed" in group.summary
 
 
 class TestCorrelationIntegration:
@@ -358,16 +330,12 @@ class TestCorrelationIntegration:
         engine = CorrelationEngine(settings)
         await engine.initialize()
         await engine.create_rule(
-            CorrelationRule(
-                rule_id="m-rule", name="Multi", strategy=CorrelationStrategy.TIME_BASED
-            )
+            CorrelationRule(rule_id="m-rule", name="Multi", strategy=CorrelationStrategy.TIME_BASED)
         )
         group_ids = [
             (
                 await engine.correlate(
-                    IncomingAlert(
-                        alert_id=f"alert-{s}", source="test", title="Error", service=s
-                    )
+                    IncomingAlert(alert_id=f"alert-{s}", source="test", title="Error", service=s)
                 )
             ).group.group_id
             for s in ["auth", "payments", "shipping"]
