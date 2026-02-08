@@ -8,33 +8,32 @@ Used for:
 """
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Optional
 from uuid import uuid4
 
 
 @dataclass
 class SyntheticIncident:
     """A synthetic incident with known ground truth."""
-    
+
     # Incident metadata
     incident_id: str
     title: str
     service_name: str
     severity: str
     triggered_at: datetime
-    
+
     # Ground truth (what the copilot should find)
     actual_root_cause: str
     expected_evidence: list[str]
     valid_actions: list[str]
-    
+
     # Synthetic data
     logs: list[str]
     metrics: dict[str, list[tuple[datetime, float]]]
     recent_deploys: list[dict]
-    
+
     # Scenario metadata
     scenario_type: str
     difficulty: str  # easy, medium, hard
@@ -43,6 +42,7 @@ class SyntheticIncident:
 @dataclass
 class ScenarioTemplate:
     """Template for generating incidents."""
+
     name: str
     description: str
     root_cause_template: str
@@ -56,7 +56,7 @@ class ScenarioTemplate:
 class SyntheticIncidentGenerator:
     """
     Generates synthetic incidents for testing.
-    
+
     Scenarios cover common incident types:
     - Database connection issues
     - Memory leaks / OOM
@@ -64,12 +64,16 @@ class SyntheticIncidentGenerator:
     - Upstream dependency failures
     - Configuration errors
     """
-    
+
     SERVICES = [
-        "payments-api", "user-service", "order-service",
-        "inventory-api", "notification-service", "auth-service",
+        "payments-api",
+        "user-service",
+        "order-service",
+        "inventory-api",
+        "notification-service",
+        "auth-service",
     ]
-    
+
     SCENARIOS: list[ScenarioTemplate] = [
         ScenarioTemplate(
             name="database_connection_exhaustion",
@@ -105,8 +109,11 @@ class SyntheticIncidentGenerator:
             description="Memory leak causing OOM kills",
             root_cause_template="Memory leak in {component} causing OOM",
             evidence_patterns=[
-                "oom", "killed", "memory",
-                "heap", "gc overhead",
+                "oom",
+                "killed",
+                "memory",
+                "heap",
+                "gc overhead",
             ],
             valid_actions=[
                 "Restart pods to recover",
@@ -132,8 +139,11 @@ class SyntheticIncidentGenerator:
             description="Recent deployment introduced bug",
             root_cause_template="Deployment {sha} introduced {bug_type}",
             evidence_patterns=[
-                "deploy", "release", "version",
-                "rollback", "recent change",
+                "deploy",
+                "release",
+                "version",
+                "rollback",
+                "recent change",
             ],
             valid_actions=[
                 "Rollback to previous version",
@@ -157,8 +167,11 @@ class SyntheticIncidentGenerator:
             description="Upstream service timeout",
             root_cause_template="Upstream service {upstream} timing out",
             evidence_patterns=[
-                "timeout", "upstream", "downstream",
-                "circuit breaker", "retry",
+                "timeout",
+                "upstream",
+                "downstream",
+                "circuit breaker",
+                "retry",
             ],
             valid_actions=[
                 "Check upstream service health",
@@ -184,8 +197,11 @@ class SyntheticIncidentGenerator:
             description="Configuration error after change",
             root_cause_template="Invalid configuration: {config_issue}",
             evidence_patterns=[
-                "config", "configuration", "environment",
-                "missing", "invalid",
+                "config",
+                "configuration",
+                "environment",
+                "missing",
+                "invalid",
             ],
             valid_actions=[
                 "Check recent config changes",
@@ -206,20 +222,20 @@ class SyntheticIncidentGenerator:
             difficulty="medium",
         ),
     ]
-    
-    def __init__(self, seed: Optional[int] = None):
+
+    def __init__(self, seed: int | None = None):
         if seed:
             random.seed(seed)
-    
+
     def generate(
         self,
-        scenario_name: Optional[str] = None,
-        service_name: Optional[str] = None,
-        incident_time: Optional[datetime] = None,
+        scenario_name: str | None = None,
+        service_name: str | None = None,
+        incident_time: datetime | None = None,
     ) -> SyntheticIncident:
         """
         Generate a synthetic incident.
-        
+
         Args:
             scenario_name: Specific scenario to generate (random if None)
             service_name: Service name (random if None)
@@ -229,32 +245,32 @@ class SyntheticIncidentGenerator:
         if scenario_name:
             scenario = next(
                 (s for s in self.SCENARIOS if s.name == scenario_name),
-                random.choice(self.SCENARIOS)
+                random.choice(self.SCENARIOS),
             )
         else:
             scenario = random.choice(self.SCENARIOS)
-        
+
         # Select service
         service = service_name or random.choice(self.SERVICES)
-        
+
         # Set time
         incident_time = incident_time or datetime.utcnow()
-        
+
         # Generate incident ID
         incident_id = f"INC-{uuid4().hex[:8].upper()}"
-        
+
         # Generate root cause with specific details
         root_cause = self._generate_root_cause(scenario, service)
-        
+
         # Generate logs
         logs = self._generate_logs(scenario, service, incident_time)
-        
+
         # Generate metrics
         metrics = self._generate_metrics(scenario, service, incident_time)
-        
+
         # Generate deploy history
         deploys = self._generate_deploys(scenario, service, incident_time)
-        
+
         return SyntheticIncident(
             incident_id=incident_id,
             title=f"{scenario.description} on {service}",
@@ -270,59 +286,69 @@ class SyntheticIncidentGenerator:
             scenario_type=scenario.name,
             difficulty=scenario.difficulty,
         )
-    
+
     def generate_batch(self, count: int = 20) -> list[SyntheticIncident]:
         """Generate a batch of diverse synthetic incidents."""
         incidents = []
-        
+
         # Ensure we cover all scenarios at least once
         for scenario in self.SCENARIOS:
             incidents.append(self.generate(scenario_name=scenario.name))
-        
+
         # Fill remaining with random
         while len(incidents) < count:
             incidents.append(self.generate())
-        
+
         return incidents[:count]
-    
+
     def _generate_root_cause(self, scenario: ScenarioTemplate, service: str) -> str:
         """Generate specific root cause from template."""
         template = scenario.root_cause_template
-        
+
         substitutions = {
-            "cause": random.choice([
-                "connection leak in ORM",
-                "missing connection close",
-                "long-running transactions",
-            ]),
-            "component": random.choice([
-                "request handler",
-                "cache layer",
-                "session manager",
-            ]),
+            "cause": random.choice(
+                [
+                    "connection leak in ORM",
+                    "missing connection close",
+                    "long-running transactions",
+                ]
+            ),
+            "component": random.choice(
+                [
+                    "request handler",
+                    "cache layer",
+                    "session manager",
+                ]
+            ),
             "sha": f"abc{random.randint(1000, 9999)}",
-            "bug_type": random.choice([
-                "null pointer exception",
-                "type error",
-                "panic",
-            ]),
-            "upstream": random.choice([
-                "auth-service",
-                "user-service",
-                "inventory-api",
-            ]),
-            "config_issue": random.choice([
-                "missing DATABASE_URL",
-                "invalid JSON in config",
-                "wrong port number",
-            ]),
+            "bug_type": random.choice(
+                [
+                    "null pointer exception",
+                    "type error",
+                    "panic",
+                ]
+            ),
+            "upstream": random.choice(
+                [
+                    "auth-service",
+                    "user-service",
+                    "inventory-api",
+                ]
+            ),
+            "config_issue": random.choice(
+                [
+                    "missing DATABASE_URL",
+                    "invalid JSON in config",
+                    "wrong port number",
+                ]
+            ),
         }
-        
+
         for key, value in substitutions.items():
             template = template.replace(f"{{{key}}}", value)
-        
+
         return template
-    
+
     def _generate_logs(
         self,
         scenario: ScenarioTemplate,
@@ -331,32 +357,34 @@ class SyntheticIncidentGenerator:
     ) -> list[str]:
         """Generate realistic log lines for scenario."""
         logs = []
-        
+
         # Generate logs for 30 minutes before incident
         for minutes_ago in range(30, 0, -1):
             timestamp = incident_time - timedelta(minutes=minutes_ago)
             ts_str = timestamp.strftime("%Y-%m-%dT%H:%M:%S.000Z")
-            
+
             # More errors closer to incident time
             error_probability = 0.1 + (30 - minutes_ago) * 0.02
-            
+
             for pattern in scenario.log_patterns:
                 if random.random() < error_probability:
                     log_line = self._fill_log_pattern(pattern, service)
                     logs.append(f"{ts_str} [{service}] {log_line}")
-        
+
         # Add some noise
         for _ in range(50):
             timestamp = incident_time - timedelta(minutes=random.randint(1, 30))
             ts_str = timestamp.strftime("%Y-%m-%dT%H:%M:%S.000Z")
             logs.append(f"{ts_str} [{service}] INFO Health check passed")
-            logs.append(f"{ts_str} [{service}] DEBUG Processing request {uuid4().hex[:8]}")
-        
+            logs.append(
+                f"{ts_str} [{service}] DEBUG Processing request {uuid4().hex[:8]}"
+            )
+
         # Sort by timestamp
         logs.sort()
-        
+
         return logs
-    
+
     def _fill_log_pattern(self, pattern: str, service: str) -> str:
         """Fill in pattern variables."""
         substitutions = {
@@ -367,12 +395,12 @@ class SyntheticIncidentGenerator:
             "var": random.choice(["DATABASE_URL", "API_KEY"]),
             "key": random.choice(["port", "host", "timeout"]),
         }
-        
+
         for key, value in substitutions.items():
             pattern = pattern.replace(f"{{{key}}}", value)
-        
+
         return pattern
-    
+
     def _generate_metrics(
         self,
         scenario: ScenarioTemplate,
@@ -381,13 +409,13 @@ class SyntheticIncidentGenerator:
     ) -> dict[str, list[tuple[datetime, float]]]:
         """Generate metric time series for scenario."""
         metrics = {}
-        
+
         for metric_name, behavior in scenario.metric_behavior.items():
             series = []
-            
+
             for minutes_ago in range(60, 0, -1):
                 timestamp = incident_time - timedelta(minutes=minutes_ago)
-                
+
                 if behavior == "spike_and_plateau":
                     if minutes_ago > 30:
                         value = 10 + random.random() * 5
@@ -404,13 +432,13 @@ class SyntheticIncidentGenerator:
                     value = (60 - minutes_ago) * 2 + random.random() * 5
                 else:
                     value = random.random() * 100
-                
+
                 series.append((timestamp, value))
-            
+
             metrics[f"{service}.{metric_name}"] = series
-        
+
         return metrics
-    
+
     def _generate_deploys(
         self,
         scenario: ScenarioTemplate,
@@ -419,29 +447,35 @@ class SyntheticIncidentGenerator:
     ) -> list[dict]:
         """Generate recent deployment history."""
         deploys = []
-        
+
         # Deploy 30 minutes before incident (potential culprit)
         if "deployment" in scenario.name or random.random() > 0.5:
-            deploys.append({
-                "sha": f"abc{random.randint(1000, 9999)}",
-                "message": "feat: Update payment processing logic",
-                "author": "developer@example.com",
-                "timestamp": (incident_time - timedelta(minutes=30)).isoformat(),
-                "files_changed": random.randint(5, 20),
-            })
-        
+            deploys.append(
+                {
+                    "sha": f"abc{random.randint(1000, 9999)}",
+                    "message": "feat: Update payment processing logic",
+                    "author": "developer@example.com",
+                    "timestamp": (incident_time - timedelta(minutes=30)).isoformat(),
+                    "files_changed": random.randint(5, 20),
+                }
+            )
+
         # Older deploys
         for days_ago in [1, 3, 7]:
-            deploys.append({
-                "sha": f"xyz{random.randint(1000, 9999)}",
-                "message": random.choice([
-                    "chore: Update dependencies",
-                    "fix: Minor bug fixes",
-                    "docs: Update README",
-                ]),
-                "author": "developer@example.com",
-                "timestamp": (incident_time - timedelta(days=days_ago)).isoformat(),
-                "files_changed": random.randint(1, 10),
-            })
-        
+            deploys.append(
+                {
+                    "sha": f"xyz{random.randint(1000, 9999)}",
+                    "message": random.choice(
+                        [
+                            "chore: Update dependencies",
+                            "fix: Minor bug fixes",
+                            "docs: Update README",
+                        ]
+                    ),
+                    "author": "developer@example.com",
+                    "timestamp": (incident_time - timedelta(days=days_ago)).isoformat(),
+                    "files_changed": random.randint(1, 10),
+                }
+            )
+
         return deploys

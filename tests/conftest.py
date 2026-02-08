@@ -8,8 +8,9 @@ Test Categories:
 """
 
 import os
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock
 
 # Set test environment
 os.environ.setdefault("ENVIRONMENT", "test")
@@ -19,61 +20,52 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
 # Skip tests with broken imports or unimplemented features during collection
 collect_ignore = [
     # Broken imports - need refactoring
-    "test_oncall.py",      # Uses old OnCallAdapter import
-    "test_pagerduty.py",   # Uses old model imports  
-    "test_search.py",      # Python 3.9 union syntax issue
-    "test_tagging.py",     # Uses old model imports
-    "test_timeline.py",    # Import errors
-    
+    "test_oncall.py",  # Uses old OnCallAdapter import
+    "test_pagerduty.py",  # Uses old model imports
+    "test_search.py",  # Python 3.9 union syntax issue
+    "test_tagging.py",  # Uses old model imports
+    "test_timeline.py",  # Import errors
     # Routes not registered / feature incomplete
-    "test_sla.py",         # SLA routes not in main app
-    "test_realtime.py",    # WebSocket routes not configured
+    "test_sla.py",  # SLA routes not in main app
+    "test_realtime.py",  # WebSocket routes not configured
     "test_slack_commands.py",  # Slack commands routes not registered
-    "test_opsgenie.py",    # Model mismatches
-    "test_sso.py",         # SSO provider initialization issues
-    "test_teams.py",       # Teams adapter webhook issues
-    "test_maintenance.py", # Routes not registered
-    "test_metrics.py",     # /metrics endpoint not configured
-    "test_notifications.py", # Routes not registered
-    "test_dependencies.py", # Routes return 404
+    "test_opsgenie.py",  # Model mismatches
+    "test_sso.py",  # SSO provider initialization issues
+    "test_teams.py",  # Teams adapter webhook issues
+    "test_maintenance.py",  # Routes not registered
+    "test_metrics.py",  # /metrics endpoint not configured
+    "test_notifications.py",  # Routes not registered
+    "test_dependencies.py",  # Routes return 404
     "test_escalation.py",  # Routes return 404
-    "test_export.py",      # Routes return 404
-    "test_costs.py",       # Routes return 404 + model issues
-    "test_cli.py",         # CLI integration tests need refactor
-    "test_api.py",         # Root endpoint response format changed
+    "test_export.py",  # Routes return 404
+    "test_costs.py",  # Routes return 404 + model issues
+    "test_cli.py",  # CLI integration tests need refactor
+    "test_api.py",  # Root endpoint response format changed
 ]
 
 
 def pytest_configure(config):
     """Register custom markers."""
-    config.addinivalue_line(
-        "markers", "unit: Unit tests (fast, no external deps)"
-    )
+    config.addinivalue_line("markers", "unit: Unit tests (fast, no external deps)")
     config.addinivalue_line(
         "markers", "integration: Integration tests (mocked services)"
     )
-    config.addinivalue_line(
-        "markers", "e2e: End-to-end tests (full stack)"
-    )
-    config.addinivalue_line(
-        "markers", "slow: Slow tests (skip with -m 'not slow')"
-    )
-    config.addinivalue_line(
-        "markers", "wip: Work in progress (expected to fail)"
-    )
+    config.addinivalue_line("markers", "e2e: End-to-end tests (full stack)")
+    config.addinivalue_line("markers", "slow: Slow tests (skip with -m 'not slow')")
+    config.addinivalue_line("markers", "wip: Work in progress (expected to fail)")
 
 
 def pytest_collection_modifyitems(config, items):
     """Auto-skip tests that import from broken modules."""
     skip_broken = pytest.mark.skip(reason="Module imports broken - needs refactor")
-    
+
     broken_modules = [
         "test_oncall",
-        "test_pagerduty", 
+        "test_pagerduty",
         "test_search",
         "test_tagging",
     ]
-    
+
     for item in items:
         # Skip tests from broken modules
         for module in broken_modules:
@@ -86,11 +78,12 @@ def pytest_collection_modifyitems(config, items):
 # Shared Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def mock_settings():
     """Mock settings for testing."""
     from src.config import Settings
-    
+
     return Settings(
         environment="test",
         debug=True,
@@ -109,9 +102,10 @@ def mock_settings():
 @pytest.fixture
 def mock_incident():
     """Mock PagerDuty incident for testing."""
-    from src.models import PagerDutyIncident
     from datetime import datetime
-    
+
+    from src.models import PagerDutyIncident
+
     return PagerDutyIncident(
         incident_id="INC-TEST-001",
         title="Test incident: High latency on api-gateway",
@@ -144,8 +138,10 @@ def mock_anthropic_client():
     """Mock Anthropic client for testing AI components."""
     client = MagicMock()
     client.messages = MagicMock()
-    client.messages.create = AsyncMock(return_value=MagicMock(
-        content=[MagicMock(text="Test AI response")],
-        usage=MagicMock(input_tokens=100, output_tokens=50),
-    ))
+    client.messages.create = AsyncMock(
+        return_value=MagicMock(
+            content=[MagicMock(text="Test AI response")],
+            usage=MagicMock(input_tokens=100, output_tokens=50),
+        )
+    )
     return client

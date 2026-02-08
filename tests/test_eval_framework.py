@@ -1,24 +1,20 @@
 """Unit tests for the evaluation framework."""
 
-import pytest
 from datetime import datetime
 
-from src.eval.rubric import (
-    Rubric,
-    RubricScore,
-    RubricResult,
-    ConfidenceLevel,
-    FailureSeverity,
-)
-from src.eval.synthetic import (
-    SyntheticIncident,
-    SyntheticIncidentGenerator,
-    ScenarioTemplate,
-)
+import pytest
+
 from src.eval.harness import (
     EvalHarness,
     EvalResult,
-    EvalSummary,
+)
+from src.eval.rubric import (
+    ConfidenceLevel,
+    FailureSeverity,
+    Rubric,
+)
+from src.eval.synthetic import (
+    SyntheticIncidentGenerator,
 )
 
 
@@ -32,7 +28,7 @@ class TestRubric:
             predicted="Database connection pool exhausted",
             actual="Database connection pool exhausted",
         )
-        
+
         assert score.score == 1.0
         assert score.dimension == "root_cause"
 
@@ -44,7 +40,7 @@ class TestRubric:
             actual="Database connection pool exhausted due to leak",
             partial_credit=True,
         )
-        
+
         assert score.score > 0.0
         assert score.score < 1.0
 
@@ -55,7 +51,7 @@ class TestRubric:
             predicted="Network latency issue",
             actual="Database connection pool exhausted",
         )
-        
+
         assert score.score == 0.0
 
     def test_score_root_cause_contains_actual(self):
@@ -65,7 +61,7 @@ class TestRubric:
             predicted="The issue appears to be a database connection pool exhausted problem causing timeouts",
             actual="database connection pool exhausted",
         )
-        
+
         assert score.score == 1.0
 
     def test_score_reasoning_all_evidence_found(self):
@@ -75,7 +71,7 @@ class TestRubric:
             analysis="Found connection timeout errors and pool exhausted warnings in logs",
             expected_evidence=["connection timeout", "pool exhausted"],
         )
-        
+
         assert score.score == 1.0
 
     def test_score_reasoning_partial_evidence(self):
@@ -83,10 +79,14 @@ class TestRubric:
         rubric = Rubric()
         score = rubric.score_reasoning(
             analysis="Found connection timeout errors in the logs",
-            expected_evidence=["connection timeout", "pool exhausted", "max connections"],
+            expected_evidence=[
+                "connection timeout",
+                "pool exhausted",
+                "max connections",
+            ],
         )
-        
-        assert score.score == pytest.approx(1/3, rel=0.01)
+
+        assert score.score == pytest.approx(1 / 3, rel=0.01)
 
     def test_score_reasoning_no_evidence(self):
         """Test reasoning score when no evidence is referenced."""
@@ -95,7 +95,7 @@ class TestRubric:
             analysis="The system seems to have some issues",
             expected_evidence=["connection timeout", "pool exhausted"],
         )
-        
+
         assert score.score == 0.0
 
     def test_score_actionability_all_actions_matched(self):
@@ -105,7 +105,7 @@ class TestRubric:
             recommendations=["Check connection pool settings", "Restart the pods"],
             valid_actions=["Check connection pool settings", "Restart the pods"],
         )
-        
+
         assert score.score == 1.0
 
     def test_score_actionability_partial_match(self):
@@ -115,8 +115,8 @@ class TestRubric:
             recommendations=["Check logs", "Restart pods"],
             valid_actions=["Check connection pool", "Restart pods", "Scale up"],
         )
-        
-        assert score.score == pytest.approx(1/3, rel=0.01)
+
+        assert score.score == pytest.approx(1 / 3, rel=0.01)
 
     def test_score_actionability_no_recommendations(self):
         """Test actionability when no recommendations provided."""
@@ -125,7 +125,7 @@ class TestRubric:
             recommendations=[],
             valid_actions=["Check logs"],
         )
-        
+
         assert score.score == 0.0
 
     def test_failure_severity_correct_answer(self):
@@ -137,7 +137,7 @@ class TestRubric:
             recommendations=["Restart pods"],
             confidence=ConfidenceLevel.HIGH,
         )
-        
+
         assert severity == FailureSeverity.NONE
 
     def test_failure_severity_high_confidence_wrong_dangerous(self):
@@ -149,7 +149,7 @@ class TestRubric:
             recommendations=["Rollback the deployment immediately"],
             confidence=ConfidenceLevel.HIGH,
         )
-        
+
         assert severity == FailureSeverity.CRITICAL
 
     def test_failure_severity_low_confidence_wrong(self):
@@ -161,7 +161,7 @@ class TestRubric:
             recommendations=["Check logs"],
             confidence=ConfidenceLevel.LOW,
         )
-        
+
         assert severity == FailureSeverity.MINOR
 
     def test_evaluate_full_rubric(self):
@@ -177,7 +177,7 @@ class TestRubric:
             valid_actions=["Check connection pool", "Restart pods"],
             confidence=ConfidenceLevel.HIGH,
         )
-        
+
         assert result.incident_id == "INC-001"
         assert result.weighted_score > 0.5
         assert result.passed is True
@@ -196,7 +196,7 @@ class TestRubric:
             valid_actions=["Check connection pool", "Restart pods"],
             confidence=ConfidenceLevel.HIGH,
         )
-        
+
         assert result.weighted_score < 0.6
         assert result.passed is False
 
@@ -212,7 +212,7 @@ class TestRubric:
             expected_evidence=["evidence"],
             valid_actions=["action"],
         )
-        
+
         d = result.to_dict()
         assert "incident_id" in d
         assert "weighted_score" in d
@@ -227,7 +227,7 @@ class TestSyntheticIncidentGenerator:
         """Test generating a single incident."""
         gen = SyntheticIncidentGenerator(seed=42)
         incident = gen.generate()
-        
+
         assert incident.incident_id is not None
         assert incident.title is not None
         assert incident.service_name is not None
@@ -240,15 +240,18 @@ class TestSyntheticIncidentGenerator:
         """Test generating specific scenario type."""
         gen = SyntheticIncidentGenerator(seed=42)
         incident = gen.generate(scenario_name="database_connection_exhaustion")
-        
+
         assert incident.scenario_type == "database_connection_exhaustion"
-        assert "connection" in incident.actual_root_cause.lower() or "database" in incident.actual_root_cause.lower()
+        assert (
+            "connection" in incident.actual_root_cause.lower()
+            or "database" in incident.actual_root_cause.lower()
+        )
 
     def test_generate_specific_service(self):
         """Test generating incident for specific service."""
         gen = SyntheticIncidentGenerator(seed=42)
         incident = gen.generate(service_name="my-custom-service")
-        
+
         assert incident.service_name == "my-custom-service"
 
     def test_generate_with_incident_time(self):
@@ -256,14 +259,14 @@ class TestSyntheticIncidentGenerator:
         gen = SyntheticIncidentGenerator(seed=42)
         custom_time = datetime(2024, 6, 15, 12, 0, 0)
         incident = gen.generate(incident_time=custom_time)
-        
+
         assert incident.triggered_at == custom_time
 
     def test_generate_batch(self):
         """Test generating batch of incidents."""
         gen = SyntheticIncidentGenerator(seed=42)
         incidents = gen.generate_batch(count=20)
-        
+
         assert len(incidents) == 20
         # Should cover all scenarios at least once
         scenarios = {i.scenario_type for i in incidents}
@@ -272,16 +275,16 @@ class TestSyntheticIncidentGenerator:
     def test_generate_deterministic_with_seed(self):
         """Test that same seed produces consistent results in sequence."""
         gen = SyntheticIncidentGenerator(seed=123)
-        
+
         # Generate two incidents
         incident1 = gen.generate()
-        incident2 = gen.generate()
-        
+        _ = gen.generate()  # Second incident to advance state
+
         # Reset with same seed
         gen2 = SyntheticIncidentGenerator(seed=123)
         incident1_again = gen2.generate()
-        incident2_again = gen2.generate()
-        
+        _ = gen2.generate()  # Second incident to advance state
+
         # First incidents should match (same seed, same call order)
         assert incident1.scenario_type == incident1_again.scenario_type
         assert incident1.service_name == incident1_again.service_name
@@ -290,17 +293,19 @@ class TestSyntheticIncidentGenerator:
         """Test that generated incident has realistic logs."""
         gen = SyntheticIncidentGenerator(seed=42)
         incident = gen.generate()
-        
+
         assert len(incident.logs) > 50  # Should have decent number of logs
         # Logs should contain error patterns
-        error_logs = [l for l in incident.logs if "ERROR" in l or "FATAL" in l or "WARN" in l]
+        error_logs = [
+            l for l in incident.logs if "ERROR" in l or "FATAL" in l or "WARN" in l
+        ]
         assert len(error_logs) > 0
 
     def test_incident_has_metrics(self):
         """Test that generated incident has metrics."""
         gen = SyntheticIncidentGenerator(seed=42)
         incident = gen.generate()
-        
+
         assert len(incident.metrics) > 0
         for metric_name, series in incident.metrics.items():
             assert len(series) > 0
@@ -311,7 +316,7 @@ class TestSyntheticIncidentGenerator:
         """Test that generated incident has deployment history."""
         gen = SyntheticIncidentGenerator(seed=42)
         incident = gen.generate()
-        
+
         assert len(incident.recent_deploys) > 0
         deploy = incident.recent_deploys[0]
         assert "sha" in deploy
@@ -321,7 +326,7 @@ class TestSyntheticIncidentGenerator:
     def test_all_scenarios_accessible(self):
         """Test that all scenario templates are valid."""
         gen = SyntheticIncidentGenerator()
-        
+
         for scenario in gen.SCENARIOS:
             incident = gen.generate(scenario_name=scenario.name)
             assert incident is not None
@@ -340,7 +345,7 @@ class TestEvalHarness:
     def test_harness_initialization(self):
         """Test harness initialization."""
         harness = EvalHarness(copilot=None)
-        
+
         assert harness.copilot is None
         assert harness.rubric is not None
         assert harness.output_dir.exists()
@@ -350,7 +355,7 @@ class TestEvalHarness:
         """Test running evaluation with mock copilot."""
         harness = EvalHarness(copilot=None)
         results = await harness.run_eval(sample_incidents)
-        
+
         assert len(results) == 5
         for result in results:
             assert result.incident_id is not None
@@ -360,7 +365,7 @@ class TestEvalHarness:
     def test_summary_generation(self):
         """Test summary generation from results."""
         harness = EvalHarness(copilot=None)
-        
+
         # Manually add some results
         harness.results = [
             EvalResult(
@@ -404,9 +409,9 @@ class TestEvalHarness:
                 ),
             ),
         ]
-        
+
         summary = harness.summary()
-        
+
         assert summary.total_incidents == 2
         assert summary.passed >= 0
         assert summary.failed >= 0
@@ -420,7 +425,7 @@ class TestEvalHarness:
         """Test summary with no results."""
         harness = EvalHarness(copilot=None)
         summary = harness.summary()
-        
+
         assert summary.total_incidents == 0
         assert summary.passed == 0
         assert summary.failed == 0
@@ -450,9 +455,9 @@ class TestEvalHarness:
                 ),
             ),
         ]
-        
+
         d = harness.summary().to_dict()
-        
+
         assert "total" in d
         assert "passed" in d
         assert "failed" in d
@@ -485,9 +490,9 @@ class TestEvalResult:
                 valid_actions=["Action 1"],
             ),
         )
-        
+
         d = result.to_dict()
-        
+
         assert d["incident_id"] == "INC-001"
         assert d["scenario_type"] == "test"
         assert d["confidence"] == "high"

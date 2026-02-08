@@ -3,12 +3,11 @@
 import asyncio
 import time
 from datetime import datetime
-from typing import Optional
 
 import structlog
 
 from .ai import LogSummarizer
-from .ai.log_compressor import LogCompressor, CompressedLogs
+from .ai.log_compressor import CompressedLogs, LogCompressor
 from .config import Settings
 from .dependencies.service import DependencyService
 from .integrations import (
@@ -19,7 +18,13 @@ from .integrations import (
     SlackAdapter,
 )
 from .integrations.oncall_legacy import OnCallAdapter
-from .models import ContextCard, OnCallRoster, PagerDutyIncident, RunbookLink, TopologyContext
+from .models import (
+    ContextCard,
+    OnCallRoster,
+    PagerDutyIncident,
+    RunbookLink,
+    TopologyContext,
+)
 from .runbooks import RunbookLinker
 
 logger = structlog.get_logger()
@@ -44,10 +49,10 @@ class ContextOrchestrator:
         self.summarizer = LogSummarizer(settings)
         self.runbook_linker = RunbookLinker()
         self.oncall = OnCallAdapter(settings)
-        
+
         # New: Log compressor for better context compression
         self.log_compressor = LogCompressor()
-        
+
         # New: Dependency service for topology context
         self.dependencies = DependencyService()
 
@@ -114,7 +119,11 @@ class ContextOrchestrator:
         try:
             scm_ctx, datadog_ctx, oncall_roster, topology_ctx = await asyncio.wait_for(
                 asyncio.gather(
-                    scm_task, datadog_task, oncall_task, topology_task, return_exceptions=True
+                    scm_task,
+                    datadog_task,
+                    oncall_task,
+                    topology_task,
+                    return_exceptions=True,
                 ),
                 timeout=8.0,  # Leave room for AI + Slack
             )
@@ -328,10 +337,12 @@ class ContextOrchestrator:
             )
             return None
 
-    async def _fetch_topology_context(self, service_name: str) -> TopologyContext | None:
+    async def _fetch_topology_context(
+        self, service_name: str
+    ) -> TopologyContext | None:
         """
         Fetch topology context - upstream/downstream dependencies and blast radius.
-        
+
         Returns TopologyContext with:
         - upstream_services: Services this depends on
         - downstream_services: Services that depend on this (blast radius)
@@ -343,29 +354,31 @@ class ContextOrchestrator:
             if not service:
                 logger.debug("service_not_in_topology", service=service_name)
                 return None
-            
+
             # Get blast radius (what breaks if this service fails)
             blast_radius = await self.dependencies.calculate_blast_radius(service.id)
-            
+
             # Get upstream/downstream dependencies
             deps = await self.dependencies.get_service_dependencies(service.id)
             upstream = deps.get("upstream", [])
             downstream = deps.get("downstream", [])
-            
+
             # Get critical services affected
             critical_affected = blast_radius.critical_affected if blast_radius else []
-            
+
             # Build critical paths from impact paths
             critical_paths = []
             if blast_radius and blast_radius.impact_paths:
                 for path in blast_radius.impact_paths[:5]:
                     if path.has_critical_hop:
                         critical_paths.append(path.path)
-            
+
             topology = TopologyContext(
                 service_id=service.id,
                 service_name=service.name,
-                criticality=service.criticality.value if service.criticality else "unknown",
+                criticality=(
+                    service.criticality.value if service.criticality else "unknown"
+                ),
                 team=service.team,
                 upstream_services=upstream,
                 downstream_services=downstream,
@@ -374,7 +387,7 @@ class ContextOrchestrator:
                 risk_score=blast_radius.risk_score if blast_radius else 0.0,
                 critical_paths=critical_paths,
             )
-            
+
             logger.info(
                 "topology_context_fetched",
                 service=service_name,
@@ -383,9 +396,9 @@ class ContextOrchestrator:
                 blast_radius=topology.blast_radius_count,
                 risk_score=topology.risk_score,
             )
-            
+
             return topology
-            
+
         except Exception as e:
             logger.error(
                 "topology_context_failed",
@@ -397,7 +410,7 @@ class ContextOrchestrator:
     def compress_logs(self, logs: list[str], service_name: str) -> CompressedLogs:
         """
         Compress logs using the log compressor pipeline.
-        
+
         Returns structured, deduplicated log patterns for efficient LLM consumption.
         """
         return self.log_compressor.compress(

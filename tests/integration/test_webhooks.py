@@ -1,9 +1,9 @@
 """Integration tests for webhook endpoints."""
 
+from datetime import datetime
+
 import pytest
 from fastapi.testclient import TestClient
-from datetime import datetime
-import json
 
 from src.main import app
 
@@ -53,7 +53,7 @@ class TestPagerDutyWebhook:
                 },
             },
         }
-        
+
         response = client.post(
             "/webhooks/pagerduty",
             json=payload,
@@ -106,7 +106,11 @@ class TestAnalyticsAPI:
         response = client.get("/api/analytics/mttr")
         assert response.status_code == 200
         data = response.json()
-        assert "mttr_minutes" in data or "average_mttr_minutes" in data or isinstance(data, dict)
+        assert (
+            "mttr_minutes" in data
+            or "average_mttr_minutes" in data
+            or isinstance(data, dict)
+        )
 
     def test_get_incidents_summary(self, client):
         """Test incidents summary endpoint."""

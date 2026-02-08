@@ -10,9 +10,8 @@ import hashlib
 import re
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 import structlog
 
@@ -31,12 +30,19 @@ class LogLevel(Enum):
     @classmethod
     def from_string(cls, s: str) -> "LogLevel":
         mapping = {
-            "fatal": cls.FATAL, "critical": cls.FATAL, "crit": cls.FATAL,
-            "error": cls.ERROR, "err": cls.ERROR, "severe": cls.ERROR,
-            "warn": cls.WARN, "warning": cls.WARN,
-            "info": cls.INFO, "notice": cls.INFO,
+            "fatal": cls.FATAL,
+            "critical": cls.FATAL,
+            "crit": cls.FATAL,
+            "error": cls.ERROR,
+            "err": cls.ERROR,
+            "severe": cls.ERROR,
+            "warn": cls.WARN,
+            "warning": cls.WARN,
+            "info": cls.INFO,
+            "notice": cls.INFO,
             "debug": cls.DEBUG,
-            "trace": cls.TRACE, "verbose": cls.TRACE,
+            "trace": cls.TRACE,
+            "verbose": cls.TRACE,
         }
         return mapping.get(s.lower().strip(), cls.UNKNOWN)
 
@@ -44,7 +50,8 @@ class LogLevel(Enum):
 @dataclass
 class LogEntry:
     """A single parsed log line."""
-    timestamp: Optional[datetime]
+
+    timestamp: datetime | None
     level: LogLevel
     service: str
     message: str
@@ -54,14 +61,15 @@ class LogEntry:
 @dataclass
 class LogPattern:
     """A deduplicated group of similar log entries."""
+
     signature: str
     canonical_message: str
     sample_raw: str
     count: int
     level: LogLevel
     services: set
-    first_seen: Optional[datetime] = None
-    last_seen: Optional[datetime] = None
+    first_seen: datetime | None = None
+    last_seen: datetime | None = None
     score: float = 0.0
 
     def to_dict(self) -> dict:
@@ -78,6 +86,7 @@ class LogPattern:
 @dataclass
 class CompressionStats:
     """Statistics about the compression process."""
+
     total_lines: int = 0
     parsed_lines: int = 0
     filtered_lines: int = 0
@@ -91,6 +100,7 @@ class CompressionStats:
 @dataclass
 class CompressedLogs:
     """Output of log compression."""
+
     patterns: list[LogPattern]
     stats: CompressionStats
     estimated_tokens: int = 0
@@ -99,11 +109,13 @@ class CompressedLogs:
         """Format for inclusion in LLM context."""
         lines = [
             f"## Log Analysis ({self.stats.filtered_lines} errors from {self.stats.total_lines} lines)",
-            ""
+            "",
         ]
 
         for i, p in enumerate(self.patterns[:max_patterns], 1):
-            lines.append(f"{i}. [{p.level.name}] (x{p.count}) {p.canonical_message[:200]}")
+            lines.append(
+                f"{i}. [{p.level.name}] (x{p.count}) {p.canonical_message[:200]}"
+            )
             if len(p.services) > 1:
                 lines.append(f"   Affected: {', '.join(list(p.services)[:5])}")
 
@@ -116,36 +128,44 @@ class LogParser:
     PATTERNS = [
         # ISO 8601: 2024-01-15T10:30:45.123Z [ERROR] [service] message
         (
-            r'^(?P<ts>\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)\s*'
-            r'\[?(?P<level>FATAL|ERROR|WARN(?:ING)?|INFO|DEBUG|TRACE)\]?\s*'
-            r'(?:\[(?P<service>[\w.-]+)\])?\s*'
-            r'(?P<msg>.+)$'
+            r"^(?P<ts>\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)\s*"
+            r"\[?(?P<level>FATAL|ERROR|WARN(?:ING)?|INFO|DEBUG|TRACE)\]?\s*"
+            r"(?:\[(?P<service>[\w.-]+)\])?\s*"
+            r"(?P<msg>.+)$"
         ),
         # Simple: ERROR service: message
         (
-            r'^(?:\[)?(?P<level>FATAL|ERROR|WARN(?:ING)?|INFO|DEBUG|TRACE)(?:\])?\s+'
-            r'(?:(?P<service>[\w.-]+):\s+)?'
-            r'(?P<msg>.+)$'
+            r"^(?:\[)?(?P<level>FATAL|ERROR|WARN(?:ING)?|INFO|DEBUG|TRACE)(?:\])?\s+"
+            r"(?:(?P<service>[\w.-]+):\s+)?"
+            r"(?P<msg>.+)$"
         ),
     ]
 
     ERROR_KEYWORDS = [
-        'exception', 'error', 'failed', 'failure', 'fatal',
-        'panic', 'crash', 'killed', 'oom', 'timeout',
+        "exception",
+        "error",
+        "failed",
+        "failure",
+        "fatal",
+        "panic",
+        "crash",
+        "killed",
+        "oom",
+        "timeout",
     ]
 
     def __init__(self, default_service: str = "unknown"):
         self.default_service = default_service
         self._compiled = [(re.compile(p, re.IGNORECASE), p) for p in self.PATTERNS]
 
-    def parse(self, line: str) -> Optional[LogEntry]:
+    def parse(self, line: str) -> LogEntry | None:
         """Parse a single log line."""
         line = line.strip()
         if not line:
             return None
 
         # Try JSON first
-        if line.startswith('{'):
+        if line.startswith("{"):
             return self._parse_json(line)
 
         # Try regex patterns
@@ -154,10 +174,10 @@ class LogParser:
             if match:
                 groups = match.groupdict()
                 return LogEntry(
-                    timestamp=self._parse_timestamp(groups.get('ts')),
-                    level=LogLevel.from_string(groups.get('level', '')),
-                    service=groups.get('service') or self.default_service,
-                    message=groups.get('msg', line),
+                    timestamp=self._parse_timestamp(groups.get("ts")),
+                    level=LogLevel.from_string(groups.get("level", "")),
+                    service=groups.get("service") or self.default_service,
+                    message=groups.get("msg", line),
                     raw=line,
                 )
 
@@ -174,20 +194,23 @@ class LogParser:
 
         return None
 
-    def _parse_json(self, line: str) -> Optional[LogEntry]:
+    def _parse_json(self, line: str) -> LogEntry | None:
         """Parse JSON-formatted logs."""
         import json
+
         try:
             data = json.loads(line)
             level = LogLevel.UNKNOWN
-            for f in ['level', 'severity', 'lvl']:
+            for f in ["level", "severity", "lvl"]:
                 if f in data:
                     level = LogLevel.from_string(str(data[f]))
                     if level != LogLevel.UNKNOWN:
                         break
 
-            message = data.get('message') or data.get('msg') or data.get('error') or line
-            service = data.get('service') or data.get('app') or self.default_service
+            message = (
+                data.get("message") or data.get("msg") or data.get("error") or line
+            )
+            service = data.get("service") or data.get("app") or self.default_service
 
             return LogEntry(
                 timestamp=None,
@@ -199,7 +222,7 @@ class LogParser:
         except json.JSONDecodeError:
             return None
 
-    def _parse_timestamp(self, ts_str: Optional[str]) -> Optional[datetime]:
+    def _parse_timestamp(self, ts_str: str | None) -> datetime | None:
         if not ts_str:
             return None
         formats = [
@@ -219,12 +242,12 @@ class LogNormalizer:
     """Normalizes log messages for deduplication."""
 
     RULES = [
-        (r'\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b', '<UUID>'),
-        (r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?::\d+)?\b', '<IP>'),
-        (r'\b\d{13}\b', '<EPOCH_MS>'),
-        (r'\b\d+(?:\.\d+)?(?:ms|s|m|h)\b', '<DURATION>'),
-        (r':\d{4,5}\b', ':<PORT>'),
-        (r'\bid[-=:]\s*\d+\b', 'id=<ID>'),
+        (r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", "<UUID>"),
+        (r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?::\d+)?\b", "<IP>"),
+        (r"\b\d{13}\b", "<EPOCH_MS>"),
+        (r"\b\d+(?:\.\d+)?(?:ms|s|m|h)\b", "<DURATION>"),
+        (r":\d{4,5}\b", ":<PORT>"),
+        (r"\bid[-=:]\s*\d+\b", "id=<ID>"),
     ]
 
     def __init__(self):
@@ -235,8 +258,11 @@ class LogNormalizer:
         normalized = message
         for pattern, replacement in self._compiled:
             normalized = pattern.sub(replacement, normalized)
-        normalized = ' '.join(normalized.lower().split())
-        signature = hashlib.md5(normalized.encode()).hexdigest()[:16]
+        normalized = " ".join(normalized.lower().split())
+        # MD5 used for fingerprinting, not security - usedforsecurity=False
+        signature = hashlib.md5(normalized.encode(), usedforsecurity=False).hexdigest()[
+            :16
+        ]
         return normalized, signature
 
 
@@ -244,8 +270,13 @@ class LogFilter:
     """Filters out noise from log entries."""
 
     NOISE_PATTERNS = [
-        r'health[-_]?check', r'GET\s+/health', r'/ping', r'/metrics',
-        r'kube-probe', r'readiness.*probe', r'liveness.*probe',
+        r"health[-_]?check",
+        r"GET\s+/health",
+        r"/ping",
+        r"/metrics",
+        r"kube-probe",
+        r"readiness.*probe",
+        r"liveness.*probe",
     ]
 
     def __init__(self, min_level: LogLevel = LogLevel.WARN):
@@ -265,13 +296,21 @@ class PatternRanker:
     """Ranks log patterns by importance."""
 
     CRITICAL_KEYWORDS = [
-        ('oom', 50), ('killed', 40), ('panic', 50), ('deadlock', 45),
-        ('timeout', 20), ('connection refused', 25), ('circuit breaker', 30),
+        ("oom", 50),
+        ("killed", 40),
+        ("panic", 50),
+        ("deadlock", 45),
+        ("timeout", 20),
+        ("connection refused", 25),
+        ("circuit breaker", 30),
     ]
 
-    def __init__(self, incident_time: Optional[datetime] = None):
+    def __init__(self, incident_time: datetime | None = None):
         self.incident_time = incident_time or datetime.utcnow()
-        self._keywords = [(re.compile(kw, re.IGNORECASE), boost) for kw, boost in self.CRITICAL_KEYWORDS]
+        self._keywords = [
+            (re.compile(kw, re.IGNORECASE), boost)
+            for kw, boost in self.CRITICAL_KEYWORDS
+        ]
 
     def score(self, pattern: LogPattern) -> float:
         score = 0.0
@@ -282,6 +321,7 @@ class PatternRanker:
 
         # Frequency (log scale)
         import math
+
         score += min(math.log10(pattern.count + 1) * 20, 100)
 
         # Recency
@@ -331,11 +371,12 @@ class LogCompressor:
         self,
         logs: list[str],
         service_name: str = "",
-        incident_time: Optional[datetime] = None,
+        incident_time: datetime | None = None,
         max_patterns: int = 50,
     ) -> CompressedLogs:
         """Compress raw log lines into structured, ranked patterns."""
         import time
+
         start = time.time()
 
         if service_name:
