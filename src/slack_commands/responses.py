@@ -11,7 +11,7 @@ class BlockKitBuilder:
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": "Incident Copilot Commands",
+                    "text": "🤖 Incident Copilot Commands",
                     "emoji": True,
                 },
             },
@@ -19,11 +19,148 @@ class BlockKitBuilder:
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": "• `/incident status` - Show active incidents\n• `/incident search <query>` - Search incidents\n• `/incident recent [n]` - Recent incidents\n• `/incident runbook <service>` - Get runbook\n• `/incident help` - This help",
+                    "text": (
+                        "*Incident Management:*\n"
+                        "• `/incident status` - Show active incidents\n"
+                        "• `/incident search <query>` - Search incidents\n"
+                        "• `/incident recent [n]` - Recent incidents\n"
+                        "• `/incident runbook <service>` - Get runbook\n\n"
+                        "*AI Copilot:*\n"
+                        "• `/incident ask <id> <question>` - Ask the AI copilot\n"
+                        "• `/incident summarize <id>` - Generate incident summary\n"
+                        "• `/incident suggest <id>` - Get AI suggestions\n"
+                    ),
                 },
             },
         ]
         return {"response_type": "ephemeral", "blocks": blocks, "text": "Commands"}
+
+    @classmethod
+    def copilot_response(
+        cls, incident_id: str, question: str, answer: str
+    ) -> dict[str, Any]:
+        blocks = [
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"🤖 *Copilot* | Incident: `{incident_id}`",
+                    }
+                ],
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*Q:* {question}",
+                },
+            },
+            {"type": "divider"},
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": answer[:2900],  # Slack limit
+                },
+            },
+        ]
+        return {"response_type": "ephemeral", "blocks": blocks, "text": answer[:100]}
+
+    @classmethod
+    def summary_response(cls, incident_id: str, summary: dict) -> dict[str, Any]:
+        title = summary.get("title", "Incident Summary")
+        summary_text = summary.get("summary", "")
+        root_cause = summary.get("root_cause", "Unknown")
+        resolution = summary.get("resolution", "Ongoing")
+        severity = summary.get("severity_assessment", "")
+
+        blocks = [
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": f"📋 {title}",
+                    "emoji": True,
+                },
+            },
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"Incident: `{incident_id}` | {severity}",
+                    }
+                ],
+            },
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": summary_text},
+            },
+            {"type": "divider"},
+            {
+                "type": "section",
+                "fields": [
+                    {"type": "mrkdwn", "text": f"*Root Cause:*\n{root_cause}"},
+                    {"type": "mrkdwn", "text": f"*Resolution:*\n{resolution}"},
+                ],
+            },
+        ]
+
+        action_items = summary.get("action_items", [])
+        if action_items:
+            actions_text = "\n".join(f"• {item}" for item in action_items[:5])
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*Action Items:*\n{actions_text}",
+                    },
+                }
+            )
+
+        return {"response_type": "ephemeral", "blocks": blocks, "text": title}
+
+    @classmethod
+    def suggestions_response(
+        cls, incident_id: str, suggestions: list[str]
+    ) -> dict[str, Any]:
+        blocks = [
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": "💡 Suggested Next Steps",
+                    "emoji": True,
+                },
+            },
+            {
+                "type": "context",
+                "elements": [{"type": "mrkdwn", "text": f"Incident: `{incident_id}`"}],
+            },
+        ]
+
+        if suggestions:
+            suggestions_text = "\n".join(f"• {s}" for s in suggestions[:5])
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": suggestions_text},
+                }
+            )
+        else:
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "_No suggestions available. Add more context first._",
+                    },
+                }
+            )
+
+        return {"response_type": "ephemeral", "blocks": blocks, "text": "Suggestions"}
 
     @classmethod
     def status_response(cls, incidents, stats) -> dict[str, Any]:
