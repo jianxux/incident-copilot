@@ -4,7 +4,6 @@ This module provides Google SSO and other OAuth flows via Supabase Auth,
 which handles token management, session refresh, and user management.
 """
 
-
 import structlog
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
