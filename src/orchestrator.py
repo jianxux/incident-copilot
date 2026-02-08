@@ -7,7 +7,9 @@ from datetime import datetime
 import structlog
 
 from .ai import LogSummarizer
+from .ai.log_compressor import CompressedLogs, LogCompressor
 from .config import Settings
+from .dependencies.service import DependencyService
 from .integrations import (
     CloudWatchAdapter,
     DatadogAdapter,
@@ -16,7 +18,13 @@ from .integrations import (
     SlackAdapter,
 )
 from .integrations.oncall_legacy import OnCallAdapter
-from .models import ContextCard, OnCallRoster, PagerDutyIncident, RunbookLink
+from .models import (
+    ContextCard,
+    OnCallRoster,
+    PagerDutyIncident,
+    RunbookLink,
+    TopologyContext,
+)
 from .runbooks import RunbookLinker
 
 logger = structlog.get_logger()
@@ -41,6 +49,12 @@ class ContextOrchestrator:
         self.summarizer = LogSummarizer(settings)
         self.runbook_linker = RunbookLinker()
         self.oncall = OnCallAdapter(settings)
+
+        # New: Log compressor for better context compression
+        self.log_compressor = LogCompressor()
+
+        # New: Dependency service for topology context
+        self.dependencies = DependencyService()
 
         # Determine SCM provider based on configuration
         # Prefer GitHub if configured, fall back to GitLab
@@ -97,12 +111,19 @@ class ContextOrchestrator:
         oncall_task = asyncio.create_task(
             self._fetch_oncall_roster(incident.service_name)
         )
+        topology_task = asyncio.create_task(
+            self._fetch_topology_context(incident.service_name)
+        )
 
         # Wait for all with timeout
         try:
-            scm_ctx, datadog_ctx, oncall_roster = await asyncio.wait_for(
+            scm_ctx, datadog_ctx, oncall_roster, topology_ctx = await asyncio.wait_for(
                 asyncio.gather(
-                    scm_task, datadog_task, oncall_task, return_exceptions=True
+                    scm_task,
+                    datadog_task,
+                    oncall_task,
+                    topology_task,
+                    return_exceptions=True,
                 ),
                 timeout=8.0,  # Leave room for AI + Slack
             )
@@ -136,12 +157,18 @@ class ContextOrchestrator:
                 errors.append(f"On-Call: {str(oncall_roster)}")
                 oncall_roster = None
 
+            if isinstance(topology_ctx, Exception):
+                logger.error("topology_fetch_error", error=str(topology_ctx))
+                errors.append(f"Topology: {str(topology_ctx)}")
+                topology_ctx = None
+
         except TimeoutError:
             logger.warning("context_fetch_timeout")
             errors.append("Context fetch timed out")
             scm_ctx = scm_task.result() if scm_task.done() else None
             datadog_ctx = datadog_task.result() if datadog_task.done() else None
             oncall_roster = oncall_task.result() if oncall_task.done() else None
+            topology_ctx = topology_task.result() if topology_task.done() else None
 
         # Extract GitHub context for backward compatibility
         github_ctx = scm_ctx if self.scm_provider == "github" else None
@@ -212,6 +239,7 @@ class ContextOrchestrator:
             github=github_ctx,
             gitlab=gitlab_ctx,
             datadog=datadog_ctx,
+            topology=topology_ctx,
             ai_summary=ai_summary,
             similar_incidents=[],  # TODO: implement similarity search
             runbooks=runbook_links,
@@ -230,6 +258,8 @@ class ContextOrchestrator:
             has_github=github_ctx is not None,
             has_gitlab=gitlab_ctx is not None,
             has_datadog=datadog_ctx is not None,
+            has_topology=topology_ctx is not None,
+            blast_radius=topology_ctx.blast_radius_count if topology_ctx else 0,
             has_ai=ai_summary is not None,
             has_oncall=oncall_roster is not None,
             oncall_count=len(oncall_roster.oncall_persons) if oncall_roster else 0,
@@ -306,3 +336,85 @@ class ContextOrchestrator:
                 error=str(e),
             )
             return None
+
+    async def _fetch_topology_context(
+        self, service_name: str
+    ) -> TopologyContext | None:
+        """
+        Fetch topology context - upstream/downstream dependencies and blast radius.
+
+        Returns TopologyContext with:
+        - upstream_services: Services this depends on
+        - downstream_services: Services that depend on this (blast radius)
+        - critical_paths: Critical dependency chains
+        """
+        try:
+            # Get service by name (may need to look up by ID)
+            service = await self.dependencies.get_service(service_name)
+            if not service:
+                logger.debug("service_not_in_topology", service=service_name)
+                return None
+
+            # Get blast radius (what breaks if this service fails)
+            blast_radius = await self.dependencies.calculate_blast_radius(service.id)
+
+            # Get upstream/downstream dependencies
+            deps = await self.dependencies.get_service_dependencies(service.id)
+            upstream = deps.get("upstream", [])
+            downstream = deps.get("downstream", [])
+
+            # Get critical services affected
+            critical_affected = blast_radius.critical_affected if blast_radius else []
+
+            # Build critical paths from impact paths
+            critical_paths = []
+            if blast_radius and blast_radius.impact_paths:
+                for path in blast_radius.impact_paths[:5]:
+                    if path.has_critical_hop:
+                        critical_paths.append(path.path)
+
+            topology = TopologyContext(
+                service_id=service.id,
+                service_name=service.name,
+                criticality=(
+                    service.criticality.value if service.criticality else "unknown"
+                ),
+                team=service.team,
+                upstream_services=upstream,
+                downstream_services=downstream,
+                blast_radius_count=blast_radius.affected_count if blast_radius else 0,
+                critical_services_affected=critical_affected,
+                risk_score=blast_radius.risk_score if blast_radius else 0.0,
+                critical_paths=critical_paths,
+            )
+
+            logger.info(
+                "topology_context_fetched",
+                service=service_name,
+                upstream_count=len(upstream),
+                downstream_count=len(downstream),
+                blast_radius=topology.blast_radius_count,
+                risk_score=topology.risk_score,
+            )
+
+            return topology
+
+        except Exception as e:
+            logger.error(
+                "topology_context_failed",
+                service=service_name,
+                error=str(e),
+            )
+            return None
+
+    def compress_logs(self, logs: list[str], service_name: str) -> CompressedLogs:
+        """
+        Compress logs using the log compressor pipeline.
+
+        Returns structured, deduplicated log patterns for efficient LLM consumption.
+        """
+        return self.log_compressor.compress(
+            logs=logs,
+            service_name=service_name,
+            max_patterns=30,
+        )
