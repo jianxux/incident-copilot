@@ -78,6 +78,61 @@
 </div>
 
 {% if card %}
+<!-- AI Copilot Chat -->
+<div class="bg-white rounded-xl border border-slate-200 mb-6" id="copilot-section">
+    <div class="p-4 border-b border-slate-200 flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-slate-900 flex items-center">
+            <i class="fas fa-robot mr-3 text-purple-500"></i>
+            AI Copilot
+        </h2>
+        <div class="flex items-center space-x-2">
+            <button onclick="getSuggestions()" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg transition">
+                <i class="fas fa-lightbulb mr-1 text-amber-500"></i>
+                Suggestions
+            </button>
+            <button onclick="generateSummary()" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg transition">
+                <i class="fas fa-file-alt mr-1 text-blue-500"></i>
+                Summary
+            </button>
+        </div>
+    </div>
+    
+    <!-- Chat Messages -->
+    <div id="copilot-messages" class="h-64 overflow-y-auto p-4 space-y-4 bg-slate-50">
+        <div class="flex items-start space-x-3">
+            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                <i class="fas fa-robot text-purple-500 text-sm"></i>
+            </div>
+            <div class="flex-1 bg-white rounded-lg p-3 shadow-sm border border-slate-200">
+                <p class="text-slate-700 text-sm">
+                    Hi! I'm your incident copilot. I have access to the context card above including deployments, logs, and metrics. 
+                    Ask me anything about this incident — what changed, what to check, or what might be causing it.
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Chat Input -->
+    <div class="p-4 border-t border-slate-200">
+        <form onsubmit="sendMessage(event)" class="flex items-center space-x-3">
+            <input 
+                type="text" 
+                id="copilot-input" 
+                placeholder="Ask about the incident... (e.g., 'What changed recently?')"
+                class="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+            <button 
+                type="submit" 
+                id="copilot-send"
+                class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition flex items-center"
+            >
+                <i class="fas fa-paper-plane mr-2"></i>
+                Send
+            </button>
+        </form>
+    </div>
+</div>
+
 <!-- Context Card -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     
@@ -341,5 +396,162 @@
     <p class="text-muted">{{ incident.error_message or 'An unknown error occurred' }}</p>
 </div>
 {% endif %}
+
+<script>
+const INCIDENT_ID = "{{ incident.incident_id }}";
+const messagesContainer = document.getElementById('copilot-messages');
+
+function addMessage(role, content) {
+    const isUser = role === 'user';
+    const div = document.createElement('div');
+    div.className = 'flex items-start space-x-3' + (isUser ? ' flex-row-reverse space-x-reverse' : '');
+    
+    const icon = isUser ? 'fa-user' : 'fa-robot';
+    const iconBg = isUser ? 'bg-blue-100' : 'bg-purple-100';
+    const iconColor = isUser ? 'text-blue-500' : 'text-purple-500';
+    const msgBg = isUser ? 'bg-blue-500 text-white' : 'bg-white border border-slate-200';
+    const textColor = isUser ? '' : 'text-slate-700';
+    
+    div.innerHTML = `
+        <div class="flex-shrink-0 w-8 h-8 rounded-full ${iconBg} flex items-center justify-center">
+            <i class="fas ${icon} ${iconColor} text-sm"></i>
+        </div>
+        <div class="flex-1 ${msgBg} rounded-lg p-3 shadow-sm">
+            <p class="${textColor} text-sm whitespace-pre-wrap">${escapeHtml(content)}</p>
+        </div>
+    `;
+    
+    messagesContainer.appendChild(div);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function addTypingIndicator() {
+    const div = document.createElement('div');
+    div.id = 'typing-indicator';
+    div.className = 'flex items-start space-x-3';
+    div.innerHTML = `
+        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+            <i class="fas fa-robot text-purple-500 text-sm"></i>
+        </div>
+        <div class="flex-1 bg-white rounded-lg p-3 shadow-sm border border-slate-200">
+            <div class="flex space-x-1">
+                <div class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
+                <div class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 150ms"></div>
+                <div class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 300ms"></div>
+            </div>
+        </div>
+    `;
+    messagesContainer.appendChild(div);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function removeTypingIndicator() {
+    const indicator = document.getElementById('typing-indicator');
+    if (indicator) indicator.remove();
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+async function sendMessage(event) {
+    event.preventDefault();
+    const input = document.getElementById('copilot-input');
+    const message = input.value.trim();
+    if (!message) return;
+    
+    input.value = '';
+    addMessage('user', message);
+    addTypingIndicator();
+    
+    try {
+        const response = await fetch('/copilot/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                incident_id: INCIDENT_ID,
+                message: message,
+                refresh_context: false
+            })
+        });
+        
+        const data = await response.json();
+        removeTypingIndicator();
+        
+        if (data.response) {
+            addMessage('assistant', data.response);
+        } else {
+            addMessage('assistant', 'Sorry, I encountered an error. Please try again.');
+        }
+    } catch (error) {
+        removeTypingIndicator();
+        addMessage('assistant', 'Failed to connect to the copilot. Please check if the server is running.');
+    }
+}
+
+async function getSuggestions() {
+    addTypingIndicator();
+    
+    try {
+        const response = await fetch(`/copilot/suggestions/${INCIDENT_ID}`);
+        const data = await response.json();
+        removeTypingIndicator();
+        
+        if (data.suggestions && data.suggestions.length > 0) {
+            const suggestionsText = "Here are my suggestions:\n\n" + 
+                data.suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n');
+            addMessage('assistant', suggestionsText);
+        } else {
+            addMessage('assistant', 'I need more context to provide suggestions. Try asking me some questions first!');
+        }
+    } catch (error) {
+        removeTypingIndicator();
+        // Session might not exist yet, start it
+        await startSession();
+        addMessage('assistant', 'Session started. Click Suggestions again for recommendations.');
+    }
+}
+
+async function generateSummary() {
+    addTypingIndicator();
+    
+    try {
+        const response = await fetch(`/copilot/summary/${INCIDENT_ID}`);
+        const data = await response.json();
+        removeTypingIndicator();
+        
+        if (data.title) {
+            let summaryText = `📋 **${data.title}**\n\n`;
+            if (data.summary) summaryText += `${data.summary}\n\n`;
+            if (data.root_cause) summaryText += `🔍 Root Cause: ${data.root_cause}\n\n`;
+            if (data.resolution) summaryText += `✅ Resolution: ${data.resolution}\n\n`;
+            if (data.action_items && data.action_items.length > 0) {
+                summaryText += `📝 Action Items:\n` + data.action_items.map(a => `• ${a}`).join('\n');
+            }
+            addMessage('assistant', summaryText);
+        } else {
+            addMessage('assistant', 'Unable to generate summary. Try having a conversation first to add more context.');
+        }
+    } catch (error) {
+        removeTypingIndicator();
+        addMessage('assistant', 'Failed to generate summary. Make sure you have an active session.');
+    }
+}
+
+async function startSession() {
+    try {
+        await fetch(`/copilot/start/${INCIDENT_ID}?service_name={{ incident.service_name }}`, {
+            method: 'POST'
+        });
+    } catch (error) {
+        console.error('Failed to start session:', error);
+    }
+}
+
+// Start session when page loads
+document.addEventListener('DOMContentLoaded', startSession);
+</script>
 
 {% endblock %}
