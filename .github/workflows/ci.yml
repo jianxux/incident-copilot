@@ -49,8 +49,8 @@ jobs:
           pip install -e ".[dev]"
           
       - name: Type check with mypy
-        run: mypy src
-        continue-on-error: true  # TODO: Fix type errors and remove this
+        run: mypy src --ignore-missing-imports
+        continue-on-error: true  # TODO: Fix 200+ type errors across codebase
 
   test:
     name: Test
@@ -68,9 +68,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
           
-      - name: Run tests
-        run: pytest --cov=src --cov-report=xml
-        continue-on-error: true  # TODO: Fix failing tests and remove this
+      - name: Run tests with coverage
+        run: pytest tests/ --cov=src --cov-report=xml --cov-fail-under=20
         
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

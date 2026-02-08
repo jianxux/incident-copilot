@@ -259,6 +259,32 @@ class RunbookLink(BaseModel):
     matched_terms: list[str] = Field(default_factory=list)
 
 
+# --- Topology Models ---
+
+
+class TopologyContext(BaseModel):
+    """Service topology context showing dependencies and blast radius."""
+
+    service_id: str
+    service_name: str
+    criticality: str = "unknown"
+    team: str | None = None
+
+    # What this service depends on (if these fail, we're affected)
+    upstream_services: list[str] = Field(default_factory=list)
+
+    # What depends on this service (blast radius - what breaks if we fail)
+    downstream_services: list[str] = Field(default_factory=list)
+
+    # Blast radius details
+    blast_radius_count: int = 0
+    critical_services_affected: list[str] = Field(default_factory=list)
+    risk_score: float = 0.0
+
+    # Critical dependency paths
+    critical_paths: list[list[str]] = Field(default_factory=list)
+
+
 # --- Context Card ---
 
 
@@ -281,6 +307,9 @@ class ContextCard(BaseModel):
 
     # Datadog context
     datadog: DatadogContext | None = None
+
+    # Service topology (dependencies and blast radius)
+    topology: TopologyContext | None = None
 
     # AI summary
     ai_summary: AILogSummary | None = None
