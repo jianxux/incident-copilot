@@ -259,8 +259,10 @@ class Rubric:
         High confidence + wrong + dangerous action = CRITICAL
         Low confidence + wrong = MINOR
         """
-        # If correct, no failure
-        if actual_root_cause.lower() in predicted_root_cause.lower():
+        # If correct, no failure (check both directions for substring match)
+        predicted_lower = predicted_root_cause.lower()
+        actual_lower = actual_root_cause.lower()
+        if actual_lower in predicted_lower or predicted_lower in actual_lower:
             return FailureSeverity.NONE
         
         # Check for dangerous recommendations
