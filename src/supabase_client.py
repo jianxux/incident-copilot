@@ -3,6 +3,7 @@
 from functools import lru_cache
 
 import structlog
+
 from supabase import Client, create_client
 
 from .config import get_settings

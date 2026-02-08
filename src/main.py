@@ -19,6 +19,7 @@ from .api import (
     webhooks_router,
 )
 from .api.audit import router as audit_router
+from .api.copilot import router as copilot_router
 from .api.health import set_app_start_time
 from .audit.middleware import AuditMiddleware
 from .audit.store import audit_store
@@ -111,6 +112,7 @@ def create_app() -> FastAPI:
     app.include_router(audit_router)
     app.include_router(ratelimit_router)
     app.include_router(email_router, prefix="/api")
+    app.include_router(copilot_router)
     app.include_router(landing_router)
     app.include_router(web_router)
 
