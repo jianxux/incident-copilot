@@ -112,6 +112,7 @@ async def health_check():
 async def login_page(request: Request, error: str | None = None):
     """Login page."""
     from ..auth.oauth import get_available_providers
+    from ..supabase_client import is_supabase_auth_enabled
 
     error_messages = {
         "oauth_denied": "You cancelled the login process.",
@@ -127,6 +128,7 @@ async def login_page(request: Request, error: str | None = None):
         {
             "request": request,
             "providers": get_available_providers(),
+            "supabase_auth_enabled": is_supabase_auth_enabled(),
             "error": error_messages.get(error, error) if error else None,
         },
     )
@@ -136,12 +138,14 @@ async def login_page(request: Request, error: str | None = None):
 async def signup_page(request: Request):
     """Signup page."""
     from ..auth.oauth import get_available_providers
+    from ..supabase_client import is_supabase_auth_enabled
 
     return templates.TemplateResponse(
         "signup.html",
         {
             "request": request,
             "providers": get_available_providers(),
+            "supabase_auth_enabled": is_supabase_auth_enabled(),
         },
     )
 

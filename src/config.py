@@ -193,6 +193,23 @@ class Settings(BaseSettings):
         default="", description="Google OAuth Client Secret"
     )
 
+    # Supabase
+    supabase_url: str = Field(
+        default="", description="Supabase project URL (e.g., https://xxx.supabase.co)"
+    )
+    supabase_anon_key: str = Field(
+        default="", description="Supabase anon/public key"
+    )
+    supabase_service_role_key: str = Field(
+        default="", description="Supabase service role key (for server-side operations)"
+    )
+    supabase_auth_enabled: bool = Field(
+        default=False, description="Use Supabase Auth instead of built-in auth"
+    )
+    supabase_db_enabled: bool = Field(
+        default=False, description="Use Supabase PostgreSQL as the database backend"
+    )
+
     # Auth
     secret_key: str = Field(
         default="change-me-in-production", description="Secret key for signing tokens"
