@@ -2,7 +2,7 @@
 
 import json
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 import structlog
 from anthropic import AsyncAnthropic
@@ -14,7 +14,7 @@ from ..models import ContextCard
 logger = structlog.get_logger()
 
 
-class MessageRole(str, Enum):
+class MessageRole(StrEnum):
     """Chat message roles."""
 
     USER = "user"
