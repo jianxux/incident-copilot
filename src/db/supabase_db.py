@@ -5,7 +5,6 @@ which wraps PostgreSQL with a REST API and real-time subscriptions.
 """
 
 from datetime import datetime
-from typing import Any
 from uuid import uuid4
 
 import structlog

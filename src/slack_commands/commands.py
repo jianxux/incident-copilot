@@ -6,11 +6,25 @@ from typing import Any
 
 import structlog
 
+from ..ai.copilot import AICopilot
+from ..config import get_settings
 from ..runbooks import RunbookLinker
 from ..web.store import incident_store
 from .responses import BlockKitBuilder
 
 logger = structlog.get_logger()
+
+# Singleton copilot for Slack commands
+_slack_copilot: AICopilot | None = None
+
+
+def get_slack_copilot() -> AICopilot:
+    """Get or create the Slack copilot singleton."""
+    global _slack_copilot
+    if _slack_copilot is None:
+        settings = get_settings()
+        _slack_copilot = AICopilot(settings)
+    return _slack_copilot
 
 
 @dataclass
@@ -49,6 +63,9 @@ class CommandHandler:
             "search": self._handle_search,
             "recent": self._handle_recent,
             "runbook": self._handle_runbook,
+            "ask": self._handle_ask,
+            "summarize": self._handle_summarize,
+            "suggest": self._handle_suggest,
             "help": self._handle_help,
         }
         handler = handlers.get(subcommand)
@@ -146,6 +163,99 @@ class CommandHandler:
         except Exception:
             runbook_dicts = []
         return BlockKitBuilder.runbook_response(service, runbook_dicts)
+
+    async def _handle_ask(self, ctx, args):
+        """Handle /incident ask <incident_id> <question>."""
+        parts = args.strip().split(maxsplit=1)
+        if len(parts) < 2:
+            return BlockKitBuilder.error_response(
+                "Usage: /incident ask <incident_id> <question>",
+                "Example: /incident ask INC-123 What changed recently?",
+            )
+
+        incident_id = parts[0]
+        question = parts[1]
+
+        copilot = get_slack_copilot()
+
+        # Check if session exists
+        session = copilot.get_session(incident_id)
+        if not session:
+            # Try to find the incident and start a session
+            incidents = await incident_store.get_all_incidents()
+            incident = next(
+                (i for i in incidents if i.incident_id == incident_id), None
+            )
+            if incident:
+                await copilot.get_or_create_session(
+                    incident_id=incident_id,
+                    service_name=incident.service_name,
+                    context_card=None,
+                )
+
+        try:
+            response = await copilot.chat(
+                incident_id=incident_id,
+                user_message=question,
+            )
+            return BlockKitBuilder.copilot_response(incident_id, question, response)
+        except Exception as e:
+            logger.error("copilot_ask_error", error=str(e))
+            return BlockKitBuilder.error_response("Copilot error", str(e))
+
+    async def _handle_summarize(self, ctx, args):
+        """Handle /incident summarize <incident_id>."""
+        incident_id = args.strip()
+        if not incident_id:
+            return BlockKitBuilder.error_response(
+                "Incident ID required",
+                "Usage: /incident summarize <incident_id>",
+            )
+
+        copilot = get_slack_copilot()
+        session = copilot.get_session(incident_id)
+        if not session:
+            return BlockKitBuilder.error_response(
+                f"No active session for {incident_id}",
+                "Start a session with /incident ask first",
+            )
+
+        try:
+            summary = await copilot.generate_summary(incident_id)
+            if summary:
+                return BlockKitBuilder.summary_response(incident_id, summary)
+            else:
+                return BlockKitBuilder.error_response(
+                    "Failed to generate summary",
+                    "Try adding more context with /incident ask",
+                )
+        except Exception as e:
+            logger.error("copilot_summarize_error", error=str(e))
+            return BlockKitBuilder.error_response("Summary error", str(e))
+
+    async def _handle_suggest(self, ctx, args):
+        """Handle /incident suggest <incident_id>."""
+        incident_id = args.strip()
+        if not incident_id:
+            return BlockKitBuilder.error_response(
+                "Incident ID required",
+                "Usage: /incident suggest <incident_id>",
+            )
+
+        copilot = get_slack_copilot()
+        session = copilot.get_session(incident_id)
+        if not session:
+            return BlockKitBuilder.error_response(
+                f"No active session for {incident_id}",
+                "Start a session with /incident ask first",
+            )
+
+        try:
+            suggestions = await copilot.suggest_next_steps(incident_id)
+            return BlockKitBuilder.suggestions_response(incident_id, suggestions)
+        except Exception as e:
+            logger.error("copilot_suggest_error", error=str(e))
+            return BlockKitBuilder.error_response("Suggestions error", str(e))
 
     async def _handle_help(self, ctx, args=""):
         return BlockKitBuilder.help_response()
