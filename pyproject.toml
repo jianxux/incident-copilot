@@ -30,6 +30,7 @@ dependencies = [
     "tenacity>=8.2.0",
     "networkx>=3.2.0",
     "python-multipart>=0.0.7",
+    "supabase>=2.0.0",
 ]
 
 [project.optional-dependencies]
