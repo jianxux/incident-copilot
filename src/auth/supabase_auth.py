@@ -317,9 +317,7 @@ async def oauth_callback(
             error=error,
             description=error_description,
         )
-        return RedirectResponse(
-            url=f"{settings.app_url}/login?error={error}"
-        )
+        return RedirectResponse(url=f"{settings.app_url}/login?error={error}")
 
     # For token-based callback (implicit flow)
     if access_token and refresh_token:

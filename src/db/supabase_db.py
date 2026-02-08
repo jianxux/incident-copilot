@@ -94,11 +94,7 @@ class SupabaseDB:
         self._check_enabled()
 
         result = (
-            self.client.table("tenants")
-            .select("*")
-            .eq("slug", slug)
-            .single()
-            .execute()
+            self.client.table("tenants").select("*").eq("slug", slug).single().execute()
         )
         return result.data
 
@@ -108,10 +104,7 @@ class SupabaseDB:
 
         kwargs["updated_at"] = datetime.utcnow().isoformat()
         result = (
-            self.client.table("tenants")
-            .update(kwargs)
-            .eq("id", tenant_id)
-            .execute()
+            self.client.table("tenants").update(kwargs).eq("id", tenant_id).execute()
         )
         return result.data[0] if result.data else None
 
@@ -147,11 +140,7 @@ class SupabaseDB:
         self._check_enabled()
 
         result = (
-            self.client.table("users")
-            .select("*")
-            .eq("id", user_id)
-            .single()
-            .execute()
+            self.client.table("users").select("*").eq("id", user_id).single().execute()
         )
         return result.data
 
@@ -160,11 +149,7 @@ class SupabaseDB:
         self._check_enabled()
 
         result = (
-            self.client.table("users")
-            .select("*")
-            .eq("email", email)
-            .single()
-            .execute()
+            self.client.table("users").select("*").eq("email", email).single().execute()
         )
         return result.data
 
@@ -173,12 +158,7 @@ class SupabaseDB:
         self._check_enabled()
 
         kwargs["updated_at"] = datetime.utcnow().isoformat()
-        result = (
-            self.client.table("users")
-            .update(kwargs)
-            .eq("id", user_id)
-            .execute()
-        )
+        result = self.client.table("users").update(kwargs).eq("id", user_id).execute()
         return result.data[0] if result.data else None
 
     async def list_users(
@@ -266,18 +246,13 @@ class SupabaseDB:
         """List incidents for a tenant."""
         self._check_enabled()
 
-        query = (
-            self.client.table("incidents")
-            .select("*")
-            .eq("tenant_id", tenant_id)
-        )
+        query = self.client.table("incidents").select("*").eq("tenant_id", tenant_id)
 
         if status:
             query = query.eq("status", status)
 
         result = (
-            query
-            .order("created_at", desc=True)
+            query.order("created_at", desc=True)
             .range(offset, offset + limit - 1)
             .execute()
         )
@@ -442,11 +417,7 @@ class SupabaseDB:
         """List audit logs for a tenant."""
         self._check_enabled()
 
-        query = (
-            self.client.table("audit_logs")
-            .select("*")
-            .eq("tenant_id", tenant_id)
-        )
+        query = self.client.table("audit_logs").select("*").eq("tenant_id", tenant_id)
 
         if user_id:
             query = query.eq("user_id", user_id)
@@ -454,8 +425,7 @@ class SupabaseDB:
             query = query.eq("action", action)
 
         result = (
-            query
-            .order("created_at", desc=True)
+            query.order("created_at", desc=True)
             .range(offset, offset + limit - 1)
             .execute()
         )
