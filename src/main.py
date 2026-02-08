@@ -24,6 +24,7 @@ from .audit.middleware import AuditMiddleware
 from .audit.store import audit_store
 from .auth.routes import router as auth_router
 from .auth.sso.routes import router as sso_router
+from .auth.supabase_auth import router as supabase_auth_router
 from .billing.routes import router as billing_router
 from .config import get_settings
 from .metrics import HEALTH_STATUS, set_app_info
@@ -99,6 +100,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(sso_router)
+    app.include_router(supabase_auth_router)
     app.include_router(billing_router)
     app.include_router(webhooks_router)
     app.include_router(runbooks_router)
