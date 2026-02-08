@@ -1,93 +1,126 @@
-.PHONY: help install dev test lint format typecheck check clean run docker
+.PHONY: help dev test test-fast test-cov lint format typecheck check clean install docker-build docker-run eval
 
 # Default target
 help:
-	@echo "Incident Copilot Development Commands"
+	@echo "Incident Copilot - Development Commands"
 	@echo ""
 	@echo "Setup:"
-	@echo "  make install     Install production dependencies"
-	@echo "  make dev         Install development dependencies"
+	@echo "  make install       Install dependencies"
+	@echo "  make install-dev   Install with dev dependencies"
 	@echo ""
-	@echo "Quality:"
-	@echo "  make test        Run all tests"
-	@echo "  make test-fast   Run fast unit tests only"
-	@echo "  make lint        Run linter (ruff)"
-	@echo "  make format      Format code (black + isort)"
-	@echo "  make typecheck   Run type checker (mypy)"
-	@echo "  make check       Run all checks (lint + typecheck + test)"
+	@echo "Development:"
+	@echo "  make dev           Start development server"
+	@echo "  make format        Auto-format code (black + isort)"
+	@echo "  make lint          Run linters (ruff)"
+	@echo "  make typecheck     Run type checker (mypy)"
+	@echo "  make check         Run all checks (lint + typecheck + test)"
 	@echo ""
-	@echo "Running:"
-	@echo "  make run         Run development server"
-	@echo "  make docker      Build Docker image"
+	@echo "Testing:"
+	@echo "  make test          Run all tests"
+	@echo "  make test-fast     Run unit tests only (skip slow/integration)"
+	@echo "  make test-cov      Run tests with coverage report"
+	@echo "  make coverage      Generate HTML coverage report"
+	@echo "  make eval          Run evaluation harness"
 	@echo ""
-	@echo "Maintenance:"
-	@echo "  make clean       Remove cache files"
-	@echo "  make coverage    Generate coverage report"
+	@echo "Docker:"
+	@echo "  make docker-build  Build Docker image"
+	@echo "  make docker-run    Run Docker container"
+	@echo ""
+	@echo "Utilities:"
+	@echo "  make clean         Clean build artifacts"
+	@echo "  make deps-graph    Generate dependency graph"
 
+# ============================================================================
 # Setup
+# ============================================================================
+
 install:
 	pip install -e .
 
-dev:
+install-dev:
 	pip install -e ".[dev]"
 	pre-commit install
 
-# Testing
-test:
-	pytest tests/ -v --tb=short
+# ============================================================================
+# Development
+# ============================================================================
 
-test-fast:
-	pytest tests/test_log_compressor.py tests/test_eval_framework.py tests/test_health.py -v --tb=short -q
-
-test-cov:
-	pytest tests/ --cov=src --cov-report=html --cov-report=term-missing
-
-coverage: test-cov
-	open htmlcov/index.html
-
-# Linting & Formatting
-lint:
-	ruff check src tests
-
-lint-fix:
-	ruff check src tests --fix
+dev:
+	uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 
 format:
 	black src tests
-	isort src tests
+	isort --profile black src tests
+
+lint:
+	ruff check src tests
 
 typecheck:
 	mypy src --ignore-missing-imports
 
-# All checks
-check: lint typecheck test-fast
-	@echo "✅ All checks passed"
+check: lint typecheck test
+	@echo "✓ All checks passed!"
 
-# Running
-run:
-	uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+# ============================================================================
+# Testing
+# ============================================================================
 
+test:
+	pytest tests/ -v
+
+test-fast:
+	pytest tests/ -v -m "not slow and not integration" --ignore=tests/integration
+
+test-cov:
+	pytest tests/ --cov=src --cov-report=term-missing
+
+coverage:
+	pytest tests/ --cov=src --cov-report=html
+	@echo "Coverage report: htmlcov/index.html"
+
+eval:
+	python -m src.eval.harness
+
+# ============================================================================
 # Docker
-docker:
+# ============================================================================
+
+docker-build:
 	docker build -t incident-copilot:latest .
 
 docker-run:
 	docker run -p 8000:8000 --env-file .env incident-copilot:latest
 
-# Cleanup
+docker-compose-up:
+	docker-compose up --build
+
+docker-compose-down:
+	docker-compose down
+
+# ============================================================================
+# Utilities
+# ============================================================================
+
 clean:
 	rm -rf .pytest_cache
-	rm -rf .ruff_cache
 	rm -rf .mypy_cache
+	rm -rf .ruff_cache
 	rm -rf htmlcov
-	rm -rf *.egg-info
+	rm -rf .coverage
+	rm -rf coverage.xml
 	rm -rf dist
+	rm -rf build
+	rm -rf *.egg-info
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
-	find . -type f -name "*.pyc" -delete
 
-# Eval
-eval:
-	python -m src.eval.harness
+deps-graph:
+	python scripts/dependency_graph.py
 
-eval-synthetic:
-	python -c "from src.eval.harness import run_quick_eval; import asyncio; asyncio.run(run_quick_eval(count=20))"
+# Pre-commit
+pre-commit:
+	pre-commit run --all-files
+
+# Security scan
+security:
+	bandit -r src -ll
+	pip-audit
