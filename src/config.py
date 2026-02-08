@@ -197,9 +197,7 @@ class Settings(BaseSettings):
     supabase_url: str = Field(
         default="", description="Supabase project URL (e.g., https://xxx.supabase.co)"
     )
-    supabase_anon_key: str = Field(
-        default="", description="Supabase anon/public key"
-    )
+    supabase_anon_key: str = Field(default="", description="Supabase anon/public key")
     supabase_service_role_key: str = Field(
         default="", description="Supabase service role key (for server-side operations)"
     )
