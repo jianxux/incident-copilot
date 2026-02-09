@@ -8,10 +8,11 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import structlog
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
+from ..auth.middleware import AuthContext, get_auth_context
 from ..config import get_settings
 from ..models import (
     AILogSummary,
@@ -174,10 +175,9 @@ async def dashboard_home(request: Request):
 
 @router.get("/onboarding", response_class=HTMLResponse)
 async def onboarding_page(request: Request):
-    """Onboarding page for new users to configure integrations."""
+    """Legacy onboarding page (manual API keys)."""
     settings = get_settings()
 
-    # Generate webhook URL for the tenant
     webhook_url = f"{settings.app_url}/webhooks/pagerduty"
 
     return templates.TemplateResponse(
@@ -185,6 +185,22 @@ async def onboarding_page(request: Request):
         {
             "request": request,
             "page_title": "Setup",
+            "webhook_url": webhook_url,
+        },
+    )
+
+
+@router.get("/onboarding-wizard", response_class=HTMLResponse)
+async def onboarding_wizard_page(request: Request):
+    """Customer-friendly onboarding wizard."""
+    settings = get_settings()
+    webhook_url = f"{settings.app_url}/webhooks/pagerduty"
+
+    return templates.TemplateResponse(
+        "onboarding_wizard.html",
+        {
+            "request": request,
+            "page_title": "Onboarding",
             "webhook_url": webhook_url,
         },
     )
@@ -477,6 +493,100 @@ async def api_incidents():
 async def api_stats():
     """JSON API endpoint for dashboard stats."""
     return await incident_store.get_stats()
+
+
+# =========================================================================
+# Onboarding APIs
+# =========================================================================
+
+
+@router.get("/api/onboarding/checklist")
+async def get_onboarding_checklist(
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Get current tenant onboarding checklist."""
+    from ..onboarding.checklist import checklist_store
+
+    if not auth.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="auth_required"
+        )
+
+    checklist = checklist_store.get(auth.tenant_id)
+    return checklist.to_dict()
+
+
+@router.post("/api/onboarding/checklist/{step}")
+async def set_onboarding_step(
+    step: str,
+    done: bool = True,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Mark an onboarding checklist step as done/undone."""
+    from ..onboarding.checklist import checklist_store
+
+    if not auth.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="auth_required"
+        )
+
+    checklist = checklist_store.set_step(auth.tenant_id, step, done)
+    return checklist.to_dict()
+
+
+@router.get("/api/onboarding/status")
+async def get_onboarding_status(
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Return a lightweight status for the wizard UI."""
+    if not auth.tenant_id:
+        return {"authenticated": False}
+
+    tenant = auth.tenant
+    integrations = tenant.integrations if tenant else {}
+
+    def connected(name: str) -> bool:
+        v = integrations.get(name)
+        if not v:
+            return False
+        # We store encrypted records under {encrypted: "..."}.
+        return bool(v.get("encrypted") if isinstance(v, dict) else v)
+
+    return {
+        "authenticated": True,
+        "tenant": {"id": auth.tenant_id},
+        "integrations": {
+            "pagerduty": connected("pagerduty"),
+            "slack": connected("slack"),
+            "github": connected("github"),
+            "datadog": connected("datadog"),
+        },
+    }
+
+
+@router.post("/api/onboarding/test-incident")
+async def run_onboarding_test_incident(
+    service_name: str = "payments-api",
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Start a synthetic incident to validate the pipeline."""
+    from ..models import Severity
+    from ..onboarding.checklist import checklist_store
+    from ..onboarding.test_incident import start_test_incident
+
+    if not auth.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="auth_required"
+        )
+
+    incident_id = await start_test_incident(
+        service_name=service_name,
+        severity=Severity.HIGH,
+    )
+
+    checklist_store.set_step(auth.tenant_id, "run_test", True)
+
+    return {"incident_id": incident_id, "status": "processing"}
 
 
 # Demo data generation
