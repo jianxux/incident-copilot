@@ -3,6 +3,7 @@
 import asyncio
 import time
 from datetime import datetime
+from typing import cast
 
 import structlog
 
@@ -20,6 +21,9 @@ from .integrations import (
 from .integrations.oncall_legacy import OnCallAdapter
 from .models import (
     ContextCard,
+    DatadogContext,
+    GitHubContext,
+    GitLabContext,
     OnCallRoster,
     PagerDutyIncident,
     RunbookLink,
@@ -63,6 +67,7 @@ class ContextOrchestrator:
 
         # Initialize log provider based on configuration
         self.log_provider = settings.log_provider.lower()
+        self.log_adapter: CloudWatchAdapter | DatadogAdapter
         if self.log_provider == "cloudwatch":
             self.log_adapter = CloudWatchAdapter(settings)
             logger.info("log_provider_initialized", provider="cloudwatch")
@@ -116,8 +121,13 @@ class ContextOrchestrator:
         )
 
         # Wait for all with timeout
+        scm_ctx: GitHubContext | GitLabContext | None = None
+        datadog_ctx: DatadogContext | None = None
+        oncall_roster: OnCallRoster | None = None
+        topology_ctx: TopologyContext | None = None
+
         try:
-            scm_ctx, datadog_ctx, oncall_roster, topology_ctx = await asyncio.wait_for(
+            scm_ctx_raw, log_ctx_raw, oncall_raw, topology_raw = await asyncio.wait_for(
                 asyncio.gather(
                     scm_task,
                     datadog_task,
@@ -128,16 +138,19 @@ class ContextOrchestrator:
                 timeout=8.0,  # Leave room for AI + Slack
             )
 
+
             # Handle exceptions from gather
-            if isinstance(scm_ctx, Exception):
+            if isinstance(scm_ctx_raw, Exception):
                 scm_name = "GitHub" if self.scm_provider == "github" else "GitLab"
                 logger.error(
-                    "scm_fetch_error", provider=self.scm_provider, error=str(scm_ctx)
+                    "scm_fetch_error", provider=self.scm_provider, error=str(scm_ctx_raw)
                 )
-                errors.append(f"{scm_name}: {str(scm_ctx)}")
+                errors.append(f"{scm_name}: {str(scm_ctx_raw)}")
                 scm_ctx = None
+            else:
+                scm_ctx = cast(GitHubContext | GitLabContext | None, scm_ctx_raw)
 
-            if isinstance(datadog_ctx, Exception):
+            if isinstance(log_ctx_raw, Exception):
                 provider_names = {
                     "cloudwatch": "CloudWatch",
                     "loki": "Loki",
@@ -147,20 +160,26 @@ class ContextOrchestrator:
                 logger.error(
                     "log_fetch_error",
                     provider=self.log_provider,
-                    error=str(datadog_ctx),
+                    error=str(log_ctx_raw),
                 )
-                errors.append(f"{provider_name}: {str(datadog_ctx)}")
+                errors.append(f"{provider_name}: {str(log_ctx_raw)}")
                 datadog_ctx = None
+            else:
+                datadog_ctx = cast(DatadogContext | None, log_ctx_raw)
 
-            if isinstance(oncall_roster, Exception):
-                logger.error("oncall_fetch_error", error=str(oncall_roster))
-                errors.append(f"On-Call: {str(oncall_roster)}")
+            if isinstance(oncall_raw, Exception):
+                logger.error("oncall_fetch_error", error=str(oncall_raw))
+                errors.append(f"On-Call: {str(oncall_raw)}")
                 oncall_roster = None
+            else:
+                oncall_roster = cast(OnCallRoster | None, oncall_raw)
 
-            if isinstance(topology_ctx, Exception):
-                logger.error("topology_fetch_error", error=str(topology_ctx))
-                errors.append(f"Topology: {str(topology_ctx)}")
+            if isinstance(topology_raw, Exception):
+                logger.error("topology_fetch_error", error=str(topology_raw))
+                errors.append(f"Topology: {str(topology_raw)}")
                 topology_ctx = None
+            else:
+                topology_ctx = cast(TopologyContext | None, topology_raw)
 
         except TimeoutError:
             logger.warning("context_fetch_timeout")
@@ -170,9 +189,13 @@ class ContextOrchestrator:
             oncall_roster = oncall_task.result() if oncall_task.done() else None
             topology_ctx = topology_task.result() if topology_task.done() else None
 
-        # Extract GitHub context for backward compatibility
-        github_ctx = scm_ctx if self.scm_provider == "github" else None
-        gitlab_ctx = scm_ctx if self.scm_provider == "gitlab" else None
+        # Extract GitHub/GitLab context (narrowed types for mypy)
+        github_ctx: GitHubContext | None = (
+            cast(GitHubContext | None, scm_ctx) if self.scm_provider == "github" else None
+        )
+        gitlab_ctx: GitLabContext | None = (
+            cast(GitLabContext | None, scm_ctx) if self.scm_provider == "gitlab" else None
+        )
 
         # AI summarization (if we have logs)
         ai_summary = None
@@ -223,7 +246,7 @@ class ContextOrchestrator:
         elapsed_ms = int((time.monotonic() - start_time) * 1000)
 
         # Get codeowners from whichever SCM is configured
-        codeowners = []
+        codeowners: list[str] = []
         if github_ctx:
             codeowners = github_ctx.codeowners
         elif gitlab_ctx:

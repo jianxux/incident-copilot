@@ -146,36 +146,34 @@ class TimelineBuilder:
             self.add_event(
                 timestamp=card.triggered_at,
                 event_type=TimelineEventType.ALERT_TRIGGERED,
-                title=f"Alert triggered: {card.alert_title or 'Unknown'}",
-                description=card.alert_description,
-                source=card.source.value if card.source else "Unknown",
+                title=f"Alert triggered: {card.title}",
+                description=None,
+                source="Alert",
                 severity=card.severity.value if card.severity else None,
                 is_key_event=True,
             )
 
         # Recent deployments (before the alert)
-        if card.github and card.github.recent_deployments:
-            for deploy in card.github.recent_deployments:
-                if deploy.deployed_at and deploy.deployed_at < (
-                    card.triggered_at or datetime.now(UTC)
-                ):
+        if card.github and card.github.recent_deploys:
+            for deploy in card.github.recent_deploys:
+                if deploy.timestamp < (card.triggered_at or datetime.now(UTC)):
                     self.add_event(
-                        timestamp=deploy.deployed_at,
+                        timestamp=deploy.timestamp,
                         event_type=TimelineEventType.DEPLOYMENT,
-                        title=f"Deployment: {deploy.version or 'Unknown'}",
-                        description=deploy.commit_message,
-                        actor=deploy.deployed_by,
+                        title=f"Deployment: {deploy.short_sha}",
+                        description=deploy.message,
+                        actor=deploy.author,
                         source="GitHub",
                         metadata={
                             "sha": deploy.sha,
-                            "environment": deploy.environment,
+                            "url": deploy.url,
                         },
                     )
 
         # Log entries (errors/warnings around the incident time)
-        if card.logs and card.logs.entries:
+        if card.datadog and card.datadog.logs:
             error_count = 0
-            for entry in card.logs.entries[:10]:  # Limit to first 10
+            for entry in card.datadog.logs[:10]:  # Limit to first 10
                 if entry.level in ("ERROR", "FATAL"):
                     event_type = TimelineEventType.LOG_ERROR
                     error_count += 1
@@ -189,7 +187,7 @@ class TimelineBuilder:
                     event_type=event_type,
                     title=f"{entry.level}: {entry.message[:100]}",
                     description=entry.message if len(entry.message) > 100 else None,
-                    source=entry.source or "Logs",
+                    source="Datadog",
                     metadata={"service": entry.service},
                     is_key_event=error_count == 1,  # First error is key
                 )
@@ -201,9 +199,9 @@ class TimelineBuilder:
                     timestamp=card.triggered_at or datetime.now(UTC),
                     event_type=TimelineEventType.RUNBOOK_LINKED,
                     title=f"Runbook: {runbook.title}",
-                    description=f"Matched with {runbook.match_score}% confidence",
-                    source="Runbook Linker",
-                    metadata={"url": runbook.url},
+                    description=f"Relevance: {runbook.relevance_score:.0%}",
+                    source=runbook.source,
+                    metadata={"url": runbook.url, "matched_terms": runbook.matched_terms},
                 )
 
         # Similar incidents found
