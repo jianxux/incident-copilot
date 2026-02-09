@@ -319,7 +319,7 @@ class EvalHarness:
                 by_scenario[r.scenario_type] = {
                     "count": 0,
                     "passed": 0,
-                    "total_score": 0,
+                    "total_score": 0.0,
                 }
             by_scenario[r.scenario_type]["count"] += 1
             by_scenario[r.scenario_type]["passed"] += 1 if r.rubric.passed else 0
