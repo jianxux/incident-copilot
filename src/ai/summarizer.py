@@ -74,7 +74,8 @@ class LogSummarizer:
             )
 
             # Parse JSON response
-            content = response.content[0].text
+            # Anthropic can return multiple content blocks (text, tool use, etc.).
+            content = "".join(getattr(block, "text", "") for block in response.content)
             data = json.loads(content)
 
             return AILogSummary(

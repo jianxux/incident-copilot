@@ -3,9 +3,11 @@
 import json
 from datetime import datetime
 from enum import StrEnum
+from typing import cast
 
 import structlog
 from anthropic import AsyncAnthropic
+from anthropic.types import MessageParam
 from pydantic import BaseModel
 
 from ..config import Settings
@@ -132,14 +134,14 @@ class AICopilot:
 
         if card.github:
             parts.append("\n**Recent Deployments (GitHub):**")
-            for deploy in card.github.recent_deployments[:5]:
+            for deploy in card.github.recent_deploys[:5]:
                 parts.append(
                     f"  - {deploy.sha[:7]} by {deploy.author}: {deploy.message[:60]}"
                 )
 
         if card.gitlab:
             parts.append("\n**Recent Deployments (GitLab):**")
-            for deploy in card.gitlab.recent_deployments[:5]:
+            for deploy in card.gitlab.recent_deploys[:5]:
                 parts.append(
                     f"  - {deploy.sha[:7]} by {deploy.author}: {deploy.message[:60]}"
                 )
@@ -234,11 +236,14 @@ class AICopilot:
             context_str = self._format_context(session.context_card)
             system_prompt = COPILOT_SYSTEM_PROMPT.format(context=context_str)
 
-            api_messages = [
-                {"role": msg.role.value, "content": msg.content}
-                for msg in session.messages
-                if msg.role != MessageRole.SYSTEM
-            ]
+            api_messages: list[MessageParam] = cast(
+                list[MessageParam],
+                [
+                    {"role": msg.role.value, "content": msg.content}
+                    for msg in session.messages
+                    if msg.role != MessageRole.SYSTEM
+                ],
+            )
 
             response = await self.client.messages.create(
                 model=self.model,
@@ -247,7 +252,9 @@ class AICopilot:
                 messages=api_messages,
             )
 
-            assistant_message = response.content[0].text
+            assistant_message = "".join(
+                getattr(block, "text", "") for block in response.content
+            )
 
             # Add assistant response to history
             session.messages.append(
@@ -291,7 +298,7 @@ class AICopilot:
                 messages=[{"role": "user", "content": prompt}],
             )
 
-            content = response.content[0].text
+            content = "".join(getattr(block, "text", "") for block in response.content)
 
             # Parse JSON response
             # Handle markdown code blocks if present
@@ -340,7 +347,7 @@ Respond with a JSON array of strings, each being a specific action:
                 messages=[{"role": "user", "content": prompt}],
             )
 
-            content = response.content[0].text
+            content = "".join(getattr(block, "text", "") for block in response.content)
             if "```" in content:
                 content = content.split("```")[1].split("```")[0]
                 if content.startswith("json"):

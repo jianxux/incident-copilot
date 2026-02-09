@@ -48,9 +48,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
           
-      - name: Type check with mypy
-        run: mypy src --ignore-missing-imports
-        continue-on-error: true  # TODO: Fix 200+ type errors across codebase
+      - name: Type check with mypy (focused)
+        run: |
+          # Full-src mypy is still noisy; keep this focused on actively-developed modules
+          # so type regressions are caught without blocking on legacy cleanup.
+          mypy src/ai src/eval src/models.py src/orchestrator.py src/web/timeline.py --ignore-missing-imports
 
   test:
     name: Test
