@@ -193,6 +193,20 @@ class Settings(BaseSettings):
         default="", description="Google OAuth Client Secret"
     )
 
+    # OAuth - PagerDuty (integration connect)
+    pagerduty_oauth_client_id: str = Field(
+        default="", description="PagerDuty OAuth Client ID"
+    )
+    pagerduty_oauth_client_secret: str = Field(
+        default="", description="PagerDuty OAuth Client Secret"
+    )
+
+    # OAuth - Slack (integration connect)
+    slack_oauth_client_id: str = Field(default="", description="Slack OAuth Client ID")
+    slack_oauth_client_secret: str = Field(
+        default="", description="Slack OAuth Client Secret"
+    )
+
     # Supabase
     supabase_url: str = Field(
         default="", description="Supabase project URL (e.g., https://xxx.supabase.co)"
