@@ -24,6 +24,8 @@ from .api.health import set_app_start_time
 from .audit.middleware import AuditMiddleware
 from .audit.store import audit_store
 from .auth.routes import router as auth_router
+from .auth.oauth_pagerduty import router as pagerduty_oauth_router
+from .auth.oauth_slack import router as slack_oauth_router
 from .auth.sso.routes import router as sso_router
 from .auth.supabase_auth import router as supabase_auth_router
 from .billing.routes import router as billing_router
@@ -100,6 +102,8 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(health_router)
     app.include_router(auth_router)
+    app.include_router(pagerduty_oauth_router)
+    app.include_router(slack_oauth_router)
     app.include_router(sso_router)
     app.include_router(supabase_auth_router)
     app.include_router(billing_router)
