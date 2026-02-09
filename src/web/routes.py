@@ -9,11 +9,10 @@ from pathlib import Path
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-
-from ..auth.middleware import AuthContext, get_auth_context
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
+from ..auth.middleware import AuthContext, get_auth_context
 from ..config import get_settings
 from ..models import (
     AILogSummary,

@@ -35,8 +35,8 @@ def test_onboarding_checklist_requires_auth():
 
 @pytest.mark.unit
 def test_onboarding_checklist_happy_path():
-    from src.main import create_app
     from src.auth.service import auth_service
+    from src.main import create_app
 
     app = create_app()
     client = TestClient(app)
@@ -59,8 +59,8 @@ def test_onboarding_checklist_happy_path():
 
 @pytest.mark.unit
 def test_onboarding_test_incident_starts():
-    from src.main import create_app
     from src.auth.service import auth_service
+    from src.main import create_app
 
     app = create_app()
     client = TestClient(app)

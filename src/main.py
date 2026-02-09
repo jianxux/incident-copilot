@@ -23,9 +23,9 @@ from .api.copilot import router as copilot_router
 from .api.health import set_app_start_time
 from .audit.middleware import AuditMiddleware
 from .audit.store import audit_store
-from .auth.routes import router as auth_router
 from .auth.oauth_pagerduty import router as pagerduty_oauth_router
 from .auth.oauth_slack import router as slack_oauth_router
+from .auth.routes import router as auth_router
 from .auth.sso.routes import router as sso_router
 from .auth.supabase_auth import router as supabase_auth_router
 from .billing.routes import router as billing_router
