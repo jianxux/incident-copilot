@@ -138,12 +138,13 @@ class ContextOrchestrator:
                 timeout=8.0,  # Leave room for AI + Slack
             )
 
-
             # Handle exceptions from gather
             if isinstance(scm_ctx_raw, Exception):
                 scm_name = "GitHub" if self.scm_provider == "github" else "GitLab"
                 logger.error(
-                    "scm_fetch_error", provider=self.scm_provider, error=str(scm_ctx_raw)
+                    "scm_fetch_error",
+                    provider=self.scm_provider,
+                    error=str(scm_ctx_raw),
                 )
                 errors.append(f"{scm_name}: {str(scm_ctx_raw)}")
                 scm_ctx = None
@@ -191,10 +192,14 @@ class ContextOrchestrator:
 
         # Extract GitHub/GitLab context (narrowed types for mypy)
         github_ctx: GitHubContext | None = (
-            cast(GitHubContext | None, scm_ctx) if self.scm_provider == "github" else None
+            cast(GitHubContext | None, scm_ctx)
+            if self.scm_provider == "github"
+            else None
         )
         gitlab_ctx: GitLabContext | None = (
-            cast(GitLabContext | None, scm_ctx) if self.scm_provider == "gitlab" else None
+            cast(GitLabContext | None, scm_ctx)
+            if self.scm_provider == "gitlab"
+            else None
         )
 
         # AI summarization (if we have logs)

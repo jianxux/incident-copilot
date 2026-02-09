@@ -201,7 +201,10 @@ class TimelineBuilder:
                     title=f"Runbook: {runbook.title}",
                     description=f"Relevance: {runbook.relevance_score:.0%}",
                     source=runbook.source,
-                    metadata={"url": runbook.url, "matched_terms": runbook.matched_terms},
+                    metadata={
+                        "url": runbook.url,
+                        "matched_terms": runbook.matched_terms,
+                    },
                 )
 
         # Similar incidents found
