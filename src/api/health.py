@@ -69,7 +69,7 @@ async def check_redis_health() -> ComponentHealth:
     import time
 
     settings = get_settings()
-    
+
     # Redis is optional - if not configured, report as degraded (not unhealthy)
     if not settings.redis_url or settings.redis_url == "redis://localhost:6379/0":
         return ComponentHealth(
@@ -77,7 +77,7 @@ async def check_redis_health() -> ComponentHealth:
             status=HealthStatus.DEGRADED,
             message="Not configured (using in-memory fallback)",
         )
-    
+
     start = time.perf_counter()
 
     try:
@@ -110,16 +110,18 @@ async def check_database_health() -> ComponentHealth:
     import time
 
     settings = get_settings()
-    
+
     # Database is optional for MVP - if not configured or using default localhost, report as degraded
-    default_db = "postgresql+asyncpg://postgres:postgres@localhost:5432/incident_copilot"
+    default_db = (
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/incident_copilot"
+    )
     if not settings.database_url or settings.database_url == default_db:
         return ComponentHealth(
             name="database",
             status=HealthStatus.DEGRADED,
             message="Not configured (using in-memory stores)",
         )
-    
+
     start = time.perf_counter()
 
     try:
