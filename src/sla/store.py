@@ -483,13 +483,11 @@ class SLAStore:
             return []
 
         async with self.db.acquire() as conn:
-            rows = await conn.fetch(
-                """
+            rows = await conn.fetch("""
                 SELECT * FROM sla_timers
                 WHERE completed_at IS NULL
                 ORDER BY started_at ASC
-                """
-            )
+                """)
             return [self._row_to_timer(row) for row in rows]
 
     async def _get_timers_in_period_db(
