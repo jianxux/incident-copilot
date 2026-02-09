@@ -69,6 +69,15 @@ async def check_redis_health() -> ComponentHealth:
     import time
 
     settings = get_settings()
+    
+    # Redis is optional - if not configured, report as degraded (not unhealthy)
+    if not settings.redis_url or settings.redis_url == "redis://localhost:6379/0":
+        return ComponentHealth(
+            name="redis",
+            status=HealthStatus.DEGRADED,
+            message="Not configured (using in-memory fallback)",
+        )
+    
     start = time.perf_counter()
 
     try:
@@ -90,9 +99,9 @@ async def check_redis_health() -> ComponentHealth:
         latency = (time.perf_counter() - start) * 1000
         return ComponentHealth(
             name="redis",
-            status=HealthStatus.UNHEALTHY,
+            status=HealthStatus.DEGRADED,
             latency_ms=round(latency, 2),
-            message=f"Connection failed: {str(e)[:100]}",
+            message=f"Connection failed (using in-memory fallback): {str(e)[:50]}",
         )
 
 
@@ -101,6 +110,16 @@ async def check_database_health() -> ComponentHealth:
     import time
 
     settings = get_settings()
+    
+    # Database is optional for MVP - if not configured or using default localhost, report as degraded
+    default_db = "postgresql+asyncpg://postgres:postgres@localhost:5432/incident_copilot"
+    if not settings.database_url or settings.database_url == default_db:
+        return ComponentHealth(
+            name="database",
+            status=HealthStatus.DEGRADED,
+            message="Not configured (using in-memory stores)",
+        )
+    
     start = time.perf_counter()
 
     try:
@@ -122,13 +141,19 @@ async def check_database_health() -> ComponentHealth:
             latency_ms=round(latency, 2),
             message="Connected",
         )
+    except ImportError:
+        return ComponentHealth(
+            name="database",
+            status=HealthStatus.DEGRADED,
+            message="SQLAlchemy not installed (using in-memory stores)",
+        )
     except Exception as e:
         latency = (time.perf_counter() - start) * 1000
         return ComponentHealth(
             name="database",
-            status=HealthStatus.UNHEALTHY,
+            status=HealthStatus.DEGRADED,
             latency_ms=round(latency, 2),
-            message=f"Connection failed: {str(e)[:100]}",
+            message=f"Connection failed (using in-memory stores): {str(e)[:50]}",
         )
 
 
