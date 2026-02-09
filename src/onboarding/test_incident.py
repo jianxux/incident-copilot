@@ -67,9 +67,13 @@ async def _process(incident: PagerDutyIncident, slack_channel: str | None) -> No
     settings = get_settings()
     try:
         orchestrator = ContextOrchestrator(settings)
-        card = await orchestrator.process_incident(incident, slack_channel=slack_channel)
+        card = await orchestrator.process_incident(
+            incident, slack_channel=slack_channel
+        )
         await incident_store.complete_incident(incident.incident_id, card)
         logger.info("test_incident_completed", incident_id=incident.incident_id)
     except Exception as e:
-        logger.error("test_incident_failed", incident_id=incident.incident_id, error=str(e))
+        logger.error(
+            "test_incident_failed", incident_id=incident.incident_id, error=str(e)
+        )
         await incident_store.fail_incident(incident.incident_id, str(e))

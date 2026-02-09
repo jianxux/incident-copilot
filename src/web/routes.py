@@ -507,8 +507,11 @@ async def get_onboarding_checklist(
 ):
     """Get current tenant onboarding checklist."""
     from ..onboarding.checklist import checklist_store
+
     if not auth.tenant_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="auth_required")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="auth_required"
+        )
 
     checklist = checklist_store.get(auth.tenant_id)
     return checklist.to_dict()
@@ -522,8 +525,11 @@ async def set_onboarding_step(
 ):
     """Mark an onboarding checklist step as done/undone."""
     from ..onboarding.checklist import checklist_store
+
     if not auth.tenant_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="auth_required")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="auth_required"
+        )
 
     checklist = checklist_store.set_step(auth.tenant_id, step, done)
     return checklist.to_dict()
@@ -568,8 +574,11 @@ async def run_onboarding_test_incident(
     from ..models import Severity
     from ..onboarding.checklist import checklist_store
     from ..onboarding.test_incident import start_test_incident
+
     if not auth.tenant_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="auth_required")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="auth_required"
+        )
 
     incident_id = await start_test_incident(
         service_name=service_name,

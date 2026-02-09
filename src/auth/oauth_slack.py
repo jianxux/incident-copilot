@@ -100,9 +100,7 @@ class SlackOAuth:
             return SlackOAuthResponse(**data)
 
 
-async def _slack_api(
-    token: str, method: str, payload: dict | None = None
-) -> dict:
+async def _slack_api(token: str, method: str, payload: dict | None = None) -> dict:
     async with httpx.AsyncClient(timeout=20.0) as client:
         resp = await client.post(
             f"https://slack.com/api/{method}",

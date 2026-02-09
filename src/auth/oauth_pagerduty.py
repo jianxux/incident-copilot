@@ -68,7 +68,9 @@ class PagerDutyOAuth:
         }
         return f"{self.AUTHORIZE_URL}?{urlencode(params)}"
 
-    async def exchange_code(self, code: str, redirect_uri: str) -> PagerDutyToken | None:
+    async def exchange_code(
+        self, code: str, redirect_uri: str
+    ) -> PagerDutyToken | None:
         async with httpx.AsyncClient(timeout=20.0) as client:
             resp = await client.post(
                 self.TOKEN_URL,

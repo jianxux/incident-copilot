@@ -87,10 +87,14 @@ class ChecklistStore:
             self._items[tenant_id] = OnboardingChecklist(tenant_id=tenant_id)
         return self._items[tenant_id]
 
-    def set_step(self, tenant_id: str, step: str, value: bool = True) -> OnboardingChecklist:
+    def set_step(
+        self, tenant_id: str, step: str, value: bool = True
+    ) -> OnboardingChecklist:
         checklist = self.get(tenant_id)
         checklist.mark(step, value)
-        logger.info("onboarding_step_updated", tenant_id=tenant_id, step=step, value=value)
+        logger.info(
+            "onboarding_step_updated", tenant_id=tenant_id, step=step, value=value
+        )
         return checklist
 
 

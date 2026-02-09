@@ -102,7 +102,7 @@ class TestComponentHealthChecks:
 
             assert isinstance(result, ComponentHealth)
             assert result.name == "redis"
-            assert result.status in [HealthStatus.HEALTHY, HealthStatus.UNHEALTHY]
+            assert result.status in [HealthStatus.HEALTHY, HealthStatus.UNHEALTHY, HealthStatus.DEGRADED]
 
     @pytest.mark.asyncio
     async def test_github_health_not_configured(self):

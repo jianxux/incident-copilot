@@ -202,9 +202,7 @@ class Settings(BaseSettings):
     )
 
     # OAuth - Slack (integration connect)
-    slack_oauth_client_id: str = Field(
-        default="", description="Slack OAuth Client ID"
-    )
+    slack_oauth_client_id: str = Field(default="", description="Slack OAuth Client ID")
     slack_oauth_client_secret: str = Field(
         default="", description="Slack OAuth Client Secret"
     )

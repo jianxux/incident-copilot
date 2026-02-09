@@ -60,7 +60,7 @@ class WebhookManager:
             raise ValueError("PagerDuty integration not connected")
 
         record = decrypt_json(encrypted)
-        oauth = (record.get("oauth") or {})
+        oauth = record.get("oauth") or {}
         access_token = oauth.get("access_token")
         if not access_token:
             raise ValueError("PagerDuty OAuth token missing")
@@ -136,7 +136,9 @@ class WebhookManager:
         error: str | None = None,
     ) -> None:
         key = (tenant_id, provider)
-        health = self._health.get(key) or WebhookHealth(provider=provider, tenant_id=tenant_id)
+        health = self._health.get(key) or WebhookHealth(
+            provider=provider, tenant_id=tenant_id
+        )
         now = datetime.now(UTC)
         if ok:
             health.last_ok_at = now
