@@ -2,3 +2,6 @@
 .venv311/
 .env
 eval_results/
+
+.mypy_cache/
+.ruff_cache/
