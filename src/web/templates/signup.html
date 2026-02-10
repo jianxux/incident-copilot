@@ -7,7 +7,7 @@
     <div class="max-w-md w-full space-y-8">
         <div class="text-center">
             <div class="flex justify-center">
-                <div class="bg-gradient-to-r from-blue-500 to-cyan-400 p-3 rounded-xl">
+                <div class="bg-slate-900 p-3 rounded-xl">
                     <i class="fas fa-shield-halved text-slate-900 text-3xl"></i>
                 </div>
             </div>
@@ -107,7 +107,7 @@
             </div>
 
             <button type="submit"
-                class="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-cyan-500 text-slate-900 rounded-lg font-semibold hover:from-blue-500 hover:to-cyan-400 transition-all">
+                class="w-full py-3 px-4 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-all">
                 Create account
             </button>
         </form>
@@ -166,7 +166,7 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
             localStorage.setItem('tenant', JSON.stringify(result.tenant));
             
             // Redirect to onboarding
-            window.location.href = '/dashboard/onboarding';
+            window.location.href = '/dashboard/onboarding-wizard';
         } else {
             alert(result.detail || 'Signup failed');
         }
