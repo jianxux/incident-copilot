@@ -23,14 +23,17 @@ async def create_authed_headers(auth_service):
 
 
 @pytest.mark.unit
-def test_onboarding_checklist_requires_auth():
+def test_onboarding_checklist_defaults_without_auth():
+    """Without auth, the checklist should return 200 using the default tenant."""
     from src.main import create_app
 
     app = create_app()
     client = TestClient(app)
 
     res = client.get("/dashboard/api/onboarding/checklist")
-    assert res.status_code == 401
+    assert res.status_code == 200
+    data = res.json()
+    assert data["tenant_id"] == "default"
 
 
 @pytest.mark.unit
