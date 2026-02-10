@@ -299,6 +299,62 @@ class Settings(BaseSettings):
         default="", description="Stripe Price ID for Enterprise plan"
     )
 
+    # Email/SMTP Settings
+    email_provider: str = Field(
+        default="smtp",
+        description="Email provider: 'smtp' or 'ses' (AWS SES)",
+    )
+    smtp_host: str = Field(
+        default="",
+        description="SMTP server hostname",
+    )
+    smtp_port: int = Field(
+        default=587,
+        description="SMTP server port",
+    )
+    smtp_username: str = Field(
+        default="",
+        description="SMTP authentication username",
+    )
+    smtp_password: str = Field(
+        default="",
+        description="SMTP authentication password",
+    )
+    smtp_use_tls: bool = Field(
+        default=True,
+        description="Use TLS for SMTP connection",
+    )
+    smtp_from_email: str = Field(
+        default="",
+        description="Sender email address for SMTP",
+    )
+    smtp_from_name: str = Field(
+        default="Incident Copilot",
+        description="Sender display name for emails",
+    )
+    ses_region: str = Field(
+        default="",
+        description="AWS SES region (defaults to aws_region if not set)",
+    )
+    ses_from_email: str = Field(
+        default="",
+        description="Sender email address for SES",
+    )
+
+    # Scheduled Reports
+    reports_enabled: bool = Field(
+        default=True,
+        description="Enable scheduled reports feature",
+    )
+    reports_default_timezone: str = Field(
+        default="UTC",
+        description="Default timezone for report schedules",
+    )
+    reports_ai_insights_enabled: bool = Field(
+        default=True,
+        description="Enable AI-powered insights in reports",
+    )
+
     # SSO - General Settings
     sso_session_lifetime_minutes: int = Field(
         default=10,
