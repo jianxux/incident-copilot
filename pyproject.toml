@@ -20,6 +20,7 @@ dependencies = [
     "stripe>=8.0.0",
     "email-validator>=2.0.0",
     "numpy>=1.26.0",
+    "aiosqlite>=0.20.0",
     "structlog>=24.1.0",
     "boto3>=1.34.0",
     "typer>=0.9.0",

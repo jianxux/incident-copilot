@@ -1,20 +1,9 @@
-"""Onboarding checklist tracking.
-
-This module provides a persistent-ish (in-memory for now) checklist that tracks
-onboarding progress for a tenant.
-
-In production this should be stored in a DB.
-"""
+"""Onboarding checklist tracking."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-
-import structlog
-
-logger = structlog.get_logger()
-
 
 CHECKLIST_STEPS = [
     "create_account",
@@ -74,28 +63,3 @@ def _title(step: str) -> str:
         "go_live": "Go live",
     }
     return titles.get(step, step)
-
-
-class ChecklistStore:
-    """In-memory checklist store."""
-
-    def __init__(self):
-        self._items: dict[str, OnboardingChecklist] = {}
-
-    def get(self, tenant_id: str) -> OnboardingChecklist:
-        if tenant_id not in self._items:
-            self._items[tenant_id] = OnboardingChecklist(tenant_id=tenant_id)
-        return self._items[tenant_id]
-
-    def set_step(
-        self, tenant_id: str, step: str, value: bool = True
-    ) -> OnboardingChecklist:
-        checklist = self.get(tenant_id)
-        checklist.mark(step, value)
-        logger.info(
-            "onboarding_step_updated", tenant_id=tenant_id, step=step, value=value
-        )
-        return checklist
-
-
-checklist_store = ChecklistStore()
