@@ -14,6 +14,7 @@ from .api import (
     email_router,
     health_router,
     insights_router,
+    oncall_handoff_router,
     postmortem_router,
     runbooks_router,
     webhooks_router,
@@ -116,6 +117,7 @@ def create_app() -> FastAPI:
     app.include_router(audit_router)
     app.include_router(ratelimit_router)
     app.include_router(email_router, prefix="/api")
+    app.include_router(oncall_handoff_router)
     app.include_router(copilot_router)
     app.include_router(landing_router)
     app.include_router(web_router)
