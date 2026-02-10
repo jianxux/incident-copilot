@@ -74,9 +74,10 @@
                             <a href="/dashboard/insights" class="{% if page_title == 'Insights' %}bg-slate-100 text-slate-900{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %} rounded-lg px-3 py-2 text-sm font-medium transition">
                                 Insights
                             </a>
-                            <a href="/dashboard/config" class="{% if page_title == 'Configuration' %}bg-slate-100 text-slate-900{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %} rounded-lg px-3 py-2 text-sm font-medium transition">
+                            <!-- Config page removed - env vars managed via Railway
+                            <a href="/dashboard/config" class="rounded-lg px-3 py-2 text-sm font-medium transition">
                                 Config
-                            </a>
+                            </a> -->
                             <a href="/dashboard/onboarding-wizard" class="{% if page_title == 'Onboarding' or page_title == 'Setup' %}bg-slate-100 text-slate-900{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900{% endif %} rounded-lg px-3 py-2 text-sm font-medium transition">
                                 Setup
                             </a>
