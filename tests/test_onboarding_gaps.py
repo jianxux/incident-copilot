@@ -257,9 +257,7 @@ def test_analytics_time_to_first_context_card():
         "tenant-1", "step_started", "create_account", {}
     )
     event_start.occurred_at = start
-    event_context = analytics.track_event(
-        "tenant-1", "context_card_created", None, {}
-    )
+    event_context = analytics.track_event("tenant-1", "context_card_created", None, {})
     event_context.occurred_at = start + timedelta(minutes=5)
 
     duration = analytics.get_time_to_first_context_card("tenant-1")
@@ -290,18 +288,14 @@ def test_analytics_average_time_to_value():
         "tenant-1", "step_started", "create_account", {}
     )
     event1_start.occurred_at = start
-    event1_context = analytics.track_event(
-        "tenant-1", "context_card_created", None, {}
-    )
+    event1_context = analytics.track_event("tenant-1", "context_card_created", None, {})
     event1_context.occurred_at = start + timedelta(seconds=30)
 
     event2_start = analytics.track_event(
         "tenant-2", "step_started", "create_account", {}
     )
     event2_start.occurred_at = start
-    event2_context = analytics.track_event(
-        "tenant-2", "context_card_created", None, {}
-    )
+    event2_context = analytics.track_event("tenant-2", "context_card_created", None, {})
     event2_context.occurred_at = start + timedelta(seconds=90)
 
     average = analytics.get_average_time_to_value()

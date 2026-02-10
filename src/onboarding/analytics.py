@@ -57,7 +57,11 @@ class OnboardingAnalytics:
         self._events: list[OnboardingEvent] = []
 
     def track_event(
-        self, tenant_id: str, event_type: str, step: str | None, metadata: dict[str, Any]
+        self,
+        tenant_id: str,
+        event_type: str,
+        step: str | None,
+        metadata: dict[str, Any],
     ) -> OnboardingEvent:
         """Record an onboarding event."""
         event = OnboardingEvent(
@@ -140,11 +144,7 @@ class OnboardingAnalytics:
         events.sort(key=lambda event: event.occurred_at)
         first_event = events[0]
         first_context = next(
-            (
-                event
-                for event in events
-                if event.event_type == "context_card_created"
-            ),
+            (event for event in events if event.event_type == "context_card_created"),
             None,
         )
         if not first_context:

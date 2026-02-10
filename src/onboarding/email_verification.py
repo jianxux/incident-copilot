@@ -49,7 +49,9 @@ class EmailVerificationService:
         self._tokens[token] = record
 
         settings = get_settings()
-        verify_url = f"{settings.app_url}/dashboard/onboarding/verify-email?token={token}"
+        verify_url = (
+            f"{settings.app_url}/dashboard/onboarding/verify-email?token={token}"
+        )
         logger.info(
             "email_verification_sent",
             user_id=user_id,

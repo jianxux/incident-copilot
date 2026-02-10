@@ -63,4 +63,3 @@ def _title(step: str) -> str:
         "go_live": "Go live",
     }
     return titles.get(step, step)
-
