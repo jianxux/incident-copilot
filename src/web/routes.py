@@ -9,7 +9,7 @@ from pathlib import Path
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 from ..auth.middleware import AuthContext, get_auth_context
@@ -173,21 +173,10 @@ async def dashboard_home(request: Request):
     )
 
 
-@router.get("/onboarding", response_class=HTMLResponse)
+@router.get("/onboarding")
 async def onboarding_page(request: Request):
-    """Legacy onboarding page (manual API keys)."""
-    settings = get_settings()
-
-    webhook_url = f"{settings.app_url}/webhooks/pagerduty"
-
-    return templates.TemplateResponse(
-        "onboarding.html",
-        {
-            "request": request,
-            "page_title": "Setup",
-            "webhook_url": webhook_url,
-        },
-    )
+    """Legacy onboarding — redirect to unified wizard."""
+    return RedirectResponse(url="/dashboard/onboarding-wizard", status_code=302)
 
 
 @router.get("/onboarding-wizard", response_class=HTMLResponse)
@@ -507,12 +496,8 @@ async def get_onboarding_checklist(
     """Get current tenant onboarding checklist."""
     from ..onboarding import checklist_store
 
-    if not auth.tenant_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="auth_required"
-        )
-
-    checklist = await checklist_store.get(auth.tenant_id)
+    tenant_id = auth.tenant_id or "default"
+    checklist = await checklist_store.get(tenant_id)
     return checklist.to_dict()
 
 
@@ -525,12 +510,8 @@ async def set_onboarding_step(
     """Mark an onboarding checklist step as done/undone."""
     from ..onboarding import checklist_store
 
-    if not auth.tenant_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="auth_required"
-        )
-
-    checklist = await checklist_store.set_step(auth.tenant_id, step, done)
+    tenant_id = auth.tenant_id or "default"
+    checklist = await checklist_store.set_step(tenant_id, step, done)
     return checklist.to_dict()
 
 
@@ -539,8 +520,7 @@ async def get_onboarding_status(
     auth: AuthContext = Depends(get_auth_context),
 ):
     """Return a lightweight status for the wizard UI."""
-    if not auth.tenant_id:
-        return {"authenticated": False}
+    tenant_id = auth.tenant_id or "default"
 
     tenant = auth.tenant
     integrations = tenant.integrations if tenant else {}
@@ -554,7 +534,7 @@ async def get_onboarding_status(
 
     return {
         "authenticated": True,
-        "tenant": {"id": auth.tenant_id},
+        "tenant": {"id": tenant_id},
         "integrations": {
             "pagerduty": connected("pagerduty"),
             "slack": connected("slack"),
@@ -574,17 +554,14 @@ async def run_onboarding_test_incident(
     from ..onboarding import checklist_store
     from ..onboarding.test_incident import start_test_incident
 
-    if not auth.tenant_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="auth_required"
-        )
+    tenant_id = auth.tenant_id or "default"
 
     incident_id = await start_test_incident(
         service_name=service_name,
         severity=Severity.HIGH,
     )
 
-    await checklist_store.set_step(auth.tenant_id, "run_test", True)
+    await checklist_store.set_step(tenant_id, "run_test", True)
 
     return {"incident_id": incident_id, "status": "processing"}
 
