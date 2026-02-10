@@ -505,14 +505,14 @@ async def get_onboarding_checklist(
     auth: AuthContext = Depends(get_auth_context),
 ):
     """Get current tenant onboarding checklist."""
-    from ..onboarding.checklist import checklist_store
+    from ..onboarding import checklist_store
 
     if not auth.tenant_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="auth_required"
         )
 
-    checklist = checklist_store.get(auth.tenant_id)
+    checklist = await checklist_store.get(auth.tenant_id)
     return checklist.to_dict()
 
 
@@ -523,14 +523,14 @@ async def set_onboarding_step(
     auth: AuthContext = Depends(get_auth_context),
 ):
     """Mark an onboarding checklist step as done/undone."""
-    from ..onboarding.checklist import checklist_store
+    from ..onboarding import checklist_store
 
     if not auth.tenant_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="auth_required"
         )
 
-    checklist = checklist_store.set_step(auth.tenant_id, step, done)
+    checklist = await checklist_store.set_step(auth.tenant_id, step, done)
     return checklist.to_dict()
 
 
@@ -571,7 +571,7 @@ async def run_onboarding_test_incident(
 ):
     """Start a synthetic incident to validate the pipeline."""
     from ..models import Severity
-    from ..onboarding.checklist import checklist_store
+    from ..onboarding import checklist_store
     from ..onboarding.test_incident import start_test_incident
 
     if not auth.tenant_id:
@@ -584,7 +584,7 @@ async def run_onboarding_test_incident(
         severity=Severity.HIGH,
     )
 
-    checklist_store.set_step(auth.tenant_id, "run_test", True)
+    await checklist_store.set_step(auth.tenant_id, "run_test", True)
 
     return {"incident_id": incident_id, "status": "processing"}
 
