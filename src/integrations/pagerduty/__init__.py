@@ -1,6 +1,16 @@
-# PagerDuty Integration Module
-# Comprehensive PagerDuty integration for incident management
+"""PagerDuty integration.
 
+This package contains the newer PagerDuty REST client + models.
+
+Note: the codebase also contains a legacy webhook adapter implementation in
+`src/integrations/pagerduty_legacy.py`. A number of internal modules/tests still
+import `PagerDutyAdapter` from this package path, so we re-export it here for
+backwards-compatibility.
+"""
+
+from __future__ import annotations
+
+from ..pagerduty_legacy import PagerDutyAdapter
 from .client import PagerDutyClient
 from .models import (
     PagerDutyConfig,
@@ -12,25 +22,19 @@ from .models import (
     PDUser,
     PDWebhookEvent,
 )
-from .routes import router
-from .service import PagerDutyService
-from .webhooks import webhook_handler
 
 __all__ = [
-    # Models
-    "PagerDutyConfig",
-    "PDIncident",
-    "PDService",
-    "PDUser",
-    "PDEscalationPolicy",
-    "PDSchedule",
-    "PDOnCall",
-    "PDWebhookEvent",
+    # Legacy adapter (webhook parsing)
+    "PagerDutyAdapter",
     # Client
     "PagerDutyClient",
-    # Service
-    "PagerDutyService",
-    # Routes
-    "router",
-    "webhook_handler",
+    # Models
+    "PagerDutyConfig",
+    "PDEscalationPolicy",
+    "PDIncident",
+    "PDOnCall",
+    "PDSchedule",
+    "PDService",
+    "PDUser",
+    "PDWebhookEvent",
 ]
