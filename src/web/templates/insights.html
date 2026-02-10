@@ -14,7 +14,7 @@
             <span class="text-muted text-sm font-medium">Analysis Period:</span>
             <div class="flex space-x-2">
                 <button onclick="setDays(7)" id="btn-7d" 
-                        class="period-btn px-4 py-2 rounded-lg text-sm font-medium transition bg-brand text-slate-900">
+                        class="period-btn px-4 py-2 rounded-lg text-sm font-medium transition bg-brand text-white">
                     7 Days
                 </button>
                 <button onclick="setDays(30)" id="btn-30d" 
@@ -28,10 +28,10 @@
             </div>
         </div>
         <div class="flex items-center space-x-3">
-            <button onclick="runAnalysis()" class="bg-green-600 hover:bg-green-700 text-slate-900 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center">
+            <button onclick="runAnalysis()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center">
                 <i class="fas fa-brain mr-2"></i>Run Analysis
             </button>
-            <button onclick="generateDigest()" class="bg-purple-600 hover:bg-purple-700 text-slate-900 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center">
+            <button onclick="generateDigest()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center">
                 <i class="fas fa-file-alt mr-2"></i>Generate Digest
             </button>
             <button onclick="refreshData()" class="text-muted hover:text-slate-900 transition">
@@ -208,11 +208,11 @@ let currentDays = 7;
 function setDays(days) {
     currentDays = days;
     document.querySelectorAll('.period-btn').forEach(btn => {
-        btn.classList.remove('bg-brand', 'text-slate-900');
+        btn.classList.remove('bg-brand', 'text-white');
         btn.classList.add('bg-slate-100', 'text-slate-700');
     });
     document.getElementById(`btn-${days}d`).classList.remove('bg-slate-100', 'text-slate-700');
-    document.getElementById(`btn-${days}d`).classList.add('bg-brand', 'text-slate-900');
+    document.getElementById(`btn-${days}d`).classList.add('bg-brand', 'text-white');
     refreshData();
 }
 
