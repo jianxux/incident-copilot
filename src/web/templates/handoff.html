@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white rounded-xl p-6 border border-slate-200 card-shadow">
+        <h2 class="text-lg font-semibold text-slate-900 mb-4">Generate Handoff</h2>
+        <form id="generate-form" class="flex flex-col sm:flex-row gap-3">
+            <input
+                id="schedule-id"
+                type="text"
+                placeholder="Schedule ID (e.g., pd_primary)"
+                class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+                required
+            />
+            <button
+                id="generate-btn"
+                type="submit"
+                class="bg-slate-900 text-white hover:bg-slate-800 rounded-lg px-4 py-2 text-sm font-medium transition"
+            >
+                Generate
+            </button>
+        </form>
+        <p id="generate-status" class="text-sm text-slate-600 mt-3"></p>
+    </div>
+
+    <div class="bg-white rounded-xl p-6 border border-slate-200 card-shadow">
+        <h2 class="text-lg font-semibold text-slate-900 mb-4">Latest Handoff</h2>
+        <p id="latest-meta" class="text-sm text-slate-600 mb-3"></p>
+        <div id="latest-markdown" class="prose prose-slate max-w-none text-sm"></div>
+    </div>
+
+    <div class="bg-white rounded-xl p-6 border border-slate-200 card-shadow">
+        <h2 class="text-lg font-semibold text-slate-900 mb-4">History</h2>
+        <div id="history-list" class="space-y-3 text-sm"></div>
+    </div>
+
+    <div class="bg-white rounded-xl p-6 border border-slate-200 card-shadow">
+        <h2 class="text-lg font-semibold text-slate-900 mb-4">Auto-Handoff Config</h2>
+        <form id="config-form" class="space-y-4">
+            <div>
+                <label class="text-sm font-medium text-slate-700">Schedule ID</label>
+                <input
+                    id="cfg-schedule-id"
+                    type="text"
+                    class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+                    placeholder="Schedule ID for config"
+                    required
+                />
+            </div>
+            <div class="flex items-center gap-2">
+                <input id="cfg-enabled" type="checkbox" class="rounded border-slate-300" />
+                <label for="cfg-enabled" class="text-sm text-slate-700">Enable automatic handoff generation</label>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-slate-700">Delivery Channels</label>
+                <div class="mt-2 flex flex-wrap gap-4 text-sm text-slate-700">
+                    <label class="flex items-center gap-2"><input type="checkbox" value="slack" class="cfg-channel rounded border-slate-300" /> Slack</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" value="teams" class="cfg-channel rounded border-slate-300" /> Teams</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" value="email" class="cfg-channel rounded border-slate-300" /> Email</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" value="in_app" class="cfg-channel rounded border-slate-300" /> In-App</label>
+                </div>
+            </div>
+            <div>
+                <label class="text-sm font-medium text-slate-700">Slack Target</label>
+                <input
+                    id="cfg-slack-target"
+                    type="text"
+                    class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+                    placeholder="#oncall or U123456"
+                />
+            </div>
+            <div class="flex gap-2">
+                <button
+                    type="submit"
+                    class="bg-slate-900 text-white hover:bg-slate-800 rounded-lg px-4 py-2 text-sm font-medium transition"
+                >
+                    Save Config
+                </button>
+                <button
+                    id="test-delivery-btn"
+                    type="button"
+                    class="bg-slate-900 text-white hover:bg-slate-800 rounded-lg px-4 py-2 text-sm font-medium transition"
+                >
+                    Test Delivery
+                </button>
+            </div>
+            <p id="config-status" class="text-sm text-slate-600"></p>
+        </form>
+    </div>
+</div>
+
+<script>
+function esc(text) {
+    return String(text ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+}
+
+function renderMarkdown(md) {
+    const lines = String(md || "").split("\\n");
+    const html = [];
+    let inList = false;
+    for (const line of lines) {
+        if (line.startsWith("### ")) {
+            if (inList) { html.push("</ul>"); inList = false; }
+            html.push(`<h3 class="text-base font-semibold mt-4 mb-2">${esc(line.slice(4))}</h3>`);
+        } else if (line.startsWith("## ")) {
+            if (inList) { html.push("</ul>"); inList = false; }
+            html.push(`<h2 class="text-lg font-semibold mt-4 mb-2">${esc(line.slice(3))}</h2>`);
+        } else if (line.startsWith("# ")) {
+            if (inList) { html.push("</ul>"); inList = false; }
+            html.push(`<h1 class="text-xl font-semibold mb-2">${esc(line.slice(2))}</h1>`);
+        } else if (line.startsWith("- ")) {
+            if (!inList) {
+                html.push('<ul class="list-disc pl-6 space-y-1">');
+                inList = true;
+            }
+            html.push(`<li>${esc(line.slice(2))}</li>`);
+        } else {
+            if (inList) { html.push("</ul>"); inList = false; }
+            if (line.trim() !== "") {
+                html.push(`<p class="mb-2">${esc(line)}</p>`);
+            }
+        }
+    }
+    if (inList) {
+        html.push("</ul>");
+    }
+    return html.join("");
+}
+
+function dateFmt(iso) {
+    if (!iso) return "";
+    return new Date(iso).toLocaleString();
+}
+
+async function loadLatest() {
+    const res = await fetch("/api/v1/oncall/handoff/latest");
+    const data = await res.json();
+    const summary = data.summary;
+    const meta = document.getElementById("latest-meta");
+    const markdown = document.getElementById("latest-markdown");
+    if (!summary) {
+        meta.textContent = "No handoff generated yet.";
+        markdown.innerHTML = "";
+        return;
+    }
+    const outgoing = summary.shift.outgoing ? summary.shift.outgoing.name : "Unknown";
+    const incoming = summary.shift.incoming ? summary.shift.incoming.name : "Unknown";
+    meta.textContent = `${dateFmt(summary.created_at)} · ${outgoing} -> ${incoming}`;
+    markdown.innerHTML = renderMarkdown(summary.brief_markdown);
+}
+
+async function loadHistory() {
+    const res = await fetch("/api/v1/oncall/handoff/history?limit=20");
+    const data = await res.json();
+    const container = document.getElementById("history-list");
+    container.innerHTML = "";
+    for (const item of data.summaries || []) {
+        const outgoing = item.shift.outgoing ? item.shift.outgoing.name : "Unknown";
+        const incoming = item.shift.incoming ? item.shift.incoming.name : "Unknown";
+        const details = document.createElement("details");
+        details.className = "rounded-lg border border-slate-200 p-3";
+        details.innerHTML = `
+            <summary class="cursor-pointer font-medium text-slate-800">
+                ${esc(dateFmt(item.created_at))} · ${esc(outgoing)} -> ${esc(incoming)}
+            </summary>
+            <div class="mt-3 text-slate-700">${renderMarkdown(item.brief_markdown)}</div>
+        `;
+        container.appendChild(details);
+    }
+    if (!data.summaries || data.summaries.length === 0) {
+        container.innerHTML = '<p class="text-slate-600">No handoff history.</p>';
+    }
+}
+
+async function onGenerate(e) {
+    e.preventDefault();
+    const scheduleId = document.getElementById("schedule-id").value.trim();
+    const status = document.getElementById("generate-status");
+    if (!scheduleId) return;
+    status.textContent = "Generating handoff...";
+    const res = await fetch("/api/v1/oncall/handoff/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schedule_id: scheduleId })
+    });
+    if (!res.ok) {
+        const err = await res.text();
+        status.textContent = `Generation failed: ${err}`;
+        return;
+    }
+    status.textContent = "Handoff generated.";
+    document.getElementById("cfg-schedule-id").value = scheduleId;
+    await loadLatest();
+    await loadHistory();
+}
+
+function selectedChannels() {
+    return [...document.querySelectorAll(".cfg-channel:checked")].map((el) => el.value);
+}
+
+async function onSaveConfig(e) {
+    e.preventDefault();
+    const scheduleId = document.getElementById("cfg-schedule-id").value.trim();
+    const status = document.getElementById("config-status");
+    if (!scheduleId) return;
+    const payload = {
+        enabled: document.getElementById("cfg-enabled").checked,
+        grace_minutes: 15,
+        lookahead_minutes: 60,
+        delivery_channels: selectedChannels(),
+        slack_target: document.getElementById("cfg-slack-target").value.trim() || null
+    };
+    const res = await fetch(`/api/v1/oncall/handoff/schedule?schedule_id=${encodeURIComponent(scheduleId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+        status.textContent = `Save failed: ${await res.text()}`;
+        return;
+    }
+    status.textContent = "Configuration saved.";
+}
+
+async function onTestDelivery() {
+    const scheduleId = document.getElementById("cfg-schedule-id").value.trim();
+    const status = document.getElementById("config-status");
+    if (!scheduleId) {
+        status.textContent = "Enter schedule ID before testing delivery.";
+        return;
+    }
+    status.textContent = "Testing delivery...";
+    const res = await fetch("/api/v1/oncall/handoff/test-delivery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schedule_id: scheduleId, base_url: window.location.origin })
+    });
+    if (!res.ok) {
+        status.textContent = `Test failed: ${await res.text()}`;
+        return;
+    }
+    const data = await res.json();
+    status.textContent = `Test sent (${(data.delivery || []).length} channel result(s)).`;
+}
+
+document.getElementById("generate-form").addEventListener("submit", onGenerate);
+document.getElementById("config-form").addEventListener("submit", onSaveConfig);
+document.getElementById("test-delivery-btn").addEventListener("click", onTestDelivery);
+
+loadLatest();
+loadHistory();
+</script>
+{% endblock %}
