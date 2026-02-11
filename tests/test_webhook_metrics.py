@@ -15,13 +15,17 @@ def client():
     return TestClient(app)
 
 
-def _get_counter_value(metrics_text: str, metric_name: str, labels: dict[str, str]) -> float:
+def _get_counter_value(
+    metrics_text: str, metric_name: str, labels: dict[str, str]
+) -> float:
     """Parse a Prometheus counter sample value for an exact set of labels."""
 
     # Example:
     # incident_copilot_webhook_requests_total{source="pagerduty",status="success"} 3.0
     label_str = ",".join([f'{k}="{v}"' for k, v in labels.items()])
-    pattern = rf"^{re.escape(metric_name)}\{{{re.escape(label_str)}\}}\s+([0-9eE+\-.]+)$"
+    pattern = (
+        rf"^{re.escape(metric_name)}\{{{re.escape(label_str)}\}}\s+([0-9eE+\-.]+)$"
+    )
     for line in metrics_text.splitlines():
         m = re.match(pattern, line)
         if m:
