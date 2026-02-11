@@ -37,6 +37,10 @@ from .copilot.adapters.slack_adapter import router as slack_copilot_router
 from .copilot.adapters.web_adapter import router as web_copilot_router
 from .metrics import HEALTH_STATUS, set_app_info
 from .metrics.middleware import PrometheusMiddleware
+from .oncall.scheduler import (
+    start_oncall_handoff_scheduler,
+    stop_oncall_handoff_scheduler,
+)
 from .ratelimit.middleware import RateLimitMiddleware
 from .ratelimit.routes import router as ratelimit_router
 from .web import landing_router, web_router
@@ -155,8 +159,11 @@ def create_app() -> FastAPI:
                 "audit_store_initialized", retention_days=settings.audit_retention_days
             )
 
+        await start_oncall_handoff_scheduler(settings=settings)
+
     @app.on_event("shutdown")
     async def shutdown():
+        await stop_oncall_handoff_scheduler()
         logger.info("incident_copilot_shutting_down")
 
     @app.get("/")
