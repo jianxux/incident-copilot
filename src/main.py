@@ -14,6 +14,7 @@ from .api import (
     email_router,
     health_router,
     insights_router,
+    metrics_router,
     onboarding_router,
     oncall_handoff_router,
     postmortem_router,
@@ -103,6 +104,7 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(health_router)
+    app.include_router(metrics_router)
     app.include_router(auth_router)
     app.include_router(pagerduty_oauth_router)
     app.include_router(slack_oauth_router)

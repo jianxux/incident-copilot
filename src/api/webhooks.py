@@ -1,5 +1,7 @@
 """Webhook endpoints for receiving alerts."""
 
+import time
+
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request
 
@@ -7,6 +9,7 @@ from ..config import get_settings
 from ..correlation.engine import get_correlation_engine
 from ..integrations.opsgenie import OpsgenieAdapter
 from ..integrations.pagerduty_legacy import PagerDutyAdapter
+from ..metrics import WEBHOOK_PROCESSING_SECONDS, WEBHOOK_REQUESTS_TOTAL
 from ..orchestrator import ContextOrchestrator
 
 logger = structlog.get_logger()
@@ -20,34 +23,48 @@ async def pagerduty_webhook(
     x_pagerduty_signature: str | None = Header(None, alias="X-PagerDuty-Signature"),
 ):
     """Receive PagerDuty v3 webhook events with alert correlation."""
+    start_time = time.perf_counter()
+    status = "error"
     settings = get_settings()
-    body = await request.body()
-    pd_adapter = PagerDutyAdapter(settings)
-    if x_pagerduty_signature and not pd_adapter.verify_webhook_signature(
-        body, x_pagerduty_signature
-    ):
-        logger.warning("pagerduty_invalid_signature")
-        raise HTTPException(status_code=401, detail="Invalid signature")
     try:
-        payload = await request.json()
-    except Exception as e:
-        logger.error("pagerduty_invalid_json", error=str(e))
-        raise HTTPException(status_code=400, detail="Invalid JSON")
-    incident = pd_adapter.parse_webhook(payload)
-    if not incident:
-        return {"status": "ignored", "reason": "not an incident trigger"}
-    logger.info(
-        "pagerduty_incident_received",
-        incident_id=incident.incident_id,
-        service=incident.service_name,
-        severity=incident.severity.value,
-    )
-    background_tasks.add_task(process_pagerduty_incident_background, incident, settings)
-    return {
-        "status": "accepted",
-        "incident_id": incident.incident_id,
-        "service": incident.service_name,
-    }
+        body = await request.body()
+        pd_adapter = PagerDutyAdapter(settings)
+        if x_pagerduty_signature and not pd_adapter.verify_webhook_signature(
+            body, x_pagerduty_signature
+        ):
+            status = "invalid"
+            logger.warning("pagerduty_invalid_signature")
+            raise HTTPException(status_code=401, detail="Invalid signature")
+        try:
+            payload = await request.json()
+        except Exception as e:
+            status = "invalid"
+            logger.error("pagerduty_invalid_json", error=str(e))
+            raise HTTPException(status_code=400, detail="Invalid JSON")
+        incident = pd_adapter.parse_webhook(payload)
+        if not incident:
+            status = "success"
+            return {"status": "ignored", "reason": "not an incident trigger"}
+        logger.info(
+            "pagerduty_incident_received",
+            incident_id=incident.incident_id,
+            service=incident.service_name,
+            severity=incident.severity.value,
+        )
+        background_tasks.add_task(
+            process_pagerduty_incident_background, incident, settings
+        )
+        status = "success"
+        return {
+            "status": "accepted",
+            "incident_id": incident.incident_id,
+            "service": incident.service_name,
+        }
+    finally:
+        WEBHOOK_REQUESTS_TOTAL.labels(source="pagerduty", status=status).inc()
+        WEBHOOK_PROCESSING_SECONDS.labels(source="pagerduty").observe(
+            time.perf_counter() - start_time
+        )
 
 
 @router.post("/opsgenie")
@@ -57,34 +74,46 @@ async def opsgenie_webhook(
     x_opsgenie_signature: str | None = Header(None, alias="X-OpsGenie-Signature"),
 ):
     """Receive Opsgenie webhook events with alert correlation."""
+    start_time = time.perf_counter()
+    status = "error"
     settings = get_settings()
-    body = await request.body()
-    og_adapter = OpsgenieAdapter(settings)
-    if x_opsgenie_signature and not og_adapter.verify_webhook_signature(
-        body, x_opsgenie_signature
-    ):
-        logger.warning("opsgenie_invalid_signature")
-        raise HTTPException(status_code=401, detail="Invalid signature")
     try:
-        payload = await request.json()
-    except Exception as e:
-        logger.error("opsgenie_invalid_json", error=str(e))
-        raise HTTPException(status_code=400, detail="Invalid JSON")
-    alert = og_adapter.parse_webhook(payload)
-    if not alert:
-        return {"status": "ignored", "reason": "not an alert creation"}
-    logger.info(
-        "opsgenie_alert_received",
-        alert_id=alert.alert_id,
-        service=alert.service_name,
-        severity=alert.severity.value,
-    )
-    background_tasks.add_task(process_opsgenie_alert_background, alert, settings)
-    return {
-        "status": "accepted",
-        "alert_id": alert.alert_id,
-        "service": alert.service_name,
-    }
+        body = await request.body()
+        og_adapter = OpsgenieAdapter(settings)
+        if x_opsgenie_signature and not og_adapter.verify_webhook_signature(
+            body, x_opsgenie_signature
+        ):
+            status = "invalid"
+            logger.warning("opsgenie_invalid_signature")
+            raise HTTPException(status_code=401, detail="Invalid signature")
+        try:
+            payload = await request.json()
+        except Exception as e:
+            status = "invalid"
+            logger.error("opsgenie_invalid_json", error=str(e))
+            raise HTTPException(status_code=400, detail="Invalid JSON")
+        alert = og_adapter.parse_webhook(payload)
+        if not alert:
+            status = "success"
+            return {"status": "ignored", "reason": "not an alert creation"}
+        logger.info(
+            "opsgenie_alert_received",
+            alert_id=alert.alert_id,
+            service=alert.service_name,
+            severity=alert.severity.value,
+        )
+        background_tasks.add_task(process_opsgenie_alert_background, alert, settings)
+        status = "success"
+        return {
+            "status": "accepted",
+            "alert_id": alert.alert_id,
+            "service": alert.service_name,
+        }
+    finally:
+        WEBHOOK_REQUESTS_TOTAL.labels(source="opsgenie", status=status).inc()
+        WEBHOOK_PROCESSING_SECONDS.labels(source="opsgenie").observe(
+            time.perf_counter() - start_time
+        )
 
 
 async def process_pagerduty_incident_background(incident, settings):
