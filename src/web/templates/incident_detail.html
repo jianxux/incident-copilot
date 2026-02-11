@@ -32,10 +32,23 @@
             </div>
         </div>
         {% if card and card.alert_url %}
-        <a href="{{ card.alert_url }}" target="_blank" 
-           class="bg-slate-100 hover:bg-slate-100 text-slate-900 px-4 py-2 rounded-lg transition flex items-center">
-            <i class="fas fa-external-link-alt mr-2"></i>
-            View in PagerDuty
+        <div class="flex items-center gap-2">
+            <a href="/dashboard/incident/{{ incident.incident_id }}/chat"
+               class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg transition flex items-center">
+                <i class="fas fa-robot mr-2"></i>
+                Open Copilot Chat
+            </a>
+            <a href="{{ card.alert_url }}" target="_blank" 
+               class="bg-slate-100 hover:bg-slate-100 text-slate-900 px-4 py-2 rounded-lg transition flex items-center">
+                <i class="fas fa-external-link-alt mr-2"></i>
+                View in PagerDuty
+            </a>
+        </div>
+        {% else %}
+        <a href="/dashboard/incident/{{ incident.incident_id }}/chat"
+           class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg transition flex items-center">
+            <i class="fas fa-robot mr-2"></i>
+            Open Copilot Chat
         </a>
         {% endif %}
     </div>
