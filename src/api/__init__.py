@@ -8,6 +8,7 @@ from .demo import router as demo_router
 from .email import router as email_router
 from .health import router as health_router
 from .insights import router as insights_router
+from .metrics import router as metrics_router
 from .onboarding import router as onboarding_router
 from .plugins import router as plugins_router
 from .runbooks import router as runbooks_router
@@ -24,6 +25,7 @@ __all__ = [
     "plugins_router",
     "email_router",
     "insights_router",
+    "metrics_router",
     "oncall_handoff_router",
     "onboarding_router",
 ]
