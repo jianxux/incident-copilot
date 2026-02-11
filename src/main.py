@@ -33,6 +33,8 @@ from .auth.sso.routes import router as sso_router
 from .auth.supabase_auth import router as supabase_auth_router
 from .billing.routes import router as billing_router
 from .config import get_settings
+from .copilot.adapters.slack_adapter import router as slack_copilot_router
+from .copilot.adapters.web_adapter import router as web_copilot_router
 from .metrics import HEALTH_STATUS, set_app_info
 from .metrics.middleware import PrometheusMiddleware
 from .ratelimit.middleware import RateLimitMiddleware
@@ -123,6 +125,8 @@ def create_app() -> FastAPI:
     app.include_router(email_router, prefix="/api")
     app.include_router(oncall_handoff_router)
     app.include_router(copilot_router)
+    app.include_router(slack_copilot_router)
+    app.include_router(web_copilot_router)
     app.include_router(landing_router)
     app.include_router(web_router)
 

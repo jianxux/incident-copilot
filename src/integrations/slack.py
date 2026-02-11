@@ -4,6 +4,7 @@ import structlog
 from slack_sdk.web.async_client import AsyncWebClient
 
 from ..config import Settings
+from ..copilot.thread_registry import thread_registry
 from ..models import ContextCard
 
 logger = structlog.get_logger()
@@ -34,12 +35,23 @@ class SlackAdapter:
         try:
             blocks = self._build_blocks(card)
 
-            await self.client.chat_postMessage(
+            response = await self.client.chat_postMessage(
                 channel=target_channel,
                 text=f"🚨 Incident: {card.title}",  # Fallback text
                 blocks=blocks,
                 unfurl_links=False,
             )
+
+            thread_ts = response.get("ts")
+            channel_id = response.get("channel") or target_channel
+            if thread_ts and channel_id:
+                # Team ID is not available in this response; register wildcard mapping.
+                await thread_registry.register_thread(
+                    team_id="*",
+                    channel_id=channel_id,
+                    thread_ts=thread_ts,
+                    incident_id=card.incident_id,
+                )
 
             logger.info(
                 "slack_message_sent", channel=target_channel, incident=card.incident_id

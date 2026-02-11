@@ -5,7 +5,12 @@ from fastapi.testclient import TestClient
 
 
 def run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    return loop.run_until_complete(coro)
 
 
 async def create_authed_headers(auth_service):
