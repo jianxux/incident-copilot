@@ -247,6 +247,33 @@ async def incident_detail(request: Request, incident_id: str):
     )
 
 
+@router.get("/incident/{incident_id}/chat", response_class=HTMLResponse)
+async def incident_chat(request: Request, incident_id: str):
+    """Full-page AI Copilot chat for an incident."""
+    incident = await incident_store.get_incident(incident_id)
+
+    if not incident:
+        return templates.TemplateResponse(
+            "error.html",
+            {
+                "request": request,
+                "error": f"Incident {incident_id} not found",
+                "page_title": "Not Found",
+            },
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        "copilot_chat.html",
+        {
+            "request": request,
+            "incident": incident,
+            "incident_id": incident_id,
+            "page_title": f"Copilot Chat - {incident_id[:8]}...",
+        },
+    )
+
+
 @router.get("/incident/{incident_id}/timeline", response_class=HTMLResponse)
 async def incident_timeline(request: Request, incident_id: str):
     """Interactive timeline view for an incident."""
