@@ -1,11 +1,11 @@
 """Tests for Copilot Slack and Web adapters."""
 
+import asyncio
 import hashlib
 import hmac
-import asyncio
 import time
-from urllib.parse import urlencode
 from unittest.mock import AsyncMock
+from urllib.parse import urlencode
 
 import pytest
 from fastapi import FastAPI
