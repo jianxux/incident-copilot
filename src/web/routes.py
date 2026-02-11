@@ -220,6 +220,18 @@ async def billing_success_page(request: Request):
     )
 
 
+@router.get("/handoff", response_class=HTMLResponse)
+async def handoff_page(request: Request):
+    """On-call handoff dashboard page."""
+    return templates.TemplateResponse(
+        "handoff.html",
+        {
+            "request": request,
+            "page_title": "Handoff",
+        },
+    )
+
+
 @router.get("/incident/{incident_id}", response_class=HTMLResponse)
 async def incident_detail(request: Request, incident_id: str):
     """Incident detail page showing full context card."""
