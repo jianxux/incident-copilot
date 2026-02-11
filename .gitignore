@@ -3,5 +3,7 @@
 .env
 eval_results/
 
+data/*.db
+
 .mypy_cache/
 .ruff_cache/
