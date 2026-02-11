@@ -1,6 +1,7 @@
 """Main FastAPI application for Incident Copilot."""
 
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import structlog
@@ -67,11 +68,35 @@ def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     settings = get_settings()
 
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        logger.info("incident_copilot_starting", debug=settings.debug)
+        set_app_start_time()
+
+        # Initialize metrics
+        git_sha = os.environ.get("GIT_SHA")
+        set_app_info(version="0.1.0", git_sha=git_sha)
+        HEALTH_STATUS.labels(component="app").set(1)
+
+        # Initialize audit store
+        if settings.audit_enabled:
+            audit_store.database_url = settings.database_url
+            audit_store.retention_days = settings.audit_retention_days
+            await audit_store.initialize()
+            logger.info(
+                "audit_store_initialized", retention_days=settings.audit_retention_days
+            )
+
+        yield
+
+        logger.info("incident_copilot_shutting_down")
+
     app = FastAPI(
         title="Incident Copilot",
         description="Context-aware incident copilot for on-call engineers",
         version="0.1.0",
         debug=settings.debug,
+        lifespan=lifespan,
     )
 
     # Prometheus metrics middleware (add first for accurate timing)
@@ -135,29 +160,6 @@ def create_app() -> FastAPI:
     app.mount(
         "/dashboard/static", StaticFiles(directory=str(static_dir)), name="static"
     )
-
-    @app.on_event("startup")
-    async def startup():
-        logger.info("incident_copilot_starting", debug=settings.debug)
-        set_app_start_time()
-
-        # Initialize metrics
-        git_sha = os.environ.get("GIT_SHA")
-        set_app_info(version="0.1.0", git_sha=git_sha)
-        HEALTH_STATUS.labels(component="app").set(1)
-
-        # Initialize audit store
-        if settings.audit_enabled:
-            audit_store.database_url = settings.database_url
-            audit_store.retention_days = settings.audit_retention_days
-            await audit_store.initialize()
-            logger.info(
-                "audit_store_initialized", retention_days=settings.audit_retention_days
-            )
-
-    @app.on_event("shutdown")
-    async def shutdown():
-        logger.info("incident_copilot_shutting_down")
 
     @app.get("/")
     async def root():
