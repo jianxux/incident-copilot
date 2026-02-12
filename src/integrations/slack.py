@@ -63,10 +63,22 @@ class SlackAdapter:
             return False
 
     def _build_blocks(self, card: ContextCard) -> list[dict]:
-        """Build Slack Block Kit blocks from context card."""
-        blocks = []
+        """Build self-contained Slack Block Kit blocks.
 
-        # Header
+        Layout philosophy (Jobs-style "Instant Clarity"):
+        1. HEADER — what's on fire
+        2. VERDICT — what's wrong and what to do (the hero)
+        3. KEY DATA POINTS — 3 most relevant facts (deploy, error spike, similar)
+        4. SIMILAR INCIDENTS — the "aha" moment (if available)
+        5. RUNBOOK STEPS — inline steps, not links
+        6. EXPANDABLE DETAILS — everything else for deep-divers
+        7. FOOTER — on-call, links, latency
+
+        An engineer at 3am should never need to click anything.
+        """
+        blocks: list[dict] = []
+
+        # ─── 1. HEADER ───
         severity_emoji = {
             "critical": "🔴",
             "high": "🟠",
@@ -87,139 +99,228 @@ class SlackAdapter:
             }
         )
 
-        # Alert info
-        alert_info = f"*Severity:* {card.severity.value.upper()}  |  *Triggered:* <!date^{int(card.triggered_at.timestamp())}^{{time}}|{card.triggered_at.isoformat()}>"
+        # Compact alert metadata line
+        alert_parts = [f"*{card.severity.value.upper()}*"]
+        ts = int(card.triggered_at.timestamp())
+        alert_parts.append(f"<!date^{ts}^{{time}}|{card.triggered_at.isoformat()}>")
+        if card.oncall and card.oncall.primary_oncall:
+            alert_parts.append(f"👤 {card.oncall.primary_oncall.slack_mention}")
         if card.alert_url:
-            alert_info += f"  |  <{card.alert_url}|View in PagerDuty>"
-
+            alert_parts.append(f"<{card.alert_url}|View Alert>")
         blocks.append(
             {
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": alert_info},
+                "type": "context",
+                "elements": [{"type": "mrkdwn", "text": "  |  ".join(alert_parts)}],
             }
         )
 
-        # ═══ AI VERDICT — the hero block ═══
+        # ─── 2. VERDICT (hero block) ───
         if card.verdict:
             confidence_indicator = {
-                "high": "🟢 HIGH CONFIDENCE",
-                "medium": "🟡 MEDIUM CONFIDENCE",
-                "low": "🔴 LOW CONFIDENCE",
+                "high": "🟢 HIGH",
+                "medium": "🟡 MEDIUM",
+                "low": "🔴 LOW",
             }
-            conf = confidence_indicator.get(card.verdict.confidence.value, "⚪ UNKNOWN")
+            conf = confidence_indicator.get(card.verdict.confidence.value, "⚪")
 
-            verdict_text = (
-                f"*🎯 VERDICT:* {card.verdict.most_likely_cause}\n"
-                f"_{conf}_  •  {card.verdict.evidence}\n\n"
-                f"*▶️ DO NOW:* {card.verdict.recommended_action}"
-            )
+            verdict_lines = [
+                f"*🎯 {card.verdict.most_likely_cause}*",
+                f"_{conf} CONFIDENCE — {card.verdict.evidence}_",
+                "",
+                f"▶️  *{card.verdict.recommended_action}*",
+            ]
             if card.verdict.secondary_action:
-                verdict_text += f"\n*▶️ THEN:* {card.verdict.secondary_action}"
-
+                verdict_lines.append(f"▶️  {card.verdict.secondary_action}")
             if card.verdict.deploy_correlated and card.verdict.suspect_deploy:
-                verdict_text += f"\n\n⚠️ _Deploy-correlated — suspect commit: `{card.verdict.suspect_deploy}`_"
+                verdict_lines.append(
+                    f"\n⚠️ _Suspect deploy: `{card.verdict.suspect_deploy}`_"
+                )
 
             blocks.append(
                 {
                     "type": "section",
-                    "text": {"type": "mrkdwn", "text": verdict_text},
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "\n".join(verdict_lines),
+                    },
                 }
             )
-            blocks.append({"type": "divider"})
-
         blocks.append({"type": "divider"})
 
-        # Recent Deployments
+        # ─── 3. KEY DATA POINTS (3 most relevant facts) ───
+        data_points: list[str] = []
+
+        # Fact 1: Last deploy
+        deploys = []
         if card.github and card.github.recent_deploys:
-            deploy_lines = ["*🚀 Recent Deployments:*"]
-            for deploy in card.github.recent_deploys[:3]:
-                f"<!date^{int(deploy.timestamp.timestamp())}^{{time}}|{deploy.timestamp.isoformat()}>"
-                line = f"• `{deploy.short_sha}` by {deploy.author} - _{deploy.message[:60]}_"
-                if deploy.url:
-                    line = f"• <{deploy.url}|`{deploy.short_sha}`> by {deploy.author} - _{deploy.message[:60]}_"
-                deploy_lines.append(line)
+            deploys = card.github.recent_deploys
+        elif card.gitlab and card.gitlab.recent_deploys:
+            deploys = card.gitlab.recent_deploys
 
+        if deploys:
+            d = deploys[0]
+            deploy_link = f"<{d.url}|`{d.short_sha}`>" if d.url else f"`{d.short_sha}`"
+            data_points.append(
+                f"🚀 *Last deploy:* {deploy_link} by {d.author} — _{d.message[:50]}_"
+            )
+
+        # Fact 2: Error rate / metrics
+        if card.datadog and card.datadog.metrics:
+            m = card.datadog.metrics
+            if m.error_rate is not None:
+                rate_str = f"{m.error_rate:.1%}"
+                if m.error_rate_baseline is not None:
+                    rate_str += f" (baseline: {m.error_rate_baseline:.1%})"
+                data_points.append(f"📈 *Error rate:* {rate_str}")
+            if m.latency_p99_ms is not None:
+                data_points.append(f"⏱️ *P99 latency:* {m.latency_p99_ms:.0f}ms")
+
+        # Fact 3: Blast radius
+        if card.topology and card.topology.blast_radius_count > 0:
+            affected = card.topology.blast_radius_count
+            critical = card.topology.critical_services_affected
+            blast_str = f"💥 *Blast radius:* {affected} services affected"
+            if critical:
+                blast_str += f" (critical: {', '.join(critical[:3])})"
+            data_points.append(blast_str)
+
+        if data_points:
             blocks.append(
                 {
                     "type": "section",
-                    "text": {"type": "mrkdwn", "text": "\n".join(deploy_lines)},
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "\n".join(data_points[:3]),
+                    },
                 }
             )
 
-        # Log Summary (AI or basic)
-        if card.ai_summary:
-            summary_lines = ["*📋 Top Issues (AI Analysis):*"]
-            for issue in card.ai_summary.top_issues[:5]:
-                summary_lines.append(f"• {issue}")
-            if card.ai_summary.explanation:
-                summary_lines.append(f"\n_{card.ai_summary.explanation[:200]}_")
-
-            blocks.append(
-                {
-                    "type": "section",
-                    "text": {"type": "mrkdwn", "text": "\n".join(summary_lines)},
-                }
-            )
-
-        elif card.datadog and card.datadog.log_summaries:
-            summary_lines = ["*📋 Top Error Patterns:*"]
-            for summary in card.datadog.log_summaries[:5]:
-                summary_lines.append(f"• ({summary.count}x) {summary.pattern[:80]}")
-
-            blocks.append(
-                {
-                    "type": "section",
-                    "text": {"type": "mrkdwn", "text": "\n".join(summary_lines)},
-                }
-            )
-
-        # Similar Past Incidents
+        # ─── 4. SIMILAR PAST INCIDENTS (the "aha" moment) ───
         if card.similar_incidents:
-            incident_lines = ["*🔄 Similar Past Incidents:*"]
+            sim_lines = ["*🔄 This looks familiar:*"]
             for inc in card.similar_incidents[:3]:
-                line = f"• *{inc.title[:50]}* ({inc.occurred_at.strftime('%Y-%m-%d')})"
+                score = (
+                    f" ({inc.similarity_score:.0f}% match)"
+                    if inc.similarity_score
+                    else ""
+                )
+                sim_lines.append(
+                    f"• *{inc.title[:60]}*{score} — {inc.occurred_at.strftime('%b %d, %Y')}"
+                )
+                if inc.root_cause:
+                    sim_lines.append(f"  _Root cause: {inc.root_cause[:80]}_")
                 if inc.resolution:
-                    line += f"\n  _Resolution: {inc.resolution[:100]}_"
-                incident_lines.append(line)
+                    sim_lines.append(f"  _✅ Fixed by: {inc.resolution[:80]}_")
 
             blocks.append(
                 {
                     "type": "section",
-                    "text": {"type": "mrkdwn", "text": "\n".join(incident_lines)},
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "\n".join(sim_lines),
+                    },
                 }
             )
 
-        # On-Call Information
-        if card.oncall and card.oncall.has_oncall:
-            oncall_lines = ["*👤 On-Call:*"]
-            for person in card.oncall.oncall_persons[:3]:
-                mention = person.slack_mention
-                oncall_lines.append(f"• {mention}")
-            if card.oncall.schedule_url:
-                oncall_lines.append(f"<{card.oncall.schedule_url}|View Schedule>")
+        # ─── 5. INLINE RUNBOOK STEPS ───
+        if card.runbook_steps:
+            step_lines = ["*📖 First steps from runbook:*"]
+            for i, step in enumerate(card.runbook_steps[:3], 1):
+                step_lines.append(f"{i}. {step}")
+
+            # Add link to full runbook if available
+            if card.runbooks:
+                top_rb = card.runbooks[0]
+                step_lines.append(f"\n<{top_rb.url}|View full runbook →>")
 
             blocks.append(
                 {
                     "type": "section",
-                    "text": {"type": "mrkdwn", "text": "\n".join(oncall_lines)},
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "\n".join(step_lines),
+                    },
+                }
+            )
+        elif card.runbooks:
+            # Fallback: show runbook links if we couldn't extract steps
+            rb_lines = ["*📖 Runbooks:*"]
+            for rb in card.runbooks[:3]:
+                rb_lines.append(f"• <{rb.url}|{rb.title}>")
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": "\n".join(rb_lines)},
                 }
             )
 
         blocks.append({"type": "divider"})
 
-        # Footer: Owners, Runbook, Dashboard
-        footer_parts = []
-
-        if card.oncall and card.oncall.primary_oncall:
-            footer_parts.append(
-                f"*On-Call:* {card.oncall.primary_oncall.slack_mention}"
+        # ─── 6. EXPANDABLE DETAILS (for deep-divers) ───
+        # Additional deploys beyond the first
+        if len(deploys) > 1:
+            more_deploys = ["*More recent deploys:*"]
+            for d in deploys[1:3]:
+                link = f"<{d.url}|`{d.short_sha}`>" if d.url else f"`{d.short_sha}`"
+                more_deploys.append(f"• {link} by {d.author} — _{d.message[:50]}_")
+            blocks.append(
+                {
+                    "type": "context",
+                    "elements": [{"type": "mrkdwn", "text": "\n".join(more_deploys)}],
+                }
             )
-        elif card.owners:
-            footer_parts.append(f"*Owners:* {', '.join(card.owners[:5])}")
-        if card.runbook_url:
-            footer_parts.append(f"<{card.runbook_url}|📖 Runbook>")
+
+        # Top error patterns (compact)
+        if card.ai_summary and card.ai_summary.top_issues:
+            issues = card.ai_summary.top_issues[:3]
+            issue_text = "*Top errors:* " + " · ".join(
+                f"_{iss[:40]}_" for iss in issues
+            )
+            blocks.append(
+                {
+                    "type": "context",
+                    "elements": [{"type": "mrkdwn", "text": issue_text}],
+                }
+            )
+        elif card.datadog and card.datadog.log_summaries:
+            patterns = card.datadog.log_summaries[:3]
+            pattern_text = "*Top errors:* " + " · ".join(
+                f"_{p.pattern[:30]}_ ({p.count}x)" for p in patterns
+            )
+            blocks.append(
+                {
+                    "type": "context",
+                    "elements": [{"type": "mrkdwn", "text": pattern_text}],
+                }
+            )
+
+        # On-call roster (if multiple people)
+        if card.oncall and len(card.oncall.oncall_persons) > 1:
+            oncall_text = "*On-call team:* " + ", ".join(
+                p.slack_mention for p in card.oncall.oncall_persons[:5]
+            )
+            if card.oncall.schedule_url:
+                oncall_text += f"  |  <{card.oncall.schedule_url}|Schedule>"
+            blocks.append(
+                {
+                    "type": "context",
+                    "elements": [{"type": "mrkdwn", "text": oncall_text}],
+                }
+            )
+
+        # ─── 7. FOOTER ───
+        footer_parts = []
+        if card.owners:
+            footer_parts.append(f"Owners: {', '.join(card.owners[:3])}")
         if card.dashboard_url:
             footer_parts.append(f"<{card.dashboard_url}|📊 Dashboard>")
+
+        # Latency metrics
+        if card.latency_report and card.latency_report.total_ms is not None:
+            budget_emoji = "✅" if card.latency_report.within_budget else "⚠️"
+            footer_parts.append(f"{budget_emoji} {card.latency_report.total_ms}ms")
+        elif card.assembly_time_ms:
+            footer_parts.append(f"⚡ {card.assembly_time_ms}ms")
 
         if footer_parts:
             blocks.append(
@@ -227,38 +328,6 @@ class SlackAdapter:
                     "type": "context",
                     "elements": [
                         {"type": "mrkdwn", "text": "  |  ".join(footer_parts)}
-                    ],
-                }
-            )
-
-        # Latency metrics — show the North Star
-        if card.latency_report and card.latency_report.total_ms is not None:
-            budget_emoji = "✅" if card.latency_report.within_budget else "⚠️"
-            latency_text = (
-                f"{budget_emoji} _Context assembled in "
-                f"*{card.latency_report.total_ms}ms* "
-                f"(budget: {card.latency_report.budget_ms}ms)_"
-            )
-            if card.latency_report.alert_to_delivery_ms is not None:
-                latency_text += (
-                    f"  •  _Alert→Card: "
-                    f"{card.latency_report.alert_to_delivery_ms}ms_"
-                )
-            blocks.append(
-                {
-                    "type": "context",
-                    "elements": [{"type": "mrkdwn", "text": latency_text}],
-                }
-            )
-        elif card.assembly_time_ms:
-            blocks.append(
-                {
-                    "type": "context",
-                    "elements": [
-                        {
-                            "type": "mrkdwn",
-                            "text": f"_Context assembled in {card.assembly_time_ms}ms_",
-                        }
                     ],
                 }
             )
