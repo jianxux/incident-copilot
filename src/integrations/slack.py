@@ -247,9 +247,7 @@ class SlackAdapter:
             blocks.append(
                 {
                     "type": "context",
-                    "elements": [
-                        {"type": "mrkdwn", "text": latency_text}
-                    ],
+                    "elements": [{"type": "mrkdwn", "text": latency_text}],
                 }
             )
         elif card.assembly_time_ms:

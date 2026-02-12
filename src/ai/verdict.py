@@ -123,7 +123,9 @@ class VerdictEngine:
             Verdict with cause, confidence, and recommended action
         """
         if not self.client:
-            logger.warning("verdict_engine_no_client", reason="anthropic_not_configured")
+            logger.warning(
+                "verdict_engine_no_client", reason="anthropic_not_configured"
+            )
             return self._fallback_verdict(
                 title, service_name, recent_deploys, log_summary
             )
@@ -152,9 +154,7 @@ class VerdictEngine:
                 messages=[{"role": "user", "content": prompt}],
             )
 
-            content = "".join(
-                getattr(block, "text", "") for block in response.content
-            )
+            content = "".join(getattr(block, "text", "") for block in response.content)
 
             # Strip markdown code fences if present
             content = content.strip()
@@ -300,7 +300,9 @@ class VerdictEngine:
                 confidence=ConfidenceLevel.LOW,
                 evidence=log_summary.get("explanation", "Based on error log patterns."),
                 recommended_action=(
-                    log_summary.get("suggested_actions", ["Check service logs and metrics"])[0]
+                    log_summary.get(
+                        "suggested_actions", ["Check service logs and metrics"]
+                    )[0]
                 ),
             )
 

@@ -131,8 +131,15 @@ class TestVerdictEngineContextBuilder:
         sections = engine._build_context_sections(
             recent_deploys=sample_deploys,
             log_summary=sample_log_summary,
-            metrics={"error_rate": 0.45, "error_rate_baseline": 0.001, "latency_p99_ms": 1200},
-            topology={"blast_radius_count": 5, "critical_services_affected": ["gateway", "billing"]},
+            metrics={
+                "error_rate": 0.45,
+                "error_rate_baseline": 0.001,
+                "latency_p99_ms": 1200,
+            },
+            topology={
+                "blast_radius_count": 5,
+                "critical_services_affected": ["gateway", "billing"],
+            },
         )
         assert "RECENT DEPLOYMENTS:" in sections
         assert "LOG ANALYSIS:" in sections
@@ -170,7 +177,9 @@ class TestVerdictEngineAI:
     """Test AI-powered verdict generation."""
 
     @pytest.mark.asyncio
-    async def test_generate_verdict_success(self, engine, sample_deploys, sample_log_summary):
+    async def test_generate_verdict_success(
+        self, engine, sample_deploys, sample_log_summary
+    ):
         mock_response = MagicMock()
         mock_block = MagicMock()
         mock_block.text = json.dumps(
