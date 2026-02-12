@@ -99,21 +99,39 @@
         }
         @media (max-width: 768px) {
             .sidebar {
-                position: fixed;
+                position: fixed !important;
                 top: 0;
-                left: -256px;
+                left: 0;
                 height: 100vh;
                 z-index: 50;
-                transition: left 0.2s ease;
+                transform: translateX(-100%);
+                transition: transform 0.2s ease;
+                width: 280px;
+            }
+            .sidebar.collapsed {
+                width: 280px;
+            }
+            .sidebar.collapsed .nav-label,
+            .sidebar.collapsed .nav-section-title,
+            .sidebar.collapsed .sidebar-logo-text {
+                display: block;
+            }
+            .sidebar.collapsed .nav-item {
+                justify-content: flex-start;
+                padding-left: 12px;
+                padding-right: 12px;
+            }
+            .sidebar.collapsed .nav-icon {
+                margin-right: 12px;
             }
             .sidebar.mobile-open {
-                left: 0;
+                transform: translateX(0);
             }
             .sidebar-overlay.mobile-open {
                 display: block;
                 position: fixed;
                 inset: 0;
-                background: rgba(0,0,0,0.3);
+                background: rgba(0,0,0,0.4);
                 z-index: 40;
             }
         }
@@ -145,7 +163,7 @@
         <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
 
         <!-- Sidebar -->
-        <aside id="sidebar" class="sidebar flex flex-col bg-white border-r border-slate-200 h-screen sticky top-0 overflow-y-auto">
+        <aside id="sidebar" class="sidebar hidden md:flex flex-col bg-white border-r border-slate-200 h-screen md:sticky top-0 overflow-y-auto">
             <!-- Logo area -->
             <div class="flex items-center h-16 px-4 border-b border-slate-200 flex-shrink-0">
                 <a href="/dashboard" class="flex items-center space-x-3 min-w-0">
@@ -284,8 +302,25 @@
         function toggleMobileSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
-            sidebar.classList.toggle('mobile-open');
-            overlay.classList.toggle('mobile-open');
+            const isOpen = sidebar.classList.contains('mobile-open');
+            if (isOpen) {
+                sidebar.classList.remove('mobile-open');
+                overlay.classList.remove('mobile-open');
+                // Re-hide after transition
+                setTimeout(() => {
+                    if (!sidebar.classList.contains('mobile-open')) {
+                        sidebar.classList.add('hidden');
+                        sidebar.classList.remove('flex');
+                    }
+                }, 200);
+            } else {
+                sidebar.classList.remove('hidden');
+                sidebar.classList.add('flex');
+                // Force reflow before adding mobile-open for transition
+                sidebar.offsetHeight;
+                sidebar.classList.add('mobile-open');
+                overlay.classList.add('mobile-open');
+            }
         }
 
         // Restore sidebar state
