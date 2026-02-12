@@ -10,7 +10,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        body { font-family: 'Inter', system-ui, sans-serif; }
+        body { font-family: 'Inter', system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+        /* Mobile touch targets — minimum 44px */
+        @media (max-width: 640px) {
+            .nav-item { min-height: 44px; }
+        }
+        /* Prevent horizontal overflow on mobile */
+        main { overflow-x: hidden; }
         .card-shadow {
             box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 8px 30px rgba(0,0,0,0.04);
         }
