@@ -99,6 +99,34 @@ class SlackAdapter:
             }
         )
 
+        # ═══ AI VERDICT — the hero block ═══
+        if card.verdict:
+            confidence_indicator = {
+                "high": "🟢 HIGH CONFIDENCE",
+                "medium": "🟡 MEDIUM CONFIDENCE",
+                "low": "🔴 LOW CONFIDENCE",
+            }
+            conf = confidence_indicator.get(card.verdict.confidence.value, "⚪ UNKNOWN")
+
+            verdict_text = (
+                f"*🎯 VERDICT:* {card.verdict.most_likely_cause}\n"
+                f"_{conf}_  •  {card.verdict.evidence}\n\n"
+                f"*▶️ DO NOW:* {card.verdict.recommended_action}"
+            )
+            if card.verdict.secondary_action:
+                verdict_text += f"\n*▶️ THEN:* {card.verdict.secondary_action}"
+
+            if card.verdict.deploy_correlated and card.verdict.suspect_deploy:
+                verdict_text += f"\n\n⚠️ _Deploy-correlated — suspect commit: `{card.verdict.suspect_deploy}`_"
+
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": verdict_text},
+                }
+            )
+            blocks.append({"type": "divider"})
+
         blocks.append({"type": "divider"})
 
         # Recent Deployments
@@ -203,8 +231,28 @@ class SlackAdapter:
                 }
             )
 
-        # Assembly time
-        if card.assembly_time_ms:
+        # Latency metrics — show the North Star
+        if card.latency_report and card.latency_report.total_ms is not None:
+            budget_emoji = "✅" if card.latency_report.within_budget else "⚠️"
+            latency_text = (
+                f"{budget_emoji} _Context assembled in "
+                f"*{card.latency_report.total_ms}ms* "
+                f"(budget: {card.latency_report.budget_ms}ms)_"
+            )
+            if card.latency_report.alert_to_delivery_ms is not None:
+                latency_text += (
+                    f"  •  _Alert→Card: "
+                    f"{card.latency_report.alert_to_delivery_ms}ms_"
+                )
+            blocks.append(
+                {
+                    "type": "context",
+                    "elements": [
+                        {"type": "mrkdwn", "text": latency_text}
+                    ],
+                }
+            )
+        elif card.assembly_time_ms:
             blocks.append(
                 {
                     "type": "context",

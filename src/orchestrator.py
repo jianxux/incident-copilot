@@ -7,7 +7,7 @@ from typing import cast
 
 import structlog
 
-from .ai import LogSummarizer
+from .ai import LogSummarizer, VerdictEngine
 from .ai.log_compressor import CompressedLogs, LogCompressor
 from .config import Settings
 from .dependencies.service import DependencyService
@@ -19,6 +19,7 @@ from .integrations import (
     SlackAdapter,
 )
 from .integrations.oncall_legacy import OnCallAdapter
+from .metrics.latency_tracker import LatencyTracker, Phase
 from .models import (
     ContextCard,
     DatadogContext,
@@ -59,6 +60,9 @@ class ContextOrchestrator:
 
         # New: Dependency service for topology context
         self.dependencies = DependencyService()
+
+        # AI Verdict Engine — opinionated root cause assessment
+        self.verdict_engine = VerdictEngine(settings)
 
         # Determine SCM provider based on configuration
         # Prefer GitHub if configured, fall back to GitLab
@@ -102,11 +106,19 @@ class ContextOrchestrator:
         start_time = time.monotonic()
         errors: list[str] = []
 
+        # Initialize latency tracker — T₀ is when the alert originally fired
+        tracker = LatencyTracker(incident.incident_id, incident.service_name)
+        tracker.set_alert_fired_at(incident.triggered_at)
+        tracker.start(Phase.WEBHOOK_RECEIVED)
+        tracker.end(Phase.WEBHOOK_RECEIVED)
+
         logger.info(
             "processing_incident",
             incident_id=incident.incident_id,
             service=incident.service_name,
         )
+
+        tracker.start(Phase.CONTEXT_FETCH_START)
 
         # Fan-out: fetch from multiple sources in parallel
         scm_task = asyncio.create_task(self._fetch_scm_context(incident.service_name))
@@ -202,9 +214,12 @@ class ContextOrchestrator:
             else None
         )
 
+        tracker.end(Phase.CONTEXT_FETCH_START)
+
         # AI summarization (if we have logs)
         ai_summary = None
         if datadog_ctx and datadog_ctx.logs:
+            tracker.start(Phase.AI_SUMMARIZE)
             try:
                 ai_summary = await asyncio.wait_for(
                     self.summarizer.summarize(
@@ -213,10 +228,13 @@ class ContextOrchestrator:
                     ),
                     timeout=5.0,
                 )
+                tracker.end(Phase.AI_SUMMARIZE)
             except TimeoutError:
+                tracker.end(Phase.AI_SUMMARIZE, success=False, error="timeout")
                 logger.warning("ai_summarization_timeout")
                 errors.append("AI summarization timed out")
             except Exception as e:
+                tracker.end(Phase.AI_SUMMARIZE, success=False, error=str(e))
                 logger.error("ai_summarization_error", error=str(e))
                 errors.append(f"AI: {str(e)}")
 
@@ -247,6 +265,48 @@ class ContextOrchestrator:
             logger.error("runbook_linking_error", error=str(e))
             errors.append(f"Runbooks: {str(e)}")
 
+        # Generate AI Verdict — the opinionated root cause assessment
+        verdict = None
+        tracker.start(Phase.AI_VERDICT)
+        try:
+            # Prepare deploy data for the verdict engine
+            deploy_data = None
+            if github_ctx and github_ctx.recent_deploys:
+                deploy_data = [d.model_dump() for d in github_ctx.recent_deploys]
+            elif gitlab_ctx and gitlab_ctx.recent_deploys:
+                deploy_data = [d.model_dump() for d in gitlab_ctx.recent_deploys]
+
+            log_summary_data = ai_summary.model_dump() if ai_summary else None
+            metrics_data = (
+                datadog_ctx.metrics.model_dump()
+                if datadog_ctx and datadog_ctx.metrics
+                else None
+            )
+            topology_data = topology_ctx.model_dump() if topology_ctx else None
+
+            verdict = await asyncio.wait_for(
+                self.verdict_engine.generate_verdict(
+                    title=incident.title,
+                    service_name=incident.service_name,
+                    severity=incident.severity.value,
+                    triggered_at=incident.triggered_at,
+                    recent_deploys=deploy_data,
+                    log_summary=log_summary_data,
+                    metrics=metrics_data,
+                    topology=topology_data,
+                ),
+                timeout=5.0,
+            )
+            tracker.end(Phase.AI_VERDICT)
+        except TimeoutError:
+            tracker.end(Phase.AI_VERDICT, success=False, error="timeout")
+            logger.warning("verdict_generation_timeout")
+            errors.append("AI verdict timed out")
+        except Exception as e:
+            tracker.end(Phase.AI_VERDICT, success=False, error=str(e))
+            logger.error("verdict_generation_error", error=str(e))
+            errors.append(f"Verdict: {str(e)}")
+
         # Assemble context card
         elapsed_ms = int((time.monotonic() - start_time) * 1000)
 
@@ -256,6 +316,8 @@ class ContextOrchestrator:
             codeowners = github_ctx.codeowners
         elif gitlab_ctx:
             codeowners = gitlab_ctx.codeowners
+
+        tracker.start(Phase.CARD_ASSEMBLED)
 
         card = ContextCard(
             incident_id=incident.incident_id,
@@ -269,6 +331,7 @@ class ContextOrchestrator:
             datadog=datadog_ctx,
             topology=topology_ctx,
             ai_summary=ai_summary,
+            verdict=verdict,
             similar_incidents=[],  # TODO: implement similarity search
             runbooks=runbook_links,
             oncall=oncall_roster,
@@ -277,6 +340,8 @@ class ContextOrchestrator:
             assembly_time_ms=elapsed_ms,
             errors=errors,
         )
+
+        tracker.end(Phase.CARD_ASSEMBLED)
 
         logger.info(
             "context_assembled",
@@ -295,7 +360,13 @@ class ContextOrchestrator:
         )
 
         # Deliver to Slack
+        tracker.start(Phase.CARD_DELIVERED)
         await self.slack.send_context_card(card, channel=slack_channel)
+        tracker.end(Phase.CARD_DELIVERED)
+
+        # Finalize latency report
+        latency_report = tracker.log_report()
+        card.latency_report = latency_report
 
         return card
 

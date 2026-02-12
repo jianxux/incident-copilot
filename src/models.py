@@ -1,9 +1,16 @@
 """Data models for Incident Copilot."""
 
+from __future__ import annotations
+
 from datetime import datetime
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from .ai.verdict import Verdict
+    from .metrics.latency_tracker import LatencyReport
 
 
 class Severity(StrEnum):
@@ -314,6 +321,9 @@ class ContextCard(BaseModel):
     # AI summary
     ai_summary: AILogSummary | None = None
 
+    # AI Verdict — opinionated root cause assessment
+    verdict: "Verdict | None" = None
+
     # Similar past incidents
     similar_incidents: list[PastIncident] = Field(default_factory=list)
 
@@ -331,4 +341,5 @@ class ContextCard(BaseModel):
     # Metadata
     assembled_at: datetime = Field(default_factory=datetime.utcnow)
     assembly_time_ms: int | None = None
+    latency_report: "LatencyReport | None" = None
     errors: list[str] = Field(default_factory=list)
