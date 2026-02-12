@@ -324,6 +324,9 @@ class ContextCard(BaseModel):
     # Linked runbooks
     runbooks: list[RunbookLink] = Field(default_factory=list)
 
+    # Inline runbook steps — extracted first steps for zero-click resolution
+    runbook_steps: list[str] = Field(default_factory=list)
+
     # On-call roster
     oncall: OnCallRoster | None = None
 
