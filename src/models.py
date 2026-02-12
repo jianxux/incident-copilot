@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -314,6 +315,9 @@ class ContextCard(BaseModel):
     # AI summary
     ai_summary: AILogSummary | None = None
 
+    # AI Verdict — opinionated root cause assessment (Any to avoid circular import)
+    verdict: Any = None
+
     # Similar past incidents
     similar_incidents: list[PastIncident] = Field(default_factory=list)
 
@@ -331,4 +335,5 @@ class ContextCard(BaseModel):
     # Metadata
     assembled_at: datetime = Field(default_factory=datetime.utcnow)
     assembly_time_ms: int | None = None
+    latency_report: Any = None
     errors: list[str] = Field(default_factory=list)
