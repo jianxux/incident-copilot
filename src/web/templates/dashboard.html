@@ -2,14 +2,14 @@
 
 {% block content %}
 <!-- Stats Cards -->
-<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-    <div class="bg-white rounded-xl p-6 border border-slate-200 card-shadow">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
+    <div class="bg-white rounded-xl p-4 sm:p-6 border border-slate-200 card-shadow">
         <div class="flex items-center justify-between">
-            <div>
-                <p class="text-muted text-sm font-medium">Total Incidents</p>
-                <p class="text-3xl font-bold text-slate-900 mt-1" id="stat-total">{{ stats.total }}</p>
+            <div class="min-w-0">
+                <p class="text-muted text-xs sm:text-sm font-medium">Total Incidents</p>
+                <p class="text-2xl sm:text-3xl font-bold text-slate-900 mt-1" id="stat-total">{{ stats.total }}</p>
             </div>
-            <div class="bg-indigo-50 p-3 rounded-lg">
+            <div class="bg-indigo-50 p-2 sm:p-3 rounded-lg flex-shrink-0 hidden sm:block">
                 <svg class="w-6 h-6 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                 </svg>
@@ -17,13 +17,13 @@
         </div>
     </div>
     
-    <div class="bg-white rounded-xl p-6 border border-slate-200 card-shadow">
+    <div class="bg-white rounded-xl p-4 sm:p-6 border border-slate-200 card-shadow">
         <div class="flex items-center justify-between">
-            <div>
-                <p class="text-muted text-sm font-medium">Processing</p>
-                <p class="text-3xl font-bold text-amber-600 mt-1" id="stat-processing">{{ stats.by_status.processing }}</p>
+            <div class="min-w-0">
+                <p class="text-muted text-xs sm:text-sm font-medium">Processing</p>
+                <p class="text-2xl sm:text-3xl font-bold text-amber-600 mt-1" id="stat-processing">{{ stats.by_status.processing }}</p>
             </div>
-            <div class="bg-amber-50 p-3 rounded-lg">
+            <div class="bg-amber-50 p-2 sm:p-3 rounded-lg flex-shrink-0 hidden sm:block">
                 <svg class="w-6 h-6 text-amber-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                 </svg>
@@ -31,13 +31,13 @@
         </div>
     </div>
     
-    <div class="bg-white rounded-xl p-6 border border-slate-200 card-shadow">
+    <div class="bg-white rounded-xl p-4 sm:p-6 border border-slate-200 card-shadow">
         <div class="flex items-center justify-between">
-            <div>
-                <p class="text-muted text-sm font-medium">Completed</p>
-                <p class="text-3xl font-bold text-green-600 mt-1" id="stat-completed">{{ stats.by_status.completed }}</p>
+            <div class="min-w-0">
+                <p class="text-muted text-xs sm:text-sm font-medium">Completed</p>
+                <p class="text-2xl sm:text-3xl font-bold text-green-600 mt-1" id="stat-completed">{{ stats.by_status.completed }}</p>
             </div>
-            <div class="bg-green-50 p-3 rounded-lg">
+            <div class="bg-green-50 p-2 sm:p-3 rounded-lg flex-shrink-0 hidden sm:block">
                 <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
@@ -45,13 +45,13 @@
         </div>
     </div>
     
-    <div class="bg-white rounded-xl p-6 border border-slate-200 card-shadow">
+    <div class="bg-white rounded-xl p-4 sm:p-6 border border-slate-200 card-shadow">
         <div class="flex items-center justify-between">
-            <div>
-                <p class="text-muted text-sm font-medium">Errors</p>
-                <p class="text-3xl font-bold text-red-600 mt-1" id="stat-errors">{{ stats.by_status.error }}</p>
+            <div class="min-w-0">
+                <p class="text-muted text-xs sm:text-sm font-medium">Errors</p>
+                <p class="text-2xl sm:text-3xl font-bold text-red-600 mt-1" id="stat-errors">{{ stats.by_status.error }}</p>
             </div>
-            <div class="bg-red-50 p-3 rounded-lg">
+            <div class="bg-red-50 p-2 sm:p-3 rounded-lg flex-shrink-0 hidden sm:block">
                 <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                 </svg>
@@ -61,7 +61,7 @@
 </div>
 
 <!-- Severity Distribution -->
-<div class="bg-white rounded-xl p-6 border border-slate-200 card-shadow mb-8">
+<div class="bg-white rounded-xl p-4 sm:p-6 border border-slate-200 card-shadow mb-6 sm:mb-8">
     <h3 class="text-lg font-semibold text-slate-900 mb-4">Severity Distribution</h3>
     <div class="flex flex-wrap gap-4">
         {% for sev, count in stats.by_severity.items() %}
@@ -76,49 +76,49 @@
 
 <!-- Incidents List -->
 <div class="bg-white rounded-xl border border-slate-200 card-shadow overflow-hidden">
-    <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-        <h2 class="text-lg font-semibold text-slate-900">Recent Incidents</h2>
-        <span class="text-sm text-muted">Auto-refreshing</span>
+    <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 flex items-center justify-between">
+        <h2 class="text-base sm:text-lg font-semibold text-slate-900">Recent Incidents</h2>
+        <span class="text-xs sm:text-sm text-muted">Auto-refreshing</span>
     </div>
     
     <div id="incidents-list" class="divide-y divide-slate-100">
         {% if incidents %}
             {% for incident in incidents %}
             <a href="/dashboard/incident/{{ incident.incident_id }}" 
-               class="block px-6 py-4 hover:bg-slate-50 transition-colors group"
+               class="block px-4 sm:px-6 py-3 sm:py-4 hover:bg-slate-50 transition-colors group"
                data-incident-id="{{ incident.incident_id }}">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
+                <div class="flex items-start sm:items-center justify-between gap-2">
+                    <div class="flex items-start sm:items-center space-x-3 sm:space-x-4 min-w-0">
                         <!-- Severity indicator -->
-                        <div class="flex-shrink-0">
+                        <div class="flex-shrink-0 mt-1.5 sm:mt-0">
                             <span class="w-3 h-3 rounded-full block {{ incident.severity | severity_color }}"></span>
                         </div>
                         
                         <!-- Incident info -->
-                        <div>
-                            <div class="flex items-center space-x-3">
-                                <h3 class="text-slate-900 font-medium group-hover:text-brand transition-colors">
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h3 class="text-sm sm:text-base text-slate-900 font-medium group-hover:text-brand transition-colors break-words">
                                     {{ incident.title | truncate(60) }}
                                 </h3>
-                                <span class="px-2 py-0.5 text-xs rounded-full {{ incident.status | status_color }} text-white font-medium">
+                                <span class="px-2 py-0.5 text-xs rounded-full {{ incident.status | status_color }} text-white font-medium flex-shrink-0">
                                     {{ incident.status }}
                                 </span>
                             </div>
-                            <div class="flex items-center space-x-4 mt-1 text-sm text-muted">
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs sm:text-sm text-muted">
                                 <span class="flex items-center">
-                                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
                                     </svg>
                                     {{ incident.service_name }}
                                 </span>
                                 <span class="flex items-center">
-                                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                     </svg>
                                     {{ incident.triggered_at | format_datetime }}
                                 </span>
                                 <span class="flex items-center capitalize">
-                                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/>
                                     </svg>
                                     {{ incident.severity.value }}
@@ -128,7 +128,7 @@
                     </div>
                     
                     <!-- Arrow -->
-                    <div class="text-slate-400 group-hover:text-brand transition-colors">
+                    <div class="text-slate-400 group-hover:text-brand transition-colors flex-shrink-0 mt-1 sm:mt-0">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                         </svg>
