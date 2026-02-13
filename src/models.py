@@ -239,6 +239,7 @@ class PastIncident(BaseModel):
     incident_id: str
     title: str
     service: str
+    severity: str | None = None
     description: str | None = None
     root_cause: str | None = None
     resolution: str | None = None

@@ -201,11 +201,12 @@ class SlackAdapter:
             for inc in card.similar_incidents[:3]:
                 score = (
                     f" ({inc.similarity_score:.0f}% match)"
-                    if inc.similarity_score
+                    if inc.similarity_score is not None
                     else ""
                 )
+                severity = f"[{inc.severity.upper()}] " if inc.severity else ""
                 sim_lines.append(
-                    f"• *{inc.title[:60]}*{score} — {inc.occurred_at.strftime('%b %d, %Y')}"
+                    f"• {severity}*{inc.title[:60]}*{score} — {inc.occurred_at.strftime('%b %d, %Y')}"
                 )
                 if inc.root_cause:
                     sim_lines.append(f"  _Root cause: {inc.root_cause[:80]}_")
