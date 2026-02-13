@@ -2,7 +2,7 @@
 
 **Author:** Jarvis (internal)
 **Last updated:** 2026-02-13
-**Status:** Proposed
+**Status:** Phase 1 Implemented · Phases 2–4 Planned
 
 ---
 
@@ -58,107 +58,127 @@ Incident Memory replaces string matching with semantic understanding. It answers
 
 ### Components
 
-1. **IncidentMemoryStore** — persistence layer (pgvector + structured metadata)
-2. **IncidentCapture** — extracts and embeds knowledge from resolved incidents
-3. **IncidentRecall** — retrieves relevant past incidents for active alerts
-4. **MemoryEnricher** — injects recalled incidents into ContextOrchestrator's output
+| Component | Module | Status |
+|-----------|--------|--------|
+| **IncidentMemoryStore** | `src/memory/store.py` | ✅ Phase 1 |
+| **IncidentCapture** | `src/memory/capture.py` | ✅ Phase 1 |
+| **IncidentRecall** | `src/memory/recall.py` | ✅ Phase 1 |
+| **IncidentMemoryConfig** | `src/memory/config.py` | ✅ Phase 1 |
+| **MemoryEnricher** | `src/orchestrator.py` (planned) | 🔲 Phase 2 |
+| **Conversational Tool** | `search_past_incidents` | 🔲 Phase 2 |
+| **Feedback Loop** | feedback storage + weight adjustment | 🔲 Phase 3 |
 
 ---
 
 ## 3) Data Model
 
-### 3.1 Incident Record (structured metadata)
+### 3.1 Incident Record
+
+Defined in `src/memory/models.py`:
 
 ```python
 class IncidentRecord(BaseModel):
-    """Structured knowledge captured from a resolved incident."""
+    """Structured memory representation of a resolved incident."""
 
     # Identity
-    id: str                          # incident ID (e.g., INC-47)
-    title: str                       # original alert/incident title
+    id: str                              # incident ID (e.g., INC-47)
+    title: str                           # original alert/incident title
     created_at: datetime
-    resolved_at: datetime
-    duration_minutes: float
+    resolved_at: datetime | None = None
+    duration_minutes: int | None = None
 
     # Classification
-    severity: str                    # critical / high / medium / low
-    services_affected: list[str]     # e.g., ["payment-service", "redis-cluster-3"]
-    root_cause_category: str         # deploy / config / capacity / dependency / unknown
-    root_cause_summary: str          # 1-2 sentence human-readable root cause
+    severity: str | None = None          # critical / high / medium / low / info / unknown
+    services_affected: list[str] = []    # e.g., ["payment-service", "redis-cluster-3"]
+    root_cause_category: str | None = None   # deploy / config / capacity / dependency / unknown
+    root_cause_summary: str | None = None    # 1-2 sentence human-readable root cause
 
     # Context fingerprint
-    error_signatures: list[str]      # normalized error patterns (e.g., "OOMKilled", "connection refused :6379")
-    metric_anomalies: list[str]      # which metrics deviated (e.g., "p99_latency > 2s", "error_rate > 5%")
-    deploy_involved: bool            # was there a deploy within the incident window?
-    deploy_sha: str | None           # if yes, which commit
+    error_signatures: list[str] = []     # normalized error patterns ("OOMKilled", "connection refused :6379")
+    metric_anomalies: list[str] = []     # which metrics deviated ("p99_latency > 2s", "error_rate > 5%")
+    deploy_involved: bool = False        # was there a deploy within the incident window?
+    deploy_sha: str | None = None        # if yes, which commit
 
     # Resolution
-    resolution_steps: list[str]      # ordered list of what the team actually did
-    resolution_summary: str          # 1-2 sentence summary of the fix
-    time_to_diagnose_minutes: float  # from alert to "we know what's wrong"
-    time_to_fix_minutes: float       # from diagnosis to resolution
-    was_rollback: bool               # did the fix involve rolling back a deploy?
-    runbook_used: str | None         # if a runbook was followed, which one
+    resolution_steps: list[str] = []     # ordered list of what the team actually did
+    resolution_summary: str | None = None    # 1-2 sentence summary of the fix
+    time_to_diagnose_minutes: int | None = None  # from alert to "we know what's wrong"
+    time_to_fix_minutes: int | None = None       # from diagnosis to resolution
+    was_rollback: bool | None = None     # did the fix involve rolling back a deploy?
+    runbook_used: str | None = None      # if a runbook was followed, which one
 
     # Learning
-    what_helped: str | None          # what context/tool was most useful during triage
-    what_was_missing: str | None     # what would have helped but wasn't available
-    tags: list[str]                  # freeform tags for additional classification
+    what_helped: str | None = None       # what context/tool was most useful during triage
+    what_was_missing: str | None = None  # what would have helped but wasn't available
+    tags: list[str] = []                 # freeform tags for additional classification
 
     # Embedding
-    embedding: list[float] | None    # vector embedding of the full incident narrative
+    embedding: list[float] = []          # vector embedding of the full incident narrative
+```
+
+**Recall result model:**
+
+```python
+class IncidentRecallResult(BaseModel):
+    """Scored recall match for a past incident."""
+    record: IncidentRecord
+    score: float                # final composite score
+    vector_similarity: float    # raw cosine similarity
+    temporal_decay: float       # decay multiplier applied
 ```
 
 ### 3.2 Database Schema (pgvector)
 
+Migration: `supabase/migrations/20260213000002_incident_memory_phase1.sql`
+
 ```sql
-CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS "vector";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-CREATE TABLE incident_memory (
-    id              TEXT PRIMARY KEY,
-    title           TEXT NOT NULL,
-    created_at      TIMESTAMPTZ NOT NULL,
-    resolved_at     TIMESTAMPTZ NOT NULL,
-    duration_min    REAL NOT NULL,
-
-    severity        TEXT NOT NULL,
-    services        TEXT[] NOT NULL,          -- array of service names
-    root_cause_cat  TEXT NOT NULL,
-    root_cause      TEXT NOT NULL,
-
-    error_sigs      TEXT[] DEFAULT '{}',
-    metric_anomalies TEXT[] DEFAULT '{}',
-    deploy_involved BOOLEAN DEFAULT FALSE,
-    deploy_sha      TEXT,
-
-    resolution_steps JSONB NOT NULL,          -- ordered list
-    resolution       TEXT NOT NULL,
-    ttd_min         REAL,                     -- time to diagnose
-    ttf_min         REAL,                     -- time to fix
-    was_rollback    BOOLEAN DEFAULT FALSE,
-    runbook_used    TEXT,
-
-    what_helped     TEXT,
-    what_missing    TEXT,
-    tags            TEXT[] DEFAULT '{}',
-
-    -- Vector embedding (1536 for OpenAI ada-002, 1024 for Cohere, etc.)
-    embedding       vector(1536),
-
-    captured_at     TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS incident_memory (
+    id                        TEXT PRIMARY KEY,
+    title                     TEXT NOT NULL,
+    created_at                TIMESTAMPTZ NOT NULL,
+    resolved_at               TIMESTAMPTZ,
+    duration_minutes          INTEGER,
+    severity                  TEXT,
+    services_affected         TEXT[] NOT NULL DEFAULT '{}',
+    root_cause_category       TEXT,
+    root_cause_summary        TEXT,
+    error_signatures          TEXT[] NOT NULL DEFAULT '{}',
+    metric_anomalies          TEXT[] NOT NULL DEFAULT '{}',
+    deploy_involved           BOOLEAN NOT NULL DEFAULT FALSE,
+    deploy_sha                TEXT,
+    resolution_steps          TEXT[] NOT NULL DEFAULT '{}',
+    resolution_summary        TEXT,
+    time_to_diagnose_minutes  INTEGER,
+    time_to_fix_minutes       INTEGER,
+    was_rollback              BOOLEAN,
+    runbook_used              TEXT,
+    what_helped               TEXT,
+    what_was_missing          TEXT,
+    tags                      TEXT[] NOT NULL DEFAULT '{}',
+    embedding                 vector(1536) NOT NULL,
+    updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Similarity search index (IVFFlat for < 100K records, HNSW for larger)
+-- Vector index (IVFFlat for < 100K records, HNSW for larger)
 CREATE INDEX idx_incident_memory_embedding
-    ON incident_memory USING ivfflat (embedding vector_cosine_ops)
-    WITH (lists = 50);
+    ON incident_memory USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 
--- Structured query indexes
-CREATE INDEX idx_incident_memory_services ON incident_memory USING GIN (services);
-CREATE INDEX idx_incident_memory_severity ON incident_memory (severity);
-CREATE INDEX idx_incident_memory_root_cause ON incident_memory (root_cause_cat);
-CREATE INDEX idx_incident_memory_created ON incident_memory (created_at DESC);
+-- Structured filter indexes
+CREATE INDEX idx_incident_memory_services_affected ON incident_memory USING gin(services_affected);
+CREATE INDEX idx_incident_memory_tags              ON incident_memory USING gin(tags);
+CREATE INDEX idx_incident_memory_error_signatures  ON incident_memory USING gin(error_signatures);
+CREATE INDEX idx_incident_memory_created_at        ON incident_memory(created_at DESC);
+CREATE INDEX idx_incident_memory_severity          ON incident_memory(severity);
 ```
+
+**Design notes:**
+- Fields are nullable where the spec originally required NOT NULL — pragmatic choice for real-world data where extraction may be partial.
+- `resolution_steps` stored as `TEXT[]` (not JSONB) — simpler for pgvector queries. The original spec proposed JSONB.
+- IVFFlat lists bumped from 50 → 100 for better recall at moderate scale.
+- Added GIN indexes on `tags` and `error_signatures` (beyond original spec) for richer structured filtering.
 
 ---
 
@@ -166,93 +186,53 @@ CREATE INDEX idx_incident_memory_created ON incident_memory (created_at DESC);
 
 When an incident is resolved, the capture pipeline runs automatically.
 
-### 4.1 Trigger
+### 4.1 Implementation (`src/memory/capture.py`)
+
+**IncidentCapture** orchestrates three steps:
+
+1. **Extract** — Send raw incident payload to Claude with a structured extraction prompt
+2. **Embed** — Generate vector embedding of the incident narrative via OpenAI embeddings API
+3. **Store** — Persist the `IncidentRecord` + embedding to pgvector
 
 ```python
-# Hook into incident state change
-@event_handler("incident.resolved")
-async def on_incident_resolved(incident_id: str):
-    await incident_capture.capture(incident_id)
+class IncidentCapture:
+    async def capture(self, incident_payload: dict) -> IncidentRecord:
+        """Full capture pipeline: extract → embed → store."""
+        fields = await self._extract(incident_payload)
+        narrative = self._build_narrative(fields)
+        embedding = await self._embed(narrative)
+        record = IncidentRecord(id=str(uuid.uuid4()), embedding=embedding, **fields)
+        return await self.store.store(record)
 ```
 
-### 4.2 Extraction (Claude-powered)
+### 4.2 Claude Extraction Prompt
 
-The raw incident data (timeline, logs, metrics, chat messages, postmortem if available) is sent to Claude with a structured extraction prompt:
+The capture prompt instructs Claude to return structured JSON matching the `IncidentRecord` schema. Key rules:
+- Use `null` when unknown
+- Keep summaries concise and factual
+- No extra keys
 
-```python
-CAPTURE_PROMPT = """
-You are analyzing a resolved incident to extract structured knowledge for future reference.
-
-Given the incident timeline, logs, metrics, and resolution notes below, extract:
-
-1. **root_cause_category**: one of [deploy, config, capacity, dependency, network, code_bug, external, unknown]
-2. **root_cause_summary**: 1-2 sentences explaining what went wrong
-3. **error_signatures**: list of normalized error patterns (strip timestamps/IDs, keep the pattern)
-4. **metric_anomalies**: which metrics deviated and how (e.g., "p99 latency > 2s for payment-service")
-5. **resolution_steps**: ordered list of actions the team took to fix it
-6. **resolution_summary**: 1-2 sentence summary of the fix
-7. **time_to_diagnose_minutes**: estimated time from alert to root cause identification
-8. **time_to_fix_minutes**: estimated time from root cause ID to resolution
-9. **was_rollback**: did the fix involve reverting a deploy?
-10. **what_helped**: what context, tool, or data was most useful during triage?
-11. **what_was_missing**: what would have sped things up but wasn't available?
-12. **tags**: 3-5 freeform tags
-
-Also generate a **narrative summary** (3-5 sentences) that combines the incident context,
-root cause, and resolution into a coherent story. This will be embedded for similarity search.
-
-Respond as JSON.
-"""
-```
+**Model:** Configurable via `capture_model` (default: `claude-3-haiku-20240307` for speed/cost).
 
 ### 4.3 Embedding
 
-The narrative summary is embedded using an embedding model:
-
 ```python
-async def embed_narrative(self, narrative: str) -> list[float]:
-    """Generate vector embedding of incident narrative."""
-    # Primary: OpenAI text-embedding-3-small (1536 dims, cheap, fast)
-    # Fallback: local sentence-transformers if no API key
-    response = await self.embedding_client.embeddings.create(
-        model="text-embedding-3-small",
-        input=narrative,
-    )
-    return response.data[0].embedding
+async def _embed(self, text: str) -> list[float]:
+    """Generate embedding via OpenAI API."""
+    # Default: text-embedding-3-small (1536 dims, $0.02/1M tokens)
+    # Configurable via embedding_model setting
 ```
 
-**Embedding model choice:**
-- **OpenAI text-embedding-3-small** — $0.02/1M tokens, 1536 dims, excellent quality. Default.
-- **Local fallback** — sentence-transformers `all-MiniLM-L6-v2` (384 dims) for air-gapped deployments. Adjust `vector(1536)` → `vector(384)` in schema.
-- **Config-driven** — customers choose based on their security/cost requirements.
+**Embedding model options:**
+| Model | Dims | Cost | Use Case |
+|-------|------|------|----------|
+| `text-embedding-3-small` (default) | 1536 | $0.02/1M tokens | Production |
+| `text-embedding-3-large` | 3072 | $0.13/1M tokens | High-precision |
+| Local `all-MiniLM-L6-v2` | 384 | Free | Air-gapped deployments |
 
-### 4.4 Storage
+### 4.4 Upsert Semantics
 
-```python
-async def store(self, record: IncidentRecord) -> None:
-    """Persist incident record with embedding to pgvector."""
-    await self.db.execute(
-        """
-        INSERT INTO incident_memory (
-            id, title, created_at, resolved_at, duration_min,
-            severity, services, root_cause_cat, root_cause,
-            error_sigs, metric_anomalies, deploy_involved, deploy_sha,
-            resolution_steps, resolution, ttd_min, ttf_min,
-            was_rollback, runbook_used,
-            what_helped, what_missing, tags, embedding
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-                  $11, $12, $13, $14, $15, $16, $17, $18, $19,
-                  $20, $21, $22, $23)
-        ON CONFLICT (id) DO UPDATE SET
-            root_cause = EXCLUDED.root_cause,
-            resolution = EXCLUDED.resolution,
-            resolution_steps = EXCLUDED.resolution_steps,
-            embedding = EXCLUDED.embedding,
-            captured_at = NOW()
-        """,
-        record.values()
-    )
-```
+Store uses `ON CONFLICT (id) DO UPDATE` — re-capturing an incident (e.g., after postmortem is added) updates the record and re-embeds the narrative.
 
 ---
 
@@ -260,92 +240,100 @@ async def store(self, record: IncidentRecord) -> None:
 
 When a new alert fires, the recall pipeline finds relevant past incidents.
 
-### 5.1 Query Construction
-
-The current alert context is used to build both a semantic query and structured filters:
+### 5.1 Query Model (`src/memory/recall.py`)
 
 ```python
 class RecallQuery(BaseModel):
-    """Query for finding similar past incidents."""
-
-    # Semantic (embedding similarity)
-    narrative: str              # natural language description of current alert
-    embedding: list[float]      # embedded version of the narrative
-
-    # Structured filters (narrow the search space)
-    services: list[str]         # affected services
-    severity_min: str | None    # minimum severity to consider
-    time_window_days: int = 90  # how far back to look
-
-    # Tuning
-    top_k: int = 5              # max results
-    min_similarity: float = 0.7 # cosine similarity threshold
+    narrative: str                          # natural language description of current alert
+    services: list[str] = []               # affected services (for structured boost)
+    severity: str | None = None            # current alert severity
+    start_time: datetime | None = None     # time window start
+    end_time: datetime | None = None       # time window end
+    lookback_days: int | None = None       # alternative to start/end
+    limit: int = 5                         # max results (1-50)
+    candidate_limit: int | None = None     # broader initial fetch for reranking (1-200)
+    min_similarity: float | None = None    # override config threshold
+    rerank_with_claude: bool | None = None # override config rerank setting
+    embedding: list[float] = []            # filled by recall service before store call
 ```
 
-### 5.2 Hybrid Search (semantic + structured)
+### 5.2 Hybrid Search (Semantic + Structured)
+
+The recall pipeline uses a two-stage approach:
+
+1. **Vector search** — pgvector cosine similarity on the embedded narrative
+2. **Structured boost** — service overlap and severity match add to the score
+3. **Temporal decay** — exponential decay based on incident age (half-life: 30 days configurable)
 
 ```python
-async def recall(self, query: RecallQuery) -> list[RecalledIncident]:
-    """Find similar past incidents using hybrid search."""
-
-    results = await self.db.fetch(
-        """
-        SELECT
-            id, title, severity, services, root_cause_cat, root_cause,
-            resolution, resolution_steps, duration_min, ttd_min, ttf_min,
-            was_rollback, tags, created_at,
-            1 - (embedding <=> $1::vector) AS similarity
-        FROM incident_memory
-        WHERE
-            created_at > NOW() - INTERVAL '$2 days'
-            AND ($3::text[] IS NULL OR services && $3)  -- overlap filter
-        ORDER BY embedding <=> $1::vector
-        LIMIT $4
-        """,
-        query.embedding,
-        query.time_window_days,
-        query.services or None,
-        query.top_k,
-    )
-
-    return [
-        RecalledIncident(**row)
-        for row in results
-        if row["similarity"] >= query.min_similarity
-    ]
+# Composite scoring
+final_score = (vector_similarity * temporal_decay) + service_boost + severity_boost
 ```
 
-### 5.3 Re-ranking
+Config parameters (from `IncidentMemoryConfig`):
+- `recall_min_similarity: 0.15` — low threshold to cast a wide net before reranking
+- `recall_temporal_half_life_days: 30` — recent incidents weighted higher
+- `recall_service_boost: 0.08` — bonus for matching affected services
+- `recall_severity_boost: 0.05` — bonus for matching severity level
 
-After initial retrieval, optionally re-rank using Claude for relevance:
+### 5.3 Optional Claude Re-ranking
 
-```python
-RERANK_PROMPT = """
-Given this current alert:
-{current_context}
+For high-severity incidents (configurable via `recall_rerank_severity_threshold`), Claude re-ranks the initial candidates by practical relevance:
 
-And these past incidents:
-{candidates}
-
-Rank them by relevance to the current situation. Consider:
-- Same services/infrastructure involved?
-- Similar error patterns?
-- Similar timing (time of day, day of week)?
-- Similar recent deploys or config changes?
-
-Return the incident IDs in order of relevance, with a brief explanation of why each is relevant.
-"""
+```
+Consider: same symptoms, same services, successful fast resolution, high confidence root cause.
+Return ranked IDs as JSON.
 ```
 
-This is optional and only triggered when:
-- Initial retrieval returns > 3 results above threshold
-- The incident is severity `critical` or `high` (worth the extra API call)
+- Only triggered when `recall_enable_rerank: true` (default) and severity ≥ threshold
+- Uses `claude-3-haiku-20240307` for speed (configurable via `recall_rerank_model`)
 
 ---
 
-## 6) Integration with ContextOrchestrator
+## 6) Configuration
 
-### 6.1 Where It Plugs In
+All configuration via environment variables with `INCIDENT_MEMORY_` prefix. Defined in `src/memory/config.py`:
+
+```python
+class IncidentMemoryConfig(BaseSettings):
+    enabled: bool = True
+
+    # Storage
+    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/incident_copilot"
+    table_name: str = "incident_memory"
+
+    # Embeddings
+    embedding_model: str = "text-embedding-3-small"
+    embedding_dimensions: int = 1536
+
+    # Capture pipeline
+    capture_model: str = "claude-3-haiku-20240307"
+    capture_max_tokens: int = 1200
+    capture_temperature: float = 0.0
+
+    # Recall pipeline
+    recall_default_limit: int = 5
+    recall_candidate_limit: int = 50
+    recall_min_similarity: float = 0.15
+    recall_temporal_half_life_days: int = 30
+    recall_service_boost: float = 0.08
+    recall_severity_boost: float = 0.05
+
+    # Claude reranking
+    recall_enable_rerank: bool = True
+    recall_rerank_model: str = "claude-3-haiku-20240307"
+    recall_rerank_max_tokens: int = 800
+    recall_rerank_severity_threshold: str = "high"
+
+    # Index tuning
+    ivfflat_lists: int = 100
+```
+
+---
+
+## 7) Integration with ContextOrchestrator (Phase 2)
+
+### 7.1 Where It Plugs In
 
 The `ContextOrchestrator` currently assembles: alerts → logs → metrics → deploys → AI summary.
 
@@ -360,62 +348,46 @@ class ContextOrchestrator:
         deploys = await self.fetch_deploys(alert)
 
         # NEW: Recall similar past incidents
+        narrative = self._build_narrative(alert, logs, metrics, deploys)
         similar = await self.incident_memory.recall(
-            RecallQuery(
-                narrative=self._build_narrative(alert, logs, metrics, deploys),
-                embedding=await self.embed(narrative),
-                services=alert.affected_services,
-            )
+            RecallQuery(narrative=narrative, services=alert.affected_services)
         )
 
         # AI summary now includes past incident context
         summary = await self.ai_summarize(
-            alert=alert,
-            logs=logs,
-            metrics=metrics,
-            deploys=deploys,
-            similar_incidents=similar,  # NEW
+            alert=alert, logs=logs, metrics=metrics,
+            deploys=deploys, similar_incidents=similar,
         )
 
         return IncidentContext(
-            alert=alert,
-            logs=logs,
-            metrics=metrics,
-            deploys=deploys,
-            similar_incidents=similar,  # NEW
-            summary=summary,
+            alert=alert, logs=logs, metrics=metrics,
+            deploys=deploys, similar_incidents=similar, summary=summary,
         )
 ```
 
-### 6.2 AI Summary Prompt Enhancement
+### 7.2 AI Summary Prompt Enhancement
 
-```python
-SUMMARY_PROMPT_WITH_MEMORY = """
-{existing_prompt}
-
+```
 ## Similar Past Incidents
 
-The following past incidents were found to be similar to the current alert:
-
 {% for incident in similar_incidents %}
-### {{ incident.title }} ({{ incident.created_at.strftime('%Y-%m-%d') }}, {{ incident.severity }})
-- **Root cause:** {{ incident.root_cause }}
-- **Resolution:** {{ incident.resolution }}
-- **Time to resolve:** {{ incident.duration_min }} minutes
-- **Similarity:** {{ "%.0f"|format(incident.similarity * 100) }}%
+### {{ incident.title }} ({{ incident.created_at | date }}, {{ incident.severity }})
+- **Root cause:** {{ incident.root_cause_summary }}
+- **Resolution:** {{ incident.resolution_summary }}
+- **Time to resolve:** {{ incident.duration_minutes }} minutes
+- **Similarity:** {{ incident.score | percent }}
 {% if incident.was_rollback %}- ⚠️ Required rollback{% endif %}
 {% endfor %}
 
 Based on these similar incidents, assess:
-1. Is this likely the same root cause as a past incident? If so, which one and why?
-2. What resolution steps should be tried first, based on what worked before?
-3. What's different about this occurrence that might require a different approach?
-"""
+1. Is this likely the same root cause? If so, which one and why?
+2. What resolution steps should be tried first?
+3. What's different that might require a different approach?
 ```
 
-### 6.3 Output to Slack / Web UI
+### 7.3 Output to Slack / Web UI
 
-The context card and copilot thread gain a new section:
+The context card gains a new section:
 
 ```
 🧠 Similar Past Incidents
@@ -425,20 +397,14 @@ The context card and copilot thread gain a new section:
    Fixed by: Rolling back Redis config, then deploying corrected values
    Resolved in: 47 min
 
-2. INC-31 (Dec 28, medium) — 78% match
-   Root cause: Connection pool exhaustion after traffic spike
-   Fixed by: Increasing pool size from 20→50, adding circuit breaker
-   Resolved in: 23 min
-
 💡 Suggested first action: Check if a recent deploy changed Redis configuration
-   (based on INC-47 resolution)
 ```
 
 ---
 
-## 7) Conversational Integration
+## 8) Conversational Integration (Phase 2)
 
-The Copilot conversational bot (per conversational-bot-spec.md) gains a new tool:
+The Copilot conversational bot gains a new tool:
 
 ```python
 MEMORY_TOOL = {
@@ -460,9 +426,9 @@ Engineers can ask:
 
 ---
 
-## 8) Feedback Loop (Active Learning)
+## 9) Feedback Loop & Active Learning (Phase 3)
 
-### 8.1 Resolution Feedback
+### 9.1 Resolution Feedback
 
 After the engineer resolves an incident with Memory suggestions:
 
@@ -473,99 +439,71 @@ Was the suggested resolution helpful?
   📝 Partially          → capture what was different
 ```
 
-### 8.2 Embedding Refinement
+### 9.2 Refinement Over Time
 
-Over time, feedback signals can be used to:
-- Fine-tune the embedding model (if using a local model)
+Feedback signals can be used to:
 - Adjust similarity thresholds per service/category
-- Weight recent incidents higher (temporal decay)
-
-```python
-# Temporal decay: recent incidents get a similarity boost
-def apply_temporal_decay(similarity: float, days_ago: int) -> float:
-    """Recent incidents are more relevant."""
-    decay = 0.95 ** (days_ago / 30)  # ~5% decay per month
-    return similarity * decay
-```
+- Weight recent incidents higher (temporal decay already built into Phase 1)
+- Build a "Memory Stats" dashboard (total records, avg similarity, hit rate)
 
 ---
 
-## 9) Privacy & Security
+## 10) Privacy & Security
 
 | Concern | Mitigation |
 |---------|-----------|
-| Incident data contains sensitive info | All data stays in customer's own Postgres (self-hosted). No data leaves the deployment. |
-| Embedding API sends text externally | Offer local embedding model option (sentence-transformers). Config flag: `EMBEDDING_PROVIDER=local\|openai` |
-| Access control | Incident Memory respects existing RBAC. Users only see incidents from services they have access to. |
-| Data retention | Configurable retention period. Default: 365 days. `INCIDENT_MEMORY_RETENTION_DAYS=365` |
-| PII in incident narratives | Capture prompt instructs Claude to strip PII (names, IPs, credentials) from narratives before embedding. |
-
----
-
-## 10) Configuration
-
-```python
-class IncidentMemoryConfig(BaseModel):
-    """Configuration for Incident Memory feature."""
-
-    enabled: bool = True
-    embedding_provider: str = "openai"         # openai | local
-    embedding_model: str = "text-embedding-3-small"
-    embedding_dimensions: int = 1536
-    similarity_threshold: float = 0.70
-    max_recall_results: int = 5
-    time_window_days: int = 90
-    retention_days: int = 365
-    rerank_enabled: bool = False               # Claude re-ranking (costs extra)
-    rerank_min_severity: str = "high"          # only re-rank for high/critical
-    auto_capture: bool = True                  # capture on incident resolve
-    temporal_decay: bool = True                # weight recent incidents higher
-    feedback_enabled: bool = True              # resolution feedback loop
-```
+| Incident data contains sensitive info | All data stays in customer's own Postgres. No data leaves the deployment. |
+| Embedding API sends text externally | Offer local embedding model option. Config: `INCIDENT_MEMORY_EMBEDDING_MODEL` |
+| Access control | Respects existing RBAC. Users only see incidents from services they have access to. |
+| Data retention | Configurable. Default: 365 days. |
+| PII in narratives | Capture prompt instructs Claude to strip PII before embedding. |
 
 ---
 
 ## 11) Implementation Plan
 
-### Phase 1 — Core Memory (1-2 weeks)
-- [ ] pgvector extension + schema migration
-- [ ] `IncidentMemoryStore` — CRUD + vector search
-- [ ] `IncidentCapture` — Claude extraction + embedding on resolve
-- [ ] `IncidentRecall` — hybrid search (embedding + structured filters)
-- [ ] Unit tests + integration tests with test Postgres
-- [ ] Config model + feature flag
+### Phase 1 — Core Memory ✅ COMPLETE
+- [x] pgvector extension + schema migration (`supabase/migrations/20260213000002_incident_memory_phase1.sql`)
+- [x] `IncidentMemoryStore` — CRUD + vector search (`src/memory/store.py`, 278 lines)
+- [x] `IncidentCapture` — Claude extraction + embedding (`src/memory/capture.py`, 269 lines)
+- [x] `IncidentRecall` — hybrid search + Claude reranking (`src/memory/recall.py`, 211 lines)
+- [x] Config model + feature flags (`src/memory/config.py`, 57 lines)
+- [x] Data models (`src/memory/models.py`, 42 lines)
+- [x] Unit tests (`tests/test_incident_memory.py`, 273 lines)
+- **Total: 1,202 lines across 8 files**
 
-### Phase 2 — ContextOrchestrator Integration (1 week)
+### Phase 2 — ContextOrchestrator Integration
 - [ ] Wire `IncidentRecall` into `ContextOrchestrator.build_context()`
 - [ ] Enhance AI summary prompt with past incident context
 - [ ] Add "Similar Past Incidents" section to Slack/Web context cards
 - [ ] Add `search_past_incidents` tool to conversational bot
+- [ ] API endpoint: `GET /api/memory/recall` for direct queries
 
-### Phase 3 — Feedback & Refinement (1 week)
+### Phase 3 — Feedback & Refinement
 - [ ] Resolution feedback UI (Slack interactive message + Web UI)
 - [ ] Feedback storage + similarity weight adjustment
-- [ ] Temporal decay scoring
-- [ ] Dashboard: "Incident Memory Stats" (total records, avg similarity, feedback scores)
+- [ ] Dashboard: "Incident Memory Stats" (total records, avg similarity, hit rate)
 
-### Phase 4 — Advanced (future)
-- [ ] Local embedding model support (sentence-transformers)
-- [ ] Cross-service correlation ("when service A has this issue, service B usually follows")
+### Phase 4 — Advanced
+- [ ] Local embedding model support (sentence-transformers for air-gapped)
+- [ ] Cross-service correlation ("when A fails, B usually follows")
 - [ ] Auto-generated runbooks from recurring resolution patterns
-- [ ] "Incident Memory Health" alerts (e.g., "3 incidents this week with no similar matches — your memory may need seeding")
+- [ ] Memory health alerts ("3 incidents with no similar matches — memory may need seeding")
+- [ ] Cold start: import from existing postmortems / Jira tickets
 
 ---
 
 ## 12) Metrics & Observability
 
 ```python
-# Prometheus metrics for Incident Memory
+# Prometheus metrics
 incident_memory_records_total      # gauge: total records in memory
-incident_memory_capture_seconds    # histogram: time to capture an incident
-incident_memory_recall_seconds     # histogram: time to recall similar incidents
-incident_memory_recall_results     # histogram: number of results returned per query
-incident_memory_similarity_scores  # histogram: distribution of similarity scores
-incident_memory_feedback_total     # counter: feedback responses (label: helpful/not/partial)
-incident_memory_recall_hit_rate    # gauge: % of alerts that found at least one similar incident
+incident_memory_capture_seconds    # histogram: capture pipeline latency
+incident_memory_recall_seconds     # histogram: recall pipeline latency
+incident_memory_recall_results     # histogram: results per query
+incident_memory_similarity_scores  # histogram: similarity score distribution
+incident_memory_feedback_total     # counter: feedback responses by type
+incident_memory_recall_hit_rate    # gauge: % of alerts with ≥1 similar match
 ```
 
 ---
@@ -574,27 +512,22 @@ incident_memory_recall_hit_rate    # gauge: % of alerts that found at least one 
 
 > **"Gets smarter with every incident your team resolves."**
 
-This is the one-liner. It's true, it's measurable, and it directly counters the "dumb static tool" perception.
-
 Supporting claims:
 - *"Incident #47 took 47 minutes. Incident #63 — same root cause — took 12 minutes, because Incident Copilot remembered."*
 - *"Your team's tribal knowledge, captured and searchable. No more 'ask Sarah, she fixed this last time.'"*
-- *"Every resolved incident makes the next one faster. That's compounding returns on your incident response investment."*
+- *"Every resolved incident makes the next one faster. Compounding returns on your incident response investment."*
 
 ---
 
 ## 14) Open Questions
 
-1. **Embedding model cost at scale** — At ~$0.02/1M tokens, a 500-word narrative costs ~$0.00001 to embed. Even 10,000 incidents/year is negligible. But should we default to local for self-hosted?
+1. **Cold start** — New deployments have empty memory. Options: import from postmortems/Jira, seed from runbooks, or graceful degradation ("No similar incidents found yet").
 
-2. **Cold start** — New deployments have empty memory. Options:
-   - Import from existing postmortems/Jira tickets
-   - Seed with synthetic incidents from runbooks
-   - Graceful degradation: "No similar incidents found yet. Memory builds automatically as incidents are resolved."
+2. **Multi-tenant** — Each customer's memory must be strictly isolated. Enforce `org_id` column + row-level security.
 
-3. **Multi-tenant** — Each customer's memory must be strictly isolated. Enforce `org_id` column and row-level security.
+3. **Embedding model upgrades** — When better models ship, re-embed everything via batch job (embeddings from different models aren't comparable).
 
-4. **Embedding model upgrades** — When a better model comes out, do we re-embed everything? Probably yes (batch job), since embeddings from different models aren't comparable.
+4. **HNSW vs IVFFlat** — Current migration uses IVFFlat (lists=100). For >100K records, migrate to HNSW for better recall. Phase 4 consideration.
 
 ---
 
