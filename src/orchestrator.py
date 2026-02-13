@@ -19,6 +19,8 @@ from .integrations import (
     SlackAdapter,
 )
 from .integrations.oncall_legacy import OnCallAdapter
+from .memory import IncidentMemoryConfig, IncidentMemoryStore, IncidentRecall, RecallQuery
+from .memory.models import IncidentRecallResult
 from .metrics.latency_tracker import LatencyTracker, Phase
 from .models import (
     ContextCard,
@@ -26,6 +28,7 @@ from .models import (
     GitHubContext,
     GitLabContext,
     OnCallRoster,
+    PastIncident,
     PagerDutyIncident,
     RunbookLink,
     TopologyContext,
@@ -67,6 +70,24 @@ class ContextOrchestrator:
 
         # Similarity search for past incidents
         self.similarity_search = SimilaritySearch(settings)
+        self.memory_config = IncidentMemoryConfig.from_settings(settings)
+        self.memory_store: IncidentMemoryStore | None = None
+        self.incident_recall: IncidentRecall | None = None
+        if self.memory_config.enabled:
+            try:
+                self.memory_store = IncidentMemoryStore(
+                    database_url=self.memory_config.database_url,
+                    config=self.memory_config,
+                )
+                self.incident_recall = IncidentRecall(
+                    settings=settings,
+                    store=self.memory_store,
+                    config=self.memory_config,
+                )
+            except Exception as e:
+                logger.warning("incident_memory_init_failed", error=str(e))
+                self.memory_store = None
+                self.incident_recall = None
 
         # Determine SCM provider based on configuration
         # Prefer GitHub if configured, fall back to GitLab
@@ -220,6 +241,26 @@ class ContextOrchestrator:
 
         tracker.end(Phase.CONTEXT_FETCH_START)
 
+        # Find similar past incidents (Incident Memory recall first)
+        similar_incidents: list[PastIncident] = []
+        similar_from_memory = await self._recall_similar_incidents_from_memory(
+            incident=incident,
+            github_ctx=github_ctx,
+            gitlab_ctx=gitlab_ctx,
+            datadog_ctx=datadog_ctx,
+            errors=errors,
+        )
+        if similar_from_memory:
+            similar_incidents = similar_from_memory
+        else:
+            # Fallback to legacy similarity search when memory recall is unavailable
+            # or returns no relevant results.
+            similar_incidents = await self._fallback_similarity_search(
+                incident=incident,
+                datadog_ctx=datadog_ctx,
+                errors=errors,
+            )
+
         # AI summarization (if we have logs)
         ai_summary = None
         if datadog_ctx and datadog_ctx.logs:
@@ -229,6 +270,7 @@ class ContextOrchestrator:
                     self.summarizer.summarize(
                         datadog_ctx.logs,
                         incident.service_name,
+                        similar_incidents=similar_incidents,
                     ),
                     timeout=5.0,
                 )
@@ -311,37 +353,6 @@ class ContextOrchestrator:
             logger.error("verdict_generation_error", error=str(e))
             errors.append(f"Verdict: {str(e)}")
 
-        # Find similar past incidents
-        similar_incidents = []
-        try:
-            error_logs = None
-            if datadog_ctx and datadog_ctx.logs:
-                error_logs = [log.message for log in datadog_ctx.logs[:20]]
-
-            similar_incidents = await asyncio.wait_for(
-                self.similarity_search.store_and_search(
-                    incident_id=incident.incident_id,
-                    title=incident.title,
-                    service_name=incident.service_name,
-                    occurred_at=incident.triggered_at,
-                    description=incident.description,
-                    error_logs=error_logs,
-                    top_n=3,
-                ),
-                timeout=5.0,
-            )
-            logger.info(
-                "similar_incidents_found",
-                incident_id=incident.incident_id,
-                count=len(similar_incidents),
-            )
-        except TimeoutError:
-            logger.warning("similarity_search_timeout")
-            errors.append("Similarity search timed out")
-        except Exception as e:
-            logger.error("similarity_search_error", error=str(e))
-            errors.append(f"Similarity: {str(e)}")
-
         # Extract inline runbook steps from matched runbooks
         runbook_steps: list[str] = []
         if runbook_links:
@@ -415,6 +426,172 @@ class ContextOrchestrator:
         card.latency_report = latency_report
 
         return card
+
+    async def _recall_similar_incidents_from_memory(
+        self,
+        incident: PagerDutyIncident,
+        github_ctx: GitHubContext | None,
+        gitlab_ctx: GitLabContext | None,
+        datadog_ctx: DatadogContext | None,
+        errors: list[str],
+    ) -> list[PastIncident]:
+        """Recall similar incidents from Incident Memory."""
+        if not self.incident_recall:
+            return []
+
+        try:
+            recall_query = RecallQuery(
+                narrative=self._build_recall_narrative(
+                    incident=incident,
+                    github_ctx=github_ctx,
+                    gitlab_ctx=gitlab_ctx,
+                    datadog_ctx=datadog_ctx,
+                ),
+                services=[incident.service_name],
+                severity=incident.severity.value,
+                lookback_days=180,
+                limit=3,
+            )
+            recalled = await asyncio.wait_for(
+                self.incident_recall.recall(recall_query),
+                timeout=5.0,
+            )
+            similar_incidents = self._map_recall_results_to_past_incidents(recalled)
+            logger.info(
+                "incident_memory_recall_completed",
+                incident_id=incident.incident_id,
+                count=len(similar_incidents),
+            )
+            return similar_incidents
+        except TimeoutError:
+            logger.warning("incident_memory_recall_timeout")
+            errors.append("Incident memory recall timed out")
+            return []
+        except Exception as e:
+            logger.warning("incident_memory_recall_failed", error=str(e))
+            errors.append(f"Incident memory: {str(e)}")
+            return []
+
+    async def _fallback_similarity_search(
+        self,
+        incident: PagerDutyIncident,
+        datadog_ctx: DatadogContext | None,
+        errors: list[str],
+    ) -> list[PastIncident]:
+        """Fallback to legacy similarity search when memory recall misses."""
+        try:
+            error_logs = None
+            if datadog_ctx and datadog_ctx.logs:
+                error_logs = [log.message for log in datadog_ctx.logs[:20]]
+
+            similar_incidents = await asyncio.wait_for(
+                self.similarity_search.store_and_search(
+                    incident_id=incident.incident_id,
+                    title=incident.title,
+                    service_name=incident.service_name,
+                    occurred_at=incident.triggered_at,
+                    description=incident.description,
+                    error_logs=error_logs,
+                    top_n=3,
+                ),
+                timeout=5.0,
+            )
+            logger.info(
+                "similar_incidents_found",
+                incident_id=incident.incident_id,
+                count=len(similar_incidents),
+                source="similarity_search_fallback",
+            )
+            return similar_incidents
+        except TimeoutError:
+            logger.warning("similarity_search_timeout")
+            errors.append("Similarity search timed out")
+            return []
+        except Exception as e:
+            logger.error("similarity_search_error", error=str(e))
+            errors.append(f"Similarity: {str(e)}")
+            return []
+
+    def _build_recall_narrative(
+        self,
+        incident: PagerDutyIncident,
+        github_ctx: GitHubContext | None,
+        gitlab_ctx: GitLabContext | None,
+        datadog_ctx: DatadogContext | None,
+    ) -> str:
+        """Build recall narrative from current incident context."""
+        parts = [incident.title]
+        if incident.description:
+            parts.append(incident.description)
+        parts.append(f"service={incident.service_name}")
+        parts.append(f"severity={incident.severity.value}")
+
+        deploys = []
+        if github_ctx and github_ctx.recent_deploys:
+            deploys = github_ctx.recent_deploys
+        elif gitlab_ctx and gitlab_ctx.recent_deploys:
+            deploys = gitlab_ctx.recent_deploys
+        if deploys:
+            parts.append("recent_deploys:")
+            for deploy in deploys[:3]:
+                parts.append(
+                    f"- {deploy.short_sha} {deploy.author} {deploy.message[:120]}"
+                )
+
+        if datadog_ctx and datadog_ctx.logs:
+            parts.append("recent_error_logs:")
+            for log in datadog_ctx.logs[:20]:
+                if log.level.upper() in {"ERROR", "WARN"}:
+                    parts.append(f"- {log.level}: {log.message[:220]}")
+
+        if datadog_ctx and datadog_ctx.metrics:
+            metrics = datadog_ctx.metrics
+            if metrics.error_rate is not None:
+                parts.append(f"error_rate={metrics.error_rate}")
+            if metrics.latency_p99_ms is not None:
+                parts.append(f"latency_p99_ms={metrics.latency_p99_ms}")
+
+        return "\n".join(parts)
+
+    def _map_recall_results_to_past_incidents(
+        self, recalled: list[IncidentRecallResult]
+    ) -> list[PastIncident]:
+        """Map Incident Memory recall results to ContextCard past incidents."""
+        mapped: list[PastIncident] = []
+        for item in recalled[:3]:
+            record = item.record
+            service = (
+                record.services_affected[0]
+                if record.services_affected
+                else "unknown-service"
+            )
+            resolution = record.resolution_summary
+            if not resolution and record.resolution_steps:
+                resolution = "; ".join(record.resolution_steps[:3])
+
+            mapped.append(
+                PastIncident(
+                    incident_id=record.id,
+                    title=record.title,
+                    service=service,
+                    severity=record.severity,
+                    root_cause=record.root_cause_summary,
+                    resolution=resolution,
+                    occurred_at=record.created_at,
+                    resolved_at=record.resolved_at,
+                    similarity_score=self._normalize_similarity_percent(item.score),
+                )
+            )
+        return mapped
+
+    @staticmethod
+    def _normalize_similarity_percent(raw_score: float | None) -> float | None:
+        """Normalize similarity score to a display percent (0..100)."""
+        if raw_score is None:
+            return None
+        if raw_score <= 1.0:
+            return round(max(raw_score, 0.0) * 100, 1)
+        return round(min(raw_score, 100.0), 1)
 
     def _extract_runbook_steps(
         self, runbook_links: list[RunbookLink], service_name: str
