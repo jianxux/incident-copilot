@@ -351,6 +351,7 @@ class AICopilot:
         try:
             recall_query = RecallQuery(
                 narrative="\n".join(narrative_parts),
+                incident_id=incident_id,
                 services=services,
                 severity=severity,
                 lookback_days=180,
