@@ -226,7 +226,9 @@ class FeedbackStore:
 _feedback_store: FeedbackStore | None = None
 
 
-def get_feedback_store(database_path: str = "data/incident_memory_feedback.db") -> FeedbackStore:
+def get_feedback_store(
+    database_path: str = "data/incident_memory_feedback.db",
+) -> FeedbackStore:
     """Get singleton feedback store."""
     global _feedback_store
     if _feedback_store is None:

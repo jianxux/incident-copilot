@@ -84,7 +84,9 @@ def api_client(tmp_path, monkeypatch):
     app.include_router(stats_router)
 
     feedback_store = FeedbackStore(database_path=str(tmp_path / "feedback_api.db"))
-    monkeypatch.setattr("src.api.memory_feedback._feedback_store", lambda: feedback_store)
+    monkeypatch.setattr(
+        "src.api.memory_feedback._feedback_store", lambda: feedback_store
+    )
 
     class _FakeMemoryStore:
         def __init__(self, *args, **kwargs):

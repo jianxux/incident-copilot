@@ -133,14 +133,22 @@ class IncidentRecall:
 
             feedback_adjustment = 0.0
             if query.incident_id:
-                feedback_adjustment = await self.feedback_store.similarity_weight_adjustment(
-                    incident_id=query.incident_id,
-                    recalled_incident_id=item.record.id,
+                feedback_adjustment = (
+                    await self.feedback_store.similarity_weight_adjustment(
+                        incident_id=query.incident_id,
+                        recalled_incident_id=item.record.id,
+                    )
                 )
 
-            new_decay = decayed_similarity / item.vector_similarity if item.vector_similarity > 0 else 0.0
+            new_decay = (
+                decayed_similarity / item.vector_similarity
+                if item.vector_similarity > 0
+                else 0.0
+            )
             item.temporal_decay = round(new_decay, 6)
-            item.score = max(decayed_similarity + structured_boost + feedback_adjustment, 0.0)
+            item.score = max(
+                decayed_similarity + structured_boost + feedback_adjustment, 0.0
+            )
             refined.append(item)
 
         refined.sort(key=lambda result: result.score, reverse=True)
