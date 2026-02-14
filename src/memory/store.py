@@ -214,8 +214,8 @@ class IncidentMemoryStore:
         pool = await self._ensure_pool()
         return int(
             await pool.fetchval(
-                f"SELECT COUNT(*) FROM {self.config.table_name}"
-            )  # nosec B608
+                f"SELECT COUNT(*) FROM {self.config.table_name}"  # nosec B608
+            )
         )
 
     async def list_recent(self, limit: int = 10) -> list[IncidentRecord]:

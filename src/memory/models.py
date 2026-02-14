@@ -1,6 +1,7 @@
 """Data models for incident memory capture and recall."""
 
 from datetime import datetime
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
@@ -40,3 +41,49 @@ class IncidentRecallResult(BaseModel):
     score: float
     vector_similarity: float
     temporal_decay: float
+
+
+class ServiceCorrelation(BaseModel):
+    """Pairwise service co-failure correlation."""
+
+    service_a: str
+    service_b: str
+    co_occurrence_count: int = Field(ge=0)
+    avg_time_gap_minutes: float = Field(ge=0.0)
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class GeneratedRunbook(BaseModel):
+    """Auto-generated runbook synthesized from recurring incident patterns."""
+
+    id: str
+    title: str
+    trigger_conditions: list[str] = Field(default_factory=list)
+    steps: list[str] = Field(default_factory=list)
+    source_incident_ids: list[str] = Field(default_factory=list)
+    confidence: float = Field(ge=0.0, le=1.0)
+    root_cause_category: str | None = None
+    services_affected: list[str] = Field(default_factory=list)
+    last_updated: datetime = Field(default_factory=datetime.utcnow)
+
+
+class MemoryHealthStatus(StrEnum):
+    """Memory subsystem health status."""
+
+    HEALTHY = "healthy"
+    WARNING = "warning"
+    CRITICAL = "critical"
+
+
+class MemoryHealthReport(BaseModel):
+    """Health summary for incident memory quality and freshness."""
+
+    status: MemoryHealthStatus
+    total_records: int = Field(ge=0)
+    avg_similarity_score: float = Field(ge=0.0, le=1.0)
+    capture_success_rate: float = Field(ge=0.0, le=1.0)
+    zero_result_recall_rate: float = Field(ge=0.0, le=1.0)
+    stale_records: int = Field(ge=0)
+    days_since_last_capture: int | None = Field(default=None, ge=0)
+    alerts: list[str] = Field(default_factory=list)
+    generated_at: datetime = Field(default_factory=datetime.utcnow)
