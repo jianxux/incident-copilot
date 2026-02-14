@@ -8,9 +8,9 @@ from .demo import router as demo_router
 from .email import router as email_router
 from .health import router as health_router
 from .insights import router as insights_router
-from .metrics import router as metrics_router
 from .memory_feedback import router as memory_feedback_router
 from .memory_stats import router as memory_stats_router
+from .metrics import router as metrics_router
 from .onboarding import router as onboarding_router
 from .plugins import router as plugins_router
 from .runbooks import router as runbooks_router

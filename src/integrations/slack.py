@@ -422,7 +422,11 @@ class SlackAdapter:
                 recalled_incident_id = ""
 
         if not incident_id or not recalled_incident_id:
-            block_id = str(action.get("block_id") or payload.get("container", {}).get("block_id") or "")
+            block_id = str(
+                action.get("block_id")
+                or payload.get("container", {}).get("block_id")
+                or ""
+            )
             if block_id.startswith("memory_feedback:"):
                 parts = block_id.split(":", 2)
                 if len(parts) == 3:
