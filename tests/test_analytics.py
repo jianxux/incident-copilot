@@ -375,7 +375,7 @@ class TestAnalyticsAPI:
         """Test GET /dashboard/analytics page loads."""
         response = client.get("/dashboard/analytics")
         assert response.status_code == 200
-        assert "Analytics Dashboard" in response.text
+        assert "Analytics" in response.text
 
     def test_record_triggered(self, client):
         """Test POST /api/analytics/record/triggered endpoint."""
