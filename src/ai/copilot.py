@@ -11,7 +11,12 @@ from anthropic.types import MessageParam
 from pydantic import BaseModel
 
 from ..config import Settings
-from ..memory import IncidentMemoryConfig, IncidentMemoryStore, IncidentRecall, RecallQuery
+from ..memory import (
+    IncidentMemoryConfig,
+    IncidentMemoryStore,
+    IncidentRecall,
+    RecallQuery,
+)
 from ..memory.models import IncidentRecallResult
 from ..models import ContextCard, PastIncident
 
@@ -196,9 +201,7 @@ class AICopilot:
                     if past.similarity_score is not None
                     else "n/a"
                 )
-                line = (
-                    f"  - {past.title} ({past.occurred_at.date().isoformat()}, match={score})"
-                )
+                line = f"  - {past.title} ({past.occurred_at.date().isoformat()}, match={score})"
                 if past.severity:
                     line += f", severity={past.severity}"
                 parts.append(line)
@@ -341,7 +344,11 @@ class AICopilot:
             if context_card and context_card.service_name
             else []
         )
-        severity = context_card.severity.value if context_card and context_card.severity else None
+        severity = (
+            context_card.severity.value
+            if context_card and context_card.severity
+            else None
+        )
         narrative_parts = [query.strip() or f"investigation for {incident_id}"]
         if context_card:
             narrative_parts.append(context_card.title)
@@ -391,9 +398,7 @@ class AICopilot:
                 if incident.similarity_score is not None
                 else "n/a"
             )
-            line = (
-                f"- {incident.title} ({incident.occurred_at.date().isoformat()}, match={score})"
-            )
+            line = f"- {incident.title} ({incident.occurred_at.date().isoformat()}, match={score})"
             if incident.severity:
                 line += f", severity={incident.severity}"
             lines.append(line)
