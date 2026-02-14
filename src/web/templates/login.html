@@ -22,10 +22,9 @@
         </div>
         {% endif %}
 
-        <!-- OAuth Buttons -->
+        <!-- Google SSO -->
         <div class="space-y-3">
             {% if supabase_auth_enabled %}
-            <!-- Supabase Auth (preferred when enabled) -->
             <a href="/api/auth/supabase/oauth/google" class="w-full flex items-center justify-center px-4 py-3 border border-slate-200 rounded-lg hover:bg-white transition-colors group">
                 <svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -35,19 +34,7 @@
                 </svg>
                 Continue with Google
             </a>
-            <a href="/api/auth/supabase/oauth/github" class="w-full flex items-center justify-center px-4 py-3 border border-slate-200 rounded-lg hover:bg-white transition-colors">
-                <i class="fab fa-github text-xl mr-3"></i>
-                Continue with GitHub
-            </a>
             {% else %}
-            <!-- Native OAuth (when Supabase not enabled) -->
-            {% if 'github' in providers %}
-            <a href="/api/auth/oauth/github" class="w-full flex items-center justify-center px-4 py-3 border border-slate-200 rounded-lg hover:bg-white transition-colors">
-                <i class="fab fa-github text-xl mr-3"></i>
-                Continue with GitHub
-            </a>
-            {% endif %}
-            
             {% if 'google' in providers %}
             <a href="/api/auth/oauth/google" class="w-full flex items-center justify-center px-4 py-3 border border-slate-200 rounded-lg hover:bg-white transition-colors group">
                 <svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -62,48 +49,6 @@
             {% endif %}
         </div>
 
-        {% if providers %}
-        <div class="relative">
-            <div class="absolute inset-0 flex items-center">
-                <div class="w-full border-t border-slate-200"></div>
-            </div>
-            <div class="relative flex justify-center text-sm">
-                <span class="px-4 bg-slate-950 text-muted">Or continue with email</span>
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- Email/Password Form -->
-        <form id="login-form" class="space-y-6" method="POST">
-            <div>
-                <label for="email" class="block text-sm font-medium mb-2">Email address</label>
-                <input type="email" id="email" name="email" required
-                    class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="you@company.com">
-            </div>
-
-            <div>
-                <label for="password" class="block text-sm font-medium mb-2">Password</label>
-                <input type="password" id="password" name="password" required
-                    class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="••••••••">
-            </div>
-
-            <div class="flex items-center justify-between">
-                <div class="flex items-center">
-                    <input type="checkbox" id="remember" name="remember"
-                        class="h-4 w-4 bg-white border-slate-200 rounded text-blue-500 focus:ring-blue-500">
-                    <label for="remember" class="ml-2 text-sm text-muted">Remember me</label>
-                </div>
-                <a href="/forgot-password" class="text-sm text-blue-400 hover:text-blue-300">Forgot password?</a>
-            </div>
-
-            <button type="submit"
-                class="w-full py-3 px-4 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-all">
-                Sign in
-            </button>
-        </form>
-
         <p class="text-center text-muted">
             Don't have an account?
             <a href="/signup" class="text-blue-400 hover:text-blue-300 font-medium">Sign up free</a>
@@ -112,50 +57,16 @@
 </div>
 
 <script>
-document.getElementById('login-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const form = e.target;
-    const email = form.email.value;
-    const password = form.password.value;
-    
-    try {
-        const response = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            // Store tokens
-            localStorage.setItem('access_token', data.access_token);
-            localStorage.setItem('refresh_token', data.refresh_token);
-            localStorage.setItem('user', JSON.stringify(data.user));
-            localStorage.setItem('tenant', JSON.stringify(data.tenant));
-            
-            // Redirect to dashboard
-            window.location.href = '/dashboard';
-        } else {
-            alert(data.detail || 'Login failed');
-        }
-    } catch (err) {
-        alert('An error occurred. Please try again.');
-    }
-});
-
 // Check for OAuth callback tokens in URL hash
 if (window.location.hash) {
     const params = new URLSearchParams(window.location.hash.slice(1));
     const accessToken = params.get('access_token');
     const refreshToken = params.get('refresh_token');
-    
+
     if (accessToken && refreshToken) {
         localStorage.setItem('access_token', accessToken);
         localStorage.setItem('refresh_token', refreshToken);
-        
-        // Fetch user info
+
         fetch('/api/auth/me', {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         })
@@ -163,9 +74,9 @@ if (window.location.hash) {
         .then(data => {
             localStorage.setItem('user', JSON.stringify(data.user));
             localStorage.setItem('tenant', JSON.stringify(data.tenant));
-            
+
             const isNew = params.get('is_new') === 'true';
-            window.location.href = isNew ? '/dashboard/onboarding' : '/dashboard';
+            window.location.href = isNew ? '/dashboard/onboarding-wizard' : '/dashboard';
         });
     }
 }
