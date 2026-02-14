@@ -102,7 +102,9 @@ async def test_copilot_chat_uses_search_past_incidents_tool_for_relevant_questio
     fake_anthropic = MagicMock()
     fake_anthropic.messages = MagicMock()
     fake_anthropic.messages.create = AsyncMock(
-        return_value=MagicMock(content=[MagicMock(text="This looks like a repeat DB issue.")])
+        return_value=MagicMock(
+            content=[MagicMock(text="This looks like a repeat DB issue.")]
+        )
     )
     copilot.client = fake_anthropic
 
