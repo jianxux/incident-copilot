@@ -8,6 +8,7 @@ from .demo import router as demo_router
 from .email import router as email_router
 from .health import router as health_router
 from .insights import router as insights_router
+from .latency import router as latency_router
 from .memory_advanced import router as memory_advanced_router
 from .memory_feedback import router as memory_feedback_router
 from .memory_stats import router as memory_stats_router
@@ -34,4 +35,5 @@ __all__ = [
     "oncall_handoff_router",
     "onboarding_router",
     "memory_advanced_router",
+    "latency_router",
 ]
