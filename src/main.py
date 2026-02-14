@@ -11,16 +11,19 @@ from fastapi.staticfiles import StaticFiles
 
 from .api import (
     analytics_router,
+    correlation_router,
     demo_router,
     email_router,
     health_router,
     insights_router,
+    latency_router,
     memory_advanced_router,
     memory_feedback_router,
     memory_stats_router,
     metrics_router,
     onboarding_router,
     oncall_handoff_router,
+    plugins_router,
     postmortem_router,
     runbooks_router,
     webhooks_router,
@@ -154,8 +157,11 @@ def create_app() -> FastAPI:
     app.include_router(runbooks_router)
     app.include_router(demo_router)
     app.include_router(analytics_router)
+    app.include_router(correlation_router)
     app.include_router(insights_router)
+    app.include_router(latency_router)
     app.include_router(onboarding_router)
+    app.include_router(plugins_router)
     app.include_router(postmortem_router)
     app.include_router(audit_router)
     app.include_router(ratelimit_router)
