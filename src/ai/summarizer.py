@@ -6,11 +6,11 @@ import structlog
 from anthropic import AsyncAnthropic
 
 from ..config import Settings
-from ..models import AILogSummary, LogEntry
+from ..models import AILogSummary, LogEntry, PastIncident
 
 logger = structlog.get_logger()
 
-SUMMARIZE_PROMPT = """You are an expert SRE analyzing error logs during an incident. Given the following log entries, provide a concise analysis.
+SUMMARIZE_PROMPT = """You are an expert SRE analyzing error logs during an incident. Given the following log entries and relevant past incidents, provide a concise analysis.
 
 Service: {service_name}
 Time range: Last {time_range} minutes
@@ -19,6 +19,9 @@ Number of log entries: {log_count}
 Log entries (most recent first):
 {logs}
 
+Relevant similar past incidents:
+{similar_incidents}
+
 Analyze these logs and respond with a JSON object containing:
 - "top_issues": array of 3-5 short descriptions of the main error patterns (most frequent/severe first)
 - "explanation": a 1-2 sentence plain English explanation of what's happening
@@ -26,6 +29,7 @@ Analyze these logs and respond with a JSON object containing:
 - "suggested_actions": array of 2-3 concrete next steps to investigate/resolve
 
 Be concise and actionable. Focus on patterns, not individual log lines.
+If similar incidents are provided and relevant, reference what worked before in likely_cause/suggested_actions.
 
 Respond ONLY with the JSON object, no other text."""
 
@@ -43,7 +47,11 @@ class LogSummarizer:
         self.model = settings.ai_model
 
     async def summarize(
-        self, logs: list[LogEntry], service_name: str, time_range_minutes: int = 15
+        self,
+        logs: list[LogEntry],
+        service_name: str,
+        time_range_minutes: int = 15,
+        similar_incidents: list[PastIncident] | None = None,
     ) -> AILogSummary | None:
         """Summarize logs using Claude."""
         if not self.client:
@@ -65,6 +73,7 @@ class LogSummarizer:
                 time_range=time_range_minutes,
                 log_count=len(logs),
                 logs=log_text,
+                similar_incidents=self._format_similar_incidents(similar_incidents),
             )
 
             response = await self.client.messages.create(
@@ -102,4 +111,23 @@ class LogSummarizer:
             message = log.message[:300]  # Truncate long messages
             lines.append(f"[{timestamp}] {level} | {message}")
 
+        return "\n".join(lines)
+
+    def _format_similar_incidents(
+        self, similar_incidents: list[PastIncident] | None
+    ) -> str:
+        """Format similar incidents for prompt context."""
+        if not similar_incidents:
+            return "None found."
+
+        lines: list[str] = []
+        for inc in similar_incidents[:3]:
+            parts = [f"- {inc.title} ({inc.occurred_at.date().isoformat()})"]
+            if inc.severity:
+                parts.append(f"severity={inc.severity}")
+            if inc.root_cause:
+                parts.append(f"root_cause={inc.root_cause[:160]}")
+            if inc.resolution:
+                parts.append(f"resolution={inc.resolution[:200]}")
+            lines.append(", ".join(parts))
         return "\n".join(lines)
