@@ -3,7 +3,20 @@
 {% block title %}Onboarding | Incident Copilot{% endblock %}
 
 {% block content %}
-<style>#toast-container { display: none !important; }</style>
+<style>
+  #wizard-toast {
+    position: fixed; top: 1rem; right: 1rem; z-index: 9999;
+    max-width: 28rem; padding: 0.75rem 1rem; border-radius: 0.5rem;
+    font-size: 0.875rem; line-height: 1.25rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transition: opacity 0.3s, transform 0.3s;
+    opacity: 0; transform: translateY(-0.5rem); pointer-events: none;
+  }
+  #wizard-toast.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  #wizard-toast.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+  #wizard-toast.info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+  #toast-container { display: none !important; }
+</style>
 <div class="min-h-screen py-10 px-4 sm:px-6 lg:px-8">
   <div class="max-w-5xl mx-auto">
     <div class="flex items-start justify-between gap-6">
@@ -117,7 +130,17 @@
   </div>
 </div>
 
+<div id="wizard-toast"></div>
+
 <script>
+function showToast(message, type = 'info') {
+  const el = document.getElementById('wizard-toast');
+  el.textContent = message;
+  el.className = `${type} show`;
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.classList.remove('show'); }, 6000);
+}
+
 function getAccessToken() {
   return localStorage.getItem('access_token');
 }
@@ -140,10 +163,49 @@ function copyWebhook() {
   alert('Webhook URL copied');
 }
 
-function startOAuth(provider) {
-  // Redirect to integration OAuth start endpoints. These require auth.
-  if (provider === 'pagerduty') window.location.href = '/api/integrations/oauth/pagerduty/start';
-  if (provider === 'slack') window.location.href = '/api/integrations/oauth/slack/start';
+async function startOAuth(provider) {
+  // Use fetch with auth header to get the OAuth redirect URL, then navigate.
+  const endpoints = {
+    pagerduty: '/api/integrations/oauth/pagerduty/start',
+    slack: '/api/integrations/oauth/slack/start',
+  };
+  const url = endpoints[provider];
+  if (!url) return;
+
+  const token = getAccessToken();
+  if (!token) {
+    showToast('Please log in first to connect integrations.', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      const detail = body?.detail || `HTTP ${res.status}`;
+      if (res.status === 401) {
+        showToast('Session expired. Please log in again.', 'error');
+      } else if (res.status === 400) {
+        showToast(detail, 'error');
+      } else {
+        showToast(`Failed to start ${provider} setup: ${detail}`, 'error');
+      }
+      return;
+    }
+
+    const data = await res.json();
+    if (data.redirect_url) {
+      window.location.href = data.redirect_url;
+    }
+  } catch (err) {
+    showToast(`Connection error: ${err.message}`, 'error');
+  }
 }
 
 async function loadChecklist() {
@@ -252,8 +314,37 @@ async function runTestIncident() {
   }
 }
 
+// Show feedback from OAuth callback redirects
+function checkOAuthParams() {
+  const params = new URLSearchParams(window.location.search);
+  const errorMessages = {
+    denied: 'OAuth authorization was denied.',
+    invalid: 'Invalid OAuth callback (missing parameters).',
+    state: 'OAuth session expired. Please try again.',
+    token: 'Failed to exchange OAuth token. Please try again.',
+  };
+
+  if (params.get('pd') === 'connected') {
+    showToast('PagerDuty connected successfully!', 'info');
+  } else if (params.get('pd_error')) {
+    showToast(`PagerDuty: ${errorMessages[params.get('pd_error')] || 'Connection failed.'}`, 'error');
+  }
+
+  if (params.get('slack') === 'connected') {
+    showToast('Slack connected successfully!', 'info');
+  } else if (params.get('slack_error')) {
+    showToast(`Slack: ${errorMessages[params.get('slack_error')] || 'Connection failed.'}`, 'error');
+  }
+
+  // Clean URL params
+  if (params.toString()) {
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+}
+
 // Init
 (async () => {
+  checkOAuthParams();
   try {
     await loadStatus();
   } catch (e) {
