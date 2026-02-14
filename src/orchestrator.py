@@ -19,7 +19,12 @@ from .integrations import (
     SlackAdapter,
 )
 from .integrations.oncall_legacy import OnCallAdapter
-from .memory import IncidentMemoryConfig, IncidentMemoryStore, IncidentRecall, RecallQuery
+from .memory import (
+    IncidentMemoryConfig,
+    IncidentMemoryStore,
+    IncidentRecall,
+    RecallQuery,
+)
 from .memory.models import IncidentRecallResult
 from .metrics.latency_tracker import LatencyTracker, Phase
 from .models import (
@@ -28,8 +33,8 @@ from .models import (
     GitHubContext,
     GitLabContext,
     OnCallRoster,
-    PastIncident,
     PagerDutyIncident,
+    PastIncident,
     RunbookLink,
     TopologyContext,
 )
