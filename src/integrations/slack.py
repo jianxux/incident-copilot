@@ -1,10 +1,13 @@
 """Slack integration adapter."""
 
+import json
+
 import structlog
 from slack_sdk.web.async_client import AsyncWebClient
 
 from ..config import Settings
 from ..copilot.thread_registry import thread_registry
+from ..memory.feedback import FeedbackStore, ResolutionFeedback
 from ..models import ContextCard
 
 logger = structlog.get_logger()
@@ -198,6 +201,7 @@ class SlackAdapter:
         # ─── 4. SIMILAR PAST INCIDENTS (the "aha" moment) ───
         if card.similar_incidents:
             sim_lines = ["*🔄 This looks familiar:*"]
+            feedback_targets: list[str] = []
             for inc in card.similar_incidents[:3]:
                 score = (
                     f" ({inc.similarity_score:.0f}% match)"
@@ -208,6 +212,7 @@ class SlackAdapter:
                 sim_lines.append(
                     f"• {severity}*{inc.title[:60]}*{score} — {inc.occurred_at.strftime('%b %d, %Y')}"
                 )
+                feedback_targets.append(inc.incident_id)
                 if inc.root_cause:
                     sim_lines.append(f"  _Root cause: {inc.root_cause[:80]}_")
                 if inc.resolution:
@@ -222,6 +227,13 @@ class SlackAdapter:
                     },
                 }
             )
+            for recalled_incident_id in feedback_targets:
+                blocks.append(
+                    self._feedback_actions_block(
+                        incident_id=card.incident_id,
+                        recalled_incident_id=recalled_incident_id,
+                    )
+                )
 
         # ─── 5. INLINE RUNBOOK STEPS ───
         if card.runbook_steps:
@@ -334,3 +346,104 @@ class SlackAdapter:
             )
 
         return blocks
+
+    def _feedback_actions_block(
+        self,
+        incident_id: str,
+        recalled_incident_id: str,
+    ) -> dict:
+        """Build feedback action buttons for one recalled incident."""
+        value = json.dumps(
+            {
+                "incident_id": incident_id,
+                "recalled_incident_id": recalled_incident_id,
+            }
+        )
+        return {
+            "type": "actions",
+            "block_id": f"memory_feedback:{incident_id}:{recalled_incident_id}",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "👍 Helpful", "emoji": True},
+                    "action_id": "memory_feedback_helpful",
+                    "value": value,
+                    "style": "primary",
+                },
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "👎 Not helpful",
+                        "emoji": True,
+                    },
+                    "action_id": "memory_feedback_not_helpful",
+                    "value": value,
+                    "style": "danger",
+                },
+                {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "📝 Partial", "emoji": True},
+                    "action_id": "memory_feedback_partial",
+                    "value": value,
+                },
+            ],
+        }
+
+    async def handle_feedback_interaction(
+        self,
+        payload: dict,
+        feedback_store: FeedbackStore,
+    ) -> bool:
+        """Parse Slack block action payload and persist incident memory feedback."""
+        actions = payload.get("actions") or []
+        if not actions:
+            return False
+
+        action = actions[0]
+        action_id = str(action.get("action_id") or "")
+        if not action_id.startswith("memory_feedback_"):
+            return False
+
+        feedback_value = action_id.replace("memory_feedback_", "", 1)
+        if feedback_value not in {"helpful", "not_helpful", "partial"}:
+            return False
+
+        value_raw = action.get("value")
+        incident_id = ""
+        recalled_incident_id = ""
+        if isinstance(value_raw, str) and value_raw:
+            try:
+                parsed = json.loads(value_raw)
+                incident_id = str(parsed.get("incident_id") or "")
+                recalled_incident_id = str(parsed.get("recalled_incident_id") or "")
+            except json.JSONDecodeError:
+                incident_id = ""
+                recalled_incident_id = ""
+
+        if not incident_id or not recalled_incident_id:
+            block_id = str(action.get("block_id") or payload.get("container", {}).get("block_id") or "")
+            if block_id.startswith("memory_feedback:"):
+                parts = block_id.split(":", 2)
+                if len(parts) == 3:
+                    incident_id = incident_id or parts[1]
+                    recalled_incident_id = recalled_incident_id or parts[2]
+
+        if not incident_id or not recalled_incident_id:
+            logger.warning("slack_memory_feedback_missing_ids")
+            return False
+
+        await feedback_store.submit(
+            ResolutionFeedback(
+                incident_id=incident_id,
+                recalled_incident_id=recalled_incident_id,
+                feedback=feedback_value,  # type: ignore[arg-type]
+            )
+        )
+        logger.info(
+            "slack_memory_feedback_stored",
+            incident_id=incident_id,
+            recalled_incident_id=recalled_incident_id,
+            feedback=feedback_value,
+        )
+        return True
