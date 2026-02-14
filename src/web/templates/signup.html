@@ -15,10 +15,9 @@
             <p class="mt-2 text-muted">Start your 14-day free trial. No credit card required.</p>
         </div>
 
-        <!-- OAuth Buttons -->
+        <!-- Google SSO -->
         <div class="space-y-3">
             {% if supabase_auth_enabled %}
-            <!-- Supabase Auth (preferred when enabled) -->
             <a href="/api/auth/supabase/oauth/google" class="w-full flex items-center justify-center px-4 py-3 border border-slate-200 rounded-lg hover:bg-white transition-colors group">
                 <svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -28,19 +27,7 @@
                 </svg>
                 Sign up with Google
             </a>
-            <a href="/api/auth/supabase/oauth/github" class="w-full flex items-center justify-center px-4 py-3 border border-slate-200 rounded-lg hover:bg-white transition-colors">
-                <i class="fab fa-github text-xl mr-3"></i>
-                Sign up with GitHub
-            </a>
             {% else %}
-            <!-- Native OAuth (when Supabase not enabled) -->
-            {% if 'github' in providers %}
-            <a href="/api/auth/oauth/github" class="w-full flex items-center justify-center px-4 py-3 border border-slate-200 rounded-lg hover:bg-white transition-colors">
-                <i class="fab fa-github text-xl mr-3"></i>
-                Sign up with GitHub
-            </a>
-            {% endif %}
-            
             {% if 'google' in providers %}
             <a href="/api/auth/oauth/google" class="w-full flex items-center justify-center px-4 py-3 border border-slate-200 rounded-lg hover:bg-white transition-colors group">
                 <svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -55,62 +42,10 @@
             {% endif %}
         </div>
 
-        {% if providers %}
-        <div class="relative">
-            <div class="absolute inset-0 flex items-center">
-                <div class="w-full border-t border-slate-200"></div>
-            </div>
-            <div class="relative flex justify-center text-sm">
-                <span class="px-4 bg-slate-950 text-muted">Or sign up with email</span>
-            </div>
+        <div class="text-center text-sm text-muted mt-4">
+            <p>By signing up, you agree to the <a href="/terms" class="text-blue-400 hover:underline">Terms of Service</a>
+            and <a href="/privacy" class="text-blue-400 hover:underline">Privacy Policy</a></p>
         </div>
-        {% endif %}
-
-        <!-- Email/Password Form -->
-        <form id="signup-form" class="space-y-6" method="POST">
-            <div>
-                <label for="name" class="block text-sm font-medium mb-2">Full name</label>
-                <input type="text" id="name" name="name" required
-                    class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Jane Doe">
-            </div>
-
-            <div>
-                <label for="email" class="block text-sm font-medium mb-2">Work email</label>
-                <input type="email" id="email" name="email" required
-                    class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="you@company.com">
-            </div>
-
-            <div>
-                <label for="company" class="block text-sm font-medium mb-2">Company name <span class="text-muted">(optional)</span></label>
-                <input type="text" id="company" name="company"
-                    class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Acme Inc">
-            </div>
-
-            <div>
-                <label for="password" class="block text-sm font-medium mb-2">Password</label>
-                <input type="password" id="password" name="password" required minlength="8"
-                    class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="••••••••">
-                <p class="mt-1 text-xs text-muted">Minimum 8 characters</p>
-            </div>
-
-            <div class="flex items-start">
-                <input type="checkbox" id="terms" name="terms" required
-                    class="h-4 w-4 mt-1 bg-white border-slate-200 rounded text-blue-500 focus:ring-blue-500">
-                <label for="terms" class="ml-2 text-sm text-muted">
-                    I agree to the <a href="/terms" class="text-blue-400 hover:underline">Terms of Service</a> 
-                    and <a href="/privacy" class="text-blue-400 hover:underline">Privacy Policy</a>
-                </label>
-            </div>
-
-            <button type="submit"
-                class="w-full py-3 px-4 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-all">
-                Create account
-            </button>
-        </form>
 
         <p class="text-center text-muted">
             Already have an account?
@@ -138,41 +73,26 @@
 </div>
 
 <script>
-document.getElementById('signup-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const form = e.target;
-    const data = {
-        name: form.name.value,
-        email: form.email.value,
-        company: form.company.value || null,
-        password: form.password.value,
-    };
-    
-    try {
-        const response = await fetch('/api/auth/signup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            // Store tokens
-            localStorage.setItem('access_token', result.access_token);
-            localStorage.setItem('refresh_token', result.refresh_token);
-            localStorage.setItem('user', JSON.stringify(result.user));
-            localStorage.setItem('tenant', JSON.stringify(result.tenant));
-            
-            // Redirect to onboarding
+// Check for OAuth callback tokens in URL hash
+if (window.location.hash) {
+    const params = new URLSearchParams(window.location.hash.slice(1));
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+
+    if (accessToken && refreshToken) {
+        localStorage.setItem('access_token', accessToken);
+        localStorage.setItem('refresh_token', refreshToken);
+
+        fetch('/api/auth/me', {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        })
+        .then(r => r.json())
+        .then(data => {
+            localStorage.setItem('user', JSON.stringify(data.user));
+            localStorage.setItem('tenant', JSON.stringify(data.tenant));
             window.location.href = '/dashboard/onboarding-wizard';
-        } else {
-            alert(result.detail || 'Signup failed');
-        }
-    } catch (err) {
-        alert('An error occurred. Please try again.');
+        });
     }
-});
+}
 </script>
 {% endblock %}

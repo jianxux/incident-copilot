@@ -60,9 +60,9 @@ async def list_providers():
     }
 
 
-@router.post("/signup")
+@router.post("/signup", deprecated=True)
 async def signup(request: SignupRequest):
-    """Create a new account with email/password."""
+    """Create a new account with email/password. DEPRECATED: Use Google SSO instead."""
     # Check if user exists
     existing = await auth_service.get_user_by_email(request.email)
     if existing:
@@ -115,9 +115,9 @@ async def signup(request: SignupRequest):
     )
 
 
-@router.post("/login")
+@router.post("/login", deprecated=True)
 async def login(request: LoginRequest, req: Request):
-    """Login with email/password."""
+    """Login with email/password. DEPRECATED: Use Google SSO instead."""
     user = await auth_service.verify_password(request.email, request.password)
 
     if not user:
