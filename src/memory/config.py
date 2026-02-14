@@ -36,8 +36,13 @@ class IncidentMemoryConfig(BaseSettings):
     recall_candidate_limit: int = Field(default=50)
     recall_min_similarity: float = Field(default=0.15)
     recall_temporal_half_life_days: int = Field(default=30)
+    recall_temporal_decay_rate: float = Field(default=0.95)
+    recall_temporal_decay_window_days: int = Field(default=30)
     recall_service_boost: float = Field(default=0.08)
     recall_severity_boost: float = Field(default=0.05)
+
+    # Feedback storage
+    feedback_database_path: str = Field(default="data/incident_memory_feedback.db")
 
     # Claude rerank for high-severity contexts
     recall_enable_rerank: bool = Field(default=True)
