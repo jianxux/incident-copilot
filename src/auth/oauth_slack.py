@@ -120,13 +120,18 @@ async def start_slack_oauth(
     auth: AuthContext = Depends(get_auth_context),
     return_to: str | None = Query(default=None),
 ):
-    """Start Slack OAuth for the current tenant."""
+    """Start Slack OAuth for the current tenant.
+
+    Supports two modes:
+    - Browser redirect (default): redirects to Slack authorize URL
+    - JSON (Accept: application/json): returns {"redirect_url": "..."} for SPA usage
+    """
     settings = get_settings()
     oauth = SlackOAuth()
     if not oauth.is_configured:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Slack OAuth is not configured (missing client id/secret)",
+            detail="Slack OAuth is not configured. Set SLACK_OAUTH_CLIENT_ID and SLACK_OAUTH_CLIENT_SECRET environment variables.",
         )
 
     state = secrets.token_urlsafe(32)
@@ -140,7 +145,14 @@ async def start_slack_oauth(
         "created_at": datetime.now(UTC).isoformat(),
     }
 
-    return RedirectResponse(url=oauth.get_authorization_url(state, redirect_uri))
+    authorize_url = oauth.get_authorization_url(state, redirect_uri)
+
+    # SPA mode: return JSON with the redirect URL so the frontend can navigate
+    accept = request.headers.get("accept", "")
+    if "application/json" in accept:
+        return {"redirect_url": authorize_url}
+
+    return RedirectResponse(url=authorize_url)
 
 
 @router.get("/callback")
