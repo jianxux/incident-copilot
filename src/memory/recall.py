@@ -12,7 +12,9 @@ from pydantic import BaseModel, Field
 
 from ..config import Settings
 from .config import IncidentMemoryConfig
+from .feedback import FeedbackStore, get_feedback_store
 from .models import IncidentRecallResult
+from .scoring import apply_temporal_decay
 from .store import IncidentMemoryStore
 
 logger = structlog.get_logger()
@@ -47,6 +49,7 @@ class RecallQuery(BaseModel):
     candidate_limit: int | None = Field(default=None, ge=1, le=200)
     min_similarity: float | None = Field(default=None, ge=-1.0, le=1.0)
     rerank_with_claude: bool | None = None
+    incident_id: str | None = None
 
     # Filled by recall service before store call
     embedding: list[float] = Field(default_factory=list)
@@ -61,6 +64,7 @@ class IncidentRecall:
         store: IncidentMemoryStore,
         config: IncidentMemoryConfig | None = None,
         anthropic_client: AsyncAnthropic | None = None,
+        feedback_store: FeedbackStore | None = None,
     ):
         self.settings = settings
         self.config = config or IncidentMemoryConfig.from_settings(settings)
@@ -69,6 +73,9 @@ class IncidentRecall:
             AsyncAnthropic(api_key=settings.anthropic_api_key)
             if settings.anthropic_api_key
             else None
+        )
+        self.feedback_store = feedback_store or get_feedback_store(
+            database_path=self.config.feedback_database_path
         )
         self._embed_client: httpx.AsyncClient | None = None
 
@@ -86,6 +93,7 @@ class IncidentRecall:
             query.start_time = datetime.utcnow() - timedelta(days=query.lookback_days)
 
         matches = await self.store.recall(query)
+        matches = await self._apply_temporal_decay_and_feedback(matches, query)
 
         if self._should_rerank(query):
             reranked = await self._rerank(query, matches)
@@ -93,6 +101,58 @@ class IncidentRecall:
                 return reranked
 
         return matches
+
+    async def _apply_temporal_decay_and_feedback(
+        self,
+        matches: list[IncidentRecallResult],
+        query: RecallQuery,
+    ) -> list[IncidentRecallResult]:
+        """Recompute temporal decay and apply feedback-based score refinement."""
+        now = datetime.utcnow()
+        refined: list[IncidentRecallResult] = []
+
+        for item in matches:
+            created_at = item.record.created_at
+            days_ago = 0
+            try:
+                delta = now - created_at.replace(tzinfo=None)
+                days_ago = max(int(delta.total_seconds() // 86400), 0)
+            except Exception:
+                days_ago = 0
+
+            decayed_similarity = apply_temporal_decay(
+                similarity=item.vector_similarity,
+                days_ago=days_ago,
+                decay_rate=self.config.recall_temporal_decay_rate,
+                window_days=self.config.recall_temporal_decay_window_days,
+            )
+
+            structured_boost = item.score - (
+                item.vector_similarity * max(item.temporal_decay, 0.0)
+            )
+
+            feedback_adjustment = 0.0
+            if query.incident_id:
+                feedback_adjustment = (
+                    await self.feedback_store.similarity_weight_adjustment(
+                        incident_id=query.incident_id,
+                        recalled_incident_id=item.record.id,
+                    )
+                )
+
+            new_decay = (
+                decayed_similarity / item.vector_similarity
+                if item.vector_similarity > 0
+                else 0.0
+            )
+            item.temporal_decay = round(new_decay, 6)
+            item.score = max(
+                decayed_similarity + structured_boost + feedback_adjustment, 0.0
+            )
+            refined.append(item)
+
+        refined.sort(key=lambda result: result.score, reverse=True)
+        return refined
 
     async def _embed_text(self, text: str) -> list[float]:
         if not self.settings.openai_api_key:

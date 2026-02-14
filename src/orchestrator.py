@@ -447,6 +447,7 @@ class ContextOrchestrator:
                     gitlab_ctx=gitlab_ctx,
                     datadog_ctx=datadog_ctx,
                 ),
+                incident_id=incident.incident_id,
                 services=[incident.service_name],
                 severity=incident.severity.value,
                 lookback_days=180,
