@@ -15,6 +15,9 @@ from .api import (
     email_router,
     health_router,
     insights_router,
+    memory_advanced_router,
+    memory_feedback_router,
+    memory_stats_router,
     metrics_router,
     onboarding_router,
     oncall_handoff_router,
@@ -38,6 +41,10 @@ from .copilot.adapters.slack_adapter import router as slack_copilot_router
 from .copilot.adapters.web_adapter import router as web_copilot_router
 from .metrics import HEALTH_STATUS, set_app_info
 from .metrics.middleware import PrometheusMiddleware
+from .oncall.scheduler import (
+    start_oncall_handoff_scheduler,
+    stop_oncall_handoff_scheduler,
+)
 from .ratelimit.middleware import RateLimitMiddleware
 from .ratelimit.routes import router as ratelimit_router
 from .web import landing_router, web_router
@@ -132,6 +139,8 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(health_router)
     app.include_router(metrics_router)
+    app.include_router(memory_feedback_router)
+    app.include_router(memory_stats_router)
     app.include_router(auth_router)
     app.include_router(pagerduty_oauth_router)
     app.include_router(slack_oauth_router)
@@ -152,6 +161,7 @@ def create_app() -> FastAPI:
     app.include_router(copilot_router)
     app.include_router(slack_copilot_router)
     app.include_router(web_copilot_router)
+    app.include_router(memory_advanced_router)
     app.include_router(landing_router)
     app.include_router(web_router)
 

@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -238,6 +239,7 @@ class PastIncident(BaseModel):
     incident_id: str
     title: str
     service: str
+    severity: str | None = None
     description: str | None = None
     root_cause: str | None = None
     resolution: str | None = None
@@ -314,11 +316,17 @@ class ContextCard(BaseModel):
     # AI summary
     ai_summary: AILogSummary | None = None
 
+    # AI Verdict — opinionated root cause assessment (Any to avoid circular import)
+    verdict: Any = None
+
     # Similar past incidents
     similar_incidents: list[PastIncident] = Field(default_factory=list)
 
     # Linked runbooks
     runbooks: list[RunbookLink] = Field(default_factory=list)
+
+    # Inline runbook steps — extracted first steps for zero-click resolution
+    runbook_steps: list[str] = Field(default_factory=list)
 
     # On-call roster
     oncall: OnCallRoster | None = None
@@ -331,4 +339,5 @@ class ContextCard(BaseModel):
     # Metadata
     assembled_at: datetime = Field(default_factory=datetime.utcnow)
     assembly_time_ms: int | None = None
+    latency_report: Any = None
     errors: list[str] = Field(default_factory=list)
