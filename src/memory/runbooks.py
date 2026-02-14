@@ -89,8 +89,7 @@ class AutoRunbookGenerator:
 
     async def _collect_groups(self) -> list[dict[str, object]]:
         pool = await self.store._ensure_pool()
-        rows = await pool.fetch(
-            f"""  # nosec B608
+        rows = await pool.fetch(f"""  # nosec B608
             SELECT
                 id,
                 root_cause_category,
@@ -100,8 +99,7 @@ class AutoRunbookGenerator:
             FROM {self.config.table_name}
             WHERE array_length(services_affected, 1) > 0
               AND array_length(resolution_steps, 1) > 0
-            """
-        )
+            """)
 
         grouped: dict[tuple[str, tuple[str, ...]], list[dict[str, object]]] = (
             defaultdict(list)
