@@ -49,7 +49,7 @@ class IncidentMemoryStore:
         pool = await self._ensure_pool()
 
         await pool.execute(
-            f"""  # nosec B608
+            f"""
             INSERT INTO {self.config.table_name} (
                 id, title, created_at, resolved_at, duration_minutes, severity,
                 services_affected, root_cause_category, root_cause_summary,
@@ -90,7 +90,7 @@ class IncidentMemoryStore:
                 tags = EXCLUDED.tags,
                 embedding = EXCLUDED.embedding,
                 updated_at = NOW()
-            """,
+            """,  # nosec B608 - table_name from config, not user input
             record.id,
             record.title,
             record.created_at,
@@ -129,7 +129,7 @@ class IncidentMemoryStore:
             start_time = dt.datetime.utcnow() - dt.timedelta(days=query.lookback_days)
 
         rows = await pool.fetch(
-            f"""  # nosec B608
+            f"""
             WITH base AS (
                 SELECT
                     *,
@@ -163,7 +163,7 @@ class IncidentMemoryStore:
             WHERE vector_similarity >= $10::float8
             ORDER BY score DESC
             LIMIT $11
-            """,
+            """,  # nosec B608 - table_name from config, not user input
             self._to_vector_literal(query.embedding),
             float(self.config.recall_temporal_half_life_days),
             query.services if query.services else None,
@@ -214,8 +214,8 @@ class IncidentMemoryStore:
         pool = await self._ensure_pool()
         return int(
             await pool.fetchval(
-                f"SELECT COUNT(*) FROM {self.config.table_name}"
-            )  # nosec B608
+                f"SELECT COUNT(*) FROM {self.config.table_name}"  # nosec B608
+            )
         )
 
     async def list_recent(self, limit: int = 10) -> list[IncidentRecord]:
