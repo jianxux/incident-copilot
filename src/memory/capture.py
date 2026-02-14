@@ -98,7 +98,11 @@ class IncidentCapture:
 
         record = IncidentRecord(
             id=incident_id,
-            title=str(extracted.get("title") or raw_incident.get("title") or "Untitled incident"),
+            title=str(
+                extracted.get("title")
+                or raw_incident.get("title")
+                or "Untitled incident"
+            ),
             created_at=self._parse_datetime(
                 extracted.get("created_at")
                 or raw_incident.get("created_at")
@@ -111,7 +115,9 @@ class IncidentCapture:
             duration_minutes=self._safe_int(extracted.get("duration_minutes")),
             severity=self._normalize_str(extracted.get("severity")),
             services_affected=self._safe_list(extracted.get("services_affected")),
-            root_cause_category=self._normalize_str(extracted.get("root_cause_category")),
+            root_cause_category=self._normalize_str(
+                extracted.get("root_cause_category")
+            ),
             root_cause_summary=self._normalize_str(extracted.get("root_cause_summary")),
             error_signatures=self._safe_list(extracted.get("error_signatures")),
             metric_anomalies=self._safe_list(extracted.get("metric_anomalies")),
@@ -137,10 +143,14 @@ class IncidentCapture:
 
     async def _extract_structured(self, raw_incident: dict[str, Any]) -> dict[str, Any]:
         if not self._anthropic_client:
-            logger.warning("incident_capture_no_claude", reason="anthropic_not_configured")
+            logger.warning(
+                "incident_capture_no_claude", reason="anthropic_not_configured"
+            )
             return raw_incident
 
-        prompt = CAPTURE_PROMPT.format(incident_payload=json.dumps(raw_incident, default=str))
+        prompt = CAPTURE_PROMPT.format(
+            incident_payload=json.dumps(raw_incident, default=str)
+        )
 
         try:
             response = await self._anthropic_client.messages.create(
@@ -187,7 +197,9 @@ class IncidentCapture:
         return self._embed_client
 
     @staticmethod
-    def _build_narrative(raw_incident: dict[str, Any], extracted: dict[str, Any]) -> str:
+    def _build_narrative(
+        raw_incident: dict[str, Any], extracted: dict[str, Any]
+    ) -> str:
         lines = []
         for key in (
             "title",
@@ -202,7 +214,12 @@ class IncidentCapture:
             if value:
                 lines.append(f"{key}: {value}")
 
-        for key in ("services_affected", "error_signatures", "metric_anomalies", "tags"):
+        for key in (
+            "services_affected",
+            "error_signatures",
+            "metric_anomalies",
+            "tags",
+        ):
             value = extracted.get(key)
             if isinstance(value, list) and value:
                 lines.append(f"{key}: {', '.join(str(v) for v in value)}")

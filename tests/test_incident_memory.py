@@ -227,7 +227,9 @@ async def test_recall_with_high_severity_reranks(memory_config):
     anthropic_client = MagicMock()
     anthropic_client.messages = MagicMock()
     anthropic_client.messages.create = AsyncMock(
-        return_value=MagicMock(content=[MagicMock(text='{"ranked_ids":["inc-b","inc-a"]}')])
+        return_value=MagicMock(
+            content=[MagicMock(text='{"ranked_ids":["inc-b","inc-a"]}')]
+        )
     )
 
     recall = IncidentRecall(

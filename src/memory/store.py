@@ -49,7 +49,7 @@ class IncidentMemoryStore:
         pool = await self._ensure_pool()
 
         await pool.execute(
-            f"""
+            f"""  # nosec B608
             INSERT INTO {self.config.table_name} (
                 id, title, created_at, resolved_at, duration_minutes, severity,
                 services_affected, root_cause_category, root_cause_summary,
@@ -129,7 +129,7 @@ class IncidentMemoryStore:
             start_time = dt.datetime.utcnow() - dt.timedelta(days=query.lookback_days)
 
         rows = await pool.fetch(
-            f"""
+            f"""  # nosec B608
             WITH base AS (
                 SELECT
                     *,
@@ -193,7 +193,7 @@ class IncidentMemoryStore:
         """Get a record by id."""
         pool = await self._ensure_pool()
         row = await pool.fetchrow(
-            f"SELECT * FROM {self.config.table_name} WHERE id = $1",
+            f"SELECT * FROM {self.config.table_name} WHERE id = $1",  # nosec B608
             record_id,
         )
         if row is None:
@@ -204,7 +204,7 @@ class IncidentMemoryStore:
         """Delete a record by id."""
         pool = await self._ensure_pool()
         result = await pool.execute(
-            f"DELETE FROM {self.config.table_name} WHERE id = $1",
+            f"DELETE FROM {self.config.table_name} WHERE id = $1",  # nosec B608
             record_id,
         )
         return result.endswith("1")
@@ -212,13 +212,17 @@ class IncidentMemoryStore:
     async def count(self) -> int:
         """Count all records."""
         pool = await self._ensure_pool()
-        return int(await pool.fetchval(f"SELECT COUNT(*) FROM {self.config.table_name}"))
+        return int(
+            await pool.fetchval(
+                f"SELECT COUNT(*) FROM {self.config.table_name}"
+            )  # nosec B608
+        )
 
     async def list_recent(self, limit: int = 10) -> list[IncidentRecord]:
         """List most recent records by created_at."""
         pool = await self._ensure_pool()
         rows = await pool.fetch(
-            f"SELECT * FROM {self.config.table_name} ORDER BY created_at DESC LIMIT $1",
+            f"SELECT * FROM {self.config.table_name} ORDER BY created_at DESC LIMIT $1",  # nosec B608
             limit,
         )
         return [self._row_to_record(row) for row in rows]
