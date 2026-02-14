@@ -14,6 +14,7 @@ from .api import (
     email_router,
     health_router,
     insights_router,
+    memory_advanced_router,
     memory_feedback_router,
     memory_stats_router,
     metrics_router,
@@ -135,6 +136,7 @@ def create_app() -> FastAPI:
     app.include_router(copilot_router)
     app.include_router(slack_copilot_router)
     app.include_router(web_copilot_router)
+    app.include_router(memory_advanced_router)
     app.include_router(landing_router)
     app.include_router(web_router)
 
