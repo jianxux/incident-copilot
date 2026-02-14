@@ -94,8 +94,11 @@ def create_app() -> FastAPI:
                 "audit_store_initialized", retention_days=settings.audit_retention_days
             )
 
+        await start_oncall_handoff_scheduler(settings=settings)
+
         yield
 
+        await stop_oncall_handoff_scheduler()
         logger.info("incident_copilot_shutting_down")
 
     app = FastAPI(
