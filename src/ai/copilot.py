@@ -11,7 +11,14 @@ from anthropic.types import MessageParam
 from pydantic import BaseModel
 
 from ..config import Settings
-from ..models import ContextCard
+from ..memory import (
+    IncidentMemoryConfig,
+    IncidentMemoryStore,
+    IncidentRecall,
+    RecallQuery,
+)
+from ..memory.models import IncidentRecallResult
+from ..models import ContextCard, PastIncident
 
 logger = structlog.get_logger()
 
@@ -116,6 +123,24 @@ class AICopilot:
         self.model = settings.ai_model
         # In-memory session store (use Redis in production)
         self._sessions: dict[str, IncidentSession] = {}
+        self.memory_config = IncidentMemoryConfig.from_settings(settings)
+        self.memory_store: IncidentMemoryStore | None = None
+        self.incident_recall: IncidentRecall | None = None
+        if self.memory_config.enabled:
+            try:
+                self.memory_store = IncidentMemoryStore(
+                    database_url=self.memory_config.database_url,
+                    config=self.memory_config,
+                )
+                self.incident_recall = IncidentRecall(
+                    settings=settings,
+                    store=self.memory_store,
+                    config=self.memory_config,
+                )
+            except Exception as e:
+                logger.warning("copilot_incident_memory_init_failed", error=str(e))
+                self.memory_store = None
+                self.incident_recall = None
 
     def _format_context(self, card: ContextCard | None) -> str:
         """Format context card for the AI prompt."""
@@ -167,6 +192,23 @@ class AICopilot:
             parts.append("\n**Relevant Runbooks:**")
             for rb in card.runbooks[:3]:
                 parts.append(f"  - [{rb.title}]({rb.url})")
+
+        if card.similar_incidents:
+            parts.append("\n**Similar Past Incidents:**")
+            for past in card.similar_incidents[:3]:
+                score = (
+                    f"{past.similarity_score:.0f}%"
+                    if past.similarity_score is not None
+                    else "n/a"
+                )
+                line = f"  - {past.title} ({past.occurred_at.date().isoformat()}, match={score})"
+                if past.severity:
+                    line += f", severity={past.severity}"
+                parts.append(line)
+                if past.root_cause:
+                    parts.append(f"    root_cause: {past.root_cause[:180]}")
+                if past.resolution:
+                    parts.append(f"    resolution: {past.resolution[:180]}")
 
         if card.oncall:
             parts.append(f"\n**On-Call:** {', '.join(card.oncall.oncall_names)}")
@@ -234,6 +276,19 @@ class AICopilot:
         try:
             # Build messages for API
             context_str = self._format_context(session.context_card)
+            if self._should_use_past_incidents_tool(user_message):
+                tool_results = await self.search_past_incidents(
+                    incident_id=incident_id,
+                    query=user_message,
+                    context_card=session.context_card,
+                    limit=3,
+                )
+                if tool_results:
+                    context_str += (
+                        "\n\n**Tool search_past_incidents results:**\n"
+                        + self._format_past_incidents_for_tool_context(tool_results)
+                    )
+
             system_prompt = COPILOT_SYSTEM_PROMPT.format(context=context_str)
 
             api_messages: list[MessageParam] = cast(
@@ -272,6 +327,124 @@ class AICopilot:
         except Exception as e:
             logger.error("copilot_chat_error", incident_id=incident_id, error=str(e))
             return f"Sorry, I encountered an error: {str(e)}"
+
+    async def search_past_incidents(
+        self,
+        incident_id: str,
+        query: str,
+        context_card: ContextCard | None,
+        limit: int = 3,
+    ) -> list[PastIncident]:
+        """Recall past incidents relevant to the current conversation."""
+        if not self.incident_recall:
+            return []
+
+        services = (
+            [context_card.service_name]
+            if context_card and context_card.service_name
+            else []
+        )
+        severity = (
+            context_card.severity.value
+            if context_card and context_card.severity
+            else None
+        )
+        narrative_parts = [query.strip() or f"investigation for {incident_id}"]
+        if context_card:
+            narrative_parts.append(context_card.title)
+            if context_card.ai_summary and context_card.ai_summary.explanation:
+                narrative_parts.append(context_card.ai_summary.explanation)
+
+        try:
+            recall_query = RecallQuery(
+                narrative="\n".join(narrative_parts),
+                incident_id=incident_id,
+                services=services,
+                severity=severity,
+                lookback_days=180,
+                limit=limit,
+            )
+            matches = await self.incident_recall.recall(recall_query)
+            return self._map_recall_results_to_past_incidents(matches)
+        except Exception as e:
+            logger.warning(
+                "copilot_search_past_incidents_failed",
+                incident_id=incident_id,
+                error=str(e),
+            )
+            return []
+
+    def _should_use_past_incidents_tool(self, message: str) -> bool:
+        """Decide when to call search_past_incidents during chat."""
+        normalized = message.lower()
+        triggers = (
+            "past incident",
+            "similar incident",
+            "happened before",
+            "has this happened before",
+            "previous incident",
+            "historical incident",
+        )
+        return any(trigger in normalized for trigger in triggers)
+
+    def _format_past_incidents_for_tool_context(
+        self, incidents: list[PastIncident]
+    ) -> str:
+        """Format tool output for the LLM context."""
+        lines: list[str] = []
+        for incident in incidents[:3]:
+            score = (
+                f"{incident.similarity_score:.0f}%"
+                if incident.similarity_score is not None
+                else "n/a"
+            )
+            line = f"- {incident.title} ({incident.occurred_at.date().isoformat()}, match={score})"
+            if incident.severity:
+                line += f", severity={incident.severity}"
+            lines.append(line)
+            if incident.root_cause:
+                lines.append(f"  root_cause: {incident.root_cause[:180]}")
+            if incident.resolution:
+                lines.append(f"  resolution: {incident.resolution[:180]}")
+        return "\n".join(lines)
+
+    def _map_recall_results_to_past_incidents(
+        self, recalled: list[IncidentRecallResult]
+    ) -> list[PastIncident]:
+        """Map Incident Memory recall results to copilot past incident shape."""
+        mapped: list[PastIncident] = []
+        for item in recalled:
+            record = item.record
+            service = (
+                record.services_affected[0]
+                if record.services_affected
+                else "unknown-service"
+            )
+            resolution = record.resolution_summary
+            if not resolution and record.resolution_steps:
+                resolution = "; ".join(record.resolution_steps[:3])
+            mapped.append(
+                PastIncident(
+                    incident_id=record.id,
+                    title=record.title,
+                    service=service,
+                    severity=record.severity,
+                    root_cause=record.root_cause_summary,
+                    resolution=resolution,
+                    occurred_at=record.created_at,
+                    resolved_at=record.resolved_at,
+                    similarity_score=self._normalize_similarity_percent(item.score),
+                )
+            )
+        return mapped
+
+    @staticmethod
+    def _normalize_similarity_percent(raw_score: float | None) -> float | None:
+        if raw_score is None:
+            return None
+        if raw_score <= 1.0:
+            return round(max(raw_score, 0.0) * 100, 1)
+        return round(min(raw_score, 100.0), 1)
 
     async def generate_summary(self, incident_id: str) -> dict | None:
         """Generate incident summary from context and conversation."""

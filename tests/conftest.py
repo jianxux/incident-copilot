@@ -60,7 +60,6 @@ def pytest_collection_modifyitems(config, items):
     skip_broken = pytest.mark.skip(reason="Module imports broken - needs refactor")
 
     broken_modules = [
-        "test_oncall",
         "test_pagerduty",
         "test_search",
         "test_tagging",
