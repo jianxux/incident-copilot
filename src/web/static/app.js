@@ -121,7 +121,7 @@ function handleSSEEvent(data) {
     
     switch (data.type) {
         case 'connected':
-            showToast('Real-time updates active', 'success');
+            // silently connected — no toast needed
             break;
             
         case 'new_incident':
