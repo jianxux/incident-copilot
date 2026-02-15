@@ -84,6 +84,60 @@ templates.env.filters["status_color"] = status_color
 templates.env.filters["mask_secret"] = mask_secret
 
 
+async def _get_tenant_id_from_request(request: Request) -> tuple[str | None, str | None]:
+    """Resolve (tenant_id, user_id) from a Supabase Bearer token.
+
+    Returns (None, None) if no auth is provided.
+    """
+
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None, None
+
+    token = auth_header.replace("Bearer ", "")
+
+    from ..supabase_client import get_supabase_admin_client, is_supabase_db_enabled
+
+    admin = get_supabase_admin_client()
+    if not admin:
+        return None, None
+
+    # Validate token and get Supabase auth user
+    user_response = admin.auth.get_user(token)
+    if not user_response or not user_response.user:
+        return None, None
+
+    user = user_response.user
+    user_id = str(user.id)
+
+    if not is_supabase_db_enabled():
+        return "default", user_id
+
+    email = (user.email or "").lower()
+    if not email:
+        return None, user_id
+
+    from ..db.supabase_db import get_db
+
+    db = get_db(use_admin=True)
+    app_user = await db.get_user_by_email(email)
+
+    # Defensive: if user is missing (e.g., legacy account), create tenant+user.
+    if not app_user:
+        slug = user_id
+        tenant_name = email.split("@")[1] if "@" in email else email
+        tenant = await db.ensure_tenant(slug=slug, name=tenant_name)
+        app_user = await db.create_user(
+            email=email,
+            tenant_id=tenant["id"],
+            name=(user.user_metadata or {}).get("full_name")
+            or (user.user_metadata or {}).get("name"),
+            role="owner",
+        )
+
+    return app_user.get("tenant_id"), user_id
+
+
 # ============================================================================
 # Landing Page Routes
 # ============================================================================
@@ -102,6 +156,98 @@ async def landing_page(request: Request):
 async def health_check():
     """Health check endpoint."""
     return {"status": "ok", "service": "incident-copilot"}
+
+
+@landing_router.get("/api/incidents")
+async def api_incidents(request: Request):
+    """Tenant-scoped JSON API endpoint for incidents list."""
+
+    tenant_id, _user_id = await _get_tenant_id_from_request(request)
+    if not tenant_id:
+        # Keep response shape stable; frontend will redirect to login.
+        return {"incidents": []}
+
+    # When Supabase DB is disabled, fall back to in-memory store.
+    from ..supabase_client import is_supabase_db_enabled
+
+    if not is_supabase_db_enabled():
+        incidents = await incident_store.get_all_incidents()
+        return {
+            "incidents": [
+                {
+                    "incident_id": i.incident_id,
+                    "title": i.title,
+                    "service_name": i.service_name,
+                    "severity": i.severity.value,
+                    "status": i.status,
+                    "triggered_at": i.triggered_at.isoformat(),
+                    "processed_at": i.processed_at.isoformat() if i.processed_at else None,
+                }
+                for i in incidents
+            ]
+        }
+
+    from ..db.supabase_db import get_db
+
+    db = get_db(use_admin=True)
+    rows = await db.list_processing_incidents(tenant_id=tenant_id, limit=100, offset=0)
+
+    return {
+        "incidents": [
+            {
+                "incident_id": r["id"],
+                "title": r.get("title") or "",
+                "service_name": r.get("service") or "",
+                "severity": r.get("severity") or "medium",
+                "status": r.get("status") or "processing",
+                "triggered_at": r.get("triggered_at"),
+                "processed_at": r.get("processed_at"),
+            }
+            for r in rows
+        ]
+    }
+
+
+@landing_router.get("/api/dashboard/stats")
+async def api_dashboard_stats(request: Request):
+    """Tenant-scoped JSON API endpoint for dashboard stats."""
+
+    tenant_id, _user_id = await _get_tenant_id_from_request(request)
+    if not tenant_id:
+        return {
+            "total": 0,
+            "by_status": {"processing": 0, "completed": 0, "error": 0},
+            "by_severity": {
+                "critical": 0,
+                "high": 0,
+                "medium": 0,
+                "low": 0,
+                "info": 0,
+            },
+        }
+
+    from ..supabase_client import is_supabase_db_enabled
+
+    if not is_supabase_db_enabled():
+        return await incident_store.get_stats()
+
+    # Compute stats from incidents list
+    from ..models import Severity
+    from ..db.supabase_db import get_db
+
+    db = get_db(use_admin=True)
+    rows = await db.list_processing_incidents(tenant_id=tenant_id, limit=100, offset=0)
+
+    by_status: dict[str, int] = {"processing": 0, "completed": 0, "error": 0}
+    by_severity: dict[str, int] = {s.value: 0 for s in Severity}
+
+    for r in rows:
+        st = r.get("status") or "processing"
+        by_status[st] = by_status.get(st, 0) + 1
+        sev = r.get("severity") or Severity.MEDIUM.value
+        by_severity[sev] = by_severity.get(sev, 0) + 1
+
+    return {"total": len(rows), "by_status": by_status, "by_severity": by_severity}
 
 
 # ============================================================================
@@ -152,11 +298,16 @@ async def auth_callback(request: Request):
             })
             .then(r => r.json())
             .then(data => {
+                if (data && data.tenant_id) {
+                    localStorage.setItem('tenant_id', data.tenant_id);
+                }
+
                 if (flow === 'login' && !data.has_profile) {
                     // User hasn't signed up yet — reject login
                     localStorage.removeItem('access_token');
                     localStorage.removeItem('refresh_token');
                     localStorage.removeItem('user');
+                    localStorage.removeItem('tenant_id');
                     window.location.href = '/login?error=no_account';
                 } else if (flow === 'signup' && !data.has_profile) {
                     // New signup — send to onboarding
@@ -265,16 +416,30 @@ async def signup_page(request: Request):
 
 @router.get("/", response_class=HTMLResponse)
 async def dashboard_home(request: Request):
-    """Main dashboard page showing all incidents."""
-    incidents = await incident_store.get_all_incidents()
-    stats = await incident_store.get_stats()
+    """Main dashboard page.
+
+    Auth is handled client-side via Supabase tokens stored in localStorage.
+    This page renders a shell and loads tenant-scoped data via authenticated
+    API calls.
+    """
+    empty_stats = {
+        "total": "—",
+        "by_status": {"processing": "—", "completed": "—", "error": "—"},
+        "by_severity": {
+            "critical": "—",
+            "high": "—",
+            "medium": "—",
+            "low": "—",
+            "info": "—",
+        },
+    }
 
     return templates.TemplateResponse(
         "dashboard.html",
         {
             "request": request,
-            "incidents": incidents,
-            "stats": stats,
+            "incidents": [],
+            "stats": empty_stats,
             "page_title": "Dashboard",
         },
     )
@@ -605,29 +770,15 @@ async def sse_events(request: Request):
 
 
 @router.get("/api/incidents")
-async def api_incidents():
-    """JSON API endpoint for incidents list."""
-    incidents = await incident_store.get_all_incidents()
-    return {
-        "incidents": [
-            {
-                "incident_id": i.incident_id,
-                "title": i.title,
-                "service_name": i.service_name,
-                "severity": i.severity.value,
-                "status": i.status,
-                "triggered_at": i.triggered_at.isoformat(),
-                "processed_at": i.processed_at.isoformat() if i.processed_at else None,
-            }
-            for i in incidents
-        ]
-    }
+async def api_incidents_dashboard_scope(request: Request):
+    """Backward-compatible tenant-scoped incidents endpoint under /dashboard."""
+    return await api_incidents(request)
 
 
 @router.get("/api/stats")
-async def api_stats():
-    """JSON API endpoint for dashboard stats."""
-    return await incident_store.get_stats()
+async def api_stats_dashboard_scope(request: Request):
+    """Backward-compatible tenant-scoped stats endpoint under /dashboard."""
+    return await api_dashboard_stats(request)
 
 
 # =========================================================================
