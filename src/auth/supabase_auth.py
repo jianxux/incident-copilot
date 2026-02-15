@@ -264,7 +264,7 @@ async def oauth_start(provider: str, request: Request):
             detail=f"Invalid OAuth provider: {provider}. Valid: {valid_providers}",
         )
 
-    redirect_uri = f"{settings.app_url}/api/auth/supabase/callback"
+    redirect_uri = f"{settings.app_url}/auth/callback"
 
     try:
         response = client.auth.sign_in_with_oauth(
@@ -272,6 +272,7 @@ async def oauth_start(provider: str, request: Request):
                 "provider": provider,
                 "options": {
                     "redirect_to": redirect_uri,
+                    "skip_browser_redirect": False,
                 },
             }
         )
@@ -290,6 +291,39 @@ async def oauth_start(provider: str, request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"OAuth initialization failed: {str(e)}",
         )
+
+
+@router.get("/exchange")
+async def exchange_code(code: str):
+    """Exchange a PKCE auth code for tokens server-side."""
+    _check_supabase_auth()
+
+    client = get_supabase_client()
+    if not client:
+        raise HTTPException(status_code=503, detail="Supabase not available")
+
+    try:
+        response = client.auth.exchange_code_for_session({"auth_code": code})
+        if response.session:
+            user_data = None
+            if response.user:
+                user_data = {
+                    "id": str(response.user.id),
+                    "email": response.user.email,
+                    "name": response.user.user_metadata.get("full_name", ""),
+                }
+            return {
+                "access_token": response.session.access_token,
+                "refresh_token": response.session.refresh_token,
+                "user": user_data,
+            }
+        else:
+            raise HTTPException(status_code=400, detail="Code exchange failed")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("code_exchange_error", error=str(e))
+        raise HTTPException(status_code=400, detail=f"Code exchange failed: {str(e)}")
 
 
 @router.get("/callback")

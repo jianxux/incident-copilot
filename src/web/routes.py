@@ -135,29 +135,50 @@ async def auth_callback(request: Request):
     </div>
     <style>@keyframes spin {{ from {{ transform:rotate(0deg); }} to {{ transform:rotate(360deg); }} }}</style>
     <script>
-        const supabaseUrl = '{settings.supabase_url}';
-        const supabaseKey = '{settings.supabase_anon_key}';
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        // Handle both implicit flow (hash fragment) and PKCE flow (query param)
+        const hash = window.location.hash.substring(1);
+        const hashParams = new URLSearchParams(hash);
+        const queryParams = new URLSearchParams(window.location.search);
 
-        // The PKCE code verifier is in localStorage from the initial OAuth redirect
-        const code = new URLSearchParams(window.location.search).get('code');
-        if (code) {{
-            supabase.auth.exchangeCodeForSession(code).then(({{ data, error }}) => {{
-                if (error) {{
-                    console.error('Auth error:', error);
-                    window.location.href = '/login?error=oauth_token_failed';
-                    return;
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        const code = queryParams.get('code');
+
+        if (accessToken && refreshToken) {{
+            // Implicit flow — tokens are in the hash
+            localStorage.setItem('access_token', accessToken);
+            localStorage.setItem('refresh_token', refreshToken);
+
+            // Fetch user info
+            fetch('/api/auth/supabase/user', {{
+                headers: {{ 'Authorization': 'Bearer ' + accessToken }}
+            }})
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {{
+                if (data && data.user) {{
+                    localStorage.setItem('user', JSON.stringify(data.user));
                 }}
-                if (data.session) {{
-                    localStorage.setItem('access_token', data.session.access_token);
-                    localStorage.setItem('refresh_token', data.session.refresh_token);
-                    if (data.user) {{
-                        localStorage.setItem('user', JSON.stringify(data.user));
-                    }}
+                window.location.href = '/dashboard';
+            }})
+            .catch(() => {{
+                window.location.href = '/dashboard';
+            }});
+        }} else if (code) {{
+            // PKCE flow — exchange code server-side
+            fetch('/api/auth/supabase/exchange?code=' + encodeURIComponent(code))
+            .then(r => r.json())
+            .then(data => {{
+                if (data.access_token) {{
+                    localStorage.setItem('access_token', data.access_token);
+                    localStorage.setItem('refresh_token', data.refresh_token || '');
+                    if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
                     window.location.href = '/dashboard';
                 }} else {{
                     window.location.href = '/login?error=oauth_token_failed';
                 }}
+            }})
+            .catch(() => {{
+                window.location.href = '/login?error=oauth_token_failed';
             }});
         }} else {{
             window.location.href = '/login?error=oauth_invalid';
