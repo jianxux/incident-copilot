@@ -86,6 +86,25 @@
         }
         .btn-nav:hover { opacity: 0.85; }
 
+        .nav-toggle {
+            display: none;
+            background: transparent;
+            border: 1px solid rgba(28,25,23,0.12);
+            border-radius: 12px;
+            padding: 0.5rem 0.65rem;
+            line-height: 0;
+            cursor: pointer;
+            color: var(--ink);
+        }
+        .nav-toggle svg {
+            width: 22px;
+            height: 22px;
+        }
+        .nav-toggle:focus-visible {
+            outline: 2px solid rgba(224,90,58,0.6);
+            outline-offset: 2px;
+        }
+
         /* ── Hero ── */
         .hero {
             padding: 10rem 2rem 6rem;
@@ -673,7 +692,27 @@
             .feature-grid { grid-template-columns: 1fr; }
             .how-grid { grid-template-columns: 1fr 1fr; }
             .stats { grid-template-columns: 1fr; }
-            .nav-links { display: none; }
+
+            .nav-inner { position: relative; }
+            .nav-toggle { display: inline-flex; align-items: center; justify-content: center; }
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: calc(100% + 10px);
+                left: 0;
+                right: 0;
+                flex-direction: column;
+                gap: 0.75rem;
+                padding: 1rem;
+                background: var(--warm-white);
+                border: 1px solid rgba(28,25,23,0.08);
+                border-radius: 16px;
+                box-shadow: 0 18px 40px rgba(28,25,23,0.12);
+            }
+            .nav-links.open { display: flex; }
+            .nav-links a { font-size: 0.95rem; }
+            .btn-nav { width: 100%; text-align: center; padding: 0.75rem 1.25rem; }
+
             .footer-top { flex-direction: column; gap: 1rem; }
             .card-body { grid-template-columns: 1fr; }
         }
@@ -701,7 +740,12 @@
                 </svg>
                 <span>Incident Copilot</span>
             </a>
-            <div class="nav-links">
+            <button class="nav-toggle" type="button" aria-label="Open navigation menu" aria-controls="nav-links" aria-expanded="false">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <div id="nav-links" class="nav-links">
                 <a href="#features">Features</a>
                 <a href="#how-it-works">How it works</a>
                 <a href="#integrations">Integrations</a>
@@ -903,5 +947,40 @@
         </div>
         <div class="footer-copy">© 2026 Incident Copilot. Built for on-call engineers.</div>
     </footer>
+
+    <script>
+        (function () {
+            const toggle = document.querySelector('.nav-toggle');
+            const links = document.getElementById('nav-links');
+            if (!toggle || !links) return;
+
+            function closeMenu() {
+                links.classList.remove('open');
+                toggle.setAttribute('aria-expanded', 'false');
+                toggle.setAttribute('aria-label', 'Open navigation menu');
+            }
+
+            toggle.addEventListener('click', function () {
+                const isOpen = links.classList.toggle('open');
+                toggle.setAttribute('aria-expanded', String(isOpen));
+                toggle.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
+            });
+
+            links.addEventListener('click', function (e) {
+                const el = e.target;
+                if (el && el.tagName === 'A') closeMenu();
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') closeMenu();
+            });
+
+            document.addEventListener('click', function (e) {
+                if (links.classList.contains('open') && !links.contains(e.target) && !toggle.contains(e.target)) {
+                    closeMenu();
+                }
+            });
+        })();
+    </script>
 </body>
 </html>
