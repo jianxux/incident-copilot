@@ -28,12 +28,22 @@ Once your project is created:
 
 ## Step 3: Run Database Migrations
 
-1. Go to **SQL Editor** in your Supabase dashboard
-2. Open the migration file: `supabase/migrations/20250207000001_initial_schema.sql`
-3. Copy the contents and paste into the SQL Editor
-4. Click "Run" to execute the migration
+### Option A: Supabase SQL Editor (quickest)
 
-This creates all required tables with Row Level Security (RLS) enabled.
+1. Go to **SQL Editor** in your Supabase dashboard
+2. Run migrations in timestamp order:
+   - `supabase/migrations/20250207000001_initial_schema.sql`
+   - `supabase/migrations/20260213000002_incident_memory_phase1.sql`
+   - `supabase/migrations/20260214000001_incident_memory_phase4.sql`
+   - `supabase/migrations/20260215000001_core_incident_schema.sql`
+3. For each file: copy/paste into the SQL Editor and click **Run**
+
+### Option B: Supabase CLI (recommended for teams)
+
+If you use the Supabase CLI, you can apply migrations from `supabase/migrations/`.
+See `docs/supabase-migrations.md`.
+
+These migrations create required tables with Row Level Security (RLS) enabled.
 
 ## Step 4: Configure Google OAuth
 
@@ -119,6 +129,9 @@ When Supabase is enabled:
 ### Database Operations
 
 When `SUPABASE_DB_ENABLED=true`:
+
+- The web dashboard incident pipeline will automatically create a `default` tenant
+  (server-side, using the service role key) if one does not exist.
 
 - All CRUD operations use Supabase's PostgREST API
 - Row Level Security enforces tenant isolation
