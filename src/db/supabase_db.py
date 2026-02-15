@@ -430,6 +430,500 @@ class SupabaseDB:
         )
         return result.data or []
 
+    # ==================== Incident Events ====================
+
+    async def create_incident_event(
+        self,
+        incident_id: str,
+        tenant_id: str,
+        event_type: str,
+        title: str,
+        occurred_at: str | None = None,
+        **kwargs,
+    ) -> dict:
+        """Create a timeline event for an incident."""
+        self._check_enabled()
+
+        event = {
+            "id": str(uuid4()),
+            "incident_id": incident_id,
+            "tenant_id": tenant_id,
+            "event_type": event_type,
+            "title": title,
+            "occurred_at": occurred_at or datetime.utcnow().isoformat(),
+            "created_at": datetime.utcnow().isoformat(),
+            **kwargs,
+        }
+
+        result = self.client.table("incident_events").insert(event).execute()
+        return result.data[0] if result.data else event
+
+    async def list_incident_events(
+        self,
+        incident_id: str,
+        limit: int = 200,
+    ) -> list[dict]:
+        """List timeline events for an incident."""
+        self._check_enabled()
+
+        result = (
+            self.client.table("incident_events")
+            .select("*")
+            .eq("incident_id", incident_id)
+            .order("occurred_at")
+            .limit(limit)
+            .execute()
+        )
+        return result.data or []
+
+    # ==================== Postmortems ====================
+
+    async def create_postmortem(
+        self,
+        incident_id: str,
+        tenant_id: str,
+        title: str,
+        service_name: str,
+        severity: str,
+        executive_summary: str,
+        **kwargs,
+    ) -> dict:
+        """Create a postmortem."""
+        self._check_enabled()
+
+        postmortem = {
+            "id": str(uuid4()),
+            "incident_id": incident_id,
+            "tenant_id": tenant_id,
+            "title": title,
+            "service_name": service_name,
+            "severity": severity,
+            "executive_summary": executive_summary,
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat(),
+            **kwargs,
+        }
+
+        result = self.client.table("postmortems").insert(postmortem).execute()
+        return result.data[0] if result.data else postmortem
+
+    async def get_postmortem(self, postmortem_id: str) -> dict | None:
+        """Get a postmortem by ID."""
+        self._check_enabled()
+        result = (
+            self.client.table("postmortems")
+            .select("*")
+            .eq("id", postmortem_id)
+            .single()
+            .execute()
+        )
+        return result.data
+
+    async def get_postmortem_by_incident(self, incident_id: str) -> dict | None:
+        """Get a postmortem by incident ID."""
+        self._check_enabled()
+        result = (
+            self.client.table("postmortems")
+            .select("*")
+            .eq("incident_id", incident_id)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        return result.data[0] if result.data else None
+
+    async def update_postmortem(self, postmortem_id: str, **kwargs) -> dict | None:
+        """Update a postmortem."""
+        self._check_enabled()
+        kwargs["updated_at"] = datetime.utcnow().isoformat()
+        result = (
+            self.client.table("postmortems")
+            .update(kwargs)
+            .eq("id", postmortem_id)
+            .execute()
+        )
+        return result.data[0] if result.data else None
+
+    async def list_postmortems(
+        self,
+        tenant_id: str,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[dict]:
+        """List postmortems for a tenant."""
+        self._check_enabled()
+        query = self.client.table("postmortems").select("*").eq("tenant_id", tenant_id)
+        if status:
+            query = query.eq("status", status)
+        result = (
+            query.order("created_at", desc=True)
+            .range(offset, offset + limit - 1)
+            .execute()
+        )
+        return result.data or []
+
+    # ==================== Tags ====================
+
+    async def create_tag(
+        self,
+        tenant_id: str,
+        name: str,
+        **kwargs,
+    ) -> dict:
+        """Create a tag."""
+        self._check_enabled()
+        tag = {
+            "id": str(uuid4()),
+            "tenant_id": tenant_id,
+            "name": name,
+            "created_at": datetime.utcnow().isoformat(),
+            **kwargs,
+        }
+        result = self.client.table("tags").insert(tag).execute()
+        return result.data[0] if result.data else tag
+
+    async def list_tags(self, tenant_id: str) -> list[dict]:
+        """List tags for a tenant."""
+        self._check_enabled()
+        result = (
+            self.client.table("tags")
+            .select("*")
+            .eq("tenant_id", tenant_id)
+            .order("name")
+            .execute()
+        )
+        return result.data or []
+
+    async def add_incident_tag(
+        self,
+        incident_id: str,
+        tag_id: str,
+        **kwargs,
+    ) -> dict:
+        """Tag an incident."""
+        self._check_enabled()
+        record = {
+            "incident_id": incident_id,
+            "tag_id": tag_id,
+            "applied_at": datetime.utcnow().isoformat(),
+            **kwargs,
+        }
+        result = self.client.table("incident_tags").insert(record).execute()
+        return result.data[0] if result.data else record
+
+    async def get_incident_tags(self, incident_id: str) -> list[dict]:
+        """Get tags for an incident."""
+        self._check_enabled()
+        result = (
+            self.client.table("incident_tags")
+            .select("*, tags(*)")
+            .eq("incident_id", incident_id)
+            .execute()
+        )
+        return result.data or []
+
+    async def remove_incident_tag(self, incident_id: str, tag_id: str) -> bool:
+        """Remove a tag from an incident."""
+        self._check_enabled()
+        self.client.table("incident_tags").delete().eq(
+            "incident_id", incident_id
+        ).eq("tag_id", tag_id).execute()
+        return True
+
+    # ==================== Services ====================
+
+    async def create_service(
+        self,
+        tenant_id: str,
+        name: str,
+        **kwargs,
+    ) -> dict:
+        """Create a service."""
+        self._check_enabled()
+        service = {
+            "id": str(uuid4()),
+            "tenant_id": tenant_id,
+            "name": name,
+            "created_at": datetime.utcnow().isoformat(),
+            **kwargs,
+        }
+        result = self.client.table("services").insert(service).execute()
+        return result.data[0] if result.data else service
+
+    async def get_service(self, service_id: str) -> dict | None:
+        """Get a service by ID."""
+        self._check_enabled()
+        result = (
+            self.client.table("services")
+            .select("*")
+            .eq("id", service_id)
+            .single()
+            .execute()
+        )
+        return result.data
+
+    async def get_service_by_name(self, tenant_id: str, name: str) -> dict | None:
+        """Get a service by name."""
+        self._check_enabled()
+        result = (
+            self.client.table("services")
+            .select("*")
+            .eq("tenant_id", tenant_id)
+            .eq("name", name)
+            .single()
+            .execute()
+        )
+        return result.data
+
+    async def list_services(self, tenant_id: str) -> list[dict]:
+        """List services for a tenant."""
+        self._check_enabled()
+        result = (
+            self.client.table("services")
+            .select("*")
+            .eq("tenant_id", tenant_id)
+            .order("name")
+            .execute()
+        )
+        return result.data or []
+
+    async def update_service(self, service_id: str, **kwargs) -> dict | None:
+        """Update a service."""
+        self._check_enabled()
+        kwargs["updated_at"] = datetime.utcnow().isoformat()
+        result = (
+            self.client.table("services")
+            .update(kwargs)
+            .eq("id", service_id)
+            .execute()
+        )
+        return result.data[0] if result.data else None
+
+    # ==================== Service Dependencies ====================
+
+    async def create_service_dependency(
+        self,
+        tenant_id: str,
+        upstream_service_id: str,
+        downstream_service_id: str,
+        **kwargs,
+    ) -> dict:
+        """Create a service dependency."""
+        self._check_enabled()
+        dep = {
+            "id": str(uuid4()),
+            "tenant_id": tenant_id,
+            "upstream_service_id": upstream_service_id,
+            "downstream_service_id": downstream_service_id,
+            "created_at": datetime.utcnow().isoformat(),
+            **kwargs,
+        }
+        result = self.client.table("service_dependencies").insert(dep).execute()
+        return result.data[0] if result.data else dep
+
+    async def get_service_dependencies(self, service_id: str) -> dict:
+        """Get upstream and downstream dependencies for a service."""
+        self._check_enabled()
+        upstream = (
+            self.client.table("service_dependencies")
+            .select("*, services!upstream_service_id(*)")
+            .eq("downstream_service_id", service_id)
+            .execute()
+        )
+        downstream = (
+            self.client.table("service_dependencies")
+            .select("*, services!downstream_service_id(*)")
+            .eq("upstream_service_id", service_id)
+            .execute()
+        )
+        return {
+            "upstream": upstream.data or [],
+            "downstream": downstream.data or [],
+        }
+
+    # ==================== On-Call Schedules ====================
+
+    async def upsert_on_call_schedule(
+        self,
+        tenant_id: str,
+        schedule_id: str,
+        schedule_name: str,
+        provider: str,
+        **kwargs,
+    ) -> dict:
+        """Create or update an on-call schedule."""
+        self._check_enabled()
+        schedule = {
+            "tenant_id": tenant_id,
+            "schedule_id": schedule_id,
+            "schedule_name": schedule_name,
+            "provider": provider,
+            "updated_at": datetime.utcnow().isoformat(),
+            **kwargs,
+        }
+        result = (
+            self.client.table("on_call_schedules")
+            .upsert(schedule, on_conflict="tenant_id,provider,schedule_id")
+            .execute()
+        )
+        return result.data[0] if result.data else schedule
+
+    async def list_on_call_schedules(self, tenant_id: str) -> list[dict]:
+        """List on-call schedules for a tenant."""
+        self._check_enabled()
+        result = (
+            self.client.table("on_call_schedules")
+            .select("*, on_call_persons(*)")
+            .eq("tenant_id", tenant_id)
+            .eq("is_active", True)
+            .execute()
+        )
+        return result.data or []
+
+    # ==================== Cost Entries ====================
+
+    async def create_cost_entry(
+        self,
+        tenant_id: str,
+        incident_id: str,
+        category: str,
+        amount: float,
+        **kwargs,
+    ) -> dict:
+        """Create a cost entry."""
+        self._check_enabled()
+        entry = {
+            "id": str(uuid4()),
+            "tenant_id": tenant_id,
+            "incident_id": incident_id,
+            "category": category,
+            "amount": amount,
+            "created_at": datetime.utcnow().isoformat(),
+            **kwargs,
+        }
+        result = self.client.table("cost_entries").insert(entry).execute()
+        return result.data[0] if result.data else entry
+
+    async def get_cost_entries_for_incident(self, incident_id: str) -> list[dict]:
+        """Get cost entries for an incident."""
+        self._check_enabled()
+        result = (
+            self.client.table("cost_entries")
+            .select("*")
+            .eq("incident_id", incident_id)
+            .order("created_at")
+            .execute()
+        )
+        return result.data or []
+
+    async def delete_cost_entry(self, entry_id: str) -> bool:
+        """Delete a cost entry."""
+        self._check_enabled()
+        self.client.table("cost_entries").delete().eq("id", entry_id).execute()
+        return True
+
+    # ==================== Incident Comments ====================
+
+    async def create_comment(
+        self,
+        incident_id: str,
+        tenant_id: str,
+        author_name: str,
+        content: str,
+        **kwargs,
+    ) -> dict:
+        """Create a comment on an incident."""
+        self._check_enabled()
+        comment = {
+            "id": str(uuid4()),
+            "incident_id": incident_id,
+            "tenant_id": tenant_id,
+            "author_name": author_name,
+            "content": content,
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat(),
+            **kwargs,
+        }
+        result = self.client.table("incident_comments").insert(comment).execute()
+        return result.data[0] if result.data else comment
+
+    async def list_comments(
+        self,
+        incident_id: str,
+        limit: int = 100,
+    ) -> list[dict]:
+        """List comments for an incident."""
+        self._check_enabled()
+        result = (
+            self.client.table("incident_comments")
+            .select("*")
+            .eq("incident_id", incident_id)
+            .order("created_at")
+            .limit(limit)
+            .execute()
+        )
+        return result.data or []
+
+    async def update_comment(self, comment_id: str, **kwargs) -> dict | None:
+        """Update a comment."""
+        self._check_enabled()
+        kwargs["updated_at"] = datetime.utcnow().isoformat()
+        kwargs["edited"] = True
+        result = (
+            self.client.table("incident_comments")
+            .update(kwargs)
+            .eq("id", comment_id)
+            .execute()
+        )
+        return result.data[0] if result.data else None
+
+    async def delete_comment(self, comment_id: str) -> bool:
+        """Delete a comment."""
+        self._check_enabled()
+        self.client.table("incident_comments").delete().eq("id", comment_id).execute()
+        return True
+
+    # ==================== Insights ====================
+
+    async def create_insight(
+        self,
+        tenant_id: str,
+        insight_type: str,
+        title: str,
+        **kwargs,
+    ) -> dict:
+        """Create an insight."""
+        self._check_enabled()
+        insight = {
+            "id": str(uuid4()),
+            "tenant_id": tenant_id,
+            "insight_type": insight_type,
+            "title": title,
+            "created_at": datetime.utcnow().isoformat(),
+            **kwargs,
+        }
+        result = self.client.table("insights").insert(insight).execute()
+        return result.data[0] if result.data else insight
+
+    async def list_insights(
+        self,
+        tenant_id: str,
+        insight_type: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        """List insights for a tenant."""
+        self._check_enabled()
+        query = self.client.table("insights").select("*").eq("tenant_id", tenant_id)
+        if insight_type:
+            query = query.eq("insight_type", insight_type)
+        result = (
+            query.order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return result.data or []
+
 
 # Singleton instance
 _db: SupabaseDB | None = None
