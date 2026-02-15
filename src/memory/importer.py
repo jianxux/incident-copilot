@@ -11,7 +11,6 @@ from typing import Any
 import structlog
 
 from .capture import IncidentCapture
-from .models import IncidentRecord
 
 logger = structlog.get_logger()
 
