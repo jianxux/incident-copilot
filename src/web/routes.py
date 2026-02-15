@@ -105,6 +105,58 @@ async def health_check():
 
 
 # ============================================================================
+# Auth Callback (Supabase PKCE flow)
+# ============================================================================
+
+
+@landing_router.get("/auth/callback", response_class=HTMLResponse)
+async def auth_callback(request: Request):
+    """Handle Supabase Auth PKCE callback.
+
+    Supabase redirects here with ?code=xxx after OAuth.
+    We exchange the code for tokens via Supabase and redirect to dashboard.
+    """
+    from ..supabase_client import get_supabase_client, is_supabase_auth_enabled
+
+    settings = get_settings()
+    code = request.query_params.get("code")
+
+    if not code:
+        return RedirectResponse(url="/login?error=oauth_invalid")
+
+    if not is_supabase_auth_enabled():
+        return RedirectResponse(url="/login?error=oauth_not_configured")
+
+    try:
+        supabase = get_supabase_client()
+        if not supabase:
+            return RedirectResponse(url="/login?error=oauth_not_configured")
+
+        # Exchange code for session
+        response = supabase.auth.exchange_code_for_session({"auth_code": code})
+
+        if response.session:
+            # Redirect to login page with tokens in hash fragment
+            # The JS on login.html will pick them up and store them
+            access_token = response.session.access_token
+            refresh_token = response.session.refresh_token
+            is_new = "true" if not response.user.last_sign_in_at else "false"
+            redirect_url = (
+                f"/login"
+                f"#access_token={access_token}"
+                f"&refresh_token={refresh_token}"
+                f"&is_new={is_new}"
+            )
+            return RedirectResponse(url=redirect_url)
+        else:
+            return RedirectResponse(url="/login?error=oauth_token_failed")
+
+    except Exception as e:
+        logger.error("auth_callback_error", error=str(e))
+        return RedirectResponse(url="/login?error=oauth_token_failed")
+
+
+# ============================================================================
 # Auth Pages (login, signup, etc.)
 # ============================================================================
 
