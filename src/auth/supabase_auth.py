@@ -14,6 +14,7 @@ from ..supabase_client import (
     get_supabase_admin_client,
     get_supabase_client,
     is_supabase_auth_enabled,
+    is_supabase_db_enabled,
 )
 
 logger = structlog.get_logger()
@@ -297,7 +298,11 @@ async def oauth_start(provider: str, request: Request, flow: str = "login"):
 
 @router.get("/check-profile")
 async def check_profile(request: Request):
-    """Check if the authenticated user has a profile (i.e., has signed up)."""
+    """Check if the authenticated user has a profile (i.e., has signed up).
+
+    Also ensures a corresponding row exists in the app's `users` table and that
+    the user has a dedicated tenant.
+    """
     _check_supabase_auth()
 
     auth_header = request.headers.get("Authorization", "")
@@ -315,7 +320,9 @@ async def check_profile(request: Request):
         if not user_response or not user_response.user:
             return {"has_profile": False}
 
-        user_id = str(user_response.user.id)
+        user = user_response.user
+        user_id = str(user.id)
+        email = (user.email or "").lower()
 
         # Check if profile exists — if not, auto-create for existing auth users
         result = admin.table("profiles").select("id").eq("id", user_id).execute()
@@ -324,12 +331,13 @@ async def check_profile(request: Request):
         if not has_profile:
             # Auto-create profile for users who authenticated successfully
             try:
-                user = user_response.user
-                admin.table("profiles").insert({
-                    "id": user_id,
-                    "email": user.email or "",
-                    "full_name": (user.user_metadata or {}).get("full_name", ""),
-                }).execute()
+                admin.table("profiles").insert(
+                    {
+                        "id": user_id,
+                        "email": email,
+                        "full_name": (user.user_metadata or {}).get("full_name", ""),
+                    }
+                ).execute()
                 has_profile = True
                 logger.info("auto_created_profile", user_id=user_id)
             except Exception as profile_err:
@@ -337,7 +345,36 @@ async def check_profile(request: Request):
                 # Still let them through
                 has_profile = True
 
-        return {"has_profile": has_profile, "user_id": user_id}
+        tenant_id: str | None = None
+
+        # Ensure the app-level user/tenant exists (only when Supabase DB is enabled)
+        if is_supabase_db_enabled() and email:
+            from ..db.supabase_db import get_db
+
+            db = get_db(use_admin=True)
+            app_user = await db.get_user_by_email(email)
+
+            if not app_user:
+                # Create a dedicated tenant for this user
+                slug = user_id
+                tenant_name = email.split("@")[1] if "@" in email else email
+                tenant = await db.ensure_tenant(slug=slug, name=tenant_name)
+                app_user = await db.create_user(
+                    email=email,
+                    tenant_id=tenant["id"],
+                    name=(user.user_metadata or {}).get("full_name")
+                    or (user.user_metadata or {}).get("name"),
+                    role="owner",
+                )
+                logger.info(
+                    "auto_created_tenant_and_user",
+                    user_id=user_id,
+                    tenant_id=tenant["id"],
+                )
+
+            tenant_id = app_user.get("tenant_id")
+
+        return {"has_profile": has_profile, "user_id": user_id, "tenant_id": tenant_id}
     except Exception as e:
         logger.error("check_profile_error", error=str(e))
         # On error, assume profile exists to avoid locking out valid users
