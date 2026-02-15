@@ -114,46 +114,58 @@ async def auth_callback(request: Request):
     """Handle Supabase Auth PKCE callback.
 
     Supabase redirects here with ?code=xxx after OAuth.
-    We exchange the code for tokens via Supabase and redirect to dashboard.
+    The code exchange must happen client-side where the PKCE code verifier
+    is stored (in the browser's storage from the initial OAuth request).
     """
-    from ..supabase_client import get_supabase_client, is_supabase_auth_enabled
+    from ..supabase_client import is_supabase_auth_enabled
 
     settings = get_settings()
-    code = request.query_params.get("code")
 
-    if not code:
-        return RedirectResponse(url="/login?error=oauth_invalid")
+    return HTMLResponse(content=f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Authenticating...</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;background:#f8fafc;">
+    <div style="text-align:center;">
+        <div style="width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:#3b82f6;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px;"></div>
+        <p style="color:#64748b;">Completing sign in...</p>
+    </div>
+    <style>@keyframes spin {{ from {{ transform:rotate(0deg); }} to {{ transform:rotate(360deg); }} }}</style>
+    <script>
+        const supabaseUrl = '{settings.supabase_url}';
+        const supabaseKey = '{settings.supabase_anon_key}';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    if not is_supabase_auth_enabled():
-        return RedirectResponse(url="/login?error=oauth_not_configured")
-
-    try:
-        supabase = get_supabase_client()
-        if not supabase:
-            return RedirectResponse(url="/login?error=oauth_not_configured")
-
-        # Exchange code for session
-        response = supabase.auth.exchange_code_for_session({"auth_code": code})
-
-        if response.session:
-            # Redirect to login page with tokens in hash fragment
-            # The JS on login.html will pick them up and store them
-            access_token = response.session.access_token
-            refresh_token = response.session.refresh_token
-            is_new = "true" if not response.user.last_sign_in_at else "false"
-            redirect_url = (
-                f"/login"
-                f"#access_token={access_token}"
-                f"&refresh_token={refresh_token}"
-                f"&is_new={is_new}"
-            )
-            return RedirectResponse(url=redirect_url)
-        else:
-            return RedirectResponse(url="/login?error=oauth_token_failed")
-
-    except Exception as e:
-        logger.error("auth_callback_error", error=str(e))
-        return RedirectResponse(url="/login?error=oauth_token_failed")
+        // The PKCE code verifier is in localStorage from the initial OAuth redirect
+        const code = new URLSearchParams(window.location.search).get('code');
+        if (code) {{
+            supabase.auth.exchangeCodeForSession(code).then(({{ data, error }}) => {{
+                if (error) {{
+                    console.error('Auth error:', error);
+                    window.location.href = '/login?error=oauth_token_failed';
+                    return;
+                }}
+                if (data.session) {{
+                    localStorage.setItem('access_token', data.session.access_token);
+                    localStorage.setItem('refresh_token', data.session.refresh_token);
+                    if (data.user) {{
+                        localStorage.setItem('user', JSON.stringify(data.user));
+                    }}
+                    window.location.href = '/dashboard';
+                }} else {{
+                    window.location.href = '/login?error=oauth_token_failed';
+                }}
+            }});
+        }} else {{
+            window.location.href = '/login?error=oauth_invalid';
+        }}
+    </script>
+</body>
+</html>
+""")
 
 
 # ============================================================================
