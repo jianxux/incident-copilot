@@ -37,7 +37,7 @@
         </div>
         {% endif %}
 
-        <!-- Google SSO -->
+        <!-- OAuth SSO -->
         <div class="space-y-3">
             {% if supabase_auth_enabled %}
             <a href="/api/auth/supabase/oauth/google?flow=login" class="w-full flex items-center justify-center px-4 py-3 border border-slate-200 rounded-lg hover:bg-white transition-colors group">
@@ -50,6 +50,7 @@
                 Continue with Google
             </a>
             {% else %}
+            {% if providers and ('google' in providers or 'github' in providers) %}
             {% if 'google' in providers %}
             <a href="/api/auth/oauth/google?flow=login" class="w-full flex items-center justify-center px-4 py-3 border border-slate-200 rounded-lg hover:bg-white transition-colors group">
                 <svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -60,6 +61,27 @@
                 </svg>
                 Continue with Google
             </a>
+            {% endif %}
+
+            {% if 'github' in providers %}
+            <a href="/api/auth/oauth/github" class="w-full flex items-center justify-center px-4 py-3 border border-slate-200 rounded-lg hover:bg-white transition-colors group">
+                <i class="fab fa-github text-slate-900 text-xl mr-3"></i>
+                Continue with GitHub
+            </a>
+            {% endif %}
+            {% else %}
+            <div class="bg-slate-100/70 border border-slate-200 rounded-lg p-4">
+                <div class="flex items-start">
+                    <i class="fas fa-circle-info text-slate-500 mt-0.5 mr-3"></i>
+                    <div>
+                        <p class="font-semibold text-slate-900">Authentication is not yet configured</p>
+                        <p class="text-sm text-muted mt-1">OAuth providers (Google, GitHub) need to be set up by the administrator.</p>
+                    </div>
+                </div>
+                <a href="/dashboard/demo" class="mt-4 w-full inline-flex items-center justify-center px-4 py-3 rounded-lg bg-slate-900 text-white hover:bg-slate-800 transition-colors">
+                    Try the Demo
+                </a>
+            </div>
             {% endif %}
             {% endif %}
         </div>
