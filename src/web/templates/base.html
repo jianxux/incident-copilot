@@ -70,11 +70,11 @@
             color: #1e293b;
         }
         .nav-item.active {
-            background: #e0e7ff;
-            color: #4338ca;
+            background: #fef2ee;
+            color: #c9432a;
         }
         .nav-item.active .nav-icon {
-            color: #4338ca;
+            color: #c9432a;
         }
         .nav-icon {
             width: 20px;
@@ -142,8 +142,8 @@
             theme: {
                 extend: {
                     colors: {
-                        'brand': '#4f46e5',
-                        'brand-dark': '#4338ca',
+                        'brand': '#e05a3a',
+                        'brand-dark': '#c9432a',
                         'muted': '#64748b',
                         'incident': {
                             'critical': '#dc2626',
@@ -158,7 +158,7 @@
         }
     </script>
 </head>
-<body class="h-full bg-slate-50 text-slate-900">
+<body class="h-full bg-stone-50 text-slate-900">
     <div class="h-full flex">
         <!-- Mobile sidebar overlay -->
         <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
@@ -168,10 +168,10 @@
             <!-- Logo area -->
             <div class="flex items-center h-16 px-4 border-b border-slate-200 flex-shrink-0">
                 <a href="/dashboard" class="flex items-center space-x-3 min-w-0">
-                    <svg class="w-8 h-8 text-brand flex-shrink-0" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="32" height="32" rx="8" fill="currentColor"/>
-                        <path d="M16 8v8l6 3" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        <circle cx="16" cy="16" r="6" stroke="white" stroke-width="2" fill="none"/>
+                    <svg class="w-8 h-8 flex-shrink-0" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="32" height="32" rx="8" fill="#e05a3a"/>
+                        <circle cx="16" cy="16" r="7" fill="none" stroke="#fff" stroke-width="2"/>
+                        <path d="M16 10v6l4.5 2.25" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     <span class="sidebar-logo-text text-base font-semibold text-slate-900 truncate">Incident Copilot</span>
                 </a>
@@ -252,7 +252,7 @@
                 <div id="topbar-user" class="relative hidden">
                     <button onclick="document.getElementById('user-dropdown').classList.toggle('hidden')" class="flex items-center gap-2 hover:bg-slate-100 rounded-full p-1 pr-3 transition">
                         <img id="topbar-avatar" src="" alt="" class="w-8 h-8 rounded-full bg-slate-200" style="display:none;">
-                        <div id="topbar-avatar-fallback" class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium"></div>
+                        <div id="topbar-avatar-fallback" class="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-white text-sm font-medium"></div>
                         <span id="topbar-name" class="text-sm font-medium text-slate-700 hidden sm:block"></span>
                         <i class="fas fa-chevron-down text-xs text-slate-400"></i>
                     </button>
@@ -262,7 +262,7 @@
                         <div class="px-4 py-3 border-b border-slate-100">
                             <div class="flex items-center gap-3">
                                 <img id="dropdown-avatar" src="" alt="" class="w-10 h-10 rounded-full bg-slate-200" style="display:none;">
-                                <div id="dropdown-avatar-fallback" class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium"></div>
+                                <div id="dropdown-avatar-fallback" class="w-10 h-10 rounded-full bg-brand flex items-center justify-center text-white text-sm font-medium"></div>
                                 <div>
                                     <div id="dropdown-name" class="text-sm font-semibold text-slate-800"></div>
                                     <div id="dropdown-email" class="text-xs text-slate-500"></div>
