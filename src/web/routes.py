@@ -227,6 +227,7 @@ async def login_page(request: Request, error: str | None = None):
         "oauth_not_configured": "This login method is not configured.",
         "oauth_token_failed": "Failed to authenticate. Please try again.",
         "oauth_user_failed": "Failed to get user info. Please try again.",
+        "session_expired": "Your session has expired. Please sign in again.",
     }
 
     return templates.TemplateResponse(
