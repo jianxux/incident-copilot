@@ -37,7 +37,8 @@ class ChecklistStore:
             if self._initialized:
                 return
             async with aiosqlite.connect(self._db_path) as conn:
-                await conn.execute("""
+                await conn.execute(
+                    """
                     CREATE TABLE IF NOT EXISTS onboarding_checklist (
                         tenant_id TEXT NOT NULL,
                         step TEXT NOT NULL,
@@ -45,11 +46,14 @@ class ChecklistStore:
                         updated_at TEXT NOT NULL,
                         PRIMARY KEY (tenant_id, step)
                     )
-                    """)
-                await conn.execute("""
+                    """
+                )
+                await conn.execute(
+                    """
                     CREATE INDEX IF NOT EXISTS idx_onboarding_checklist_tenant
                     ON onboarding_checklist(tenant_id)
-                    """)
+                    """
+                )
                 await conn.commit()
             self._initialized = True
             logger.info("onboarding_checklist_db_initialized", path=str(self._db_path))
