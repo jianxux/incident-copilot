@@ -24,7 +24,7 @@
                 <p class="text-muted mb-8">Where do you receive on-call alerts?</p>
 
                 <div class="space-y-4">
-                    <label class="flex items-center p-4 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-blue-500 transition-colors integration-option" data-value="pagerduty">
+                    <label class="flex items-center p-4 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-orange-500 transition-colors integration-option" data-value="pagerduty">
                         <input type="radio" name="alert_source" value="pagerduty" class="sr-only">
                         <div class="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center mr-4">
                             <i class="fas fa-bell text-green-400 text-xl"></i>
@@ -33,19 +33,19 @@
                             <div class="font-semibold">PagerDuty</div>
                             <div class="text-sm text-muted">Industry-leading incident management</div>
                         </div>
-                        <i class="fas fa-check-circle text-blue-500 hidden check-icon"></i>
+                        <i class="fas fa-check-circle text-brand hidden check-icon"></i>
                     </label>
 
-                    <label class="flex items-center p-4 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-blue-500 transition-colors integration-option" data-value="opsgenie">
+                    <label class="flex items-center p-4 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-orange-500 transition-colors integration-option" data-value="opsgenie">
                         <input type="radio" name="alert_source" value="opsgenie" class="sr-only">
-                        <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mr-4">
-                            <i class="fas fa-exclamation-triangle text-blue-400 text-xl"></i>
+                        <div class="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center mr-4">
+                            <i class="fas fa-exclamation-triangle text-brand text-xl"></i>
                         </div>
                         <div class="flex-1">
                             <div class="font-semibold">Opsgenie</div>
                             <div class="text-sm text-muted">Atlassian's alerting solution</div>
                         </div>
-                        <i class="fas fa-check-circle text-blue-500 hidden check-icon"></i>
+                        <i class="fas fa-check-circle text-brand hidden check-icon"></i>
                     </label>
                 </div>
 
@@ -54,9 +54,9 @@
                     <div>
                         <label class="block text-sm font-medium mb-2">PagerDuty API Key</label>
                         <input type="password" name="pagerduty_api_key" placeholder="u+xxxx..."
-                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                         <p class="mt-1 text-xs text-muted">
-                            <a href="https://support.pagerduty.com/docs/api-access-keys" target="_blank" class="text-blue-400 hover:underline">How to get your API key</a>
+                            <a href="https://support.pagerduty.com/docs/api-access-keys" target="_blank" class="text-brand hover:underline">How to get your API key</a>
                         </p>
                     </div>
                 </div>
@@ -65,11 +65,11 @@
                     <div>
                         <label class="block text-sm font-medium mb-2">Opsgenie API Key</label>
                         <input type="password" name="opsgenie_api_key" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">Region</label>
-                        <select name="opsgenie_region" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <select name="opsgenie_region" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                             <option value="us">US (api.opsgenie.com)</option>
                             <option value="eu">EU (api.eu.opsgenie.com)</option>
                         </select>
@@ -86,16 +86,16 @@
                     <div>
                         <label class="block text-sm font-medium mb-2">GitHub Personal Access Token</label>
                         <input type="password" name="github_token" placeholder="ghp_xxxx..."
-                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                         <p class="mt-1 text-xs text-muted">
                             Needs <code class="bg-white px-1 rounded">repo:read</code> scope. 
-                            <a href="https://github.com/settings/tokens/new?scopes=repo" target="_blank" class="text-blue-400 hover:underline">Create token</a>
+                            <a href="https://github.com/settings/tokens/new?scopes=repo" target="_blank" class="text-brand hover:underline">Create token</a>
                         </p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">GitHub Organization</label>
                         <input type="text" name="github_org" placeholder="your-org"
-                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                     </div>
                 </div>
             </div>
@@ -106,19 +106,19 @@
                 <p class="text-muted mb-8">We'll fetch and analyze logs when incidents occur.</p>
 
                 <div class="space-y-4 mb-6">
-                    <label class="flex items-center p-4 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-blue-500 transition-colors integration-option" data-value="datadog">
+                    <label class="flex items-center p-4 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-orange-500 transition-colors integration-option" data-value="datadog">
                         <input type="radio" name="log_provider" value="datadog" class="sr-only">
-                        <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mr-4">
-                            <i class="fas fa-chart-area text-purple-400 text-xl"></i>
+                        <div class="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center mr-4">
+                            <i class="fas fa-chart-area text-orange-400 text-xl"></i>
                         </div>
                         <div class="flex-1">
                             <div class="font-semibold">Datadog</div>
                             <div class="text-sm text-muted">Cloud monitoring & analytics</div>
                         </div>
-                        <i class="fas fa-check-circle text-blue-500 hidden check-icon"></i>
+                        <i class="fas fa-check-circle text-brand hidden check-icon"></i>
                     </label>
 
-                    <label class="flex items-center p-4 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-blue-500 transition-colors integration-option" data-value="cloudwatch">
+                    <label class="flex items-center p-4 border-2 border-slate-200 rounded-xl cursor-pointer hover:border-orange-500 transition-colors integration-option" data-value="cloudwatch">
                         <input type="radio" name="log_provider" value="cloudwatch" class="sr-only">
                         <div class="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center mr-4">
                             <i class="fab fa-aws text-orange-400 text-xl"></i>
@@ -127,7 +127,7 @@
                             <div class="font-semibold">AWS CloudWatch</div>
                             <div class="text-sm text-muted">AWS native logging</div>
                         </div>
-                        <i class="fas fa-check-circle text-blue-500 hidden check-icon"></i>
+                        <i class="fas fa-check-circle text-brand hidden check-icon"></i>
                     </label>
                 </div>
 
@@ -135,16 +135,16 @@
                     <div>
                         <label class="block text-sm font-medium mb-2">Datadog API Key</label>
                         <input type="password" name="datadog_api_key" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">Datadog Application Key</label>
                         <input type="password" name="datadog_app_key" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">Datadog Site</label>
-                        <select name="datadog_site" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <select name="datadog_site" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                             <option value="datadoghq.com">US (datadoghq.com)</option>
                             <option value="datadoghq.eu">EU (datadoghq.eu)</option>
                             <option value="us3.datadoghq.com">US3 (us3.datadoghq.com)</option>
@@ -157,17 +157,17 @@
                     <div>
                         <label class="block text-sm font-medium mb-2">AWS Region</label>
                         <input type="text" name="aws_region" placeholder="us-east-1"
-                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">AWS Access Key ID</label>
                         <input type="text" name="aws_access_key_id" placeholder="AKIAXXXXXXXXXXXXXXXX"
-                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">AWS Secret Access Key</label>
                         <input type="password" name="aws_secret_access_key" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                     </div>
                 </div>
             </div>
@@ -181,15 +181,15 @@
                     <div>
                         <label class="block text-sm font-medium mb-2">Slack Bot Token</label>
                         <input type="password" name="slack_bot_token" placeholder="xoxb-xxxx..."
-                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                         <p class="mt-1 text-xs text-muted">
-                            <a href="https://api.slack.com/apps" target="_blank" class="text-blue-400 hover:underline">Create a Slack app</a> with <code class="bg-white px-1 rounded">chat:write</code> scope
+                            <a href="https://api.slack.com/apps" target="_blank" class="text-brand hover:underline">Create a Slack app</a> with <code class="bg-white px-1 rounded">chat:write</code> scope
                         </p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">Default Channel</label>
                         <input type="text" name="slack_default_channel" placeholder="#incidents"
-                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                     </div>
                 </div>
 
@@ -197,7 +197,7 @@
                 <div class="mt-8 p-4 bg-white rounded-lg">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-sm font-medium">Your webhook URL</span>
-                        <button onclick="copyWebhook()" class="text-blue-400 hover:text-blue-300 text-sm">
+                        <button onclick="copyWebhook()" class="text-brand hover:text-brand text-sm">
                             <i class="fas fa-copy mr-1"></i> Copy
                         </button>
                     </div>
@@ -274,12 +274,12 @@ document.querySelectorAll('.integration-option').forEach(option => {
         
         // Unselect others in group
         document.querySelectorAll(`input[name="${group}"]`).forEach(input => {
-            input.closest('.integration-option').classList.remove('border-blue-500');
+            input.closest('.integration-option').classList.remove('border-orange-500');
             input.closest('.integration-option').querySelector('.check-icon').classList.add('hidden');
         });
         
         // Select this one
-        this.classList.add('border-blue-500');
+        this.classList.add('border-orange-500');
         this.querySelector('.check-icon').classList.remove('hidden');
         this.querySelector('input').checked = true;
         

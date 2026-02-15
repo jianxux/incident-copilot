@@ -66,7 +66,7 @@
     <div class="flex flex-wrap gap-4">
         {% for sev, count in stats.by_severity.items() %}
         <div class="flex items-center space-x-2">
-            <span class="w-3 h-3 rounded-full {% if sev == 'critical' %}bg-red-600{% elif sev == 'high' %}bg-orange-500{% elif sev == 'medium' %}bg-yellow-500{% elif sev == 'low' %}bg-blue-500{% else %}bg-slate-400{% endif %}"></span>
+            <span class="w-3 h-3 rounded-full {% if sev == 'critical' %}bg-red-600{% elif sev == 'high' %}bg-orange-500{% elif sev == 'medium' %}bg-yellow-500{% elif sev == 'low' %}bg-brand{% else %}bg-slate-400{% endif %}"></span>
             <span class="text-slate-700 capitalize">{{ sev }}</span>
             <span class="text-muted">({{ count }})</span>
         </div>
