@@ -11,6 +11,7 @@ from pydantic import BaseModel, EmailStr
 
 from ..config import get_settings
 from ..supabase_client import (
+    get_supabase_admin_client,
     get_supabase_client,
     is_supabase_auth_enabled,
 )
@@ -244,7 +245,7 @@ async def logout():
 
 
 @router.get("/oauth/{provider}")
-async def oauth_start(provider: str, request: Request):
+async def oauth_start(provider: str, request: Request, flow: str = "login"):
     """Start OAuth flow via Supabase (Google, GitHub, etc.)."""
     _check_supabase_auth()
 
@@ -264,7 +265,8 @@ async def oauth_start(provider: str, request: Request):
             detail=f"Invalid OAuth provider: {provider}. Valid: {valid_providers}",
         )
 
-    redirect_uri = f"{settings.app_url}/auth/callback"
+    # Pass flow (login/signup) through to the callback
+    redirect_uri = f"{settings.app_url}/auth/callback?flow={flow}"
 
     try:
         response = client.auth.sign_in_with_oauth(
@@ -291,6 +293,37 @@ async def oauth_start(provider: str, request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"OAuth initialization failed: {str(e)}",
         )
+
+
+@router.get("/check-profile")
+async def check_profile(request: Request):
+    """Check if the authenticated user has a profile (i.e., has signed up)."""
+    _check_supabase_auth()
+
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing token")
+
+    token = auth_header.replace("Bearer ", "")
+    admin = get_supabase_admin_client()
+    if not admin:
+        raise HTTPException(status_code=503, detail="Supabase not available")
+
+    try:
+        # Get user from token
+        user_response = admin.auth.get_user(token)
+        if not user_response or not user_response.user:
+            return {"has_profile": False}
+
+        user_id = str(user_response.user.id)
+
+        # Check if profile exists
+        result = admin.table("profiles").select("id").eq("id", user_id).execute()
+        has_profile = len(result.data) > 0
+        return {"has_profile": has_profile, "user_id": user_id}
+    except Exception as e:
+        logger.error("check_profile_error", error=str(e))
+        return {"has_profile": False}
 
 
 @router.get("/exchange")

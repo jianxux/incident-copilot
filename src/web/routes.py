@@ -117,11 +117,8 @@ async def auth_callback(request: Request):
     The code exchange must happen client-side where the PKCE code verifier
     is stored (in the browser's storage from the initial OAuth request).
     """
-    from ..supabase_client import is_supabase_auth_enabled
-
-    settings = get_settings()
-
-    return HTMLResponse(content=f"""
+    return HTMLResponse(
+        content="""
 <!DOCTYPE html>
 <html>
 <head>
@@ -133,60 +130,82 @@ async def auth_callback(request: Request):
         <div style="width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:#3b82f6;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px;"></div>
         <p style="color:#64748b;">Completing sign in...</p>
     </div>
-    <style>@keyframes spin {{ from {{ transform:rotate(0deg); }} to {{ transform:rotate(360deg); }} }}</style>
+    <style>@keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }</style>
     <script>
-        // Handle both implicit flow (hash fragment) and PKCE flow (query param)
         const hash = window.location.hash.substring(1);
         const hashParams = new URLSearchParams(hash);
         const queryParams = new URLSearchParams(window.location.search);
+        const flow = queryParams.get('flow') || 'login';
 
         const accessToken = hashParams.get('access_token');
         const refreshToken = hashParams.get('refresh_token');
         const code = queryParams.get('code');
 
-        if (accessToken && refreshToken) {{
-            // Implicit flow — tokens are in the hash
-            localStorage.setItem('access_token', accessToken);
-            localStorage.setItem('refresh_token', refreshToken);
+        function handleAuthComplete(token, refresh, userData) {
+            localStorage.setItem('access_token', token);
+            localStorage.setItem('refresh_token', refresh || '');
+            if (userData) localStorage.setItem('user', JSON.stringify(userData));
 
-            // Fetch user info
-            fetch('/api/auth/supabase/user', {{
-                headers: {{ 'Authorization': 'Bearer ' + accessToken }}
-            }})
+            // Check if user has a profile (has signed up before)
+            fetch('/api/auth/supabase/check-profile', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (flow === 'login' && !data.has_profile) {
+                    // User hasn't signed up yet — reject login
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('refresh_token');
+                    localStorage.removeItem('user');
+                    window.location.href = '/login?error=no_account';
+                } else if (flow === 'signup' && !data.has_profile) {
+                    // New signup — send to onboarding
+                    window.location.href = '/dashboard/onboarding-wizard';
+                } else {
+                    // Existing user — go to dashboard
+                    window.location.href = '/dashboard';
+                }
+            })
+            .catch(() => {
+                // If check fails, allow through (graceful degradation)
+                window.location.href = '/dashboard';
+            });
+        }
+
+        if (accessToken && refreshToken) {
+            // Implicit flow
+            fetch('/api/auth/supabase/user', {
+                headers: { 'Authorization': 'Bearer ' + accessToken }
+            })
             .then(r => r.ok ? r.json() : null)
-            .then(data => {{
-                if (data && data.user) {{
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                }}
-                window.location.href = '/dashboard';
-            }})
-            .catch(() => {{
-                window.location.href = '/dashboard';
-            }});
-        }} else if (code) {{
-            // PKCE flow — exchange code server-side
+            .then(data => {
+                handleAuthComplete(accessToken, refreshToken, data ? data.user : null);
+            })
+            .catch(() => {
+                handleAuthComplete(accessToken, refreshToken, null);
+            });
+        } else if (code) {
+            // PKCE flow
             fetch('/api/auth/supabase/exchange?code=' + encodeURIComponent(code))
             .then(r => r.json())
-            .then(data => {{
-                if (data.access_token) {{
-                    localStorage.setItem('access_token', data.access_token);
-                    localStorage.setItem('refresh_token', data.refresh_token || '');
-                    if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
-                    window.location.href = '/dashboard';
-                }} else {{
+            .then(data => {
+                if (data.access_token) {
+                    handleAuthComplete(data.access_token, data.refresh_token, data.user);
+                } else {
                     window.location.href = '/login?error=oauth_token_failed';
-                }}
-            }})
-            .catch(() => {{
+                }
+            })
+            .catch(() => {
                 window.location.href = '/login?error=oauth_token_failed';
-            }});
-        }} else {{
+            });
+        } else {
             window.location.href = '/login?error=oauth_invalid';
-        }}
+        }
     </script>
 </body>
 </html>
-""")
+"""
+    )
 
 
 # ============================================================================
@@ -201,6 +220,7 @@ async def login_page(request: Request, error: str | None = None):
     from ..supabase_client import is_supabase_auth_enabled
 
     error_messages = {
+        "no_account": "No account found. Please sign up first.",
         "oauth_denied": "You cancelled the login process.",
         "oauth_invalid": "Invalid OAuth response. Please try again.",
         "oauth_invalid_state": "Session expired. Please try again.",
