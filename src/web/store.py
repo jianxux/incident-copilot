@@ -13,7 +13,6 @@ from datetime import UTC, datetime
 
 import structlog
 
-from ..config import get_settings
 from ..models import ContextCard, Severity
 from ..supabase_client import is_supabase_db_enabled
 
@@ -369,7 +368,9 @@ class SupabaseIncidentStore(_BaseIncidentStore):
         tenant_id = await self._ensure_tenant()
         db = get_db(use_admin=True)
 
-        row = await db.get_processing_incident(tenant_id=tenant_id, incident_id=incident_id)
+        row = await db.get_processing_incident(
+            tenant_id=tenant_id, incident_id=incident_id
+        )
         if not row:
             return None
 
@@ -410,7 +411,6 @@ class SupabaseIncidentStore(_BaseIncidentStore):
 
 
 def get_incident_store() -> _BaseIncidentStore:
-    settings = get_settings()
 
     if is_supabase_db_enabled():
         logger.info("incident_store_backend", backend="supabase")

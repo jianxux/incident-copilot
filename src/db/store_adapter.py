@@ -5,7 +5,6 @@ The adapter preserves the SSE subscriber mechanism from the in-memory store whil
 persisting data to Supabase PostgreSQL.
 """
 
-import asyncio
 from datetime import datetime
 
 import structlog
@@ -13,7 +12,7 @@ import structlog
 from ..models import ContextCard, Severity
 from ..supabase_client import is_supabase_db_enabled
 from ..web.store import IncidentStore, StoredIncident
-from .supabase_db import SupabaseDB, get_db
+from .supabase_db import get_db
 
 logger = structlog.get_logger()
 
@@ -66,14 +65,14 @@ class SupabaseIncidentStore(IncidentStore):
         """Mark completed in both DB and memory."""
         try:
             # Find the DB incident by source_id
-            incidents = await self._db.list_incidents(
-                self.tenant_id, limit=1
-            )
+            incidents = await self._db.list_incidents(self.tenant_id, limit=1)
             # Update status
             for inc in incidents:
                 if inc.get("source_id") == incident_id:
                     await self._db.update_incident(
-                        inc["id"], status="resolved", resolved_at=datetime.utcnow().isoformat()
+                        inc["id"],
+                        status="resolved",
+                        resolved_at=datetime.utcnow().isoformat(),
                     )
                     # Store context card
                     await self._db.create_context_card(
@@ -120,4 +119,5 @@ def get_incident_store(tenant_id: str | None = None) -> IncidentStore:
 
     # Fall back to the global in-memory store
     from ..web.store import incident_store
+
     return incident_store
