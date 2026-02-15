@@ -964,7 +964,19 @@
         <div class="footer-copy">© 2026 Incident Copilot. Built for on-call engineers.</div>
     </footer>
 
+    <button id="back-to-top" type="button" aria-label="Back to top" title="Back to top" style="
+        position: fixed; bottom: 2rem; right: 2rem; z-index: 90;
+        width: 44px; height: 44px; border-radius: 50%;
+        background: var(--coral); color: #fff; border: none;
+        font-size: 1.2rem; cursor: pointer;
+        box-shadow: 0 4px 12px rgba(224,90,58,0.3);
+        opacity: 0; transform: translateY(10px);
+        transition: opacity 0.3s, transform 0.3s;
+        pointer-events: none;
+    ">↑</button>
+
     <script>
+        // Mobile nav toggle
         (function () {
             const toggle = document.querySelector('.nav-toggle');
             const links = document.getElementById('nav-links');
@@ -983,8 +995,7 @@
             });
 
             links.addEventListener('click', function (e) {
-                const el = e.target;
-                if (el && el.tagName === 'A') closeMenu();
+                if (e.target.tagName === 'A') closeMenu();
             });
 
             document.addEventListener('keydown', function (e) {
@@ -995,6 +1006,27 @@
                 if (links.classList.contains('open') && !links.contains(e.target) && !toggle.contains(e.target)) {
                     closeMenu();
                 }
+            });
+        })();
+
+        // Back to top
+        (function() {
+            var btn = document.getElementById('back-to-top');
+            if (!btn) return;
+            function sync() {
+                if (window.scrollY > 400) {
+                    btn.style.opacity = '1';
+                    btn.style.transform = 'translateY(0)';
+                    btn.style.pointerEvents = 'auto';
+                } else {
+                    btn.style.opacity = '0';
+                    btn.style.transform = 'translateY(10px)';
+                    btn.style.pointerEvents = 'none';
+                }
+            }
+            window.addEventListener('scroll', sync, { passive: true });
+            btn.addEventListener('click', function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             });
         })();
     </script>
