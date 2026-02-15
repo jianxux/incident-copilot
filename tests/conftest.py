@@ -17,6 +17,14 @@ os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
 
+# Ensure unit tests never hit real Supabase (a checked-in .env may enable it)
+os.environ["SUPABASE_DB_ENABLED"] = "false"
+os.environ["SUPABASE_AUTH_ENABLED"] = "false"
+# Make Supabase appear unconfigured unless a test explicitly opts in
+os.environ.pop("SUPABASE_URL", None)
+os.environ.pop("SUPABASE_ANON_KEY", None)
+os.environ.pop("SUPABASE_SERVICE_ROLE_KEY", None)
+
 # Skip tests with broken imports or unimplemented features during collection
 collect_ignore = [
     # Broken imports - need refactoring
