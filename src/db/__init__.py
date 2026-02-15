@@ -1,13 +1,10 @@
-"""Database module for Incident Copilot.
+"""Database layer for Incident Copilot.
 
-Provides a unified interface for database operations that can use either:
-- Direct PostgreSQL connection (default)
-- Supabase client (when SUPABASE_DB_ENABLED=true)
+Provides Supabase-backed persistence as an alternative to in-memory stores.
+Enable with SUPABASE_DB_ENABLED=true.
 """
 
-from .supabase_db import (
-    SupabaseDB,
-    get_db,
-)
+from .store_adapter import get_incident_store
+from .supabase_db import SupabaseDB, get_db
 
-__all__ = ["SupabaseDB", "get_db"]
+__all__ = ["SupabaseDB", "get_db", "get_incident_store"]
