@@ -221,6 +221,7 @@ async def login_page(request: Request, error: str | None = None):
 
     error_messages = {
         "no_account": "No account found. Please sign up first.",
+        "session_expired": "Your session has expired. Please sign in again.",
         "oauth_denied": "You cancelled the login process.",
         "oauth_invalid": "Invalid OAuth response. Please try again.",
         "oauth_invalid_state": "Session expired. Please try again.",
