@@ -417,6 +417,56 @@
             });
         })();
 
+        // Keyboard shortcuts
+        function showShortcutsOverlay() {
+            const el = document.getElementById('shortcuts-overlay');
+            if (el) el.classList.remove('hidden');
+        }
+        function hideShortcutsOverlay() {
+            const el = document.getElementById('shortcuts-overlay');
+            if (el) el.classList.add('hidden');
+        }
+        (function() {
+            const isMac = /Mac|iPhone|iPad|iPod/i.test(navigator.platform);
+            const nav = {
+                '1': '/dashboard',
+                '2': '/dashboard/analytics',
+                '3': '/dashboard/insights',
+                '4': '/dashboard/handoff',
+                '5': '/dashboard/onboarding-wizard',
+                '6': '/dashboard/billing',
+            };
+
+            document.addEventListener('keydown', function(e) {
+                const target = e.target;
+                const tag = (target && target.tagName) ? target.tagName.toLowerCase() : '';
+                const isTyping = tag === 'input' || tag === 'textarea' || tag === 'select' || (target && target.isContentEditable);
+                if (isTyping) return;
+
+                const modifierPressed = isMac ? e.metaKey : e.ctrlKey;
+                if (!modifierPressed) return;
+
+                // Help overlay (⌘K / ⌘/ or Ctrl+K / Ctrl+/)
+                if (e.key === 'k' || e.key === 'K' || e.key === '/') {
+                    e.preventDefault();
+                    showShortcutsOverlay();
+                    return;
+                }
+
+                // Navigation (⌘1-⌘6 or Ctrl+1-Ctrl+6)
+                const href = nav[e.key];
+                if (href) {
+                    e.preventDefault();
+                    window.location.href = href;
+                }
+            });
+
+            // Escape closes overlay
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') hideShortcutsOverlay();
+            });
+        })();
+
         function logout() {
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
