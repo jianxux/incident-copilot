@@ -258,10 +258,197 @@ async function createDemoIncident() {
     }
 }
 
+// ── Keyboard shortcuts ──
+function initKeyboardShortcuts() {
+    // Inject modal markup + styles
+    const style = document.createElement('style');
+    style.textContent = `
+        .ic-kbd-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(28, 25, 23, 0.55);
+            backdrop-filter: blur(6px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 1.5rem;
+        }
+        .ic-kbd-overlay.show { display: flex; }
+        .ic-kbd-modal {
+            width: min(560px, 100%);
+            background: #fffdf9;
+            border: 1px solid rgba(28, 25, 23, 0.12);
+            border-radius: 18px;
+            box-shadow: 0 30px 80px rgba(28, 25, 23, 0.25);
+            overflow: hidden;
+            font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        }
+        .ic-kbd-header {
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(180deg, rgba(224, 90, 58, 0.10), rgba(224, 90, 58, 0));
+        }
+        .ic-kbd-title { font-weight: 700; color: #1c1917; }
+        .ic-kbd-close {
+            border: 0;
+            background: transparent;
+            color: rgba(28, 25, 23, 0.65);
+            font-size: 0.95rem;
+            cursor: pointer;
+            padding: 0.35rem 0.5rem;
+            border-radius: 10px;
+        }
+        .ic-kbd-close:hover { background: rgba(224, 90, 58, 0.10); color: #9a3412; }
+        .ic-kbd-body { padding: 1rem 1.25rem 1.25rem; }
+        .ic-kbd-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-top: 1px solid rgba(28, 25, 23, 0.06);
+        }
+        .ic-kbd-row:first-child { border-top: 0; }
+        .ic-kbd-label { color: rgba(28, 25, 23, 0.75); font-weight: 600; }
+        .ic-kbd-keys { display: flex; gap: 0.4rem; }
+        .ic-kbd-key {
+            background: rgba(224, 90, 58, 0.10);
+            color: #9a3412;
+            border: 1px solid rgba(224, 90, 58, 0.25);
+            border-bottom-width: 2px;
+            padding: 0.15rem 0.45rem;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
+        .ic-kbd-footer {
+            padding: 0.75rem 1.25rem;
+            border-top: 1px solid rgba(28, 25, 23, 0.06);
+            color: rgba(28, 25, 23, 0.55);
+            font-size: 0.85rem;
+        }
+    `;
+    document.head.appendChild(style);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'ic-kbd-overlay';
+    overlay.id = 'ic-kbd-overlay';
+    overlay.innerHTML = `
+        <div class="ic-kbd-modal" role="dialog" aria-modal="true" aria-labelledby="ic-kbd-title">
+            <div class="ic-kbd-header">
+                <div class="ic-kbd-title" id="ic-kbd-title">Keyboard shortcuts</div>
+                <button class="ic-kbd-close" type="button" aria-label="Close shortcuts" title="Close (Esc)">Esc</button>
+            </div>
+            <div class="ic-kbd-body">
+                <div class="ic-kbd-row">
+                    <div class="ic-kbd-label">Go to dashboard</div>
+                    <div class="ic-kbd-keys"><span class="ic-kbd-key">g</span><span class="ic-kbd-key">d</span></div>
+                </div>
+                <div class="ic-kbd-row">
+                    <div class="ic-kbd-label">Go to analytics</div>
+                    <div class="ic-kbd-keys"><span class="ic-kbd-key">g</span><span class="ic-kbd-key">a</span></div>
+                </div>
+                <div class="ic-kbd-row">
+                    <div class="ic-kbd-label">Go to insights</div>
+                    <div class="ic-kbd-keys"><span class="ic-kbd-key">g</span><span class="ic-kbd-key">i</span></div>
+                </div>
+                <div class="ic-kbd-row">
+                    <div class="ic-kbd-label">Go to setup</div>
+                    <div class="ic-kbd-keys"><span class="ic-kbd-key">g</span><span class="ic-kbd-key">s</span></div>
+                </div>
+                <div class="ic-kbd-row">
+                    <div class="ic-kbd-label">Show this dialog</div>
+                    <div class="ic-kbd-keys"><span class="ic-kbd-key">?</span></div>
+                </div>
+            </div>
+            <div class="ic-kbd-footer">Tip: shortcuts are disabled while typing in inputs.</div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const closeBtn = overlay.querySelector('.ic-kbd-close');
+    const modal = overlay.querySelector('.ic-kbd-modal');
+
+    function isTypingTarget(el) {
+        if (!el) return false;
+        const tag = (el.tagName || '').toLowerCase();
+        return tag === 'input' || tag === 'textarea' || el.isContentEditable;
+    }
+
+    function showShortcuts() {
+        overlay.classList.add('show');
+        closeBtn.focus();
+    }
+
+    function hideShortcuts() {
+        overlay.classList.remove('show');
+    }
+
+    closeBtn.addEventListener('click', hideShortcuts);
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) hideShortcuts();
+    });
+    modal.addEventListener('click', (e) => e.stopPropagation());
+
+    // Key chord handler (g then d/a/i/s within a short window)
+    let awaitingSecondKey = false;
+    let chordTimer = null;
+
+    function startChordWindow() {
+        awaitingSecondKey = true;
+        if (chordTimer) clearTimeout(chordTimer);
+        chordTimer = setTimeout(() => { awaitingSecondKey = false; }, 900);
+    }
+
+    function go(path) {
+        window.location.href = path;
+    }
+
+    document.addEventListener('keydown', (e) => {
+        // Always allow Escape to close modal
+        if (e.key === 'Escape' && overlay.classList.contains('show')) {
+            e.preventDefault();
+            hideShortcuts();
+            return;
+        }
+
+        if (isTypingTarget(e.target)) return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+        // '?' toggles shortcuts modal
+        if (e.key === '?') {
+            e.preventDefault();
+            if (overlay.classList.contains('show')) hideShortcuts();
+            else showShortcuts();
+            return;
+        }
+
+        // 'g' starts navigation chord
+        if (!awaitingSecondKey && (e.key === 'g' || e.key === 'G')) {
+            startChordWindow();
+            return;
+        }
+
+        if (awaitingSecondKey) {
+            const k = e.key.toLowerCase();
+            awaitingSecondKey = false;
+            if (chordTimer) clearTimeout(chordTimer);
+
+            if (k === 'd') return go('/dashboard');
+            if (k === 'a') return go('/dashboard/analytics');
+            if (k === 'i') return go('/dashboard/insights');
+            if (k === 's') return go('/dashboard/onboarding-wizard');
+        }
+    });
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     connectSSE();
-    
+    initKeyboardShortcuts();
+
     // Periodic stats refresh as backup
     setInterval(updateStats, 30000);
 });
