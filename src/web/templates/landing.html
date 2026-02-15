@@ -3,8 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Incident Copilot</title>
-    <meta name="description" content="Context when you need it most. Resolve incidents faster.">
+    <title>Incident Copilot — Resolve incidents faster with instant context</title>
+    <meta name="description" content="Incident Copilot assembles deploys, logs, and past incident history into a single context card—so on-call engineers can resolve incidents faster."/>
+
+    <link rel="canonical" href="https://incident-copilot.dev/"/>
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Incident Copilot — Resolve incidents faster with instant context"/>
+    <meta property="og:description" content="Deploys, logs, and past incidents—automatically assembled into one card so you can start resolving, not researching."/>
+    <meta property="og:type" content="website"/>
+    <meta property="og:url" content="https://incident-copilot.dev/"/>
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image"/>
+    <meta name="twitter:title" content="Incident Copilot — Resolve incidents faster with instant context"/>
+    <meta name="twitter:description" content="Deploys, logs, and past incidents—automatically assembled into one card so you can start resolving, not researching."/>
     <link rel="icon" type="image/svg+xml" href="/dashboard/static/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -805,44 +818,6 @@
         </div>
     </section>
 
-    <!-- Preview -->
-    <section class="preview">
-        <div class="preview-label">How it looks</div>
-        <h2>One card. Everything assembled.</h2>
-        <div class="card-preview">
-            <div class="card-bar">
-                <div class="dot dot-r"></div>
-                <div class="dot dot-y"></div>
-                <div class="dot dot-g"></div>
-                <span class="card-title">payments-api · High Error Rate · Critical</span>
-            </div>
-            <div class="card-body">
-                <div>
-                    <div class="card-section-label">Recent Deploys</div>
-                    <div class="commit-line">
-                        <code>a3f21bc</code> Fix retry logic
-                        <span class="commit-meta">@alice · 23m ago</span>
-                    </div>
-                    <div class="commit-line">
-                        <code>b7e84fd</code> Update dependencies
-                        <span class="commit-meta">@bob · 2h ago</span>
-                    </div>
-                    <br>
-                    <div class="card-section-label">AI Summary</div>
-                    <p>Error rate increased 10× after commit a3f21bc. Database connection timeouts correlate with retry logic changes. Similar incident occurred 3 weeks ago (#INC-847).</p>
-                </div>
-                <div>
-                    <div class="card-section-label">Suggested Actions</div>
-                    <ul>
-                        <li>Review retry logic in payments/retry.go</li>
-                        <li>Check DB connection pool metrics</li>
-                        <li>Consider rollback to b7e84fd</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="card-footer">Assembled in 2.3 seconds</div>
-        </div>
-    </section>
 
     <!-- Features -->
     <section id="features" class="features">
