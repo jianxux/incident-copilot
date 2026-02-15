@@ -4,7 +4,8 @@ This module provides database operations using Supabase's client library,
 which wraps PostgreSQL with a REST API and real-time subscriptions.
 """
 
-from datetime import datetime
+import asyncio
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import structlog
@@ -42,7 +43,21 @@ class SupabaseDB:
                 self._client = get_supabase_admin_client()
             else:
                 self._client = get_supabase_client()
+
+        if self._client is None:
+            raise RuntimeError(
+                "Supabase client not configured for this mode "
+                f"(use_admin={self.use_admin}). Check SUPABASE_URL/keys."
+            )
+
         return self._client
+
+    async def _to_thread(self, fn, *args, **kwargs):
+        """Run a synchronous Supabase call in a thread.
+
+        Supabase Python client is synchronous; the rest of the app is async.
+        """
+        return await asyncio.to_thread(fn, *args, **kwargs)
 
     def _check_enabled(self):
         """Check if Supabase DB is enabled."""
@@ -179,6 +194,48 @@ class SupabaseDB:
         )
         return result.data or []
 
+    # ==================== Tenants (helpers) ====================
+
+    async def ensure_tenant(
+        self,
+        *,
+        slug: str = "default",
+        name: str = "Default Tenant",
+        plan: str = "free",
+    ) -> dict:
+        """Ensure a tenant exists (by slug) and return it.
+
+        Intended for server-side/demo usage when there is no end-user auth context.
+        """
+        self._check_enabled()
+
+        def _get():
+            return (
+                self.client.table("tenants").select("*").eq("slug", slug).single().execute()
+            )
+
+        try:
+            res = await self._to_thread(_get)
+            if res.data:
+                return res.data
+        except Exception:
+            # Not found / .single() error in PostgREST -> create
+            pass
+
+        tenant = {
+            "id": str(uuid4()),
+            "name": name,
+            "slug": slug,
+            "plan": plan,
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+
+        def _insert():
+            return self.client.table("tenants").insert(tenant).execute()
+
+        res = await self._to_thread(_insert)
+        return res.data[0] if res.data else tenant
+
     # ==================== Incidents ====================
 
     async def create_incident(
@@ -227,13 +284,101 @@ class SupabaseDB:
         self._check_enabled()
 
         kwargs["updated_at"] = datetime.utcnow().isoformat()
-        result = (
-            self.client.table("incidents")
-            .update(kwargs)
-            .eq("id", incident_id)
-            .execute()
-        )
+
+        def _do():
+            return (
+                self.client.table("incidents")
+                .update(kwargs)
+                .eq("id", incident_id)
+                .execute()
+            )
+
+        result = await self._to_thread(_do)
         return result.data[0] if result.data else None
+
+    async def upsert_processing_incident(
+        self,
+        *,
+        tenant_id: str,
+        incident_id: str,
+        title: str,
+        service_name: str,
+        severity: str,
+        status: str,
+        triggered_at: str | None = None,
+        processed_at: str | None = None,
+        error_message: str | None = None,
+    ) -> dict:
+        """Upsert an incident row used by the web dashboard."""
+        self._check_enabled()
+
+        payload = {
+            "id": incident_id,
+            "tenant_id": tenant_id,
+            "title": title,
+            "service": service_name,
+            "severity": severity,
+            "status": status,
+            "triggered_at": triggered_at,
+            "processed_at": processed_at,
+            "error_message": error_message,
+            "source": "manual",
+            "created_at": triggered_at or datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat(),
+        }
+
+        def _do():
+            return (
+                self.client.table("incidents")
+                .upsert(payload, on_conflict="id")
+                .execute()
+            )
+
+        res = await self._to_thread(_do)
+        return res.data[0] if res.data else payload
+
+    async def list_processing_incidents(
+        self,
+        *,
+        tenant_id: str,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict]:
+        """List incidents for the dashboard."""
+        self._check_enabled()
+
+        def _do():
+            return (
+                self.client.table("incidents")
+                .select("*")
+                .eq("tenant_id", tenant_id)
+                .order("triggered_at", desc=True)
+                .range(offset, offset + limit - 1)
+                .execute()
+            )
+
+        res = await self._to_thread(_do)
+        return res.data or []
+
+    async def get_processing_incident(self, *, tenant_id: str, incident_id: str) -> dict | None:
+        """Get an incident row (tenant scoped)."""
+        self._check_enabled()
+
+        def _do():
+            return (
+                self.client.table("incidents")
+                .select("*")
+                .eq("tenant_id", tenant_id)
+                .eq("id", incident_id)
+                .single()
+                .execute()
+            )
+
+        try:
+            res = await self._to_thread(_do)
+            return res.data
+        except Exception:
+            return None
 
     async def list_incidents(
         self,
@@ -299,22 +444,28 @@ class SupabaseDB:
             **kwargs,
         }
 
-        result = self.client.table("context_cards").insert(card).execute()
+        def _do():
+            return self.client.table("context_cards").insert(card).execute()
+
+        result = await self._to_thread(_do)
         return result.data[0] if result.data else card
 
     async def get_context_card(self, incident_id: str) -> dict | None:
         """Get the context card for an incident."""
         self._check_enabled()
 
-        result = (
-            self.client.table("context_cards")
-            .select("*")
-            .eq("incident_id", incident_id)
-            .order("created_at", desc=True)
-            .limit(1)
-            .single()
-            .execute()
-        )
+        def _do():
+            return (
+                self.client.table("context_cards")
+                .select("*")
+                .eq("incident_id", incident_id)
+                .order("created_at", desc=True)
+                .limit(1)
+                .single()
+                .execute()
+            )
+
+        result = await self._to_thread(_do)
         return result.data
 
     # ==================== Runbooks ====================
