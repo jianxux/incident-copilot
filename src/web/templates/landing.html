@@ -41,6 +41,10 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
             font-family: 'Inter', system-ui, sans-serif;
             background: var(--cream);
@@ -101,6 +105,11 @@
             transition: opacity 0.2s;
         }
         .btn-nav:hover { opacity: 0.85; }
+
+        html { scroll-behavior: smooth; }
+
+        /* Anchor offsets (fixed nav) */
+        #features, #how-it-works, #integrations { scroll-margin-top: 80px; }
 
         .nav-toggle {
             display: none;
@@ -697,6 +706,41 @@
             opacity: 0.5;
             padding-top: 2rem;
             border-top: 1px solid rgba(28,25,23,0.06);
+        }
+
+        /* ── Back to top ── */
+        #back-to-top {
+            position: fixed;
+            right: 1.5rem;
+            bottom: 1.5rem;
+            width: 44px;
+            height: 44px;
+            border: none;
+            border-radius: 999px;
+            background: var(--coral);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 12px 28px rgba(28,25,23,0.18);
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 200;
+            font-size: 20px;
+            line-height: 1;
+        }
+        #back-to-top.is-visible {
+            opacity: 0.95;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        #back-to-top:hover { opacity: 1; }
+        #back-to-top:focus-visible {
+            outline: 3px solid rgba(224,90,58,0.35);
+            outline-offset: 3px;
         }
 
         /* ── Responsive ── */
