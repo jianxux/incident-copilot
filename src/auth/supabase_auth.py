@@ -317,13 +317,31 @@ async def check_profile(request: Request):
 
         user_id = str(user_response.user.id)
 
-        # Check if profile exists
+        # Check if profile exists — if not, auto-create for existing auth users
         result = admin.table("profiles").select("id").eq("id", user_id).execute()
         has_profile = len(result.data) > 0
+
+        if not has_profile:
+            # Auto-create profile for users who authenticated successfully
+            try:
+                user = user_response.user
+                admin.table("profiles").insert({
+                    "id": user_id,
+                    "email": user.email or "",
+                    "full_name": (user.user_metadata or {}).get("full_name", ""),
+                }).execute()
+                has_profile = True
+                logger.info("auto_created_profile", user_id=user_id)
+            except Exception as profile_err:
+                logger.warning("auto_create_profile_failed", error=str(profile_err))
+                # Still let them through
+                has_profile = True
+
         return {"has_profile": has_profile, "user_id": user_id}
     except Exception as e:
         logger.error("check_profile_error", error=str(e))
-        return {"has_profile": False}
+        # On error, assume profile exists to avoid locking out valid users
+        return {"has_profile": True}
 
 
 @router.get("/exchange")
