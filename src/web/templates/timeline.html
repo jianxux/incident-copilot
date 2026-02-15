@@ -12,7 +12,7 @@
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-bold text-slate-900 flex items-center">
-                <i class="fas fa-stream mr-3 text-brand"></i>
+                <i class="fas fa-stream mr-3 text-[#e05a3a]"></i>
                 Incident Timeline
             </h1>
             <p class="text-muted mt-1">{{ incident_title }}</p>
@@ -53,29 +53,29 @@
 <div class="bg-white rounded-xl border border-slate-200 p-6">
     <div class="relative">
         <!-- Vertical Line -->
-        <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-slate-100"></div>
-        
+        <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-[#e05a3a]/20"></div>
+
         <!-- Events -->
         <div class="space-y-6">
             {% for event in events %}
             <div class="timeline-event relative flex items-start" 
                  data-type="{{ event.event_type }}"
                  data-key="{{ 'true' if event.is_key_event else 'false' }}">
-                
+
                 <!-- Event Icon -->
                 <div class="relative z-10 flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center
-                    {% if event.color == 'red' %}bg-red-500/20 text-red-400 border-red-500
-                    {% elif event.color == 'green' %}bg-green-500/20 text-green-400 border-green-500
-                    {% elif event.color == 'blue' %}bg-orange-500/20 text-brand border-orange-500
-                    {% elif event.color == 'yellow' %}bg-yellow-500/20 text-yellow-400 border-yellow-500
-                    {% elif event.color == 'orange' %}bg-orange-500/20 text-orange-400 border-orange-500
-                    {% elif event.color == 'purple' %}bg-orange-500/20 text-orange-400 border-orange-500
-                    {% else %}bg-slate-100 text-muted border-slate-200
+                    {% if event.color == 'red' %}bg-red-500/20 text-red-400
+                    {% elif event.color == 'green' %}bg-green-500/20 text-green-400
+                    {% elif event.color == 'blue' %}bg-[#e05a3a]/20 text-[#e05a3a]
+                    {% elif event.color == 'yellow' %}bg-yellow-500/20 text-yellow-400
+                    {% elif event.color == 'orange' %}bg-orange-500/20 text-orange-400
+                    {% elif event.color == 'purple' %}bg-[#e05a3a]/20 text-[#e05a3a]
+                    {% else %}bg-slate-100 text-muted
                     {% endif %}
-                    border-2 {% if event.is_key_event %}ring-2 ring-offset-2 ring-offset-slate-800 ring-{{ event.color }}-400{% endif %}">
+                    border-2 border-[#e05a3a] {% if event.is_key_event %}ring-2 ring-offset-2 ring-offset-white ring-[#e05a3a]{% endif %}">
                     <i class="fas fa-{{ event.icon }}"></i>
                 </div>
-                
+
                 <!-- Event Content -->
                 <div class="ml-4 flex-1 bg-slate-50/50 rounded-lg p-4 border border-slate-200 hover:border-slate-200 transition">
                     <div class="flex items-start justify-between">
@@ -99,14 +99,14 @@
                             {% endif %}
                         </div>
                     </div>
-                    
+
                     {% if event.actor %}
                     <div class="mt-2 flex items-center text-sm text-muted">
                         <i class="fas fa-user mr-2"></i>
                         {{ event.actor }}
                     </div>
                     {% endif %}
-                    
+
                     {% if event.metadata %}
                     <div class="mt-3 pt-3 border-t border-slate-200 grid grid-cols-2 gap-2 text-sm">
                         {% for key, value in event.metadata.items() %}
@@ -114,7 +114,7 @@
                         <div>
                             <span class="text-muted">{{ key }}:</span>
                             {% if key == 'url' %}
-                            <a href="{{ value }}" target="_blank" class="text-brand hover:text-brand">
+                            <a href="{{ value }}" target="_blank" class="text-[#e05a3a] hover:text-[#c94f34]">
                                 View <i class="fas fa-external-link-alt text-xs ml-1"></i>
                             </a>
                             {% elif key == 'sha' %}
@@ -165,15 +165,15 @@ document.querySelectorAll('.timeline-filter').forEach(button => {
         });
         this.classList.add('active', 'bg-brand');
         this.classList.remove('bg-slate-100', 'text-slate-700');
-        
+
         const filter = this.dataset.filter;
-        
+
         document.querySelectorAll('.timeline-event').forEach(event => {
             const type = event.dataset.type;
             const isKey = event.dataset.key === 'true';
-            
+
             let show = false;
-            
+
             if (filter === 'all') {
                 show = true;
             } else if (filter === 'key') {
@@ -185,7 +185,7 @@ document.querySelectorAll('.timeline-filter').forEach(button => {
             } else if (filter === 'log') {
                 show = type.includes('log');
             }
-            
+
             event.style.display = show ? 'flex' : 'none';
         });
     });
