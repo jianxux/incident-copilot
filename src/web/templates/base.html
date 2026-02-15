@@ -358,35 +358,52 @@
 
         // Load user profile into topbar
         (function() {
+            function renderProfile(user) {
+                const name = user.user_metadata?.full_name || user.name || user.email || 'User';
+                const email = user.email || '';
+                const avatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || '';
+                const initial = name.charAt(0).toUpperCase();
+
+                document.getElementById('topbar-name').textContent = name;
+                document.getElementById('dropdown-name').textContent = name;
+                document.getElementById('dropdown-email').textContent = email;
+                document.getElementById('topbar-user').classList.remove('hidden');
+
+                if (avatar) {
+                    ['topbar-avatar', 'dropdown-avatar'].forEach(id => {
+                        const img = document.getElementById(id);
+                        img.src = avatar;
+                        img.style.display = 'block';
+                    });
+                    ['topbar-avatar-fallback', 'dropdown-avatar-fallback'].forEach(id => {
+                        document.getElementById(id).style.display = 'none';
+                    });
+                } else {
+                    ['topbar-avatar-fallback', 'dropdown-avatar-fallback'].forEach(id => {
+                        document.getElementById(id).textContent = initial;
+                    });
+                }
+            }
+
             const userStr = localStorage.getItem('user');
             if (userStr) {
-                try {
-                    const user = JSON.parse(userStr);
-                    const name = user.user_metadata?.full_name || user.name || user.email || 'User';
-                    const email = user.email || '';
-                    const avatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || '';
-                    const initial = name.charAt(0).toUpperCase();
-
-                    document.getElementById('topbar-name').textContent = name;
-                    document.getElementById('dropdown-name').textContent = name;
-                    document.getElementById('dropdown-email').textContent = email;
-                    document.getElementById('topbar-user').classList.remove('hidden');
-
-                    if (avatar) {
-                        ['topbar-avatar', 'dropdown-avatar'].forEach(id => {
-                            const img = document.getElementById(id);
-                            img.src = avatar;
-                            img.style.display = 'block';
-                        });
-                        ['topbar-avatar-fallback', 'dropdown-avatar-fallback'].forEach(id => {
-                            document.getElementById(id).style.display = 'none';
-                        });
-                    } else {
-                        ['topbar-avatar-fallback', 'dropdown-avatar-fallback'].forEach(id => {
-                            document.getElementById(id).textContent = initial;
-                        });
-                    }
-                } catch(e) {}
+                try { renderProfile(JSON.parse(userStr)); } catch(e) {}
+            } else {
+                // No cached user but have token — fetch profile
+                const token = localStorage.getItem('access_token');
+                if (token) {
+                    fetch('/api/auth/supabase/user', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    })
+                    .then(r => r.ok ? r.json() : null)
+                    .then(data => {
+                        if (data && data.user) {
+                            localStorage.setItem('user', JSON.stringify(data.user));
+                            renderProfile(data.user);
+                        }
+                    })
+                    .catch(() => {});
+                }
             }
 
             // Close dropdown on click outside

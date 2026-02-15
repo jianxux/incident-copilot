@@ -2,6 +2,34 @@
  * Incident Copilot Dashboard - Real-time UI
  */
 
+// ── Auth gate: redirect to login if no valid token ──
+(function authGate() {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        window.location.href = '/login';
+        return;
+    }
+    // Check token expiry (JWT payload is base64url in part 1)
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+            // Token expired — clear and redirect
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user');
+            window.location.href = '/login?error=session_expired';
+            return;
+        }
+    } catch(e) {
+        // Malformed token — clear and redirect
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        return;
+    }
+})();
+
 // Connection status management
 const statusDot = document.getElementById('status-dot');
 const statusText = document.getElementById('status-text');
