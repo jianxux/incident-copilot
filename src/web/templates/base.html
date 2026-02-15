@@ -235,21 +235,6 @@
                     <span class="nav-label">Collapse</span>
                 </div>
 
-                <!-- User profile -->
-                <div id="user-profile" class="px-4 py-3 border-t border-slate-200 hidden">
-                    <div class="flex items-center gap-3">
-                        <img id="user-avatar" src="" alt="" class="w-8 h-8 rounded-full bg-slate-200 flex-shrink-0" style="display:none;">
-                        <div id="user-avatar-fallback" class="w-8 h-8 rounded-full bg-blue-500 flex-shrink-0 flex items-center justify-center text-white text-xs font-medium"></div>
-                        <div class="nav-label overflow-hidden">
-                            <div id="user-name" class="text-sm font-medium text-slate-700 truncate"></div>
-                            <div id="user-email" class="text-xs text-slate-400 truncate"></div>
-                        </div>
-                    </div>
-                    <a href="#" onclick="logout(); return false;" class="nav-label text-xs text-red-400 hover:text-red-600 mt-2 block">
-                        <i class="fas fa-sign-out-alt mr-1"></i>Sign out
-                    </a>
-                </div>
-
                 <!-- Connection status -->
                 <div class="flex items-center px-5 py-2">
                     <span class="w-2 h-2 rounded-full bg-slate-300 flex-shrink-0" id="status-dot"></span>
@@ -260,12 +245,48 @@
 
         <!-- Main area -->
         <div class="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-            <!-- Top bar (mobile only — hamburger + page title) -->
-            <header class="md:hidden bg-white border-b border-slate-200 h-14 flex items-center px-4 flex-shrink-0 sticky top-0 z-30">
-                <button class="mr-3 text-slate-600 hover:text-slate-900" onclick="toggleMobileSidebar()">
+            <!-- Top bar -->
+            <header class="bg-white border-b border-slate-200 h-14 flex items-center px-4 flex-shrink-0 sticky top-0 z-30">
+                <!-- Mobile hamburger -->
+                <button class="mr-3 text-slate-600 hover:text-slate-900 md:hidden" onclick="toggleMobileSidebar()">
                     <i class="fas fa-bars text-lg"></i>
                 </button>
-                <h1 class="text-lg font-semibold text-slate-900">{{ page_title }}</h1>
+                <h1 class="text-lg font-semibold text-slate-900 md:hidden">{{ page_title }}</h1>
+
+                <!-- Spacer -->
+                <div class="flex-1"></div>
+
+                <!-- User profile (top right, Gmail-style) -->
+                <div id="topbar-user" class="relative hidden">
+                    <button onclick="document.getElementById('user-dropdown').classList.toggle('hidden')" class="flex items-center gap-2 hover:bg-slate-100 rounded-full p-1 pr-3 transition">
+                        <img id="topbar-avatar" src="" alt="" class="w-8 h-8 rounded-full bg-slate-200" style="display:none;">
+                        <div id="topbar-avatar-fallback" class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium"></div>
+                        <span id="topbar-name" class="text-sm font-medium text-slate-700 hidden sm:block"></span>
+                        <i class="fas fa-chevron-down text-xs text-slate-400"></i>
+                    </button>
+
+                    <!-- Dropdown -->
+                    <div id="user-dropdown" class="hidden absolute right-0 top-12 w-72 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-50">
+                        <div class="px-4 py-3 border-b border-slate-100">
+                            <div class="flex items-center gap-3">
+                                <img id="dropdown-avatar" src="" alt="" class="w-10 h-10 rounded-full bg-slate-200" style="display:none;">
+                                <div id="dropdown-avatar-fallback" class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium"></div>
+                                <div>
+                                    <div id="dropdown-name" class="text-sm font-semibold text-slate-800"></div>
+                                    <div id="dropdown-email" class="text-xs text-slate-500"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <a href="/dashboard/settings" class="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
+                            <i class="fas fa-cog mr-2 w-4 text-center"></i>Settings
+                        </a>
+                        <div class="border-t border-slate-100 mt-1 pt-1">
+                            <a href="#" onclick="logout(); return false;" class="block px-4 py-2 text-sm text-red-500 hover:bg-red-50">
+                                <i class="fas fa-sign-out-alt mr-2 w-4 text-center"></i>Sign out
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </header>
 
             <!-- Main Content -->
@@ -344,7 +365,7 @@
             }
         })();
 
-        // Load user profile from localStorage
+        // Load user profile into topbar
         (function() {
             const userStr = localStorage.getItem('user');
             if (userStr) {
@@ -353,21 +374,38 @@
                     const name = user.user_metadata?.full_name || user.name || user.email || 'User';
                     const email = user.email || '';
                     const avatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || '';
+                    const initial = name.charAt(0).toUpperCase();
 
-                    document.getElementById('user-name').textContent = name;
-                    document.getElementById('user-email').textContent = email;
-                    document.getElementById('user-profile').classList.remove('hidden');
+                    document.getElementById('topbar-name').textContent = name;
+                    document.getElementById('dropdown-name').textContent = name;
+                    document.getElementById('dropdown-email').textContent = email;
+                    document.getElementById('topbar-user').classList.remove('hidden');
 
                     if (avatar) {
-                        const img = document.getElementById('user-avatar');
-                        img.src = avatar;
-                        img.style.display = 'block';
-                        document.getElementById('user-avatar-fallback').style.display = 'none';
+                        ['topbar-avatar', 'dropdown-avatar'].forEach(id => {
+                            const img = document.getElementById(id);
+                            img.src = avatar;
+                            img.style.display = 'block';
+                        });
+                        ['topbar-avatar-fallback', 'dropdown-avatar-fallback'].forEach(id => {
+                            document.getElementById(id).style.display = 'none';
+                        });
                     } else {
-                        document.getElementById('user-avatar-fallback').textContent = name.charAt(0).toUpperCase();
+                        ['topbar-avatar-fallback', 'dropdown-avatar-fallback'].forEach(id => {
+                            document.getElementById(id).textContent = initial;
+                        });
                     }
                 } catch(e) {}
             }
+
+            // Close dropdown on click outside
+            document.addEventListener('click', function(e) {
+                const dropdown = document.getElementById('user-dropdown');
+                const topbarUser = document.getElementById('topbar-user');
+                if (dropdown && !topbarUser.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
         })();
 
         function logout() {
