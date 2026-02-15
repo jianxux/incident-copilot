@@ -235,6 +235,21 @@
                     <span class="nav-label">Collapse</span>
                 </div>
 
+                <!-- User profile -->
+                <div id="user-profile" class="px-4 py-3 border-t border-slate-200 hidden">
+                    <div class="flex items-center gap-3">
+                        <img id="user-avatar" src="" alt="" class="w-8 h-8 rounded-full bg-slate-200 flex-shrink-0" style="display:none;">
+                        <div id="user-avatar-fallback" class="w-8 h-8 rounded-full bg-blue-500 flex-shrink-0 flex items-center justify-center text-white text-xs font-medium"></div>
+                        <div class="nav-label overflow-hidden">
+                            <div id="user-name" class="text-sm font-medium text-slate-700 truncate"></div>
+                            <div id="user-email" class="text-xs text-slate-400 truncate"></div>
+                        </div>
+                    </div>
+                    <a href="#" onclick="logout(); return false;" class="nav-label text-xs text-red-400 hover:text-red-600 mt-2 block">
+                        <i class="fas fa-sign-out-alt mr-1"></i>Sign out
+                    </a>
+                </div>
+
                 <!-- Connection status -->
                 <div class="flex items-center px-5 py-2">
                     <span class="w-2 h-2 rounded-full bg-slate-300 flex-shrink-0" id="status-dot"></span>
@@ -328,6 +343,39 @@
                 }
             }
         })();
+
+        // Load user profile from localStorage
+        (function() {
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                try {
+                    const user = JSON.parse(userStr);
+                    const name = user.user_metadata?.full_name || user.name || user.email || 'User';
+                    const email = user.email || '';
+                    const avatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || '';
+
+                    document.getElementById('user-name').textContent = name;
+                    document.getElementById('user-email').textContent = email;
+                    document.getElementById('user-profile').classList.remove('hidden');
+
+                    if (avatar) {
+                        const img = document.getElementById('user-avatar');
+                        img.src = avatar;
+                        img.style.display = 'block';
+                        document.getElementById('user-avatar-fallback').style.display = 'none';
+                    } else {
+                        document.getElementById('user-avatar-fallback').textContent = name.charAt(0).toUpperCase();
+                    }
+                } catch(e) {}
+            }
+        })();
+
+        function logout() {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        }
     </script>
 </body>
 </html>
