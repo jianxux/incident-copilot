@@ -211,7 +211,11 @@ class SupabaseDB:
 
         def _get():
             return (
-                self.client.table("tenants").select("*").eq("slug", slug).single().execute()
+                self.client.table("tenants")
+                .select("*")
+                .eq("slug", slug)
+                .single()
+                .execute()
             )
 
         try:
@@ -360,7 +364,9 @@ class SupabaseDB:
         res = await self._to_thread(_do)
         return res.data or []
 
-    async def get_processing_incident(self, *, tenant_id: str, incident_id: str) -> dict | None:
+    async def get_processing_incident(
+        self, *, tenant_id: str, incident_id: str
+    ) -> dict | None:
         """Get an incident row (tenant scoped)."""
         self._check_enabled()
 
@@ -777,9 +783,9 @@ class SupabaseDB:
     async def remove_incident_tag(self, incident_id: str, tag_id: str) -> bool:
         """Remove a tag from an incident."""
         self._check_enabled()
-        self.client.table("incident_tags").delete().eq(
-            "incident_id", incident_id
-        ).eq("tag_id", tag_id).execute()
+        self.client.table("incident_tags").delete().eq("incident_id", incident_id).eq(
+            "tag_id", tag_id
+        ).execute()
         return True
 
     # ==================== Services ====================
@@ -844,10 +850,7 @@ class SupabaseDB:
         self._check_enabled()
         kwargs["updated_at"] = datetime.utcnow().isoformat()
         result = (
-            self.client.table("services")
-            .update(kwargs)
-            .eq("id", service_id)
-            .execute()
+            self.client.table("services").update(kwargs).eq("id", service_id).execute()
         )
         return result.data[0] if result.data else None
 
@@ -1068,11 +1071,7 @@ class SupabaseDB:
         query = self.client.table("insights").select("*").eq("tenant_id", tenant_id)
         if insight_type:
             query = query.eq("insight_type", insight_type)
-        result = (
-            query.order("created_at", desc=True)
-            .limit(limit)
-            .execute()
-        )
+        result = query.order("created_at", desc=True).limit(limit).execute()
         return result.data or []
 
 
