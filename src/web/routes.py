@@ -61,7 +61,7 @@ def severity_color(severity: Severity) -> str:
         Severity.CRITICAL: "bg-red-600",
         Severity.HIGH: "bg-orange-500",
         Severity.MEDIUM: "bg-yellow-500",
-        Severity.LOW: "bg-blue-500",
+        Severity.LOW: "bg-amber-500",
         Severity.INFO: "bg-gray-500",
     }
     return colors.get(severity, "bg-gray-500")
