@@ -3,6 +3,20 @@
 {% block title %}Sign Up | Incident Copilot{% endblock %}
 
 {% block content %}
+<script>
+    (function() {
+        var token = localStorage.getItem('access_token');
+        if (token) {
+            try {
+                var payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+                if (payload.exp && payload.exp * 1000 > Date.now()) {
+                    window.location.href = '/dashboard';
+                    return;
+                }
+            } catch(e) {}
+        }
+    })();
+</script>
 <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8">
         <div class="text-center">
