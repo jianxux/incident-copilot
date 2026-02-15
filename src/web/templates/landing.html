@@ -141,52 +141,106 @@
         }
         .btn-ghost:hover { border-color: var(--coral); }
 
-        /* Hero illustration — abstract convergence / assembly */
+        /* Hero illustration — mini context card */
         .hero-art {
-            position: relative;
             width: 100%;
-            aspect-ratio: 1;
             max-width: 420px;
             justify-self: center;
         }
-        .hero-art .shape {
-            position: absolute;
-            border-radius: 50%;
-            transition: transform 0.6s cubic-bezier(0.25, 0, 0, 1);
-        }
-        .hero-art .shape-1 {
-            width: 72%;
-            height: 72%;
-            background: var(--sky);
-            top: 5%;
-            left: 0;
-        }
-        .hero-art .shape-2 {
-            width: 55%;
-            height: 55%;
-            background: var(--blush);
-            bottom: 5%;
-            right: 0;
-        }
-        .hero-art .shape-3 {
-            width: 40%;
-            height: 40%;
-            background: var(--coral);
-            top: 38%;
-            left: 32%;
-            z-index: 2;
-        }
-        .hero-art .shape-4 {
-            width: 18%;
-            height: 18%;
+        .hero-card {
             background: var(--ink);
-            top: 48%;
-            left: 43%;
-            z-index: 3;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(28,25,23,0.18);
+            font-family: 'Inter', system-ui, sans-serif;
+            color: #fff;
         }
-        .hero-art:hover .shape-1 { transform: translate(-8px, -8px); }
-        .hero-art:hover .shape-2 { transform: translate(8px, 8px); }
-        .hero-art:hover .shape-3 { transform: scale(1.05); }
+        .hero-card-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 14px;
+            background: rgba(255,255,255,0.04);
+        }
+        .hero-card-bar .hd { width: 8px; height: 8px; border-radius: 50%; }
+        .hero-card-bar .hd-r { background: #ef4444; }
+        .hero-card-bar .hd-y { background: #f59e0b; }
+        .hero-card-bar .hd-g { background: #22c55e; }
+        .hero-card-bar span { font-size: 0.65rem; color: rgba(255,255,255,0.3); margin-left: 8px; }
+        .hero-card-body { padding: 1.25rem; }
+        .hero-card-body .alert-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .alert-badge {
+            background: #ef4444;
+            color: #fff;
+            font-size: 0.6rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 100px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .alert-title {
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+        .hero-card-body .hc-label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--coral);
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+        }
+        .hero-card-body .hc-block {
+            background: rgba(255,255,255,0.04);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        .hero-card-body .hc-text {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.5);
+            line-height: 1.5;
+        }
+        .hero-card-body .hc-row {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 0.3rem;
+        }
+        .hero-card-body .hc-row code {
+            background: rgba(255,255,255,0.08);
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 0.68rem;
+            color: rgba(255,255,255,0.7);
+        }
+        .hero-card-body .hc-row .meta {
+            margin-left: auto;
+            font-size: 0.65rem;
+            color: rgba(255,255,255,0.25);
+        }
+        .hero-card-body .hc-action {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.5);
+            padding: 0.15rem 0;
+        }
+        .hero-card-body .hc-action::before { content: "→ "; color: var(--coral); }
+        .hero-card-footer {
+            text-align: right;
+            padding: 0.5rem 1.25rem;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.6rem;
+            color: rgba(255,255,255,0.2);
+        }
+        .hero-card-footer .time-highlight { color: var(--coral); font-weight: 600; }
 
         /* ── Marquee / trust ── */
         .trust {
@@ -667,10 +721,34 @@
             </div>
         </div>
         <div class="hero-art">
-            <div class="shape shape-1"></div>
-            <div class="shape shape-2"></div>
-            <div class="shape shape-3"></div>
-            <div class="shape shape-4"></div>
+            <div class="hero-card">
+                <div class="hero-card-bar">
+                    <div class="hd hd-r"></div>
+                    <div class="hd hd-y"></div>
+                    <div class="hd hd-g"></div>
+                    <span>Context Card</span>
+                </div>
+                <div class="hero-card-body">
+                    <div class="alert-row">
+                        <span class="alert-badge">Critical</span>
+                        <span class="alert-title">payments-api: High Error Rate</span>
+                    </div>
+                    <div class="hc-label">Recent Deploys</div>
+                    <div class="hc-block">
+                        <div class="hc-row"><code>a3f21bc</code> Fix retry logic <span class="meta">23m ago</span></div>
+                        <div class="hc-row"><code>b7e84fd</code> Update deps <span class="meta">2h ago</span></div>
+                    </div>
+                    <div class="hc-label">AI Summary</div>
+                    <div class="hc-block">
+                        <div class="hc-text">Error rate increased 10× after a3f21bc. DB connection timeouts correlate with retry changes.</div>
+                    </div>
+                    <div class="hc-label">Actions</div>
+                    <div class="hc-action">Review retry logic in payments/retry.go</div>
+                    <div class="hc-action">Check DB connection pool metrics</div>
+                    <div class="hc-action">Rollback to b7e84fd</div>
+                </div>
+                <div class="hero-card-footer">Assembled in <span class="time-highlight">2.3s</span></div>
+            </div>
         </div>
     </section>
 
