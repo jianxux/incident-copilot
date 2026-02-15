@@ -988,5 +988,29 @@
         </div>
         <div class="footer-copy">© 2026 Incident Copilot. Built for on-call engineers.</div>
     </footer>
+
+    <button id="back-to-top" type="button" aria-label="Back to top" title="Back to top">↑</button>
+
+    <script>
+        (function() {
+            var btn = document.getElementById('back-to-top');
+            if (!btn) return;
+
+            function syncVisibility() {
+                if (window.scrollY > 400) {
+                    btn.classList.add('is-visible');
+                } else {
+                    btn.classList.remove('is-visible');
+                }
+            }
+
+            window.addEventListener('scroll', syncVisibility, { passive: true });
+            window.addEventListener('load', syncVisibility);
+
+            btn.addEventListener('click', function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        })();
+    </script>
 </body>
 </html>
