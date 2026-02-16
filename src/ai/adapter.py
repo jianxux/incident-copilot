@@ -88,10 +88,24 @@ class VerdictEngine:
         self._settings = settings
 
     async def generate_verdict(self, alert_data=None, deploys=None, log_summary="", metrics=None, similar_incidents=None, **kwargs):
+        # Support both direct alert_data and individual fields from orchestrator
+        if alert_data is None and kwargs:
+            alert_data = {
+                "title": kwargs.get("title", ""),
+                "service_name": kwargs.get("service_name", ""),
+                "severity": kwargs.get("severity", ""),
+                "triggered_at": str(kwargs.get("triggered_at", "")),
+            }
+        if deploys is None and "recent_deploys" in kwargs:
+            deploys = kwargs.get("recent_deploys")
+        if log_summary == "" and isinstance(kwargs.get("log_summary"), dict):
+            log_summary = str(kwargs.get("log_summary", ""))
+        if metrics is None and "topology" in kwargs:
+            metrics = kwargs.get("topology")
         return await ai_client.generate_verdict(
             alert_data=alert_data or {},
             deploys=deploys or [],
-            log_summary=log_summary,
+            log_summary=log_summary if isinstance(log_summary, str) else str(log_summary),
             metrics=metrics,
             similar_incidents=similar_incidents,
         )
