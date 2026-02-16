@@ -69,22 +69,22 @@ The hosted product uses a separate/private AI engine service; locally/self-hoste
 
 ```mermaid
 flowchart LR
-  A[Alert source\nPagerDuty / Opsgenie] -->|Webhook| B[FastAPI app\nIncident Copilot]
+  A["Alert source<br/>PagerDuty / Opsgenie"] -->|Webhook| B["FastAPI app<br/>Incident Copilot"]
 
-  B --> C[Orchestrator\nfan-out + timeouts]
+  B --> C["Orchestrator<br/>fan-out + timeouts"]
 
-  C --> D1[SCM context\nGitHub / GitLab]
-  C --> D2[Logs context\nDatadog / CloudWatch / Loki / Splunk]
-  C --> D3[On-call context\nPagerDuty / Opsgenie]
+  C --> D1["SCM context<br/>GitHub / GitLab"]
+  C --> D2["Logs context<br/>Datadog / CloudWatch / Loki / Splunk"]
+  C --> D3["On-call context<br/>PagerDuty / Opsgenie"]
 
-  C --> E[AI summarization\n(LLM provider or hosted engine)]
+  C --> E["AI summarization<br/>(LLM provider or hosted engine)"]
 
-  C --> F1[Slack]
-  C --> F2[Microsoft Teams]
-  B --> G[Web dashboard\nHTML templates + static assets]
+  C --> F1["Slack"]
+  C --> F2["Microsoft Teams"]
+  B --> G["Web dashboard<br/>HTML templates + static assets"]
 
-  B --> H[(Redis)]
-  B --> I[(Postgres/Supabase\noptional/experimental)]
+  B --> H[("Redis")]
+  B --> I[("Postgres / Supabase")]
 ```
 
 If you want the detailed breakdown, see [`docs/architecture.md`](./docs/architecture.md).
