@@ -6,7 +6,7 @@ from typing import Any
 
 import structlog
 
-from ..ai.copilot import AICopilot
+from ..ai import AICopilot
 from ..config import get_settings
 from ..runbooks import RunbookLinker
 from ..web.store import incident_store

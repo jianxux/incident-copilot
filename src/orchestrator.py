@@ -7,8 +7,7 @@ from typing import cast
 
 import structlog
 
-from .ai import LogSummarizer, VerdictEngine
-from .ai.log_compressor import CompressedLogs, LogCompressor
+from .ai import CompressedLogs, LogCompressor, LogSummarizer, VerdictEngine
 from .config import Settings
 from .dependencies.service import DependencyService
 from .integrations import (
