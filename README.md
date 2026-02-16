@@ -1,304 +1,238 @@
-# Incident Copilot 🚨
+<div align="center">
 
-Context-aware incident copilot for on-call engineers. Automatically assembles relevant context when alerts fire, reducing MTTR by 30-50%.
+# Incident Copilot
 
-## What It Does
+**Stop wasting the first 15 minutes of every incident.**  
+Incident Copilot assembles the “what changed / what’s broken / where to look” context automatically when an alert fires — so on-call can start fixing, not spelunking.
 
-When a PagerDuty alert fires, Incident Copilot:
+[Live demo](https://incident-copilot-production.up.railway.app) · [Docs](./docs/) · [Roadmap](./ROADMAP.md) · [Contributing](./CONTRIBUTING.md)
 
-1. **Fetches recent deployments** from GitHub
-2. **Pulls error logs** from Datadog or CloudWatch
-3. **Summarizes issues** using AI (Claude)
-4. **Delivers a context card** to Slack within 10 seconds
+<!-- Badges -->
+[![CI](https://github.com/jianxux/incident-copilot/actions/workflows/ci.yml/badge.svg)](https://github.com/jianxux/incident-copilot/actions/workflows/ci.yml)
+[![License: BSL 1.1](https://img.shields.io/badge/license-BSL%201.1-blue.svg)](./LICENSE)
+[![Python 3.11](https://img.shields.io/badge/python-3.11-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/downloads/release/python-3110/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 
-## Quick Start
+</div>
 
-### 1. Clone and configure
+---
+
+## Why this exists
+
+Every incident starts the same way:
+
+- *What changed recently?*
+- *Where are the errors?*
+- *Who owns this service?*
+- *Do we have a runbook?*
+
+Incident Copilot answers those questions in seconds by fanning out to your tools (PagerDuty/Opsgenie, GitHub/GitLab, Datadog/CloudWatch/Splunk/Loki, etc.) and delivering a structured **context card** to Slack/Teams and the web dashboard.
+
+> Time matters. The goal is to reduce the “context gap” between **alert → first meaningful action**.
+
+---
+
+## What it does (today)
+
+When an alert/incident arrives via webhook, Incident Copilot can:
+
+- **Ingest** alerts from PagerDuty and Opsgenie webhooks
+- **Enrich** with:
+  - recent code changes / deploy context (GitHub, GitLab)
+  - logs from your chosen provider (Datadog, CloudWatch Logs, Grafana Loki, Splunk)
+  - on-call context (provider-dependent)
+- **Summarize** noisy logs into a human-readable brief using an LLM (see note below)
+- **Deliver** the context to **Slack** and/or **Microsoft Teams**
+- **Serve** a lightweight **web UI** (dashboard, timeline, incident detail, onboarding pages)
+
+### About AI
+
+This repository contains the **platform** (web app, integrations, auth, storage, UI).  
+The hosted product uses a separate/private AI engine service; locally/self-hosted you can run with your own LLM credentials (e.g. Anthropic) via environment variables.
+
+---
+
+## Screenshots
+
+> Add real screenshots to `docs/images/` and update these links.
+
+- **Landing / onboarding**
+  - `docs/images/landing.png`
+- **Incident timeline**
+  - `docs/images/timeline.png`
+- **Slack / Teams context card**
+  - `docs/images/slack-card.png`
+
+---
+
+## Architecture (high level)
+
+```mermaid
+flowchart LR
+  A[Alert source\nPagerDuty / Opsgenie] -->|Webhook| B[FastAPI app\nIncident Copilot]
+
+  B --> C[Orchestrator\nfan-out + timeouts]
+
+  C --> D1[SCM context\nGitHub / GitLab]
+  C --> D2[Logs context\nDatadog / CloudWatch / Loki / Splunk]
+  C --> D3[On-call context\nPagerDuty / Opsgenie]
+
+  C --> E[AI summarization\n(LLM provider or hosted engine)]
+
+  C --> F1[Slack]
+  C --> F2[Microsoft Teams]
+  B --> G[Web dashboard\nHTML templates + static assets]
+
+  B --> H[(Redis)]
+  B --> I[(Postgres/Supabase\noptional/experimental)]
+```
+
+If you want the detailed breakdown, see [`docs/architecture.md`](./docs/architecture.md).
+
+---
+
+## Quick start (local)
+
+### Prerequisites
+
+- **Python 3.11**
+- **Docker** (recommended) or a local Redis
+
+### 1) Configure env
 
 ```bash
+git clone https://github.com/jianxux/incident-copilot.git
 cd incident-copilot
+
 cp .env.example .env
-# Edit .env with your API keys
+# edit .env
 ```
 
-### 2. Run locally
+Minimal setup to receive webhooks and render the UI:
+
+- `SLACK_BOT_TOKEN` (or `TEAMS_WEBHOOK_URL`)
+- one alert source secret (PagerDuty or Opsgenie)
+- one log provider (optional but recommended)
+- one SCM provider (optional but recommended)
+
+### 2) Run with Docker (recommended)
 
 ```bash
-# Install dependencies
-pip install -e ".[dev]"
-
-# Run the server
-uvicorn src.main:app --reload
-
-# Or with Docker
-docker-compose up
+docker-compose up --build
 ```
 
-### 3. Configure PagerDuty webhook
+Then open:
 
-In PagerDuty:
-1. Go to **Services** → Select your service → **Integrations**
-2. Add a **Generic Webhook (v3)**
-3. Set URL to: `https://your-domain.com/webhooks/pagerduty`
-4. Copy the signing secret to your `.env`
+- App: http://localhost:8000
+- Health: http://localhost:8000/health
+- Metrics (Prometheus): http://localhost:8000/metrics
 
-### 3b. Configure Opsgenie webhook (alternative)
-
-In Opsgenie:
-1. Go to **Settings** → **Integrations** → **Add Integration**
-2. Select **Webhook** integration
-3. Configure the webhook:
-   - **Webhook URL**: `https://your-domain.com/webhooks/opsgenie`
-   - **Add Header**: `X-OpsGenie-Signature` for signature verification
-4. Select alert actions to trigger: **Create** (required)
-5. Copy the **API Key** (GenieKey) from your Opsgenie API Integration
-
-#### Required Opsgenie API Scopes
-
-If using the Opsgenie API for enrichment (recommended):
-- `Read` scope on Alerts
-- `Read` scope on Alert Notes (optional)
-
-#### Environment Variables
+### 2b) Run with Python
 
 ```bash
-OPSGENIE_API_KEY=your-geniekey-here
-OPSGENIE_WEBHOOK_SECRET=your-webhook-secret
-OPSGENIE_REGION=us  # or 'eu' for EU region
+pip install -e "./[dev]"
+uvicorn src.main:app --reload --port 8000
 ```
 
-### 4. Configure Notifications
+> Note: `docker-compose` runs Redis for you. If running without Docker, set `REDIS_URL` and ensure Redis is available.
 
-#### Option A: Slack App
+---
 
-1. Create a new Slack app at https://api.slack.com/apps
-2. Add Bot Token Scopes: `chat:write`, `chat:write.public`
-3. Install to workspace and copy Bot OAuth Token to `.env`
-4. Set `NOTIFICATION_PROVIDER=slack`
+## Webhooks
 
-#### Option B: Microsoft Teams
+- PagerDuty (Generic Webhook v3):
+  - `POST /webhooks/pagerduty`
+- Opsgenie:
+  - `POST /webhooks/opsgenie`
 
-1. In Teams, go to the channel where you want notifications
-2. Click `...` → **Connectors** → **Incoming Webhook**
-3. Configure the webhook:
-   - Name: "Incident Copilot"
-   - Upload an icon (optional)
-4. Copy the webhook URL to `TEAMS_WEBHOOK_URL` in `.env`
-5. Set `NOTIFICATION_PROVIDER=teams`
+There’s also:
 
-#### Option C: Both Slack and Teams
+- `GET /webhooks/health` (receiver health check)
 
-To send context cards to both platforms simultaneously:
-```bash
-NOTIFICATION_PROVIDER=both
-SLACK_BOT_TOKEN=xoxb-your-token
-TEAMS_WEBHOOK_URL=https://outlook.office.com/webhook/...
+See [`docs/integration-guide.md`](./docs/integration-guide.md) for step-by-step provider setup.
+
+---
+
+## Integrations
+
+> Integrations are implemented as adapters under [`src/integrations/`](./src/integrations/). Some require extra configuration and credentials.
+
+### Alerting / on-call
+
+- PagerDuty
+- Opsgenie
+
+### SCM / deploy context
+
+- GitHub
+- GitLab
+
+### Logs
+
+- Datadog
+- AWS CloudWatch Logs
+- Grafana Loki
+- Splunk
+
+### Notifications
+
+- Slack
+- Microsoft Teams
+- Email (SMTP / SES)
+
+### Ticketing / ITSM (optional)
+
+- Jira
+- Linear
+- ServiceNow
+
+---
+
+## Repo layout
+
+```
+src/
+  api/            # FastAPI routes (webhooks, health, etc.)
+  integrations/   # External service adapters
+  ai/             # Summarization / compression helpers
+  web/            # Server-rendered dashboard + static assets
+  auth/           # Auth, OAuth, SSO/SAML
+  orchestrator.py # Context assembly fan-out
+frontend/         # Optional Next.js frontend (separate)
+helm/             # Helm chart
 ```
 
-## API Endpoints
+---
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | Health check |
-| `/webhooks/pagerduty` | POST | PagerDuty webhook receiver |
-| `/webhooks/opsgenie` | POST | Opsgenie webhook receiver |
-| `/webhooks/health` | GET | Webhook health check |
-
-## Project Structure
-
-```
-incident-copilot/
-├── src/
-│   ├── api/           # FastAPI routes
-│   ├── integrations/  # PagerDuty, GitHub, Datadog, Slack adapters
-│   ├── ai/            # Log summarization with Claude
-│   ├── config.py      # Settings management
-│   ├── models.py      # Pydantic models
-│   ├── orchestrator.py # Core context assembly logic
-│   └── main.py        # FastAPI app entry point
-├── tests/
-├── docker-compose.yml
-└── pyproject.toml
-```
-
-## Context Card Example
-
-```
-┌─────────────────────────────────────────┐
-│ 🟠 payments-api: High Error Rate        │
-├─────────────────────────────────────────┤
-│ Severity: HIGH  |  Triggered: 02:47     │
-├─────────────────────────────────────────┤
-│ 🚀 Recent Deployments:                  │
-│ • abc1234 by @sarah - Fix retry logic   │
-├─────────────────────────────────────────┤
-│ 📋 Top Issues (AI Analysis):            │
-│ • ConnectionTimeout to stripe-api (847x)│
-│ • Retry limit exceeded (612x)           │
-│                                         │
-│ The service is experiencing timeouts    │
-│ when connecting to Stripe's API...      │
-├─────────────────────────────────────────┤
-│ Owners: @sarah, @mike  |  📖 Runbook    │
-│ Context assembled in 3420ms             │
-└─────────────────────────────────────────┘
-```
-
-## Configuration
-
-All configuration via environment variables:
-
-| Variable | Description |
-|----------|-------------|
-| `LOG_PROVIDER` | Log provider: `datadog` (default) or `cloudwatch` |
-| `PAGERDUTY_API_KEY` | PagerDuty API key |
-| `PAGERDUTY_WEBHOOK_SECRET` | Webhook signing secret |
-| `OPSGENIE_API_KEY` | Opsgenie API key (GenieKey) |
-| `OPSGENIE_WEBHOOK_SECRET` | Opsgenie webhook signing secret |
-| `OPSGENIE_REGION` | Opsgenie region (`us` or `eu`) |
-| `GITHUB_TOKEN` | GitHub personal access token |
-| `GITHUB_ORG` | GitHub organization name |
-| `DATADOG_API_KEY` | Datadog API key |
-| `DATADOG_APP_KEY` | Datadog application key |
-| `AWS_REGION` | AWS region for CloudWatch |
-| `AWS_ACCESS_KEY_ID` | AWS access key (optional, uses boto3 defaults) |
-| `AWS_SECRET_ACCESS_KEY` | AWS secret key |
-| `CLOUDWATCH_LOG_GROUP_MAP` | JSON mapping of service to log groups |
-| `SLACK_BOT_TOKEN` | Slack bot OAuth token |
-| `TEAMS_WEBHOOK_URL` | Microsoft Teams Incoming Webhook URL |
-| `NOTIFICATION_PROVIDER` | Notification target: `slack`, `teams`, or `both` |
-| `ANTHROPIC_API_KEY` | Anthropic API key for Claude |
-| `JIRA_BASE_URL` | Jira Cloud URL (e.g., https://yourcompany.atlassian.net) |
-| `JIRA_EMAIL` | Jira user email for API authentication |
-| `JIRA_API_TOKEN` | Jira API token |
-| `JIRA_DEFAULT_PROJECT` | Default Jira project key for incidents |
-
-## AWS CloudWatch Integration
-
-Incident Copilot supports AWS CloudWatch Logs as an alternative to Datadog.
-
-### Setup
-
-1. Set `LOG_PROVIDER=cloudwatch` in your `.env`
-2. Configure AWS credentials:
+## Development
 
 ```bash
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your-access-key
-AWS_SECRET_ACCESS_KEY=your-secret-key
+make install   # install deps
+make lint      # format + lint
+make test      # run tests
+make dev       # start dev server (if configured)
 ```
 
-Or use IAM roles/instance profiles (boto3 will auto-detect).
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the workflow, coding standards, and how to add integrations.
 
-3. (Optional) Map services to specific log groups:
+---
 
-```bash
-CLOUDWATCH_LOG_GROUP_MAP='{"payments-api": "/aws/lambda/payments,/ecs/payments"}'
-```
+## Deployment
 
-Without explicit mapping, it tries common conventions:
-- `/aws/lambda/{service-name}`
-- `/ecs/{service-name}`
-- `/aws/ecs/{service-name}`
-- `/application/{service-name}`
+- **Docker**: `docker-compose.yml` for local
+- **Kubernetes**: Helm chart under [`helm/`](./helm/)
+- **Hosted demo**: deployed on Railway at https://incident-copilot-production.up.railway.app
 
-### Required IAM Permissions
+More details in [`docs/deployment.md`](./docs/deployment.md).
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "logs:FilterLogEvents",
-        "logs:DescribeLogGroups",
-        "logs:StartQuery",
-        "logs:GetQueryResults"
-      ],
-      "Resource": "arn:aws:logs:*:*:log-group:*"
-    }
-  ]
-}
-```
-
-### Features
-
-- Fetch recent error/warning logs from multiple log groups
-- Filter by time window (default: last 15 minutes)
-- CloudWatch Logs Insights queries for structured searches
-- Same output format as Datadog for seamless AI summarization
-
-## Kubernetes Deployment
-
-Deploy to Kubernetes using the included Helm chart.
-
-### Quick Start
-
-```bash
-# Install with required secrets
-helm install incident-copilot ./helm/incident-copilot \
-  --set anthropic.apiKey=sk-ant-xxx \
-  --set slack.botToken=xoxb-xxx \
-  --set pagerduty.apiKey=xxx \
-  --set pagerduty.webhookSecret=xxx \
-  --set github.token=ghp_xxx \
-  --set github.org=your-org \
-  --set datadog.apiKey=xxx \
-  --set datadog.appKey=xxx
-```
-
-### With Ingress
-
-```bash
-helm install incident-copilot ./helm/incident-copilot \
-  -f my-values.yaml \
-  --set ingress.enabled=true \
-  --set ingress.hosts[0].host=incident-copilot.example.com
-```
-
-### Production Deployment
-
-For production, use a values file:
-
-```yaml
-# values-production.yaml
-replicaCount: 2
-
-image:
-  repository: your-registry/incident-copilot
-  tag: "0.2.0"
-
-autoscaling:
-  enabled: true
-  minReplicas: 2
-  maxReplicas: 5
-
-redis:
-  persistence:
-    enabled: true
-    size: 5Gi
-```
-
-```bash
-helm install incident-copilot ./helm/incident-copilot -f values-production.yaml
-```
-
-See [helm/README.md](helm/README.md) for full configuration options.
-
-## Roadmap
-
-- [x] PagerDuty webhook integration
-- [x] GitHub recent deploys
-- [x] Datadog logs fetching
-- [x] AI log summarization
-- [x] Slack context card delivery
-- [x] CloudWatch support
-- [ ] Past incident similarity search
-- [ ] Runbook auto-linking
-- [x] Opsgenie support
-- [ ] Web UI
+---
 
 ## License
 
-MIT
+This project is licensed under the **Business Source License 1.1 (BSL 1.1)**.
+
+- You may **copy, modify, and self-host** for non-production use.
+- You may **not** run it as a **Commercial Hosting Service** (see `LICENSE`).
+- On the **Change Date** (four years from first public release of a given version), the license converts to **Apache 2.0**.
+
+See [`LICENSE`](./LICENSE) for the exact terms.
