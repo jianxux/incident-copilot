@@ -104,6 +104,11 @@ class RateLimiter:
         self._redis: aioredis.Redis | None = None
         self._script_sha: str | None = None
 
+        # Avoid noisy reconnect attempts when Redis is not configured or unavailable.
+        self._redis_disabled: bool = False
+        self._redis_disable_reason: str | None = None
+        self._redis_warning_logged: bool = False
+
         # Default configurations per scope
         self._configs: dict[RateLimitScope, RateLimitConfig] = {}
         self._endpoint_limits: list[EndpointRateLimit] = []
@@ -167,7 +172,24 @@ class RateLimiter:
             }
 
     async def _get_redis(self) -> aioredis.Redis | None:
-        """Get or create Redis connection."""
+        """Get or create Redis connection.
+
+        Redis is optional. If not configured (empty URL) or if the first connection
+        attempt fails, we permanently fall back to in-memory buckets to avoid
+        spamming logs on every request.
+        """
+        if self._redis_disabled:
+            return None
+
+        if not self.redis_url:
+            self._use_memory_fallback = True
+            self._redis_disabled = True
+            self._redis_disable_reason = "no_redis_url"
+            if not self._redis_warning_logged:
+                logger.info("rate_limiter_using_memory", reason="no_redis_url")
+                self._redis_warning_logged = True
+            return None
+
         if self._redis is None:
             try:
                 self._redis = await aioredis.from_url(
@@ -182,13 +204,19 @@ class RateLimiter:
                 self._use_memory_fallback = False
                 logger.info("rate_limiter_redis_connected", url=self.redis_url)
             except Exception as e:
-                logger.warning(
-                    "rate_limiter_redis_connection_failed",
-                    error=str(e),
-                    fallback="memory",
-                )
+                # Disable further attempts to avoid per-request warnings.
                 self._use_memory_fallback = True
+                self._redis_disabled = True
+                self._redis_disable_reason = str(e)
+                if not self._redis_warning_logged:
+                    logger.warning(
+                        "rate_limiter_redis_connection_failed",
+                        error=str(e),
+                        fallback="memory",
+                    )
+                    self._redis_warning_logged = True
                 return None
+
         return self._redis
 
     async def close(self) -> None:

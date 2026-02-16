@@ -77,6 +77,8 @@ class ContextOrchestrator:
         self.memory_config = IncidentMemoryConfig.from_settings(settings)
         self.memory_store: IncidentMemoryStore | None = None
         self.incident_recall: IncidentRecall | None = None
+        self._memory_disabled: bool = False
+        self._memory_disabled_reason: str | None = None
         if self.memory_config.enabled:
             try:
                 self.memory_store = IncidentMemoryStore(
@@ -89,9 +91,12 @@ class ContextOrchestrator:
                     config=self.memory_config,
                 )
             except Exception as e:
+                # Memory is optional; degrade gracefully.
                 logger.warning("incident_memory_init_failed", error=str(e))
                 self.memory_store = None
                 self.incident_recall = None
+                self._memory_disabled = True
+                self._memory_disabled_reason = str(e)
 
         # Determine SCM provider based on configuration
         # Prefer GitHub if configured, fall back to GitLab
@@ -440,7 +445,7 @@ class ContextOrchestrator:
         errors: list[str],
     ) -> list[PastIncident]:
         """Recall similar incidents from Incident Memory."""
-        if not self.incident_recall:
+        if self._memory_disabled or not self.incident_recall:
             return []
 
         try:
@@ -473,8 +478,14 @@ class ContextOrchestrator:
             errors.append("Incident memory recall timed out")
             return []
         except Exception as e:
+            # If memory backend is unavailable (e.g., local Postgres not running),
+            # disable further recall attempts to prevent per-incident error spam.
             logger.warning("incident_memory_recall_failed", error=str(e))
             errors.append(f"Incident memory: {str(e)}")
+            self._memory_disabled = True
+            self._memory_disabled_reason = str(e)
+            self.incident_recall = None
+            self.memory_store = None
             return []
 
     async def _fallback_similarity_search(

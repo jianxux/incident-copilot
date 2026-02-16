@@ -30,7 +30,8 @@ class SlackAdapter:
     ) -> bool:
         """Send a context card to Slack."""
         if not self.client:
-            logger.warning("slack_not_configured")
+            # Slack is optional; avoid warning spam per incident.
+            logger.debug("slack_not_configured")
             return False
 
         target_channel = channel or self.default_channel

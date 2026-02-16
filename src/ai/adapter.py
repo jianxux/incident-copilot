@@ -75,7 +75,13 @@ class LogSummarizer:
     def __init__(self, settings=None):
         self._settings = settings
 
-    async def summarize(self, logs, similar_incidents=None, **kwargs) -> str:
+    async def summarize(
+        self,
+        logs,
+        service_name=None,
+        similar_incidents=None,
+        **kwargs,
+    ) -> str:
         log_dicts = [l if isinstance(l, dict) else {"message": str(l)} for l in logs]
         result = await ai_client.summarize_logs(log_dicts, similar_incidents)
         return result.get("summary", "")

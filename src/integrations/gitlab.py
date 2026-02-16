@@ -80,7 +80,8 @@ class GitLabAdapter:
         - CODEOWNERS
         """
         if not self.token:
-            logger.warning("gitlab_token_not_configured")
+            # GitLab is optional; avoid warning spam per incident.
+            logger.debug("gitlab_token_not_configured")
             return None
 
         project_path = self._get_project_for_service(service_name)
