@@ -2,7 +2,7 @@
 
 import hashlib
 import hmac
-from datetime import datetime
+from datetime import UTC, datetime
 
 import structlog
 
@@ -74,7 +74,7 @@ class PagerDutyAdapter:
             try:
                 triggered_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
             except (ValueError, AttributeError):
-                triggered_at = datetime.utcnow()
+                triggered_at = datetime.now(UTC)
 
             return PagerDutyIncident(
                 incident_id=data.get("id", ""),

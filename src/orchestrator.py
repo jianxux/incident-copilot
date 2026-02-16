@@ -2,7 +2,7 @@
 
 import asyncio
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import cast
 
 import structlog
@@ -397,7 +397,7 @@ class ContextOrchestrator:
             runbook_steps=runbook_steps,
             oncall=oncall_roster,
             owners=codeowners if codeowners else incident.assigned_to,
-            assembled_at=datetime.utcnow(),
+            assembled_at=datetime.now(UTC),
             assembly_time_ms=elapsed_ms,
             errors=errors,
         )
