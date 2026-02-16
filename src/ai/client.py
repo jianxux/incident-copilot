@@ -10,6 +10,7 @@ import structlog
 logger = structlog.get_logger()
 
 AI_SERVICE_URL = os.environ.get("AI_SERVICE_URL", "")
+AI_SERVICE_SECRET = os.environ.get("AI_SERVICE_SECRET", "")
 
 
 class AIServiceClient:
@@ -21,8 +22,11 @@ class AIServiceClient:
     def __init__(self) -> None:
         self.base_url = AI_SERVICE_URL.rstrip("/") if AI_SERVICE_URL else ""
         self.enabled = bool(self.base_url)
+        headers = {}
+        if AI_SERVICE_SECRET:
+            headers["Authorization"] = f"Bearer {AI_SERVICE_SECRET}"
         self._client: httpx.AsyncClient | None = (
-            httpx.AsyncClient(timeout=30.0) if self.enabled else None
+            httpx.AsyncClient(timeout=30.0, headers=headers) if self.enabled else None
         )
         if self.enabled:
             logger.info("ai_service_client_enabled", url=self.base_url)
