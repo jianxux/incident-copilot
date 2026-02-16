@@ -170,9 +170,9 @@ class Settings(BaseSettings):
         default="postgresql+asyncpg://postgres:postgres@localhost:5432/incident_copilot",
         description="PostgreSQL connection URL",
     )
-    redis_url: str = Field(
-        default="redis://localhost:6379/0", description="Redis connection URL"
-    )
+    # Redis is optional. Leave empty by default so local dev/test does not spam
+    # connection-refused warnings when Redis isn't running.
+    redis_url: str = Field(default="", description="Redis connection URL")
 
     # Service mapping (simple key=value pairs, e.g., "payments-api=mycompany/payments")
     service_repo_map: dict[str, str] = Field(default_factory=dict)

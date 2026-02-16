@@ -38,7 +38,8 @@ class DatadogAdapter:
     ) -> DatadogContext | None:
         """Get Datadog context (logs + metrics) for a service."""
         if not self.api_key or not self.app_key:
-            logger.warning("datadog_credentials_not_configured")
+            # Datadog is optional; avoid warning spam per incident.
+            logger.debug("datadog_credentials_not_configured")
             return None
 
         try:
