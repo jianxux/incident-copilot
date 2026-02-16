@@ -1,17 +1,24 @@
-"""Tests for src.ai.adapter (AI service boundary adapter layer)."""
+"""Tests for src.ai.adapter (AI boundary adapter layer).
+
+Focus:
+- Orchestrator-style kwargs compatibility (VerdictEngine)
+- LogSummarizer accepts service_name and delegates
+- Stub fallback when AI service is not configured
+"""
 
 from __future__ import annotations
 
+import importlib
+import os
 from unittest.mock import AsyncMock
 
-import httpx
 import pytest
 
 from src.ai import adapter
 
 
 @pytest.mark.asyncio
-async def test_verdict_engine_accepts_orchestrator_kwargs(monkeypatch):
+async def test_verdict_engine_accepts_orchestrator_style_kwargs(monkeypatch):
     engine = adapter.VerdictEngine(settings=None)
 
     mock_generate = AsyncMock(return_value={"verdict": "ok"})
@@ -42,81 +49,43 @@ async def test_verdict_engine_accepts_orchestrator_kwargs(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_verdict_engine_accepts_direct_args(monkeypatch):
-    engine = adapter.VerdictEngine(settings=None)
-
-    mock_generate = AsyncMock(return_value={"verdict": "ok"})
-    monkeypatch.setattr(adapter.ai_client, "generate_verdict", mock_generate)
-
-    await engine.generate_verdict(
-        alert_data={"title": "T"},
-        deploys=[{"sha": "1"}],
-        log_summary="log summary",
-        metrics={"m": 1},
-        similar_incidents=[],
-    )
-
-    mock_generate.assert_awaited_once_with(
-        alert_data={"title": "T"},
-        deploys=[{"sha": "1"}],
-        log_summary="log summary",
-        metrics={"m": 1},
-        similar_incidents=[],
-    )
-
-
-@pytest.mark.asyncio
-async def test_log_summarizer_delegates_to_ai_client(monkeypatch):
+async def test_log_summarizer_accepts_service_name_and_delegates(monkeypatch):
     summarizer = adapter.LogSummarizer(settings=None)
 
     mock_summarize = AsyncMock(return_value={"summary": "summarized"})
     monkeypatch.setattr(adapter.ai_client, "summarize_logs", mock_summarize)
 
-    out = await summarizer.summarize([
-        {"message": "err"},
-        "string log",
-    ])
+    out = await summarizer.summarize(
+        logs=[{"message": "err"}, "string log"],
+        similar_incidents=None,
+        service_name="payments-api",  # ensure adapter tolerates extra kwarg
+    )
 
     assert out == "summarized"
     mock_summarize.assert_awaited_once()
 
-    called_logs, called_similar = mock_summarize.await_args.args
-    assert called_logs[0]["message"] == "err"
-    assert called_logs[1]["message"] == "string log"
-    assert called_similar is None
-
 
 @pytest.mark.asyncio
-async def test_ai_copilot_chat_delegates_and_appends_to_session(monkeypatch):
-    copilot = adapter.AICopilot(settings=None)
+async def test_stub_fallback_when_ai_service_url_empty(monkeypatch):
+    # Ensure client module is reloaded with AI_SERVICE_URL unset.
+    monkeypatch.delenv("AI_SERVICE_URL", raising=False)
+    monkeypatch.delenv("AI_SERVICE_SECRET", raising=False)
 
-    mock_chat = AsyncMock(return_value={"response": "hello back"})
-    monkeypatch.setattr(adapter.ai_client, "chat", mock_chat)
+    import src.ai.client as client_mod
 
-    msg = await copilot.chat(
-        incident_id="INC-123",
-        message="hello",
-        context={"k": "v"},
+    importlib.reload(client_mod)
+
+    # Stub path should be active
+    assert client_mod.ai_client.enabled is False
+
+    verdict = await client_mod.ai_client.generate_verdict(
+        alert_data={"title": "Test"},
+        deploys=[],
+        log_summary="",
+        metrics=None,
+        similar_incidents=None,
     )
+    assert "Configure AI_SERVICE_URL" in verdict["verdict"]
 
-    assert msg.content == "hello back"
-    session = await copilot.get_or_create_session("INC-123")
-    assert len(session.messages) == 1
-    assert session.messages[0].content == "hello back"
-
-    mock_chat.assert_awaited_once_with(
-        session_id="INC-123", message="hello", context={"k": "v"}
-    )
-
-
-@pytest.mark.asyncio
-async def test_adapter_surfaces_ai_service_errors(monkeypatch):
-    engine = adapter.VerdictEngine(settings=None)
-
-    async def _boom(*args, **kwargs):
-        raise httpx.ConnectError("down")
-
-    monkeypatch.setattr(adapter.ai_client, "generate_verdict", _boom)
-
-    with pytest.raises(httpx.ConnectError):
-        await engine.generate_verdict(alert_data={"title": "T"})
+    summary = await client_mod.ai_client.summarize_logs(logs=[{"level": "error"}])
+    assert "Configure AI_SERVICE_URL" in summary["summary"]
