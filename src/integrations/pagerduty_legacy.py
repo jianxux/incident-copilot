@@ -22,10 +22,9 @@ class PagerDutyAdapter:
     def verify_webhook_signature(self, payload: bytes, signature: str) -> bool:
         """Verify PagerDuty webhook signature (v3 webhooks)."""
         if not self.webhook_secret:
-            logger.warning(
-                "pagerduty_webhook_secret not configured, skipping verification"
-            )
-            return True
+            # Production safety: never accept unsigned webhooks.
+            logger.error("pagerduty_webhook_secret_not_configured")
+            return False
 
         expected = hmac.new(
             self.webhook_secret.encode(),
