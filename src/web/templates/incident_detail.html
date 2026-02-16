@@ -2,21 +2,21 @@
 
 {% block content %}
 <!-- Back Link -->
-<a href="/dashboard" class="inline-flex items-center text-muted hover:text-slate-900 transition mb-6">
+<a href="/dashboard" class="inline-flex items-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:text-white transition mb-6">
     <i class="fas fa-arrow-left mr-2"></i>
     Back to Dashboard
 </a>
 
 <!-- Incident Header -->
-<div class="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 mb-4 sm:mb-6">
+<div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur rounded-2xl border border-stone-200 dark:border-slate-800 p-4 sm:p-6 mb-4 sm:mb-6">
     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div class="flex items-start space-x-3 sm:space-x-4 min-w-0">
             <div class="p-2 sm:p-3 rounded-lg {{ incident.severity | severity_color }} flex-shrink-0">
-                <i class="fas fa-exclamation-circle text-slate-900 text-lg sm:text-xl"></i>
+                <i class="fas fa-exclamation-circle text-slate-900 dark:text-white text-lg sm:text-xl"></i>
             </div>
             <div class="min-w-0">
-                <h1 class="text-lg sm:text-2xl font-bold text-slate-900 break-words">{{ incident.title }}</h1>
-                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs sm:text-sm text-muted">
+                <h1 class="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white break-words">{{ incident.title }}</h1>
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
                     <span class="flex items-center">
                         <i class="fas fa-fingerprint mr-1.5"></i>
                         {{ incident.incident_id[:12] }}...
@@ -25,7 +25,7 @@
                         <i class="fas fa-server mr-1.5"></i>
                         {{ incident.service_name }}
                     </span>
-                    <span class="px-2 py-0.5 text-xs rounded-full {{ incident.status | status_color }} text-slate-900 font-medium">
+                    <span class="px-2 py-0.5 text-xs rounded-full {{ incident.status | status_color }} text-slate-900 dark:text-white font-medium">
                         {{ incident.status }}
                     </span>
                 </div>
@@ -39,7 +39,7 @@
             </a>
             {% if card and card.alert_url %}
             <a href="{{ card.alert_url }}" target="_blank" 
-               class="bg-slate-100 hover:bg-slate-200 text-slate-900 px-3 sm:px-4 py-2 rounded-lg transition flex items-center text-sm">
+               class="bg-stone-100 dark:bg-slate-800/60 hover:bg-slate-200 text-slate-900 dark:text-white px-3 sm:px-4 py-2 rounded-lg transition flex items-center text-sm">
                 <i class="fas fa-external-link-alt mr-2"></i>
                 PagerDuty
             </a>
@@ -49,9 +49,9 @@
 </div>
 
 <!-- Timeline -->
-<div class="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 mb-4 sm:mb-6">
+<div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur rounded-2xl border border-stone-200 dark:border-slate-800 p-4 sm:p-6 mb-4 sm:mb-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-        <h2 class="text-base sm:text-lg font-semibold text-slate-900 flex items-center">
+        <h2 class="text-base sm:text-lg font-semibold text-slate-900 dark:text-white flex items-center">
             <i class="fas fa-clock mr-2 sm:mr-3 text-[#e05a3a]"></i>
             Timeline
         </h2>
@@ -65,18 +65,18 @@
         <div class="flex items-center space-x-4">
             <div class="w-3 h-3 rounded-full bg-red-500"></div>
             <div>
-                <span class="text-slate-900 font-medium">Triggered</span>
-                <span class="text-muted ml-2">{{ incident.triggered_at | format_datetime }}</span>
+                <span class="text-slate-900 dark:text-white font-medium">Triggered</span>
+                <span class="text-slate-600 dark:text-slate-300 ml-2">{{ incident.triggered_at | format_datetime }}</span>
             </div>
         </div>
         {% if incident.processed_at %}
         <div class="flex items-center space-x-4">
             <div class="w-3 h-3 rounded-full {% if incident.status == 'completed' %}bg-green-500{% else %}bg-red-500{% endif %}"></div>
             <div>
-                <span class="text-slate-900 font-medium">{% if incident.status == 'completed' %}Processed{% else %}Failed{% endif %}</span>
-                <span class="text-muted ml-2">{{ incident.processed_at | format_datetime }}</span>
+                <span class="text-slate-900 dark:text-white font-medium">{% if incident.status == 'completed' %}Processed{% else %}Failed{% endif %}</span>
+                <span class="text-slate-600 dark:text-slate-300 ml-2">{{ incident.processed_at | format_datetime }}</span>
                 {% if card and card.assembly_time_ms %}
-                <span class="text-muted ml-2">({{ card.assembly_time_ms }}ms)</span>
+                <span class="text-slate-600 dark:text-slate-300 ml-2">({{ card.assembly_time_ms }}ms)</span>
                 {% endif %}
             </div>
         </div>
@@ -86,18 +86,18 @@
 
 {% if card %}
 <!-- AI Copilot Chat -->
-<div class="bg-white rounded-xl border border-slate-200 mb-6" id="copilot-section">
-    <div class="p-3 sm:p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <h2 class="text-base sm:text-lg font-semibold text-slate-900 flex items-center">
+<div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur rounded-2xl border border-stone-200 dark:border-slate-800 mb-6" id="copilot-section">
+    <div class="p-3 sm:p-4 border-b border-stone-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <h2 class="text-base sm:text-lg font-semibold text-slate-900 dark:text-white flex items-center">
             <i class="fas fa-robot mr-2 sm:mr-3 text-[#e05a3a]"></i>
             AI Copilot
         </h2>
         <div class="flex items-center space-x-2">
-            <button onclick="getSuggestions()" class="text-xs sm:text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 sm:px-3 py-1.5 rounded-lg transition">
+            <button onclick="getSuggestions()" class="text-xs sm:text-sm bg-stone-100 dark:bg-slate-800/60 hover:bg-slate-200 text-slate-700 px-2.5 sm:px-3 py-1.5 rounded-lg transition">
                 <i class="fas fa-lightbulb mr-1 text-amber-500"></i>
                 Suggestions
             </button>
-            <button onclick="generateSummary()" class="text-xs sm:text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 sm:px-3 py-1.5 rounded-lg transition">
+            <button onclick="generateSummary()" class="text-xs sm:text-sm bg-stone-100 dark:bg-slate-800/60 hover:bg-slate-200 text-slate-700 px-2.5 sm:px-3 py-1.5 rounded-lg transition">
                 <i class="fas fa-file-alt mr-1 text-[#e05a3a]"></i>
                 Summary
             </button>
@@ -105,12 +105,12 @@
     </div>
     
     <!-- Chat Messages -->
-    <div id="copilot-messages" class="h-64 overflow-y-auto p-4 space-y-4 bg-slate-50">
+    <div id="copilot-messages" class="h-64 overflow-y-auto p-4 space-y-4 bg-stone-50/60 dark:bg-slate-950/40">
         <div class="flex items-start space-x-3">
             <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#e05a3a]/10 flex items-center justify-center">
                 <i class="fas fa-robot text-[#e05a3a] text-sm"></i>
             </div>
-            <div class="flex-1 bg-white rounded-lg p-3 shadow-sm border border-slate-200">
+            <div class="flex-1 bg-white rounded-lg p-3 shadow-sm border border-stone-200 dark:border-slate-800">
                 <p class="text-slate-700 text-sm">
                     Hi! I'm your incident copilot. I have access to the context card above including deployments, logs, and metrics. 
                     Ask me anything about this incident — what changed, what to check, or what might be causing it.
@@ -120,7 +120,7 @@
     </div>
     
     <!-- Chat Input -->
-    <div class="p-3 sm:p-4 border-t border-slate-200">
+    <div class="p-3 sm:p-4 border-t border-stone-200 dark:border-slate-800">
         <form onsubmit="sendMessage(event)" class="flex items-center space-x-2 sm:space-x-3">
             <input 
                 type="text" 
@@ -145,8 +145,8 @@
     
     <!-- AI Summary -->
     {% if card.ai_summary %}
-    <div class="bg-white rounded-xl border border-slate-200 p-6 lg:col-span-3">
-        <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center">
+    <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur rounded-2xl border border-stone-200 dark:border-slate-800 p-6 lg:col-span-3">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center">
             <i class="fas fa-robot mr-3 text-[#e05a3a]"></i>
             AI Analysis
         </h2>
@@ -154,14 +154,14 @@
             <p class="text-slate-700 leading-relaxed">{{ card.ai_summary.explanation }}</p>
             
             {% if card.ai_summary.likely_cause %}
-            <div class="mt-4 pt-4 border-t border-slate-200">
+            <div class="mt-4 pt-4 border-t border-stone-200 dark:border-slate-800">
                 <h4 class="text-sm font-semibold text-[#e05a3a] uppercase tracking-wide mb-2">Likely Cause</h4>
                 <p class="text-slate-700">{{ card.ai_summary.likely_cause }}</p>
             </div>
             {% endif %}
             
             {% if card.ai_summary.top_issues %}
-            <div class="mt-4 pt-4 border-t border-slate-200">
+            <div class="mt-4 pt-4 border-t border-stone-200 dark:border-slate-800">
                 <h4 class="text-sm font-semibold text-[#e05a3a] uppercase tracking-wide mb-2">Top Issues</h4>
                 <ul class="space-y-2">
                     {% for issue in card.ai_summary.top_issues %}
@@ -175,7 +175,7 @@
             {% endif %}
             
             {% if card.ai_summary.suggested_actions %}
-            <div class="mt-4 pt-4 border-t border-slate-200">
+            <div class="mt-4 pt-4 border-t border-stone-200 dark:border-slate-800">
                 <h4 class="text-sm font-semibold text-green-400 uppercase tracking-wide mb-2">Suggested Actions</h4>
                 <ul class="space-y-2">
                     {% for action in card.ai_summary.suggested_actions %}
@@ -193,13 +193,13 @@
     
     <!-- GitHub Context -->
     {% if card.github %}
-    <div class="bg-white rounded-xl border border-slate-200 p-6 lg:col-span-2">
-        <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center">
-            <i class="fab fa-github mr-3 text-muted"></i>
+    <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur rounded-2xl border border-stone-200 dark:border-slate-800 p-6 lg:col-span-2">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center">
+            <i class="fab fa-github mr-3 text-slate-600 dark:text-slate-300"></i>
             Recent Deployments
         </h2>
         
-        <div class="text-sm text-muted mb-4">
+        <div class="text-sm text-slate-600 dark:text-slate-300 mb-4">
             <i class="fas fa-code-branch mr-2"></i>
             {{ card.github.repo }}
         </div>
@@ -207,13 +207,13 @@
         {% if card.github.recent_deploys %}
         <div class="space-y-3">
             {% for deploy in card.github.recent_deploys[:5] %}
-            <div class="bg-slate-100/50 rounded-lg p-3">
+            <div class="bg-stone-100/60 dark:bg-slate-800/50 rounded-lg p-3">
                 <div class="flex items-center justify-between">
                     <code class="text-[#e05a3a] font-mono text-sm">{{ deploy.short_sha }}</code>
-                    <span class="text-muted text-sm">{{ deploy.timestamp | format_datetime }}</span>
+                    <span class="text-slate-600 dark:text-slate-300 text-sm">{{ deploy.timestamp | format_datetime }}</span>
                 </div>
                 <p class="text-slate-700 text-sm mt-1 truncate">{{ deploy.message }}</p>
-                <div class="flex items-center space-x-3 mt-2 text-xs text-muted">
+                <div class="flex items-center space-x-3 mt-2 text-xs text-slate-600 dark:text-slate-300">
                     <span><i class="fas fa-user mr-1"></i>{{ deploy.author }}</span>
                     <span class="text-green-400">+{{ deploy.additions }}</span>
                     <span class="text-red-400">-{{ deploy.deletions }}</span>
@@ -222,15 +222,15 @@
             {% endfor %}
         </div>
         {% else %}
-        <p class="text-muted">No recent deployments found</p>
+        <p class="text-slate-600 dark:text-slate-300">No recent deployments found</p>
         {% endif %}
         
         {% if card.github.codeowners %}
-        <div class="mt-4 pt-4 border-t border-slate-200">
-            <h4 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">Code Owners</h4>
+        <div class="mt-4 pt-4 border-t border-stone-200 dark:border-slate-800">
+            <h4 class="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-2">Code Owners</h4>
             <div class="flex flex-wrap gap-2">
                 {% for owner in card.github.codeowners %}
-                <span class="bg-slate-100 text-slate-700 px-2 py-1 rounded text-sm">{{ owner }}</span>
+                <span class="bg-stone-100 dark:bg-slate-800/60 text-slate-700 px-2 py-1 rounded text-sm">{{ owner }}</span>
                 {% endfor %}
             </div>
         </div>
@@ -240,8 +240,8 @@
     
     <!-- Datadog Context -->
     {% if card.datadog %}
-    <div class="bg-white rounded-xl border border-slate-200 p-6 lg:col-span-2">
-        <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center">
+    <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur rounded-2xl border border-stone-200 dark:border-slate-800 p-6 lg:col-span-2">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center">
             <i class="fas fa-chart-area mr-3 text-[#e05a3a]"></i>
             Observability Data
         </h2>
@@ -249,17 +249,17 @@
         {% if card.datadog.metrics %}
         <div class="grid grid-cols-2 gap-4 mb-4">
             {% if card.datadog.metrics.error_rate is not none %}
-            <div class="bg-slate-100/50 rounded-lg p-3">
-                <p class="text-muted text-xs uppercase">Error Rate</p>
+            <div class="bg-stone-100/60 dark:bg-slate-800/50 rounded-lg p-3">
+                <p class="text-slate-600 dark:text-slate-300 text-xs uppercase">Error Rate</p>
                 <p class="text-2xl font-bold {% if card.datadog.metrics.error_rate > 5 %}text-red-400{% else %}text-green-400{% endif %}">
                     {{ "%.2f" | format(card.datadog.metrics.error_rate) }}%
                 </p>
             </div>
             {% endif %}
             {% if card.datadog.metrics.latency_p99_ms is not none %}
-            <div class="bg-slate-100/50 rounded-lg p-3">
-                <p class="text-muted text-xs uppercase">P99 Latency</p>
-                <p class="text-2xl font-bold text-slate-900">{{ "%.0f" | format(card.datadog.metrics.latency_p99_ms) }}ms</p>
+            <div class="bg-stone-100/60 dark:bg-slate-800/50 rounded-lg p-3">
+                <p class="text-slate-600 dark:text-slate-300 text-xs uppercase">P99 Latency</p>
+                <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ "%.0f" | format(card.datadog.metrics.latency_p99_ms) }}ms</p>
             </div>
             {% endif %}
         </div>
@@ -267,15 +267,15 @@
         
         {% if card.datadog.log_summaries %}
         <div class="mt-4">
-            <h4 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">Log Patterns</h4>
+            <h4 class="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-2">Log Patterns</h4>
             <div class="space-y-2">
                 {% for summary in card.datadog.log_summaries[:5] %}
-                <div class="bg-slate-100/50 rounded-lg p-3">
+                <div class="bg-stone-100/60 dark:bg-slate-800/50 rounded-lg p-3">
                     <div class="flex items-center justify-between">
-                        <span class="px-2 py-0.5 text-xs rounded {% if summary.level == 'ERROR' %}bg-red-500{% elif summary.level == 'WARN' %}bg-yellow-500{% else %}bg-[#e05a3a]{% endif %} text-slate-900">
+                        <span class="px-2 py-0.5 text-xs rounded {% if summary.level == 'ERROR' %}bg-red-500{% elif summary.level == 'WARN' %}bg-yellow-500{% else %}bg-[#e05a3a]{% endif %} text-slate-900 dark:text-white">
                             {{ summary.level }}
                         </span>
-                        <span class="text-muted text-sm">{{ summary.count }}x</span>
+                        <span class="text-slate-600 dark:text-slate-300 text-sm">{{ summary.count }}x</span>
                     </div>
                     <p class="text-slate-700 text-sm mt-2 truncate">{{ summary.pattern }}</p>
                 </div>
@@ -288,26 +288,26 @@
     
     <!-- Similar Incidents -->
     {% if card.similar_incidents %}
-    <div class="bg-white rounded-xl border border-slate-200 p-6">
-        <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center">
+    <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur rounded-2xl border border-stone-200 dark:border-slate-800 p-6">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center">
             <i class="fas fa-history mr-3 text-amber-400"></i>
             Similar Past Incidents
         </h2>
         <div class="space-y-3">
             {% for past in card.similar_incidents %}
-            <div class="bg-slate-100/50 rounded-lg p-3">
+            <div class="bg-stone-100/60 dark:bg-slate-800/50 rounded-lg p-3">
                 <div class="flex items-center justify-between">
-                    <h4 class="text-slate-900 font-medium">{{ past.title | truncate(40) }}</h4>
+                    <h4 class="text-slate-900 dark:text-white font-medium">{{ past.title | truncate(40) }}</h4>
                     {% if past.similarity_score is not none %}
                     <span class="text-amber-400 text-sm">{{ "%.0f" | format(past.similarity_score) }}% match</span>
                     {% endif %}
                 </div>
-                <p class="text-muted text-xs mt-1">
+                <p class="text-slate-600 dark:text-slate-300 text-xs mt-1">
                     {{ past.occurred_at.strftime("%b %d, %Y") }}
                     {% if past.severity %} · Severity: {{ past.severity | upper }}{% endif %}
                 </p>
                 {% if past.root_cause %}
-                <p class="text-muted text-sm mt-1">Root cause: {{ past.root_cause | truncate(60) }}</p>
+                <p class="text-slate-600 dark:text-slate-300 text-sm mt-1">Root cause: {{ past.root_cause | truncate(60) }}</p>
                 {% endif %}
                 {% if past.resolution %}
                 <p class="text-green-400 text-sm mt-1">Resolution: {{ past.resolution | truncate(60) }}</p>
@@ -319,35 +319,35 @@
     {% endif %}
     
     <!-- Service Info -->
-    <div class="bg-white rounded-xl border border-slate-200 p-6">
-        <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center">
+    <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur rounded-2xl border border-stone-200 dark:border-slate-800 p-6">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center">
             <i class="fas fa-info-circle mr-3 text-[#e05a3a]"></i>
             Service Information
         </h2>
         
         <dl class="space-y-3">
             <div class="flex justify-between">
-                <dt class="text-muted">Service</dt>
-                <dd class="text-slate-900 font-medium">{{ card.service_name }}</dd>
+                <dt class="text-slate-600 dark:text-slate-300">Service</dt>
+                <dd class="text-slate-900 dark:text-white font-medium">{{ card.service_name }}</dd>
             </div>
             <div class="flex justify-between">
-                <dt class="text-muted">Severity</dt>
+                <dt class="text-slate-600 dark:text-slate-300">Severity</dt>
                 <dd class="capitalize">
-                    <span class="px-2 py-0.5 text-xs rounded {{ card.severity | severity_color }} text-slate-900">
+                    <span class="px-2 py-0.5 text-xs rounded {{ card.severity | severity_color }} text-slate-900 dark:text-white">
                         {{ card.severity.value }}
                     </span>
                 </dd>
             </div>
             {% if card.owners %}
             <div class="flex justify-between">
-                <dt class="text-muted">Owners</dt>
-                <dd class="text-slate-900">{{ card.owners | join(', ') }}</dd>
+                <dt class="text-slate-600 dark:text-slate-300">Owners</dt>
+                <dd class="text-slate-900 dark:text-white">{{ card.owners | join(', ') }}</dd>
             </div>
             {% endif %}
         </dl>
         
         {% if card.runbook_url or card.dashboard_url %}
-        <div class="mt-4 pt-4 border-t border-slate-200 space-y-2">
+        <div class="mt-4 pt-4 border-t border-stone-200 dark:border-slate-800 space-y-2">
             {% if card.runbook_url %}
             <a href="{{ card.runbook_url }}" target="_blank" 
                class="flex items-center text-[#e05a3a] hover:text-[#c94f34] transition">
@@ -389,12 +389,12 @@
 
 {% elif incident.status == 'processing' %}
 <!-- Processing State -->
-<div class="bg-white rounded-xl border border-slate-200 p-12 text-center">
+<div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur rounded-2xl border border-stone-200 dark:border-slate-800 p-12 text-center">
     <div class="inline-flex items-center justify-center w-20 h-20 bg-yellow-500/20 rounded-full mb-6">
         <i class="fas fa-spinner fa-spin text-yellow-400 text-3xl"></i>
     </div>
-    <h2 class="text-xl font-semibold text-slate-900 mb-2">Processing Incident</h2>
-    <p class="text-muted">Gathering context from GitHub, Datadog, and more...</p>
+    <h2 class="text-xl font-semibold text-slate-900 dark:text-white mb-2">Processing Incident</h2>
+    <p class="text-slate-600 dark:text-slate-300">Gathering context from GitHub, Datadog, and more...</p>
 </div>
 
 {% elif incident.status == 'error' %}
@@ -404,7 +404,7 @@
         <i class="fas fa-exclamation-circle text-red-400 text-3xl"></i>
     </div>
     <h2 class="text-xl font-semibold text-red-400 mb-2">Processing Failed</h2>
-    <p class="text-muted">{{ incident.error_message or 'An unknown error occurred' }}</p>
+    <p class="text-slate-600 dark:text-slate-300">{{ incident.error_message or 'An unknown error occurred' }}</p>
 </div>
 {% endif %}
 
@@ -420,7 +420,7 @@ function addMessage(role, content) {
     const icon = isUser ? 'fa-user' : 'fa-robot';
     const iconBg = isUser ? 'bg-[#e05a3a]/10' : 'bg-[#e05a3a]/10';
     const iconColor = isUser ? 'text-[#e05a3a]' : 'text-[#e05a3a]';
-    const msgBg = isUser ? 'bg-[#e05a3a] text-white' : 'bg-white border border-slate-200';
+    const msgBg = isUser ? 'bg-[#e05a3a] text-white' : 'bg-white border border-stone-200 dark:border-slate-800';
     const textColor = isUser ? '' : 'text-slate-700';
     
     div.innerHTML = `
@@ -444,7 +444,7 @@ function addTypingIndicator() {
         <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#e05a3a]/10 flex items-center justify-center">
             <i class="fas fa-robot text-[#e05a3a] text-sm"></i>
         </div>
-        <div class="flex-1 bg-white rounded-lg p-3 shadow-sm border border-slate-200">
+        <div class="flex-1 bg-white rounded-lg p-3 shadow-sm border border-stone-200 dark:border-slate-800">
             <div class="flex space-x-1">
                 <div class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
                 <div class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 150ms"></div>
