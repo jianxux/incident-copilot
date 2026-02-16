@@ -83,6 +83,24 @@ def create_app() -> FastAPI:
         logger.info("incident_copilot_starting", debug=settings.debug)
         set_app_start_time()
 
+        # Log integration/config status once at startup (avoid per-request warning spam).
+        logger.info(
+            "integration_status",
+            slack_configured=bool(settings.slack_bot_token),
+            github_configured=bool(settings.github_token),
+            gitlab_configured=bool(settings.gitlab_token),
+            datadog_configured=bool(settings.datadog_api_key and settings.datadog_app_key),
+            aws_cloudwatch_configured=bool(settings.aws_region),
+            loki_configured=bool(settings.loki_url),
+            redis_configured=bool(settings.redis_url),
+            supabase_configured=bool(
+                settings.supabase_url
+                and (settings.supabase_service_role_key or settings.supabase_anon_key)
+            ),
+            supabase_db_enabled=bool(settings.supabase_db_enabled),
+            supabase_auth_enabled=bool(settings.supabase_auth_enabled),
+        )
+
         # Initialize metrics
         git_sha = os.environ.get("GIT_SHA")
         set_app_info(version="0.1.0", git_sha=git_sha)
