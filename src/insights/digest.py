@@ -1,12 +1,16 @@
-"""Digest generation with AI summaries."""
+"""Digest generation with AI summaries.
+
+AI analysis is delegated to the external AI service via ai_client.
+Statistics, pattern detection, and anomaly detection run locally.
+"""
 
 import hashlib
 import json
 from datetime import datetime, timedelta
 
 import structlog
-from openai import AsyncOpenAI
 
+from ..ai.client import ai_client
 from ..analytics.models import IncidentMetrics
 from ..config import Settings
 from .analyzer import IncidentAnalyzer
@@ -23,53 +27,11 @@ from .models import (
 logger = structlog.get_logger()
 
 
-DIGEST_PROMPT = """You are an SRE team lead preparing a {period} incident digest for your team.
-
-## Incident Summary for {start_date} to {end_date}
-
-**Total Incidents:** {total_incidents}
-**Resolved:** {resolved_incidents}
-**Average MTTR:** {avg_mttr} minutes
-
-### Severity Breakdown:
-- Critical: {critical_count}
-- High: {high_count}
-- Medium: {medium_count}
-- Low: {low_count}
-
-### Top Affected Services:
-{top_services}
-
-### Detected Patterns:
-{patterns}
-
-### Anomalies:
-{anomalies}
-
-### Severity Trend:
-{severity_trend}
-
-Based on this data, provide a concise digest in JSON format:
-{{
-    "executive_summary": "2-3 sentence high-level summary for leadership",
-    "key_findings": ["finding1", "finding2", "finding3"],
-    "recommendations": ["recommendation1", "recommendation2"],
-    "risk_assessment": "Brief assessment of current risk level and concerns"
-}}
-
-Be specific, actionable, and data-driven. Focus on patterns and trends, not individual incidents."""
-
-
 class DigestGenerator:
     """Generates AI-powered incident digests."""
 
     def __init__(self, settings: Settings):
         self.settings = settings
-        self.client = (
-            AsyncOpenAI(api_key=settings.openai_api_key)
-            if settings.openai_api_key
-            else None
-        )
         self.pattern_detector = PatternDetector()
         self.anomaly_detector = AnomalyDetector()
         self.analyzer = IncidentAnalyzer()
@@ -145,9 +107,9 @@ class DigestGenerator:
             period_incidents, period_days=(period_end - period_start).days
         )
 
-        # Generate AI summary if enabled and API key available
+        # Generate AI summary if enabled
         ai_data = {}
-        if generate_ai_summary and self.client:
+        if generate_ai_summary:
             ai_data = await self._generate_ai_summary(
                 period=period,
                 period_start=period_start,
@@ -209,69 +171,43 @@ class DigestGenerator:
         anomalies: list[AnomalyDetection],
         severity_trend: SeverityTrend | None,
     ) -> dict:
-        """Generate AI summary using OpenAI."""
-        if not self.client:
-            return {}
-
+        """Generate AI summary via the AI service."""
         try:
-            # Format data for prompt
-            top_services_str = "\n".join(
-                f"- {service}: {count} incidents" for service, count in top_services
-            )
+            # Build incident summaries for the AI service
+            incident_dicts = [
+                {
+                    "period": period.value,
+                    "start_date": period_start.isoformat(),
+                    "end_date": period_end.isoformat(),
+                    "total": total_incidents,
+                    "resolved": resolved_incidents,
+                    "avg_mttr_minutes": f"{avg_mttr:.1f}" if avg_mttr else None,
+                    "severity_counts": severity_counts,
+                    "top_services": [
+                        {"service": s, "count": c} for s, c in top_services
+                    ],
+                    "patterns": [
+                        {"title": p.title_pattern, "count": p.incident_count}
+                        for p in patterns[:5]
+                    ],
+                    "anomalies": [a.description for a in anomalies[:5]],
+                    "severity_trend": (
+                        f"{severity_trend.trend_direction} ({severity_trend.change_percent:+.1f}%)"
+                        if severity_trend
+                        else None
+                    ),
+                }
+            ]
 
-            patterns_str = (
-                "\n".join(
-                    f"- {p.title_pattern}: {p.incident_count} occurrences"
-                    for p in patterns[:5]
-                )
-                or "No significant patterns detected"
-            )
+            result = await ai_client.generate_digest(incident_dicts, period.value)
 
-            anomalies_str = (
-                "\n".join(f"- {a.description}" for a in anomalies[:5])
-                or "No anomalies detected"
-            )
+            return {
+                "executive_summary": result.get("summary", ""),
+                "key_findings": result.get("insights", []),
+                "recommendations": result.get("recommendations", []),
+                "risk_assessment": result.get("risk_assessment"),
+            }
 
-            severity_trend_str = (
-                "Not enough data"
-                if not severity_trend
-                else (
-                    f"{severity_trend.trend_direction} ({severity_trend.change_percent:+.1f}% change)"
-                )
-            )
-
-            prompt = DIGEST_PROMPT.format(
-                period=period.value,
-                start_date=period_start.strftime("%Y-%m-%d"),
-                end_date=period_end.strftime("%Y-%m-%d"),
-                total_incidents=total_incidents,
-                resolved_incidents=resolved_incidents,
-                avg_mttr=f"{avg_mttr:.1f}" if avg_mttr else "N/A",
-                critical_count=severity_counts["critical"],
-                high_count=severity_counts["high"],
-                medium_count=severity_counts["medium"],
-                low_count=severity_counts["low"],
-                top_services=top_services_str,
-                patterns=patterns_str,
-                anomalies=anomalies_str,
-                severity_trend=severity_trend_str,
-            )
-
-            response = await self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=1024,
-                temperature=0.7,
-            )
-
-            content = response.choices[0].message.content
-            # Parse JSON from response
-            data = json.loads(content)
-            return data
-
-        except json.JSONDecodeError as e:
-            logger.error("ai_digest_json_error", error=str(e))
-            return {}
         except Exception as e:
             logger.error("ai_digest_generation_failed", error=str(e))
             return {}
