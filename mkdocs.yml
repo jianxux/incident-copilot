@@ -1,0 +1,24 @@
+site_name: Incident Copilot
+site_description: Context-aware incident copilot for on-call engineers
+theme:
+  name: material
+  palette:
+    primary: custom
+  font:
+    text: Inter
+extra_css:
+  - stylesheets/extra.css
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Quick Start: getting-started/quickstart.md
+    - Installation: getting-started/installation.md
+  - Integrations:
+    - PagerDuty: integrations/pagerduty.md
+    - Slack: integrations/slack.md
+    - GitHub: integrations/github.md
+    - Datadog: integrations/datadog.md
+  - Architecture: architecture.md
+  - Configuration: configuration.md
+  - Self-Hosting: self-hosting.md
+  - Contributing: contributing.md

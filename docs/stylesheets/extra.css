@@ -1,0 +1,28 @@
+:root {
+  /* Brand */
+  --ic-coral: #ff6f61;
+
+  /* MkDocs Material "primary: custom" */
+  --md-primary-fg-color: var(--ic-coral);
+  --md-primary-fg-color--light: #ff8a80;
+  --md-primary-fg-color--dark: #e85b50;
+
+  --md-accent-fg-color: var(--ic-coral);
+}
+
+/* Make links feel on-brand */
+a {
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.15em;
+}
+
+.md-typeset a:hover {
+  text-decoration-thickness: 0.14em;
+}
+
+/* Slightly tighter headings */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  letter-spacing: -0.01em;
+}

@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import structlog
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
@@ -35,8 +35,27 @@ templates = Jinja2Templates(directory=str(templates_dir))
 # Landing page router (root path)
 landing_router = APIRouter(tags=["landing"])
 
+async def require_dashboard_auth(request: Request) -> dict[str, str]:
+    """Require a valid Supabase bearer token for dashboard routes.
+
+    Uses Authorization header or ic_access_token cookie.
+    """
+
+    tenant_id, user_id = await _get_tenant_id_from_request(request)
+    if not tenant_id or not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+    return {"tenant_id": tenant_id, "user_id": user_id}
+
+
 # Dashboard router
-router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+router = APIRouter(
+    prefix="/dashboard",
+    tags=["dashboard"],
+    dependencies=[Depends(require_dashboard_auth)],
+)
 
 
 def mask_secret(value: str) -> str:
@@ -90,11 +109,18 @@ async def _get_tenant_id_from_request(request: Request) -> tuple[str | None, str
     Returns (None, None) if no auth is provided.
     """
 
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        return None, None
+    token: str | None = None
 
-    token = auth_header.replace("Bearer ", "")
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header.replace("Bearer ", "")
+
+    # Browser navigation requests typically won't include Authorization headers.
+    if not token:
+        token = request.cookies.get("ic_access_token")
+
+    if not token:
+        return None, None
 
     from ..supabase_client import get_supabase_admin_client, is_supabase_db_enabled
 
@@ -291,6 +317,12 @@ async def auth_callback(request: Request):
             localStorage.setItem('access_token', token);
             localStorage.setItem('refresh_token', refresh || '');
             if (userData) localStorage.setItem('user', JSON.stringify(userData));
+
+            // Also set a cookie so server-rendered dashboard routes can enforce auth.
+            // Note: this cookie is NOT HttpOnly because it is set client-side.
+            // It mirrors the token already stored in localStorage.
+            const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+            document.cookie = `ic_access_token=${encodeURIComponent(token)}; Path=/; SameSite=Lax${secure}`;
 
             // Check if user has a profile (has signed up before)
             fetch('/api/auth/supabase/check-profile', {
