@@ -130,12 +130,25 @@ class AIServiceClient:
     async def generate_digest(
         self, incidents: list[dict], period: str = "daily"
     ) -> dict:
+        """Generate an incident digest.
+
+        The proprietary service should return keys compatible with IncidentDigest:
+        - executive_summary: str
+        - key_findings: list[str]
+        - recommendations: list[str]
+        - risk_assessment: str
+        """
         if self.enabled:
             return await self._post(
                 "/api/v1/digest",
                 {"incidents": incidents, "period": period},
             )
-        return {"summary": "AI digest not available.", "insights": [], "recommendations": []}
+        return {
+            "executive_summary": "AI digest not available. Configure AI_SERVICE_URL.",
+            "key_findings": [],
+            "recommendations": [],
+            "risk_assessment": "Unknown (AI not configured)",
+        }
 
     # ── Stubs ──────────────────────────────────────────────────
 
