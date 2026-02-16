@@ -17,7 +17,7 @@ import pytest
 from src.ai import adapter
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_verdict_engine_accepts_orchestrator_style_kwargs(monkeypatch):
     engine = adapter.VerdictEngine(settings=None)
 
@@ -48,7 +48,7 @@ async def test_verdict_engine_accepts_orchestrator_style_kwargs(monkeypatch):
     assert kwargs["similar_incidents"] == [{"id": "INC-1"}]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_log_summarizer_accepts_service_name_and_delegates(monkeypatch):
     summarizer = adapter.LogSummarizer(settings=None)
 
@@ -65,7 +65,7 @@ async def test_log_summarizer_accepts_service_name_and_delegates(monkeypatch):
     mock_summarize.assert_awaited_once()
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_stub_fallback_when_ai_service_url_empty(monkeypatch):
     # Ensure client module is reloaded with AI_SERVICE_URL unset.
     monkeypatch.delenv("AI_SERVICE_URL", raising=False)
