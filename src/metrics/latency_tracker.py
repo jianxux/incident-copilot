@@ -6,7 +6,7 @@ Provides structured timing breakdowns for each phase of context assembly.
 
 import time
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 
 import structlog
@@ -161,7 +161,7 @@ class LatencyTracker:
             timing.error = error
 
             if phase == Phase.CARD_DELIVERED:
-                self._card_delivered_at = datetime.utcnow()
+                self._card_delivered_at = datetime.now(UTC)
 
             logger.debug(
                 "phase_completed",
