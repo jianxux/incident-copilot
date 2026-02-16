@@ -50,6 +50,7 @@ from .oncall.scheduler import (
 )
 from .ratelimit.middleware import RateLimitMiddleware
 from .ratelimit.routes import router as ratelimit_router
+from .security.headers import SecurityHeadersMiddleware
 from .web import landing_router, web_router
 
 # Configure structured logging
@@ -118,13 +119,49 @@ def create_app() -> FastAPI:
         exclude_paths={"/metrics", "/", "/health"},
     )
 
-    # CORS middleware
+    # CORS middleware (production-safe default)
+    allow_origins = list(settings.cors_allow_origins or [])
+
+    # Never allow wildcard CORS in production (and avoid foot-guns in debug too).
+    if "*" in allow_origins:
+        logger.warning("cors_wildcard_origin_ignored")
+        allow_origins = [o for o in allow_origins if o != "*"]
+
+    if not allow_origins:
+        # Safe default: only allow the configured public app URL.
+        allow_origins = [settings.app_url]
+        # In debug, also allow common local dev origins.
+        if settings.debug:
+            allow_origins.extend(
+                [
+                    "http://localhost:8000",
+                    "http://127.0.0.1:8000",
+                    "http://localhost:3000",
+                    "http://127.0.0.1:3000",
+                ]
+            )
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Tighten in production
+        allow_origins=sorted(set(allow_origins)),
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-API-Key"],
+    )
+
+    # Basic security headers
+    app.add_middleware(
+        SecurityHeadersMiddleware,
+        content_security_policy=(
+            "default-src 'self'; "
+            "base-uri 'self'; "
+            "frame-ancestors 'none'; "
+            "object-src 'none'; "
+            "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data:; "
+            "connect-src 'self' https://*.supabase.co"
+        ),
     )
 
     # Audit logging middleware (if enabled)

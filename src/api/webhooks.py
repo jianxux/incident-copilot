@@ -29,9 +29,13 @@ async def pagerduty_webhook(
     try:
         body = await request.body()
         pd_adapter = PagerDutyAdapter(settings)
-        if x_pagerduty_signature and not pd_adapter.verify_webhook_signature(
-            body, x_pagerduty_signature
-        ):
+
+        if not x_pagerduty_signature:
+            status = "invalid"
+            logger.warning("pagerduty_missing_signature")
+            raise HTTPException(status_code=401, detail="Missing signature")
+
+        if not pd_adapter.verify_webhook_signature(body, x_pagerduty_signature):
             status = "invalid"
             logger.warning("pagerduty_invalid_signature")
             raise HTTPException(status_code=401, detail="Invalid signature")
@@ -80,12 +84,20 @@ async def opsgenie_webhook(
     try:
         body = await request.body()
         og_adapter = OpsgenieAdapter(settings)
-        if x_opsgenie_signature and not og_adapter.verify_webhook_signature(
-            body, x_opsgenie_signature
-        ):
-            status = "invalid"
-            logger.warning("opsgenie_invalid_signature")
-            raise HTTPException(status_code=401, detail="Invalid signature")
+
+        # Verify signature when a secret is configured; otherwise log a warning
+        # (we don't want to silently skip verification).
+        if settings.opsgenie_webhook_secret:
+            if not x_opsgenie_signature:
+                status = "invalid"
+                logger.warning("opsgenie_missing_signature")
+                raise HTTPException(status_code=401, detail="Missing signature")
+            if not og_adapter.verify_webhook_signature(body, x_opsgenie_signature):
+                status = "invalid"
+                logger.warning("opsgenie_invalid_signature")
+                raise HTTPException(status_code=401, detail="Invalid signature")
+        else:
+            logger.warning("opsgenie_webhook_secret_not_configured_signature_not_verified")
         try:
             payload = await request.json()
         except Exception as e:

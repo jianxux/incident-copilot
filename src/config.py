@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     app_name: str = "incident-copilot"
     debug: bool = False
 
+    # CORS
+    cors_allow_origins: list[str] = Field(
+        default_factory=list,
+        description="Allowed CORS origins. If empty, defaults to app_url (and localhost in debug).",
+    )
+
     # PagerDuty
     pagerduty_api_key: str = Field(default="", description="PagerDuty API key")
     pagerduty_webhook_secret: str = Field(

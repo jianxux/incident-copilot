@@ -39,10 +39,9 @@ class OpsgenieAdapter:
         The signature is sent in the X-OpsGenie-Signature header.
         """
         if not self.webhook_secret:
-            logger.warning(
-                "opsgenie_webhook_secret not configured, skipping verification"
-            )
-            return True
+            # Production safety: never accept unsigned webhooks.
+            logger.error("opsgenie_webhook_secret_not_configured")
+            return False
 
         expected = hmac.new(
             self.webhook_secret.encode(),
