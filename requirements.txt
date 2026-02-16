@@ -22,7 +22,6 @@ rich>=13.7.0
 
 # AI (Anthropic + OpenAI for embeddings)
 anthropic>=0.18.0
-openai>=1.12.0
 
 # Similarity Search (numpy for vector ops, SQLite is built-in)
 numpy>=1.26.0
