@@ -65,17 +65,17 @@
           </div>
         </div>
 
-        <div class="bg-slate-50 border border-slate-800 rounded-2xl p-6">
+        <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur border border-stone-200 dark:border-slate-800 rounded-2xl p-6 card-shadow">
           <div class="flex items-start justify-between">
             <div>
-              <h2 class="text-xl font-bold">2) Connect Slack</h2>
-              <p class="text-muted mt-1">Install the Slack app so we can post context cards and reactions.</p>
+              <h2 class="text-xl font-semibold text-slate-900 dark:text-white">2) Connect Slack</h2>
+              <p class="text-slate-600 dark:text-slate-300 mt-1">Install the Slack app so we can post context cards and reactions.</p>
             </div>
             <span id="slack-status" class="text-xs px-2 py-1 rounded bg-white border border-slate-200 text-muted">Not connected</span>
           </div>
 
           <div class="mt-5 flex flex-wrap gap-3">
-            <button class="px-4 py-2 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800" onclick="startOAuth('slack')">Connect Slack</button>
+            <button class="px-4 py-2 rounded-lg bg-brand text-white font-semibold hover:bg-brand-dark" onclick="startOAuth('slack')">Connect Slack</button>
           </div>
 
           <div class="mt-4 text-xs text-muted">
@@ -83,11 +83,11 @@
           </div>
         </div>
 
-        <div class="bg-slate-50 border border-slate-800 rounded-2xl p-6">
+        <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur border border-stone-200 dark:border-slate-800 rounded-2xl p-6 card-shadow">
           <div class="flex items-start justify-between">
             <div>
-              <h2 class="text-xl font-bold">3) Add services</h2>
-              <p class="text-muted mt-1">Tell us which services you want enriched context for.</p>
+              <h2 class="text-xl font-semibold text-slate-900 dark:text-white">3) Add services</h2>
+              <p class="text-slate-600 dark:text-slate-300 mt-1">Tell us which services you want enriched context for.</p>
             </div>
             <span id="services-status" class="text-xs px-2 py-1 rounded bg-white border border-slate-200 text-muted">Optional</span>
           </div>
@@ -100,11 +100,11 @@
           <p class="mt-2 text-xs text-muted">Add the services you want enriched context cards for.</p>
         </div>
 
-        <div class="bg-slate-50 border border-slate-800 rounded-2xl p-6">
+        <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur border border-stone-200 dark:border-slate-800 rounded-2xl p-6 card-shadow">
           <div class="flex items-start justify-between">
             <div>
-              <h2 class="text-xl font-bold">4) Run a test incident</h2>
-              <p class="text-muted mt-1">We’ll generate a synthetic incident and run it through the pipeline.</p>
+              <h2 class="text-xl font-semibold text-slate-900 dark:text-white">4) Run a test incident</h2>
+              <p class="text-slate-600 dark:text-slate-300 mt-1">We’ll generate a synthetic incident and run it through the pipeline.</p>
             </div>
             <span id="test-status" class="text-xs px-2 py-1 rounded bg-white border border-slate-200 text-muted">Not run</span>
           </div>
@@ -117,9 +117,9 @@
           <div class="mt-4 text-xs text-muted">Watch the Dashboard updates in real-time. This uses the same incident pipeline as real PagerDuty/Opsgenie alerts.</div>
         </div>
 
-        <div class="bg-slate-50 border border-slate-800 rounded-2xl p-6">
-          <h2 class="text-xl font-bold">Done</h2>
-          <p class="text-muted mt-1">Once you’re connected, you can go live. We’ll keep improving your setup over time.</p>
+        <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur border border-stone-200 dark:border-slate-800 rounded-2xl p-6 card-shadow">
+          <h2 class="text-xl font-semibold text-slate-900 dark:text-white">Done</h2>
+          <p class="text-slate-600 dark:text-slate-300 mt-1">Once you’re connected, you can go live. We’ll keep improving your setup over time.</p>
           <div class="mt-4">
             <a class="inline-flex px-4 py-2 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800" href="/dashboard">Go to dashboard</a>
           </div>
