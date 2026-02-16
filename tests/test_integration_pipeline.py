@@ -56,7 +56,7 @@ def _app() -> FastAPI:
     return app
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_pagerduty_webhook_realistic_v3_payload_returns_200(monkeypatch):
     import src.api.webhooks as webhooks
 
@@ -97,7 +97,7 @@ async def test_pagerduty_webhook_realistic_v3_payload_returns_200(monkeypatch):
     assert captured["incident"].incident_id == "P1234567"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_pagerduty_webhook_invalid_json_returns_400(monkeypatch):
     import src.api.webhooks as webhooks
 
@@ -128,7 +128,7 @@ async def test_pagerduty_webhook_invalid_json_returns_400(monkeypatch):
     assert resp.json()["detail"] == "Invalid JSON"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_pagerduty_webhook_non_incident_event_is_ignored(monkeypatch):
     import src.api.webhooks as webhooks
 
@@ -170,7 +170,7 @@ async def test_pagerduty_webhook_non_incident_event_is_ignored(monkeypatch):
     assert called["count"] == 0
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     "urgency,expected",
     [("high", "high"), ("low", "low"), ("unknown", "medium")],
