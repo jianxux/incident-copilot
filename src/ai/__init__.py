@@ -1,19 +1,26 @@
-"""AI layer for log summarization, analysis, and interactive assistance."""
+"""AI layer — routes through AI service client with local proprietary fallback."""
 
-from .copilot import AICopilot, ChatMessage, IncidentSession, MessageRole
-from .log_compressor import CompressedLogs, LogCompressor
-from .summarizer import LogSummarizer
-from .verdict import ConfidenceLevel, Verdict, VerdictEngine
+from .adapter import (
+    AICopilot,
+    ChatMessage,
+    CompressedLogs,
+    IncidentSession,
+    LogCompressor,
+    LogSummarizer,
+    MessageRole,
+    VerdictEngine,
+)
+from .client import AIServiceClient, ai_client
 
 __all__ = [
-    "LogSummarizer",
-    "LogCompressor",
-    "CompressedLogs",
     "AICopilot",
+    "AIServiceClient",
     "ChatMessage",
+    "CompressedLogs",
     "IncidentSession",
+    "LogCompressor",
+    "LogSummarizer",
     "MessageRole",
     "VerdictEngine",
-    "Verdict",
-    "ConfidenceLevel",
+    "ai_client",
 ]

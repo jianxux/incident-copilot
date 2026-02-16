@@ -6,7 +6,7 @@ import structlog
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from ..ai.copilot import AICopilot
+from ..ai import AICopilot
 from ..config import get_settings
 from ..orchestrator import ContextOrchestrator
 
