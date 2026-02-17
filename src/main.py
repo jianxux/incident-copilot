@@ -197,6 +197,14 @@ def create_app() -> FastAPI:
             exclude_paths=settings.ratelimit_exclude_paths,
         )
 
+    # Redirect unauthenticated browser requests to /login instead of JSON 401
+    from starlette.responses import RedirectResponse
+    from .web.routes import DashboardAuthRedirect
+
+    @app.exception_handler(DashboardAuthRedirect)
+    async def _redirect_to_login(request, exc):
+        return RedirectResponse(url="/login", status_code=307)
+
     # Include routers
     app.include_router(health_router)
     app.include_router(metrics_router)
