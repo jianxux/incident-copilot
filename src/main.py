@@ -30,6 +30,7 @@ from .api import (
 )
 from .api.audit import router as audit_router
 from .api.copilot import router as copilot_router
+from .api.demo_trigger import router as demo_trigger_router
 from .api.health import set_app_start_time
 from .audit.middleware import AuditMiddleware
 from .audit.store import audit_store
@@ -223,6 +224,7 @@ def create_app() -> FastAPI:
     app.include_router(webhooks_router)
     app.include_router(runbooks_router)
     app.include_router(demo_router)
+    app.include_router(demo_trigger_router)
     app.include_router(analytics_router)
     app.include_router(correlation_router)
     app.include_router(insights_router)
