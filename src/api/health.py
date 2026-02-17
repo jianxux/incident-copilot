@@ -531,3 +531,32 @@ async def readiness(response: Response) -> dict:
         "redis": redis_health.status.value,
         "database": db_health.status.value,
     }
+
+
+@router.get("/auth-debug")
+async def auth_debug(request: Request):
+    """Temporary debug endpoint to check auth context."""
+    from ..auth.middleware import _try_supabase_auth
+
+    bearer = request.headers.get("authorization", "")
+    cookie = request.cookies.get("ic_access_token", "")
+    token = bearer.replace("Bearer ", "") if bearer.startswith("Bearer ") else cookie
+
+    result = {"has_bearer": bool(bearer), "has_cookie": bool(cookie), "token_len": len(token)}
+
+    if token:
+        try:
+            from ..supabase_client import get_supabase_admin_client
+            admin = get_supabase_admin_client()
+            user_response = admin.auth.get_user(token)
+            result["supabase_user"] = str(user_response.user.email) if user_response and user_response.user else None
+        except Exception as e:
+            result["supabase_error"] = f"{type(e).__name__}: {str(e)}"
+
+        ctx = await _try_supabase_auth(token)
+        result["auth_context"] = bool(ctx)
+        if ctx:
+            result["user_id"] = ctx.user_id
+            result["tenant_id"] = ctx.tenant_id
+
+    return result
