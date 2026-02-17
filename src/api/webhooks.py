@@ -30,15 +30,20 @@ async def pagerduty_webhook(
         body = await request.body()
         pd_adapter = PagerDutyAdapter(settings)
 
-        if not x_pagerduty_signature:
-            status = "invalid"
-            logger.warning("pagerduty_missing_signature")
-            raise HTTPException(status_code=401, detail="Missing signature")
+        # Verify signature when a secret is configured; otherwise log a warning
+        # (we don't want to silently skip verification).
+        if settings.pagerduty_webhook_secret:
+            if not x_pagerduty_signature:
+                status = "invalid"
+                logger.warning("pagerduty_missing_signature")
+                raise HTTPException(status_code=401, detail="Missing signature")
 
-        if not pd_adapter.verify_webhook_signature(body, x_pagerduty_signature):
-            status = "invalid"
-            logger.warning("pagerduty_invalid_signature")
-            raise HTTPException(status_code=401, detail="Invalid signature")
+            if not pd_adapter.verify_webhook_signature(body, x_pagerduty_signature):
+                status = "invalid"
+                logger.warning("pagerduty_invalid_signature")
+                raise HTTPException(status_code=401, detail="Invalid signature")
+        else:
+            logger.warning("pagerduty_webhook_secret_not_configured_signature_not_verified")
         try:
             payload = await request.json()
         except Exception as e:

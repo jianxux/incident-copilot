@@ -141,7 +141,12 @@ class LatencyTracker:
         self._card_delivered_at: datetime | None = None
 
     def set_alert_fired_at(self, fired_at: datetime) -> None:
-        """Set T₀ — when the alert originally fired (from PagerDuty/Opsgenie)."""
+        """Set T₀ — when the alert originally fired (from PagerDuty/Opsgenie).
+
+        Some code paths/tests may provide naive datetimes; normalize to UTC.
+        """
+        if fired_at.tzinfo is None:
+            fired_at = fired_at.replace(tzinfo=UTC)
         self._alert_fired_at = fired_at
 
     def start(self, phase: Phase) -> None:
