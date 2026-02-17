@@ -330,8 +330,22 @@ export default function SettingsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         {!connected && (
-                          <Button asChild>
-                            <a href={integrationApi.oauthConnectUrl(integration.id)}>Connect</a>
+                          <Button
+                            onClick={async () => {
+                              setLoadingProvider(integration.id);
+                              try {
+                                const { redirect_url } = await integrationApi.oauthConnect(integration.id);
+                                window.location.href = redirect_url;
+                              } catch (err: unknown) {
+                                const msg = err instanceof Error ? err.message : 'Failed to start OAuth flow';
+                                alert(msg);
+                              } finally {
+                                setLoadingProvider(null);
+                              }
+                            }}
+                            disabled={loadingProvider === integration.id}
+                          >
+                            {loadingProvider === integration.id ? 'Connecting...' : 'Connect'}
                           </Button>
                         )}
                         {connected && (

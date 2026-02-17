@@ -188,7 +188,14 @@ export const integrationApi = {
     return response.data;
   },
 
-  oauthConnectUrl: (provider: string) => `/api/integrations/${provider}/connect`,
+  oauthConnect: async (provider: string) => {
+    const response = await api.get(`/integrations/${provider}/connect`, {
+      headers: { Accept: 'application/json' },
+      maxRedirects: 0,
+      validateStatus: (s: number) => s < 400,
+    });
+    return response.data as { redirect_url: string };
+  },
 };
 
 // On-Call APIs
