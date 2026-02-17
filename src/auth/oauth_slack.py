@@ -35,7 +35,8 @@ _slack_oauth_states: dict[str, dict] = {}
 
 
 class SlackOAuthResponse(BaseModel):
-    ok: bool
+    model_config = {"extra": "allow"}
+    ok: bool = False
     access_token: str | None = None
     token_type: str | None = None
     scope: str | None = None
@@ -183,9 +184,20 @@ async def slack_oauth_callback(
         )
 
     oauth = SlackOAuth()
+    logger.info(
+        "slack_oauth_exchanging",
+        redirect_uri=state_data["redirect_uri"],
+        app_url=settings.app_url,
+    )
     token = await oauth.exchange_code(code, state_data["redirect_uri"])
     if not token.ok or not token.access_token:
-        logger.error("slack_oauth_token_failed", error=token.error)
+        logger.error(
+            "slack_oauth_token_failed",
+            error=token.error,
+            ok=token.ok,
+            redirect_uri=state_data["redirect_uri"],
+            raw=str(token),
+        )
         return RedirectResponse(
             url=f"{settings.app_url}/dashboard/onboarding-wizard?slack_error=token"
         )
