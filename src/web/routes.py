@@ -878,6 +878,7 @@ async def get_onboarding_status(
     """Return a lightweight status for the wizard UI."""
     tenant_id = auth.tenant_id or "default"
 
+    # Check in-memory tenant store first
     tenant = auth.tenant
     integrations = tenant.integrations if tenant else {}
 
@@ -885,18 +886,38 @@ async def get_onboarding_status(
         v = integrations.get(name)
         if not v:
             return False
-        # We store encrypted records under {encrypted: "..."}.
         return bool(v.get("encrypted") if isinstance(v, dict) else v)
+
+    result = {
+        "pagerduty": connected("pagerduty"),
+        "slack": connected("slack"),
+        "github": connected("github"),
+        "datadog": connected("datadog"),
+    }
+
+    # Also check Supabase integration_configs for OAuth connections
+    try:
+        from ..db.supabase_db import get_db
+        db = get_db(use_admin=True)
+        rows = (
+            db.client.table("integration_configs")
+            .select("type")
+            .eq("tenant_id", tenant_id)
+            .eq("is_active", True)
+            .execute()
+        )
+        if rows.data:
+            for row in rows.data:
+                provider = row.get("type")
+                if provider and provider in result:
+                    result[provider] = True
+    except Exception:
+        pass  # Supabase unavailable — fall back to in-memory only
 
     return {
         "authenticated": True,
         "tenant": {"id": tenant_id},
-        "integrations": {
-            "pagerduty": connected("pagerduty"),
-            "slack": connected("slack"),
-            "github": connected("github"),
-            "datadog": connected("datadog"),
-        },
+        "integrations": result,
     }
 
 
