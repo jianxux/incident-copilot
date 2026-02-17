@@ -141,7 +141,10 @@ async def _get_tenant_id_from_request(request: Request) -> tuple[str | None, str
         return None, None
 
     # Validate token and get Supabase auth user
-    user_response = admin.auth.get_user(token)
+    try:
+        user_response = admin.auth.get_user(token)
+    except Exception:
+        return None, None
     if not user_response or not user_response.user:
         return None, None
 
