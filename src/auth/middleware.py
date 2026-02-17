@@ -56,6 +56,7 @@ async def get_auth_context(
     """
     # Try Bearer token first
     if bearer and bearer.credentials:
+        # Legacy internal sessions
         session = await auth_service.get_session_by_token(bearer.credentials)
         if session:
             user = await auth_service.get_user(session.user_id)
@@ -66,6 +67,19 @@ async def get_auth_context(
                     tenant=tenant,
                     session=session,
                 )
+
+        # Supabase JWT fallback — validate token and build context from DB
+        ctx = await _try_supabase_auth(bearer.credentials)
+        if ctx:
+            return ctx
+
+    # Also try cookie (for server-rendered pages)
+    if not bearer or not bearer.credentials:
+        cookie_token = request.cookies.get("ic_access_token")
+        if cookie_token:
+            ctx = await _try_supabase_auth(cookie_token)
+            if ctx:
+                return ctx
 
     # Try API key
     if api_key:
@@ -79,6 +93,72 @@ async def get_auth_context(
 
     # Not authenticated
     return AuthContext()
+
+
+async def _try_supabase_auth(token: str) -> AuthContext | None:
+    """Validate a Supabase JWT and return an AuthContext if valid."""
+    try:
+        from ..supabase_client import get_supabase_admin_client, is_supabase_db_enabled
+
+        admin = get_supabase_admin_client()
+        if not admin:
+            return None
+
+        user_response = admin.auth.get_user(token)
+        if not user_response or not user_response.user:
+            return None
+
+        su = user_response.user
+        email = (su.email or "").lower()
+        if not email:
+            return None
+
+        if not is_supabase_db_enabled():
+            # Minimal context without DB
+            return AuthContext(
+                user=User(id=str(su.id), email=email, name=email, tenant_id="default", role=UserRole.OWNER),
+                tenant=Tenant(id="default", name="default", slug="default"),
+            )
+
+        from ..db.supabase_db import get_db
+
+        db = get_db(use_admin=True)
+        app_user = await db.get_user_by_email(email)
+
+        if not app_user:
+            # Auto-create tenant + user for first-time Supabase auth users
+            slug = str(su.id)
+            tenant_name = email.split("@")[1] if "@" in email else email
+            tenant_data = await db.ensure_tenant(slug=slug, name=tenant_name)
+            app_user = await db.create_user(
+                email=email,
+                tenant_id=tenant_data["id"],
+                name=(su.user_metadata or {}).get("full_name")
+                or (su.user_metadata or {}).get("name"),
+                role="owner",
+            )
+
+        tenant_data = await db.get_tenant(app_user["tenant_id"])
+        if not tenant_data:
+            return None
+
+        return AuthContext(
+            user=User(
+                id=app_user["id"],
+                email=app_user.get("email", email),
+                name=app_user.get("name") or email,
+                tenant_id=app_user["tenant_id"],
+                role=UserRole(app_user.get("role", "owner")),
+            ),
+            tenant=Tenant(
+                id=tenant_data["id"],
+                name=tenant_data.get("name", ""),
+                slug=tenant_data.get("slug", ""),
+            ),
+        )
+    except Exception as e:
+        logger.debug("supabase_auth_fallback_failed", error=str(e))
+        return None
 
 
 async def get_current_user(
