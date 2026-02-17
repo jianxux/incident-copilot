@@ -228,7 +228,7 @@ async def slack_oauth_callback(
     # Persist to Supabase integration_configs table
     try:
         from ..db.supabase_db import get_db
-        db = get_db()
+        db = get_db(use_admin=True)
         db.client.table("integration_configs").upsert(
             {
                 "tenant_id": state_data["tenant_id"],
