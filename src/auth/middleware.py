@@ -157,7 +157,7 @@ async def _try_supabase_auth(token: str) -> AuthContext | None:
             ),
         )
     except Exception as e:
-        logger.debug("supabase_auth_fallback_failed", error=str(e))
+        logger.warning("supabase_auth_fallback_failed", error=str(e), error_type=type(e).__name__)
         return None
 
 
