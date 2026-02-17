@@ -492,6 +492,32 @@ async def dashboard_home(request: Request):
     )
 
 
+@router.get("/incidents", response_class=HTMLResponse)
+async def incidents_list_page(request: Request):
+    """Incidents list page (reuses dashboard template with incidents focus)."""
+    empty_stats = {
+        "total": "—",
+        "by_status": {"processing": "—", "completed": "—", "error": "—"},
+        "by_severity": {
+            "critical": "—",
+            "high": "—",
+            "medium": "—",
+            "low": "—",
+            "info": "—",
+        },
+    }
+
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {
+            "request": request,
+            "incidents": [],
+            "stats": empty_stats,
+            "page_title": "Incidents",
+        },
+    )
+
+
 @router.get("/onboarding")
 async def onboarding_page(request: Request):
     """Legacy onboarding — redirect to unified wizard."""
