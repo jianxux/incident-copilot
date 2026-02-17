@@ -30,7 +30,10 @@ def _derive_fernet_key(secret: str) -> bytes:
 
 def _get_fernet() -> Fernet:
     settings = get_settings()
-    key = _derive_fernet_key(settings.secret_key)
+    if settings.encryption_key:
+        key = settings.encryption_key.encode("utf-8")
+    else:
+        key = _derive_fernet_key(settings.secret_key)
     return Fernet(key)
 
 

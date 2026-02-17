@@ -2,7 +2,7 @@ site_name: Incident Copilot
 site_description: Auto-assemble incident context when PagerDuty/Opsgenie alerts fire.
 site_url: https://example.com/
 repo_name: incident-copilot
-repo_url: https://github.com/your-org/incident-copilot
+repo_url: https://github.com/jianxux/incident-copilot
 edit_uri: edit/main/docs/
 
 theme:
