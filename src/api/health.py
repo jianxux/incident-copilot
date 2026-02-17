@@ -10,7 +10,7 @@ from typing import Any
 
 import httpx
 import structlog
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Request, Response, status
 from pydantic import BaseModel, Field
 
 from ..config import get_settings
