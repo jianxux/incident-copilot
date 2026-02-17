@@ -6,6 +6,7 @@ import httpx
 import structlog
 
 from ..config import Settings
+from .oauth_tokens import oauth_token_store
 from ..models import Deployment, GitHubContext
 
 logger = structlog.get_logger()
@@ -16,20 +17,22 @@ class GitHubAdapter:
 
     BASE_URL = "https://api.github.com"
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, tenant_id: str | None = None):
         self.settings = settings
         self.token = settings.github_token
+        self.tenant_id = tenant_id
         self.org = settings.github_org
         self.service_repo_map = settings.service_repo_map
 
-    def _get_headers(self) -> dict:
+    def _get_headers(self, token: str | None = None) -> dict:
         """Get auth headers for GitHub API."""
         headers = {
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
         }
-        if self.token:
-            headers["Authorization"] = f"Bearer {self.token}"
+        auth_token = token or self.token
+        if auth_token:
+            headers["Authorization"] = f"Bearer {auth_token}"
         return headers
 
     def _get_repo_for_service(self, service_name: str) -> str | None:
@@ -54,12 +57,21 @@ class GitHubAdapter:
             return None
 
         try:
+            token = self.token
+            if self.tenant_id:
+                token = await oauth_token_store.get_access_token(
+                    tenant_id=self.tenant_id,
+                    provider="github",
+                ) or self.token
+
             async with httpx.AsyncClient(timeout=10.0) as client:
                 # Fetch recent commits
-                deploys = await self._fetch_recent_commits(client, repo, since_hours)
+                deploys = await self._fetch_recent_commits(
+                    client, repo, since_hours, token=token
+                )
 
                 # Fetch CODEOWNERS
-                codeowners = await self._fetch_codeowners(client, repo)
+                codeowners = await self._fetch_codeowners(client, repo, token=token)
 
                 return GitHubContext(
                     repo=repo,
@@ -72,7 +84,11 @@ class GitHubAdapter:
             return None
 
     async def _fetch_recent_commits(
-        self, client: httpx.AsyncClient, repo: str, since_hours: int
+        self,
+        client: httpx.AsyncClient,
+        repo: str,
+        since_hours: int,
+        token: str | None = None,
     ) -> list[Deployment]:
         """Fetch recent commits from main/master branch."""
         since = (datetime.utcnow() - timedelta(hours=since_hours)).isoformat() + "Z"
@@ -80,7 +96,7 @@ class GitHubAdapter:
         url = f"{self.BASE_URL}/repos/{repo}/commits"
         params = {"since": since, "per_page": 10}
 
-        resp = await client.get(url, headers=self._get_headers(), params=params)
+        resp = await client.get(url, headers=self._get_headers(token), params=params)
 
         if resp.status_code != 200:
             logger.warning("github_commits_failed", repo=repo, status=resp.status_code)
@@ -115,7 +131,10 @@ class GitHubAdapter:
         return deploys
 
     async def _fetch_codeowners(
-        self, client: httpx.AsyncClient, repo: str
+        self,
+        client: httpx.AsyncClient,
+        repo: str,
+        token: str | None = None,
     ) -> list[str]:
         """Fetch CODEOWNERS file and extract owners."""
         # Try common CODEOWNERS locations
@@ -123,7 +142,7 @@ class GitHubAdapter:
 
         for path in paths:
             url = f"{self.BASE_URL}/repos/{repo}/contents/{path}"
-            resp = await client.get(url, headers=self._get_headers())
+            resp = await client.get(url, headers=self._get_headers(token))
 
             if resp.status_code == 200:
                 import base64

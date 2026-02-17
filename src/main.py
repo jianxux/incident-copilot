@@ -43,6 +43,11 @@ from .billing.routes import router as billing_router
 from .config import get_settings
 from .copilot.adapters.slack_adapter import router as slack_copilot_router
 from .copilot.adapters.web_adapter import router as web_copilot_router
+from .api.oauth_integrations import router as oauth_integrations_router
+from .integrations.oauth_refresh import (
+    start_oauth_refresh_worker,
+    stop_oauth_refresh_worker,
+)
 from .metrics import HEALTH_STATUS, set_app_info
 from .metrics.middleware import PrometheusMiddleware
 from .oncall.scheduler import (
@@ -118,10 +123,12 @@ def create_app() -> FastAPI:
             )
 
         await start_oncall_handoff_scheduler(settings=settings)
+        await start_oauth_refresh_worker()
 
         yield
 
         await stop_oncall_handoff_scheduler()
+        await stop_oauth_refresh_worker()
         logger.info("incident_copilot_shutting_down")
 
     app = FastAPI(
@@ -220,6 +227,7 @@ def create_app() -> FastAPI:
     app.include_router(slack_oauth_router)
     app.include_router(sso_router)
     app.include_router(supabase_auth_router)
+    app.include_router(oauth_integrations_router)
     app.include_router(billing_router)
     app.include_router(webhooks_router)
     app.include_router(runbooks_router)
