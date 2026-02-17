@@ -172,6 +172,23 @@ export const integrationApi = {
     const response = await api.put(`/integrations/${id}`, config);
     return response.data;
   },
+
+  oauthStatus: async (provider: string) => {
+    const response = await api.get(`/integrations/${provider}/status`);
+    return response.data as {
+      provider: string;
+      connected: boolean;
+      token_expiry: string | null;
+      scopes: string[];
+    };
+  },
+
+  oauthDisconnect: async (provider: string) => {
+    const response = await api.delete(`/integrations/${provider}/disconnect`);
+    return response.data;
+  },
+
+  oauthConnectUrl: (provider: string) => `/api/integrations/${provider}/connect`,
 };
 
 // On-Call APIs
