@@ -1,24 +1,58 @@
 site_name: Incident Copilot
-site_description: Context-aware incident copilot for on-call engineers
+site_description: Auto-assemble incident context when PagerDuty/Opsgenie alerts fire.
+site_url: https://example.com/
+repo_name: incident-copilot
+repo_url: https://github.com/your-org/incident-copilot
+edit_uri: edit/main/docs/
+
 theme:
   name: material
   palette:
-    primary: custom
-  font:
-    text: Inter
-extra_css:
-  - stylesheets/extra.css
+    - scheme: default
+      primary: coral
+      accent: coral
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+plugins:
+  - search
+  - mermaid2
+
 nav:
   - Home: index.md
-  - Getting Started:
-    - Quick Start: getting-started/quickstart.md
-    - Installation: getting-started/installation.md
+  - Getting started:
+      - Quickstart: getting-started/quickstart.md
+      - Installation (Python): getting-started/installation.md
   - Integrations:
-    - PagerDuty: integrations/pagerduty.md
-    - Slack: integrations/slack.md
-    - GitHub: integrations/github.md
-    - Datadog: integrations/datadog.md
+      - PagerDuty: integrations/pagerduty.md
+      - Slack: integrations/slack.md
+      - GitHub: integrations/github.md
+      - Datadog: integrations/datadog.md
   - Architecture: architecture.md
   - Configuration: configuration.md
-  - Self-Hosting: self-hosting.md
+  - Self-hosting: self-hosting.md
   - Contributing: contributing.md

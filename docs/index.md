@@ -1,27 +1,43 @@
 # Incident Copilot
 
-Incident Copilot is a context-aware incident assistant for on-call engineers. When an alert triggers, it pulls the most relevant operational context (logs, metrics, runbooks, recent deploys, on-call schedule, ownership) and posts an actionable briefing to your collaboration tool.
+**Incident Copilot** automatically assembles the context you need *when an alert fires*.
+
+When PagerDuty or Opsgenie triggers an incident, Incident Copilot pulls:
+
+- Recent deploys and commits (GitHub / GitLab)
+- Relevant logs (Datadog / CloudWatch / Splunk / Loki)
+- On-call context (schedule / roster)
+- An AI-generated summary and suggested next steps
+
+…and delivers a clean **context card** into Slack and/or Microsoft Teams.
+
+---
+
+## Why
+
+During an incident, the most expensive thing is *time to context*:
+
+- What changed recently?
+- Where are the errors coming from?
+- Who is on call for this service?
+- What should we check first?
+
+Incident Copilot aims to answer those in minutes—automatically.
 
 ## What you get
 
-- **Fast triage**: a single message that answers “what changed?”, “where is it failing?”, and “what should I check next?”.
-- **Pluggable integrations**: connect PagerDuty/Opsgenie, Slack/Teams, and your observability + source control systems.
-- **Correlation + suppression**: reduce noise by grouping related alerts and suppressing duplicates.
-- **Extensible**: add integrations and context sources via a plugin-style architecture.
+- **FastAPI** service (Python 3.11)
+- Docker-first deployment
+- Webhooks for alert providers
+- Pluggable integrations for source control + logs
+- Secure configuration via environment variables
 
-## Core concepts
+## Quickstart
 
-- **Incident**: the alert payload normalized into an internal incident model.
-- **Context**: enriched data fetched from external systems (logs, metrics, repos, runbooks).
-- **Orchestrator**: coordinates context fetching and notification delivery.
-- **AI summarization**: converts raw context into a concise incident briefing (optional).
+Go to **Getting started → Quickstart**:
 
-## Next steps
+- [`getting-started/quickstart.md`](getting-started/quickstart.md)
 
-- Start with **[Quickstart](getting-started/quickstart.md)** to get a local instance running.
-- Connect your alert source in **[Integrations](integrations/pagerduty.md)**.
-- Review **[Configuration](configuration/environment.md)** for required environment variables.
+## License
 
-## Support
-
-- For common issues, see Getting Started pages or open an issue with logs + configuration summary.
+This project is licensed under **Business Source License 1.1 (BSL 1.1)**.
