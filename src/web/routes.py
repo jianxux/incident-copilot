@@ -39,15 +39,27 @@ async def require_dashboard_auth(request: Request) -> dict[str, str]:
     """Require a valid Supabase bearer token for dashboard routes.
 
     Uses Authorization header or ic_access_token cookie.
+    Browser requests (Accept: text/html) are redirected to /login instead
+    of receiving a raw JSON 401.
     """
 
     tenant_id, user_id = await _get_tenant_id_from_request(request)
     if not tenant_id or not user_id:
+        # Browser navigation → redirect to login for a friendly experience.
+        # API calls still get a clean JSON 401.
+        accept = request.headers.get("accept", "")
+        if "text/html" in accept:
+            raise DashboardAuthRedirect()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
         )
     return {"tenant_id": tenant_id, "user_id": user_id}
+
+
+class DashboardAuthRedirect(Exception):
+    """Raised to redirect unauthenticated browser requests to /login."""
+    pass
 
 
 # Dashboard router
