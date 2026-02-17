@@ -9,7 +9,6 @@ from ..config import Settings
 from ..copilot.thread_registry import thread_registry
 from ..memory.feedback import FeedbackStore, ResolutionFeedback
 from ..models import ContextCard
-from .oauth_tokens import oauth_token_store
 
 logger = structlog.get_logger()
 
@@ -17,37 +16,20 @@ logger = structlog.get_logger()
 class SlackAdapter:
     """Adapter for Slack API."""
 
-    def __init__(self, settings: Settings, tenant_id: str | None = None):
+    def __init__(self, settings: Settings):
         self.settings = settings
-        self.tenant_id = tenant_id
-        self.client = None
-        self._client_token: str | None = None
+        self.client = (
+            AsyncWebClient(token=settings.slack_bot_token)
+            if settings.slack_bot_token
+            else None
+        )
         self.default_channel = settings.slack_default_channel
-
-    async def _get_client(self) -> AsyncWebClient | None:
-        token = self.settings.slack_bot_token
-        if self.tenant_id:
-            token = await oauth_token_store.get_access_token(
-                tenant_id=self.tenant_id,
-                provider="slack",
-            ) or self.settings.slack_bot_token
-
-        if not token:
-            return None
-
-        if self.client and self._client_token == token:
-            return self.client
-
-        self.client = AsyncWebClient(token=token)
-        self._client_token = token
-        return self.client
 
     async def send_context_card(
         self, card: ContextCard, channel: str | None = None
     ) -> bool:
         """Send a context card to Slack."""
-        client = await self._get_client()
-        if not client:
+        if not self.client:
             # Slack is optional; avoid warning spam per incident.
             logger.debug("slack_not_configured")
             return False
@@ -57,7 +39,7 @@ class SlackAdapter:
         try:
             blocks = self._build_blocks(card)
 
-            response = await client.chat_postMessage(
+            response = await self.client.chat_postMessage(
                 channel=target_channel,
                 text=f"🚨 Incident: {card.title}",  # Fallback text
                 blocks=blocks,

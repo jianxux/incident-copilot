@@ -14,7 +14,6 @@ import structlog
 
 from ..config import Settings
 from ..models import OnCallPerson, OnCallRoster
-from .oauth_tokens import oauth_token_store
 
 logger = structlog.get_logger()
 
@@ -42,9 +41,8 @@ class OnCallAdapter:
     based on configuration.
     """
 
-    def __init__(self, settings: Settings, tenant_id: str | None = None):
+    def __init__(self, settings: Settings):
         self.settings = settings
-        self.tenant_id = tenant_id
         self.provider = self._detect_provider()
         self._setup_api_config()
         logger.info("oncall_adapter_initialized", provider=self.provider.value)
@@ -59,7 +57,7 @@ class OnCallAdapter:
             return OnCallProvider.OPSGENIE
         elif oncall_provider == "auto":
             # Auto-detect based on available credentials
-            if self.settings.pagerduty_api_key or self.tenant_id:
+            if self.settings.pagerduty_api_key:
                 return OnCallProvider.PAGERDUTY
             elif self.settings.opsgenie_api_key:
                 return OnCallProvider.OPSGENIE
@@ -163,25 +161,6 @@ class OnCallAdapter:
         """
         url = f"{self.api_base}/schedules/{schedule_id}/users"
         now = datetime.now(UTC)
-        api_key = self.settings.pagerduty_api_key
-        oauth_token = None
-        if self.tenant_id:
-            oauth_token = await oauth_token_store.get_access_token(
-                tenant_id=self.tenant_id,
-                provider="pagerduty",
-            )
-            api_key = oauth_token or self.settings.pagerduty_api_key
-        if not api_key:
-            logger.debug("pagerduty_api_token_not_configured")
-            return None
-        headers = {
-            "Authorization": (
-                f"Bearer {api_key}"
-                if oauth_token
-                else f"Token token={api_key}"
-            ),
-            "Content-Type": "application/json",
-        }
 
         params = {
             "since": now.isoformat(),
@@ -189,12 +168,12 @@ class OnCallAdapter:
         }
 
         async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(url, headers=headers, params=params)
+            response = await client.get(url, headers=self.headers, params=params)
             response.raise_for_status()
             data = response.json()
 
         users = data.get("users", [])
-        schedule_data = await self._get_pagerduty_schedule_info(schedule_id, headers)
+        schedule_data = await self._get_pagerduty_schedule_info(schedule_id)
 
         oncall_persons = []
         for user in users:
@@ -228,14 +207,14 @@ class OnCallAdapter:
         )
 
     async def _get_pagerduty_schedule_info(
-        self, schedule_id: str, headers: dict[str, str]
+        self, schedule_id: str
     ) -> dict[str, Any] | None:
         """Fetch schedule metadata from PagerDuty."""
         url = f"{self.api_base}/schedules/{schedule_id}"
 
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get(url, headers=headers)
+                response = await client.get(url, headers=self.headers)
                 response.raise_for_status()
                 data = response.json()
                 return data.get("schedule", {})

@@ -12,7 +12,6 @@ import structlog
 from pydantic import BaseModel, Field
 
 from ..config import get_settings
-from .oauth_tokens import oauth_token_store
 
 logger = structlog.get_logger()
 
@@ -67,7 +66,6 @@ class JiraClient:
         base_url: str | None = None,
         email: str | None = None,
         api_token: str | None = None,
-        tenant_id: str | None = None,
     ):
         """Initialize Jira client.
 
@@ -81,55 +79,33 @@ class JiraClient:
         self.base_url = (base_url or settings.jira_base_url or "").rstrip("/")
         self.email = email or settings.jira_email
         self.api_token = api_token or settings.jira_api_token
-        self.tenant_id = tenant_id
         self.default_project = settings.jira_default_project
 
         self._client: httpx.AsyncClient | None = None
-        self._client_key: str | None = None
 
     @property
     def is_configured(self) -> bool:
         """Check if Jira integration is properly configured."""
-        return bool(self.base_url and (self.api_token or self.tenant_id))
+        return bool(self.base_url and self.email and self.api_token)
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client."""
-        oauth_token = None
-        if self.tenant_id:
-            oauth_token = await oauth_token_store.get_access_token(
-                tenant_id=self.tenant_id,
-                provider="jira",
-            )
-
-        auth_header = None
-        client_key = None
-        if oauth_token:
-            auth_header = f"Bearer {oauth_token}"
-            client_key = f"oauth:{oauth_token[:12]}"
-        elif self.email and self.api_token:
+        if self._client is None:
             import base64
 
+            # Jira Cloud uses Basic auth with email:api_token
             auth_string = f"{self.email}:{self.api_token}"
             auth_bytes = base64.b64encode(auth_string.encode()).decode()
-            auth_header = f"Basic {auth_bytes}"
-            client_key = f"basic:{self.email}:{self.api_token[:8]}"
 
-        if not auth_header:
-            raise ValueError("Jira integration not configured")
-
-        if self._client is None or self._client_key != client_key:
-            if self._client is not None:
-                await self._client.aclose()
             self._client = httpx.AsyncClient(
                 base_url=f"{self.base_url}/rest/api/3",
                 headers={
-                    "Authorization": auth_header,
+                    "Authorization": f"Basic {auth_bytes}",
                     "Content-Type": "application/json",
                     "Accept": "application/json",
                 },
                 timeout=30.0,
             )
-            self._client_key = client_key
         return self._client
 
     async def close(self) -> None:
