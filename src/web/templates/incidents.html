@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-display text-slate-900 dark:text-white">Incidents</h1>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Monitor and manage all incidents across your services.
+            </p>
+        </div>
+        <div class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+            <i class="fas fa-sync-alt animate-spin hidden" id="refresh-spinner"></i>
+            <span id="last-updated">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur rounded-2xl border border-stone-200 dark:border-slate-800 card-shadow p-4">
+        <div class="flex flex-col sm:flex-row gap-3">
+            <!-- Search -->
+            <div class="relative flex-1">
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                <input type="text" id="search-input" placeholder="Search by title or service..."
+                    class="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand transition">
+            </div>
+            <!-- Status filter -->
+            <select id="status-filter"
+                class="px-3 py-2 text-sm rounded-xl border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand transition">
+                <option value="all">All Statuses</option>
+                <option value="triggered">Triggered</option>
+                <option value="acknowledged">Acknowledged</option>
+                <option value="resolved">Resolved</option>
+            </select>
+            <!-- Severity filter -->
+            <select id="severity-filter"
+                class="px-3 py-2 text-sm rounded-xl border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand transition">
+                <option value="all">All Severities</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+                <option value="info">Info</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur rounded-2xl border border-stone-200 dark:border-slate-800 card-shadow overflow-hidden">
+        <!-- Desktop table -->
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm" id="incidents-table">
+                <thead>
+                    <tr class="border-b border-stone-200 dark:border-slate-800 text-left">
+                        <th class="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:text-brand transition select-none" data-sort="title">
+                            Title <i class="fas fa-sort text-xs ml-1 opacity-40"></i>
+                        </th>
+                        <th class="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:text-brand transition select-none hidden sm:table-cell" data-sort="service">
+                            Service <i class="fas fa-sort text-xs ml-1 opacity-40"></i>
+                        </th>
+                        <th class="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:text-brand transition select-none" data-sort="severity">
+                            Severity <i class="fas fa-sort text-xs ml-1 opacity-40"></i>
+                        </th>
+                        <th class="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:text-brand transition select-none" data-sort="status">
+                            Status <i class="fas fa-sort text-xs ml-1 opacity-40"></i>
+                        </th>
+                        <th class="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 hidden md:table-cell cursor-pointer hover:text-brand transition select-none" data-sort="source">
+                            Source <i class="fas fa-sort text-xs ml-1 opacity-40"></i>
+                        </th>
+                        <th class="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 hidden lg:table-cell cursor-pointer hover:text-brand transition select-none" data-sort="created_at">
+                            Created <i class="fas fa-sort text-xs ml-1 opacity-40"></i>
+                        </th>
+                        <th class="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="incidents-tbody">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Empty state -->
+        <div id="empty-state" class="hidden py-16 text-center">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-stone-100 dark:bg-slate-800 flex items-center justify-center">
+                <i class="fas fa-fire text-2xl text-slate-400 dark:text-slate-500"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-1">No incidents found</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400">
+                No incidents match your current filters. Try adjusting your search or filters.
+            </p>
+        </div>
+
+        <!-- Pagination -->
+        <div id="pagination" class="hidden border-t border-stone-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between">
+            <div class="text-sm text-slate-500 dark:text-slate-400">
+                Showing <span id="page-start">1</span>–<span id="page-end">25</span> of <span id="total-count">0</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <button id="prev-btn" onclick="changePage(-1)"
+                    class="px-3 py-1.5 text-sm rounded-lg border border-stone-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                    <i class="fas fa-chevron-left text-xs mr-1"></i> Prev
+                </button>
+                <span class="px-3 py-1.5 text-sm text-slate-600 dark:text-slate-300" id="page-indicator">1 / 1</span>
+                <button id="next-btn" onclick="changePage(1)"
+                    class="px-3 py-1.5 text-sm rounded-lg border border-stone-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                    Next <i class="fas fa-chevron-right text-xs ml-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const PER_PAGE = 25;
+    let allIncidents = [];
+    let filtered = [];
+    let currentPage = 1;
+    let sortKey = 'created_at';
+    let sortAsc = false;
+
+    const severityOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+    const statusOrder = { triggered: 0, acknowledged: 1, resolved: 2 };
+
+    const severityBadge = {
+        critical: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400',
+        high: 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400',
+        medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400',
+        low: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400',
+        info: 'bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400',
+    };
+
+    const statusBadge = {
+        triggered: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400',
+        acknowledged: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400',
+        resolved: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400',
+        processing: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400',
+        completed: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400',
+        error: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400',
+    };
+
+    const statusIcon = {
+        triggered: 'fa-circle-exclamation',
+        acknowledged: 'fa-eye',
+        resolved: 'fa-circle-check',
+        processing: 'fa-spinner fa-spin',
+        completed: 'fa-circle-check',
+        error: 'fa-triangle-exclamation',
+    };
+
+    function timeAgo(dateStr) {
+        if (!dateStr) return '—';
+        const d = new Date(dateStr);
+        const now = new Date();
+        const diff = Math.floor((now - d) / 1000);
+        if (diff < 60) return 'just now';
+        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+        return Math.floor(diff / 86400) + 'd ago';
+    }
+
+    function applyFilters() {
+        const q = document.getElementById('search-input').value.toLowerCase();
+        const st = document.getElementById('status-filter').value;
+        const sev = document.getElementById('severity-filter').value;
+
+        filtered = allIncidents.filter(i => {
+            if (q && !(i.title || '').toLowerCase().includes(q) && !(i.service_name || i.service || '').toLowerCase().includes(q)) return false;
+            if (st !== 'all' && i.status !== st) return false;
+            if (sev !== 'all' && i.severity !== sev) return false;
+            return true;
+        });
+
+        applySort();
+        currentPage = 1;
+        render();
+    }
+
+    function applySort() {
+        filtered.sort((a, b) => {
+            let va, vb;
+            switch (sortKey) {
+                case 'title': va = (a.title || '').toLowerCase(); vb = (b.title || '').toLowerCase(); break;
+                case 'service': va = (a.service_name || a.service || '').toLowerCase(); vb = (b.service_name || b.service || '').toLowerCase(); break;
+                case 'severity': va = severityOrder[a.severity] ?? 5; vb = severityOrder[b.severity] ?? 5; break;
+                case 'status': va = statusOrder[a.status] ?? 5; vb = statusOrder[b.status] ?? 5; break;
+                case 'source': va = (a.source || '').toLowerCase(); vb = (b.source || '').toLowerCase(); break;
+                case 'created_at': va = a.triggered_at || a.created_at || ''; vb = b.triggered_at || b.created_at || ''; break;
+                default: return 0;
+            }
+            if (va < vb) return sortAsc ? -1 : 1;
+            if (va > vb) return sortAsc ? 1 : -1;
+            return 0;
+        });
+    }
+
+    function render() {
+        const tbody = document.getElementById('incidents-tbody');
+        const empty = document.getElementById('empty-state');
+        const pag = document.getElementById('pagination');
+        const total = filtered.length;
+        const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+
+        if (currentPage > pages) currentPage = pages;
+
+        if (total === 0) {
+            tbody.innerHTML = '';
+            empty.classList.remove('hidden');
+            pag.classList.add('hidden');
+            return;
+        }
+
+        empty.classList.add('hidden');
+        pag.classList.remove('hidden');
+
+        const start = (currentPage - 1) * PER_PAGE;
+        const end = Math.min(start + PER_PAGE, total);
+        const page = filtered.slice(start, end);
+
+        document.getElementById('page-start').textContent = start + 1;
+        document.getElementById('page-end').textContent = end;
+        document.getElementById('total-count').textContent = total;
+        document.getElementById('page-indicator').textContent = currentPage + ' / ' + pages;
+        document.getElementById('prev-btn').disabled = currentPage <= 1;
+        document.getElementById('next-btn').disabled = currentPage >= pages;
+
+        tbody.innerHTML = page.map(i => {
+            const svc = i.service_name || i.service || '—';
+            const sev = i.severity || 'info';
+            const st = i.status || 'processing';
+            const src = i.source || '—';
+            const created = i.triggered_at || i.created_at || '';
+            const id = i.incident_id || i.id;
+            const sevCls = severityBadge[sev] || severityBadge.info;
+            const stCls = statusBadge[st] || statusBadge.processing;
+            const stIcon = statusIcon[st] || 'fa-circle-question';
+
+            return `<tr class="border-b border-stone-100 dark:border-slate-800/60 hover:bg-stone-50 dark:hover:bg-slate-800/40 transition cursor-pointer" onclick="window.location.href='/dashboard/incident/${id}'">
+                <td class="px-4 py-3">
+                    <div class="font-medium text-slate-900 dark:text-white truncate max-w-xs">${escHtml(i.title || 'Untitled')}</div>
+                    <div class="text-xs text-slate-500 dark:text-slate-400 sm:hidden mt-0.5">${escHtml(svc)}</div>
+                </td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-300 hidden sm:table-cell">${escHtml(svc)}</td>
+                <td class="px-4 py-3">
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${sevCls}">${capitalize(sev)}</span>
+                </td>
+                <td class="px-4 py-3">
+                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${stCls}">
+                        <i class="fas ${stIcon} text-[10px]"></i>${capitalize(st)}
+                    </span>
+                </td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-300 hidden md:table-cell">${escHtml(src)}</td>
+                <td class="px-4 py-3 text-slate-500 dark:text-slate-400 hidden lg:table-cell" title="${escHtml(created)}">${timeAgo(created)}</td>
+                <td class="px-4 py-3">
+                    <a href="/dashboard/incident/${id}" class="text-brand hover:text-brand-dark transition text-sm font-medium" onclick="event.stopPropagation()">
+                        <i class="fas fa-arrow-right"></i>
+                    </a>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function escHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function capitalize(s) {
+        return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+    }
+
+    window.changePage = function(delta) {
+        currentPage += delta;
+        render();
+    };
+
+    // Sort headers
+    document.querySelectorAll('[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+            const key = th.dataset.sort;
+            if (sortKey === key) {
+                sortAsc = !sortAsc;
+            } else {
+                sortKey = key;
+                sortAsc = true;
+            }
+            // Update icons
+            document.querySelectorAll('[data-sort] i').forEach(i => { i.className = 'fas fa-sort text-xs ml-1 opacity-40'; });
+            th.querySelector('i').className = 'fas ' + (sortAsc ? 'fa-sort-up' : 'fa-sort-down') + ' text-xs ml-1 text-brand';
+            applySort();
+            render();
+        });
+    });
+
+    // Filter listeners
+    document.getElementById('search-input').addEventListener('input', applyFilters);
+    document.getElementById('status-filter').addEventListener('change', applyFilters);
+    document.getElementById('severity-filter').addEventListener('change', applyFilters);
+
+    // Fetch
+    async function fetchIncidents() {
+        const spinner = document.getElementById('refresh-spinner');
+        spinner.classList.remove('hidden');
+        try {
+            const token = localStorage.getItem('access_token');
+            const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+            const r = await fetch('/api/incidents', { headers });
+            const data = await r.json();
+            allIncidents = data.incidents || [];
+            applyFilters();
+            document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+        } catch (e) {
+            console.error('Failed to fetch incidents:', e);
+        } finally {
+            spinner.classList.add('hidden');
+        }
+    }
+
+    fetchIncidents();
+    setInterval(fetchIncidents, 30000);
+})();
+</script>
+{% endblock %}

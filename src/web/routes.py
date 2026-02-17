@@ -494,25 +494,11 @@ async def dashboard_home(request: Request):
 
 @router.get("/incidents", response_class=HTMLResponse)
 async def incidents_list_page(request: Request):
-    """Incidents list page (reuses dashboard template with incidents focus)."""
-    empty_stats = {
-        "total": "—",
-        "by_status": {"processing": "—", "completed": "—", "error": "—"},
-        "by_severity": {
-            "critical": "—",
-            "high": "—",
-            "medium": "—",
-            "low": "—",
-            "info": "—",
-        },
-    }
-
+    """Dedicated incidents list page with search, filters, and sorting."""
     return templates.TemplateResponse(
-        "dashboard.html",
+        "incidents.html",
         {
             "request": request,
-            "incidents": [],
-            "stats": empty_stats,
             "page_title": "Incidents",
         },
     )
