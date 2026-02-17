@@ -188,9 +188,13 @@ export const integrationApi = {
     return response.data;
   },
 
-  oauthConnectUrl: (provider: string) => {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
-    return `${backendUrl}/api/integrations/${provider}/connect`;
+  oauthConnect: async (provider: string) => {
+    const response = await api.get(`/integrations/${provider}/connect`, {
+      headers: { Accept: 'application/json' },
+      maxRedirects: 0,
+      validateStatus: (s: number) => s < 400,
+    });
+    return response.data as { redirect_url: string };
   },
 };
 
