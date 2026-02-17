@@ -1,324 +1,317 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="space-y-6">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <h1 class="text-3xl font-display text-slate-900 dark:text-white">Incidents</h1>
-            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                Monitor and manage all incidents across your services.
-            </p>
-        </div>
-        <div class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-            <i class="fas fa-sync-alt animate-spin hidden" id="refresh-spinner"></i>
-            <span id="last-updated">Loading...</span>
-        </div>
+<!-- Header -->
+<div class="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+  <div>
+    <h1 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">Incidents</h1>
+    <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">View, filter, and manage all incidents across your integrations.</p>
+  </div>
+  <div class="flex items-center gap-2">
+    <span id="incident-count" class="text-xs text-slate-500 dark:text-slate-400"></span>
+    <span class="text-xs text-slate-500 dark:text-slate-400">Auto-refresh · 30s</span>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="bg-white/70 dark:bg-slate-900/60 border border-stone-200/60 dark:border-slate-800 rounded-xl p-4 mb-5">
+  <div class="flex flex-col sm:flex-row gap-3">
+    <!-- Search -->
+    <div class="flex-1 relative">
+      <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+      <input id="filter-search" type="text" placeholder="Search by title or service…"
+        class="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand transition" />
     </div>
+    <!-- Status filter -->
+    <select id="filter-status"
+      class="px-3 py-2 text-sm rounded-lg border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand/40">
+      <option value="">All Statuses</option>
+      <option value="triggered">Triggered</option>
+      <option value="acknowledged">Acknowledged</option>
+      <option value="resolved">Resolved</option>
+    </select>
+    <!-- Severity filter -->
+    <select id="filter-severity"
+      class="px-3 py-2 text-sm rounded-lg border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand/40">
+      <option value="">All Severities</option>
+      <option value="critical">Critical</option>
+      <option value="high">High</option>
+      <option value="medium">Medium</option>
+      <option value="low">Low</option>
+      <option value="info">Info</option>
+    </select>
+  </div>
+</div>
 
-    <!-- Filters -->
-    <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur rounded-2xl border border-stone-200 dark:border-slate-800 card-shadow p-4">
-        <div class="flex flex-col sm:flex-row gap-3">
-            <!-- Search -->
-            <div class="relative flex-1">
-                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                <input type="text" id="search-input" placeholder="Search by title or service..."
-                    class="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand transition">
-            </div>
-            <!-- Status filter -->
-            <select id="status-filter"
-                class="px-3 py-2 text-sm rounded-xl border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand transition">
-                <option value="all">All Statuses</option>
-                <option value="triggered">Triggered</option>
-                <option value="acknowledged">Acknowledged</option>
-                <option value="resolved">Resolved</option>
-            </select>
-            <!-- Severity filter -->
-            <select id="severity-filter"
-                class="px-3 py-2 text-sm rounded-xl border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand transition">
-                <option value="all">All Severities</option>
-                <option value="critical">Critical</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-                <option value="info">Info</option>
-            </select>
-        </div>
+<!-- Table -->
+<div class="bg-white/70 dark:bg-slate-900/60 border border-stone-200/60 dark:border-slate-800 rounded-xl overflow-hidden">
+  <!-- Table header -->
+  <div class="hidden sm:grid grid-cols-12 gap-2 px-5 py-3 bg-stone-50/80 dark:bg-slate-800/60 border-b border-stone-200/60 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+    <div class="col-span-4 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200" onclick="toggleSort('title')">
+      Title <i id="sort-title" class="fas fa-sort ml-1 opacity-40"></i>
     </div>
-
-    <!-- Table -->
-    <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur rounded-2xl border border-stone-200 dark:border-slate-800 card-shadow overflow-hidden">
-        <!-- Desktop table -->
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm" id="incidents-table">
-                <thead>
-                    <tr class="border-b border-stone-200 dark:border-slate-800 text-left">
-                        <th class="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:text-brand transition select-none" data-sort="title">
-                            Title <i class="fas fa-sort text-xs ml-1 opacity-40"></i>
-                        </th>
-                        <th class="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:text-brand transition select-none hidden sm:table-cell" data-sort="service">
-                            Service <i class="fas fa-sort text-xs ml-1 opacity-40"></i>
-                        </th>
-                        <th class="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:text-brand transition select-none" data-sort="severity">
-                            Severity <i class="fas fa-sort text-xs ml-1 opacity-40"></i>
-                        </th>
-                        <th class="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:text-brand transition select-none" data-sort="status">
-                            Status <i class="fas fa-sort text-xs ml-1 opacity-40"></i>
-                        </th>
-                        <th class="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 hidden md:table-cell cursor-pointer hover:text-brand transition select-none" data-sort="source">
-                            Source <i class="fas fa-sort text-xs ml-1 opacity-40"></i>
-                        </th>
-                        <th class="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 hidden lg:table-cell cursor-pointer hover:text-brand transition select-none" data-sort="created_at">
-                            Created <i class="fas fa-sort text-xs ml-1 opacity-40"></i>
-                        </th>
-                        <th class="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="incidents-tbody">
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Empty state -->
-        <div id="empty-state" class="hidden py-16 text-center">
-            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-stone-100 dark:bg-slate-800 flex items-center justify-center">
-                <i class="fas fa-fire text-2xl text-slate-400 dark:text-slate-500"></i>
-            </div>
-            <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-1">No incidents found</h3>
-            <p class="text-sm text-slate-500 dark:text-slate-400">
-                No incidents match your current filters. Try adjusting your search or filters.
-            </p>
-        </div>
-
-        <!-- Pagination -->
-        <div id="pagination" class="hidden border-t border-stone-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between">
-            <div class="text-sm text-slate-500 dark:text-slate-400">
-                Showing <span id="page-start">1</span>–<span id="page-end">25</span> of <span id="total-count">0</span>
-            </div>
-            <div class="flex items-center gap-1">
-                <button id="prev-btn" onclick="changePage(-1)"
-                    class="px-3 py-1.5 text-sm rounded-lg border border-stone-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition">
-                    <i class="fas fa-chevron-left text-xs mr-1"></i> Prev
-                </button>
-                <span class="px-3 py-1.5 text-sm text-slate-600 dark:text-slate-300" id="page-indicator">1 / 1</span>
-                <button id="next-btn" onclick="changePage(1)"
-                    class="px-3 py-1.5 text-sm rounded-lg border border-stone-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition">
-                    Next <i class="fas fa-chevron-right text-xs ml-1"></i>
-                </button>
-            </div>
-        </div>
+    <div class="col-span-2 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200" onclick="toggleSort('service')">
+      Service <i id="sort-service" class="fas fa-sort ml-1 opacity-40"></i>
     </div>
+    <div class="col-span-1 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200" onclick="toggleSort('severity')">
+      Severity <i id="sort-severity" class="fas fa-sort ml-1 opacity-40"></i>
+    </div>
+    <div class="col-span-2 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200" onclick="toggleSort('status')">
+      Status <i id="sort-status" class="fas fa-sort ml-1 opacity-40"></i>
+    </div>
+    <div class="col-span-1">Source</div>
+    <div class="col-span-2 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200" onclick="toggleSort('created_at')">
+      Created <i id="sort-created_at" class="fas fa-sort ml-1 opacity-40"></i>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div id="incidents-loading" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400 text-sm">
+    <i class="fas fa-spinner fa-spin mr-2"></i>Loading incidents…
+  </div>
+
+  <!-- Empty state -->
+  <div id="incidents-empty" class="hidden px-6 py-16 text-center">
+    <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-stone-100 dark:bg-slate-800 mb-4">
+      <i class="fas fa-shield-halved text-xl text-slate-400"></i>
+    </div>
+    <h3 class="text-slate-800 dark:text-slate-100 font-semibold">No incidents found</h3>
+    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">No incidents match your filters, or none have been received yet.</p>
+  </div>
+
+  <!-- Rows -->
+  <div id="incidents-list" class="divide-y divide-stone-200/60 dark:divide-slate-800"></div>
+</div>
+
+<!-- Pagination -->
+<div id="pagination" class="hidden mt-4 flex items-center justify-between">
+  <div class="text-xs text-slate-500 dark:text-slate-400">
+    Showing <span id="page-range"></span> of <span id="page-total"></span> incidents
+  </div>
+  <div class="flex gap-1">
+    <button id="btn-prev" onclick="changePage(-1)"
+      class="px-3 py-1.5 text-xs rounded-lg border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-stone-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition">
+      <i class="fas fa-chevron-left mr-1"></i>Prev
+    </button>
+    <span id="page-numbers" class="flex gap-1"></span>
+    <button id="btn-next" onclick="changePage(1)"
+      class="px-3 py-1.5 text-xs rounded-lg border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-stone-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition">
+      Next<i class="fas fa-chevron-right ml-1"></i>
+    </button>
+  </div>
 </div>
 
 <script>
 (function() {
-    const PER_PAGE = 25;
+    const token = localStorage.getItem('access_token');
+    if (!token) { window.location.href = '/login?error=session_expired'; return; }
+
+    const PAGE_SIZE = 25;
     let allIncidents = [];
     let filtered = [];
     let currentPage = 1;
-    let sortKey = 'created_at';
-    let sortAsc = false;
+    let sortField = 'created_at';
+    let sortDir = -1; // -1 = desc
 
-    const severityOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+    const severityOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4, unknown: 5 };
     const statusOrder = { triggered: 0, acknowledged: 1, resolved: 2 };
 
-    const severityBadge = {
-        critical: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400',
-        high: 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400',
-        medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400',
-        low: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400',
-        info: 'bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400',
+    const severityColors = {
+        critical: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+        high: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+        medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
+        low: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+        info: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+        unknown: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
     };
 
-    const statusBadge = {
-        triggered: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400',
-        acknowledged: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400',
-        resolved: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400',
-        processing: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400',
-        completed: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400',
-        error: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400',
+    const statusColors = {
+        triggered: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+        acknowledged: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+        resolved: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
     };
 
-    const statusIcon = {
-        triggered: 'fa-circle-exclamation',
-        acknowledged: 'fa-eye',
-        resolved: 'fa-circle-check',
-        processing: 'fa-spinner fa-spin',
-        completed: 'fa-circle-check',
-        error: 'fa-triangle-exclamation',
+    const sourceIcons = {
+        pagerduty: 'fa-pager',
+        opsgenie: 'fa-bell',
+        datadog: 'fa-dog',
+        cloudwatch: 'fa-cloud',
+        demo: 'fa-flask',
     };
 
-    function timeAgo(dateStr) {
-        if (!dateStr) return '—';
-        const d = new Date(dateStr);
-        const now = new Date();
-        const diff = Math.floor((now - d) / 1000);
-        if (diff < 60) return 'just now';
-        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-        return Math.floor(diff / 86400) + 'd ago';
+    // ---- Fetch ----
+    async function loadIncidents() {
+        try {
+            const r = await fetch('/api/incidents', { headers: { 'Authorization': 'Bearer ' + token } });
+            if (r.status === 401) { window.location.href = '/login?session_expired=1'; return; }
+            const data = await r.json();
+            allIncidents = (data && data.incidents) ? data.incidents : [];
+            applyFilters();
+        } catch(e) {
+            console.error('Failed to load incidents:', e);
+        } finally {
+            document.getElementById('incidents-loading').classList.add('hidden');
+        }
     }
 
+    // ---- Filter ----
     function applyFilters() {
-        const q = document.getElementById('search-input').value.toLowerCase();
-        const st = document.getElementById('status-filter').value;
-        const sev = document.getElementById('severity-filter').value;
+        const search = document.getElementById('filter-search').value.toLowerCase();
+        const status = document.getElementById('filter-status').value;
+        const severity = document.getElementById('filter-severity').value;
 
         filtered = allIncidents.filter(i => {
-            if (q && !(i.title || '').toLowerCase().includes(q) && !(i.service_name || i.service || '').toLowerCase().includes(q)) return false;
-            if (st !== 'all' && i.status !== st) return false;
-            if (sev !== 'all' && i.severity !== sev) return false;
+            if (search && !(i.title || '').toLowerCase().includes(search) && !(i.service || '').toLowerCase().includes(search)) return false;
+            if (status && i.status !== status) return false;
+            if (severity && i.severity !== severity) return false;
             return true;
         });
 
-        applySort();
+        sortIncidents();
         currentPage = 1;
         render();
     }
 
-    function applySort() {
+    // ---- Sort ----
+    window.toggleSort = function(field) {
+        if (sortField === field) { sortDir *= -1; }
+        else { sortField = field; sortDir = field === 'created_at' ? -1 : 1; }
+
+        // Update sort icons
+        document.querySelectorAll('[id^="sort-"]').forEach(el => { el.className = 'fas fa-sort ml-1 opacity-40'; });
+        const icon = document.getElementById('sort-' + field);
+        if (icon) icon.className = 'fas fa-sort-' + (sortDir === 1 ? 'up' : 'down') + ' ml-1 text-brand';
+
+        sortIncidents();
+        render();
+    };
+
+    function sortIncidents() {
         filtered.sort((a, b) => {
-            let va, vb;
-            switch (sortKey) {
-                case 'title': va = (a.title || '').toLowerCase(); vb = (b.title || '').toLowerCase(); break;
-                case 'service': va = (a.service_name || a.service || '').toLowerCase(); vb = (b.service_name || b.service || '').toLowerCase(); break;
-                case 'severity': va = severityOrder[a.severity] ?? 5; vb = severityOrder[b.severity] ?? 5; break;
-                case 'status': va = statusOrder[a.status] ?? 5; vb = statusOrder[b.status] ?? 5; break;
-                case 'source': va = (a.source || '').toLowerCase(); vb = (b.source || '').toLowerCase(); break;
-                case 'created_at': va = a.triggered_at || a.created_at || ''; vb = b.triggered_at || b.created_at || ''; break;
-                default: return 0;
-            }
-            if (va < vb) return sortAsc ? -1 : 1;
-            if (va > vb) return sortAsc ? 1 : -1;
+            let av = a[sortField] || '', bv = b[sortField] || '';
+            if (sortField === 'severity') { av = severityOrder[av] ?? 5; bv = severityOrder[bv] ?? 5; }
+            else if (sortField === 'status') { av = statusOrder[av] ?? 3; bv = statusOrder[bv] ?? 3; }
+            else if (sortField === 'created_at') { av = new Date(av).getTime(); bv = new Date(bv).getTime(); }
+            else { av = String(av).toLowerCase(); bv = String(bv).toLowerCase(); }
+            if (av < bv) return -1 * sortDir;
+            if (av > bv) return 1 * sortDir;
             return 0;
         });
     }
 
+    // ---- Render ----
     function render() {
-        const tbody = document.getElementById('incidents-tbody');
-        const empty = document.getElementById('empty-state');
-        const pag = document.getElementById('pagination');
-        const total = filtered.length;
-        const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+        const list = document.getElementById('incidents-list');
+        const empty = document.getElementById('incidents-empty');
+        const pagination = document.getElementById('pagination');
+        const countEl = document.getElementById('incident-count');
 
-        if (currentPage > pages) currentPage = pages;
+        countEl.textContent = filtered.length + ' incident' + (filtered.length !== 1 ? 's' : '');
 
-        if (total === 0) {
-            tbody.innerHTML = '';
+        if (!filtered.length) {
+            list.innerHTML = '';
             empty.classList.remove('hidden');
-            pag.classList.add('hidden');
+            pagination.classList.add('hidden');
             return;
         }
 
         empty.classList.add('hidden');
-        pag.classList.remove('hidden');
 
-        const start = (currentPage - 1) * PER_PAGE;
-        const end = Math.min(start + PER_PAGE, total);
-        const page = filtered.slice(start, end);
+        const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const page = filtered.slice(start, start + PAGE_SIZE);
 
-        document.getElementById('page-start').textContent = start + 1;
-        document.getElementById('page-end').textContent = end;
-        document.getElementById('total-count').textContent = total;
-        document.getElementById('page-indicator').textContent = currentPage + ' / ' + pages;
-        document.getElementById('prev-btn').disabled = currentPage <= 1;
-        document.getElementById('next-btn').disabled = currentPage >= pages;
+        list.innerHTML = page.map(i => rowHtml(i)).join('');
 
-        tbody.innerHTML = page.map(i => {
-            const svc = i.service_name || i.service || '—';
-            const sev = i.severity || 'info';
-            const st = i.status || 'processing';
-            const src = i.source || '—';
-            const created = i.triggered_at || i.created_at || '';
-            const id = i.incident_id || i.id;
-            const sevCls = severityBadge[sev] || severityBadge.info;
-            const stCls = statusBadge[st] || statusBadge.processing;
-            const stIcon = statusIcon[st] || 'fa-circle-question';
+        // Pagination
+        if (totalPages > 1) {
+            pagination.classList.remove('hidden');
+            pagination.classList.add('flex');
+            document.getElementById('page-range').textContent = (start + 1) + '–' + Math.min(start + PAGE_SIZE, filtered.length);
+            document.getElementById('page-total').textContent = filtered.length;
+            document.getElementById('btn-prev').disabled = currentPage <= 1;
+            document.getElementById('btn-next').disabled = currentPage >= totalPages;
 
-            return `<tr class="border-b border-stone-100 dark:border-slate-800/60 hover:bg-stone-50 dark:hover:bg-slate-800/40 transition cursor-pointer" onclick="window.location.href='/dashboard/incident/${id}'">
-                <td class="px-4 py-3">
-                    <div class="font-medium text-slate-900 dark:text-white truncate max-w-xs">${escHtml(i.title || 'Untitled')}</div>
-                    <div class="text-xs text-slate-500 dark:text-slate-400 sm:hidden mt-0.5">${escHtml(svc)}</div>
-                </td>
-                <td class="px-4 py-3 text-slate-600 dark:text-slate-300 hidden sm:table-cell">${escHtml(svc)}</td>
-                <td class="px-4 py-3">
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${sevCls}">${capitalize(sev)}</span>
-                </td>
-                <td class="px-4 py-3">
-                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${stCls}">
-                        <i class="fas ${stIcon} text-[10px]"></i>${capitalize(st)}
-                    </span>
-                </td>
-                <td class="px-4 py-3 text-slate-600 dark:text-slate-300 hidden md:table-cell">${escHtml(src)}</td>
-                <td class="px-4 py-3 text-slate-500 dark:text-slate-400 hidden lg:table-cell" title="${escHtml(created)}">${timeAgo(created)}</td>
-                <td class="px-4 py-3">
-                    <a href="/dashboard/incident/${id}" class="text-brand hover:text-brand-dark transition text-sm font-medium" onclick="event.stopPropagation()">
-                        <i class="fas fa-arrow-right"></i>
-                    </a>
-                </td>
-            </tr>`;
-        }).join('');
-    }
-
-    function escHtml(s) {
-        const d = document.createElement('div');
-        d.textContent = s;
-        return d.innerHTML;
-    }
-
-    function capitalize(s) {
-        return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
-    }
-
-    window.changePage = function(delta) {
-        currentPage += delta;
-        render();
-    };
-
-    // Sort headers
-    document.querySelectorAll('[data-sort]').forEach(th => {
-        th.addEventListener('click', () => {
-            const key = th.dataset.sort;
-            if (sortKey === key) {
-                sortAsc = !sortAsc;
-            } else {
-                sortKey = key;
-                sortAsc = true;
+            let nums = '';
+            for (let p = 1; p <= totalPages; p++) {
+                if (totalPages > 7 && p > 2 && p < totalPages - 1 && Math.abs(p - currentPage) > 1) {
+                    if (p === 3 || p === totalPages - 2) nums += '<span class="px-1 text-slate-400">…</span>';
+                    continue;
+                }
+                const active = p === currentPage ? 'bg-brand text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-stone-50 dark:hover:bg-slate-700';
+                nums += `<button onclick="goToPage(${p})" class="w-8 h-8 text-xs rounded-lg border border-stone-200 dark:border-slate-700 ${active} transition">${p}</button>`;
             }
-            // Update icons
-            document.querySelectorAll('[data-sort] i').forEach(i => { i.className = 'fas fa-sort text-xs ml-1 opacity-40'; });
-            th.querySelector('i').className = 'fas ' + (sortAsc ? 'fa-sort-up' : 'fa-sort-down') + ' text-xs ml-1 text-brand';
-            applySort();
-            render();
-        });
-    });
-
-    // Filter listeners
-    document.getElementById('search-input').addEventListener('input', applyFilters);
-    document.getElementById('status-filter').addEventListener('change', applyFilters);
-    document.getElementById('severity-filter').addEventListener('change', applyFilters);
-
-    // Fetch
-    async function fetchIncidents() {
-        const spinner = document.getElementById('refresh-spinner');
-        spinner.classList.remove('hidden');
-        try {
-            const token = localStorage.getItem('access_token');
-            const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
-            const r = await fetch('/api/incidents', { headers });
-            const data = await r.json();
-            allIncidents = data.incidents || [];
-            applyFilters();
-            document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
-        } catch (e) {
-            console.error('Failed to fetch incidents:', e);
-        } finally {
-            spinner.classList.add('hidden');
+            document.getElementById('page-numbers').innerHTML = nums;
+        } else {
+            pagination.classList.add('hidden');
         }
     }
 
-    fetchIncidents();
-    setInterval(fetchIncidents, 30000);
+    function rowHtml(i) {
+        const sev = i.severity || 'unknown';
+        const stat = i.status || 'triggered';
+        const sevClass = severityColors[sev] || severityColors.unknown;
+        const statClass = statusColors[stat] || statusColors.triggered;
+        const srcIcon = sourceIcons[(i.source || '').toLowerCase()] || 'fa-circle-nodes';
+        const ago = timeAgo(i.created_at);
+        const id = i.incident_id || i.id;
+
+        return `
+        <a href="/dashboard/incident/${encodeURIComponent(id)}" class="block sm:grid grid-cols-12 gap-2 px-5 py-3.5 hover:bg-stone-50/80 dark:hover:bg-slate-800/60 transition cursor-pointer group">
+            <div class="col-span-4 font-medium text-sm text-slate-900 dark:text-white group-hover:text-brand transition truncate">
+                ${esc(i.title || 'Untitled')}
+            </div>
+            <div class="col-span-2 text-sm text-slate-600 dark:text-slate-300 truncate mt-1 sm:mt-0">
+                ${esc(i.service || '—')}
+            </div>
+            <div class="col-span-1 mt-1 sm:mt-0">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${sevClass}">
+                    ${sev}
+                </span>
+            </div>
+            <div class="col-span-2 mt-1 sm:mt-0">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statClass}">
+                    ${stat}
+                </span>
+            </div>
+            <div class="col-span-1 text-slate-400 mt-1 sm:mt-0">
+                <i class="fas ${srcIcon} text-sm" title="${esc(i.source || '')}"></i>
+            </div>
+            <div class="col-span-2 text-xs text-slate-500 dark:text-slate-400 mt-1 sm:mt-0" title="${esc(i.created_at || '')}">
+                ${ago}
+            </div>
+        </a>`;
+    }
+
+    function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    function timeAgo(ts) {
+        if (!ts) return '—';
+        const ms = Date.now() - new Date(ts).getTime();
+        if (ms < 60000) return 'just now';
+        if (ms < 3600000) return Math.floor(ms / 60000) + 'm ago';
+        if (ms < 86400000) return Math.floor(ms / 3600000) + 'h ago';
+        if (ms < 604800000) return Math.floor(ms / 86400000) + 'd ago';
+        return new Date(ts).toLocaleDateString();
+    }
+
+    // ---- Pagination ----
+    window.changePage = function(delta) { currentPage += delta; render(); };
+    window.goToPage = function(p) { currentPage = p; render(); };
+
+    // ---- Event listeners ----
+    document.getElementById('filter-search').addEventListener('input', debounce(applyFilters, 300));
+    document.getElementById('filter-status').addEventListener('change', applyFilters);
+    document.getElementById('filter-severity').addEventListener('change', applyFilters);
+
+    function debounce(fn, ms) { let t; return function() { clearTimeout(t); t = setTimeout(fn, ms); }; }
+
+    // ---- Init ----
+    // Set initial sort indicator
+    document.getElementById('sort-created_at').className = 'fas fa-sort-down ml-1 text-brand';
+
+    loadIncidents();
+    setInterval(loadIncidents, 30000);
 })();
 </script>
 {% endblock %}
