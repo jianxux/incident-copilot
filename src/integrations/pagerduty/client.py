@@ -42,15 +42,10 @@ class PagerDutyClient:
     def client(self) -> httpx.AsyncClient:
         """Get or create HTTP client."""
         if self._client is None:
-            auth_header = (
-                f"Bearer {self.config.api_token}"
-                if self.config.client_id
-                else f"Token token={self.config.api_token}"
-            )
             self._client = httpx.AsyncClient(
                 base_url=self.BASE_URL,
                 headers={
-                    "Authorization": auth_header,
+                    "Authorization": f"Token token={self.config.api_token}",
                     "Content-Type": "application/json",
                     "Accept": "application/vnd.pagerduty+json;version=2",
                 },

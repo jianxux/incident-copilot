@@ -9,7 +9,6 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from ..config import Settings
 from ..models import Deployment, GitLabContext, MergeRequest, Pipeline
-from .oauth_tokens import oauth_token_store
 
 logger = structlog.get_logger()
 
@@ -23,10 +22,9 @@ class GitLabAdapter:
 
     DEFAULT_URL = "https://gitlab.com"
 
-    def __init__(self, settings: Settings, tenant_id: str | None = None):
+    def __init__(self, settings: Settings):
         self.settings = settings
         self.token = settings.gitlab_token
-        self.tenant_id = tenant_id
         self.base_url = (
             settings.gitlab_url.rstrip("/") if settings.gitlab_url else self.DEFAULT_URL
         )
@@ -37,15 +35,14 @@ class GitLabAdapter:
         """Get the GitLab API base URL."""
         return f"{self.base_url}/api/v4"
 
-    def _get_headers(self, token: str | None = None) -> dict:
+    def _get_headers(self) -> dict:
         """Get auth headers for GitLab API."""
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
-        auth_token = token or self.token
-        if auth_token:
-            headers["PRIVATE-TOKEN"] = auth_token
+        if self.token:
+            headers["PRIVATE-TOKEN"] = self.token
         return headers
 
     def _get_project_for_service(self, service_name: str) -> str | None:
@@ -82,13 +79,8 @@ class GitLabAdapter:
         - Pipeline status
         - CODEOWNERS
         """
-        token = self.token
-        if self.tenant_id:
-            token = await oauth_token_store.get_access_token(
-                tenant_id=self.tenant_id,
-                provider="gitlab",
-            ) or self.token
-        if not token:
+        if not self.token:
+            # GitLab is optional; avoid warning spam per incident.
             logger.debug("gitlab_token_not_configured")
             return None
 
@@ -100,17 +92,15 @@ class GitLabAdapter:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 # Fetch data in parallel
                 deploys = await self._fetch_recent_commits(
-                    client, project_path, since_hours, token=token
+                    client, project_path, since_hours
                 )
                 merge_requests = await self._fetch_recent_merge_requests(
-                    client, project_path, since_hours, token=token
+                    client, project_path, since_hours
                 )
                 pipelines = await self._fetch_recent_pipelines(
-                    client, project_path, since_hours, token=token
+                    client, project_path, since_hours
                 )
-                codeowners = await self._fetch_codeowners(
-                    client, project_path, token=token
-                )
+                codeowners = await self._fetch_codeowners(client, project_path)
 
                 return GitLabContext(
                     project=project_path,
@@ -130,11 +120,7 @@ class GitLabAdapter:
         reraise=True,
     )
     async def _fetch_recent_commits(
-        self,
-        client: httpx.AsyncClient,
-        project_path: str,
-        since_hours: int,
-        token: str | None = None,
+        self, client: httpx.AsyncClient, project_path: str, since_hours: int
     ) -> list[Deployment]:
         """Fetch recent commits from the default branch."""
         since = (datetime.now(UTC) - timedelta(hours=since_hours)).isoformat()
@@ -143,7 +129,7 @@ class GitLabAdapter:
         url = f"{self.api_url}/projects/{encoded_path}/repository/commits"
         params = {"since": since, "per_page": 10}
 
-        resp = await client.get(url, headers=self._get_headers(token), params=params)
+        resp = await client.get(url, headers=self._get_headers(), params=params)
 
         if resp.status_code == 404:
             logger.warning("gitlab_project_not_found", project=project_path)
@@ -192,11 +178,7 @@ class GitLabAdapter:
         reraise=True,
     )
     async def _fetch_recent_merge_requests(
-        self,
-        client: httpx.AsyncClient,
-        project_path: str,
-        since_hours: int,
-        token: str | None = None,
+        self, client: httpx.AsyncClient, project_path: str, since_hours: int
     ) -> list[MergeRequest]:
         """Fetch recently merged MRs."""
         since = (datetime.now(UTC) - timedelta(hours=since_hours)).isoformat()
@@ -211,7 +193,7 @@ class GitLabAdapter:
             "sort": "desc",
         }
 
-        resp = await client.get(url, headers=self._get_headers(token), params=params)
+        resp = await client.get(url, headers=self._get_headers(), params=params)
 
         if resp.status_code != 200:
             logger.warning(
@@ -251,11 +233,7 @@ class GitLabAdapter:
         reraise=True,
     )
     async def _fetch_recent_pipelines(
-        self,
-        client: httpx.AsyncClient,
-        project_path: str,
-        since_hours: int,
-        token: str | None = None,
+        self, client: httpx.AsyncClient, project_path: str, since_hours: int
     ) -> list[Pipeline]:
         """Fetch recent CI/CD pipelines."""
         encoded_path = self._encode_project_path(project_path)
@@ -267,7 +245,7 @@ class GitLabAdapter:
             "sort": "desc",
         }
 
-        resp = await client.get(url, headers=self._get_headers(token), params=params)
+        resp = await client.get(url, headers=self._get_headers(), params=params)
 
         if resp.status_code != 200:
             logger.warning(
@@ -319,7 +297,6 @@ class GitLabAdapter:
         client: httpx.AsyncClient,
         project_path: str,
         environment: str = "production",
-        token: str | None = None,
     ) -> list[dict]:
         """Fetch recent deployments from an environment."""
         encoded_path = self._encode_project_path(project_path)
@@ -328,7 +305,7 @@ class GitLabAdapter:
         env_url = f"{self.api_url}/projects/{encoded_path}/environments"
         params = {"name": environment}
 
-        resp = await client.get(env_url, headers=self._get_headers(token), params=params)
+        resp = await client.get(env_url, headers=self._get_headers(), params=params)
 
         if resp.status_code != 200:
             logger.debug("gitlab_environments_not_found", project=project_path)
@@ -347,11 +324,7 @@ class GitLabAdapter:
             "sort": "desc",
         }
 
-        resp = await client.get(
-            deploy_url,
-            headers=self._get_headers(token),
-            params=params,
-        )
+        resp = await client.get(deploy_url, headers=self._get_headers(), params=params)
 
         if resp.status_code != 200:
             logger.warning(
@@ -364,10 +337,7 @@ class GitLabAdapter:
         return resp.json()
 
     async def _fetch_codeowners(
-        self,
-        client: httpx.AsyncClient,
-        project_path: str,
-        token: str | None = None,
+        self, client: httpx.AsyncClient, project_path: str
     ) -> list[str]:
         """Fetch CODEOWNERS file and extract owners."""
         encoded_path = self._encode_project_path(project_path)
@@ -380,14 +350,12 @@ class GitLabAdapter:
             url = f"{self.api_url}/projects/{encoded_path}/repository/files/{encoded_file_path}"
             params = {"ref": "main"}  # Try main first
 
-            resp = await client.get(url, headers=self._get_headers(token), params=params)
+            resp = await client.get(url, headers=self._get_headers(), params=params)
 
             if resp.status_code == 404:
                 # Try master branch
                 params["ref"] = "master"
-                resp = await client.get(
-                    url, headers=self._get_headers(token), params=params
-                )
+                resp = await client.get(url, headers=self._get_headers(), params=params)
 
             if resp.status_code == 200:
                 import base64
@@ -420,13 +388,7 @@ class GitLabAdapter:
 
     async def get_project_info(self, project_path: str) -> dict | None:
         """Get project information (useful for validation)."""
-        token = self.token
-        if self.tenant_id:
-            token = await oauth_token_store.get_access_token(
-                tenant_id=self.tenant_id,
-                provider="gitlab",
-            ) or self.token
-        if not token:
+        if not self.token:
             return None
 
         encoded_path = self._encode_project_path(project_path)
@@ -434,7 +396,7 @@ class GitLabAdapter:
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 url = f"{self.api_url}/projects/{encoded_path}"
-                resp = await client.get(url, headers=self._get_headers(token))
+                resp = await client.get(url, headers=self._get_headers())
 
                 if resp.status_code == 200:
                     return resp.json()

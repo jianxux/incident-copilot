@@ -10,7 +10,6 @@ import structlog
 from ..config import Settings
 from ..integrations.pagerduty.client import PagerDutyClient
 from ..integrations.pagerduty.models import PagerDutyConfig, PDStatus
-from ..integrations.oauth_tokens import oauth_token_store
 from ..web.store import incident_store
 from .models import (
     HandoffAggregate,
@@ -25,9 +24,8 @@ logger = structlog.get_logger()
 class OnCallActivityAggregator:
     """Gather incident/alert activity during a shift window."""
 
-    def __init__(self, settings: Settings, tenant_id: str | None = None):
+    def __init__(self, settings: Settings):
         self.settings = settings
-        self.tenant_id = tenant_id
 
     async def aggregate(self, shift: ShiftInfo) -> HandoffAggregate:
         aggregate = HandoffAggregate(shift=shift, metrics=HandoffMetrics())
@@ -80,22 +78,9 @@ class OnCallActivityAggregator:
             aggregate.errors.append(f"incident_store aggregation failed: {e}")
 
         # 2) PagerDuty API enrichment (optional)
-        pd_token = self.settings.pagerduty_api_key
-        oauth_token = None
-        if self.tenant_id:
-            oauth_token = await oauth_token_store.get_access_token(
-                tenant_id=self.tenant_id,
-                provider="pagerduty",
-            )
-            pd_token = oauth_token or self.settings.pagerduty_api_key
-
-        if pd_token:
+        if self.settings.pagerduty_api_key:
             try:
-                pd_items = await self._aggregate_from_pagerduty(
-                    shift,
-                    api_token=pd_token,
-                    use_oauth=bool(oauth_token),
-                )
+                pd_items = await self._aggregate_from_pagerduty(shift)
                 aggregate.active_incidents.extend(pd_items["active"])
                 aggregate.resolved_incidents.extend(pd_items["resolved"])
                 aggregate.metrics.incidents_resolved += len(pd_items["resolved"])
@@ -122,16 +107,10 @@ class OnCallActivityAggregator:
 
         return aggregate
 
-    async def _aggregate_from_pagerduty(
-        self,
-        shift: ShiftInfo,
-        api_token: str,
-        use_oauth: bool = False,
-    ) -> dict:
+    async def _aggregate_from_pagerduty(self, shift: ShiftInfo) -> dict:
         config = PagerDutyConfig(
             organization_id=uuid4(),
-            api_token=api_token,
-            client_id="oauth" if use_oauth else None,
+            api_token=self.settings.pagerduty_api_key,
             integration_key=None,
         )
         client = PagerDutyClient(config)
