@@ -330,8 +330,11 @@ export default function SettingsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         {!connected && (
-                          <Button asChild>
-                            <a href={integrationApi.oauthConnectUrl(integration.id)}>Connect</a>
+                          <Button
+                            onClick={() => { window.location.href = integrationApi.oauthConnectUrl(integration.id); }}
+                            disabled={loadingProvider === integration.id}
+                          >
+                            Connect
                           </Button>
                         )}
                         {connected && (

@@ -188,7 +188,10 @@ export const integrationApi = {
     return response.data;
   },
 
-  oauthConnectUrl: (provider: string) => `/api/integrations/${provider}/connect`,
+  oauthConnectUrl: (provider: string) => {
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+    return `${backendUrl}/api/integrations/${provider}/connect`;
+  },
 };
 
 // On-Call APIs
