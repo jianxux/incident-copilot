@@ -213,9 +213,34 @@ async def slack_oauth_callback(
         "connected_at": datetime.now(UTC).isoformat(),
     }
 
-    await auth_service.update_tenant_integrations(
-        state_data["tenant_id"],
-        {"slack": {"encrypted": encrypt_json(integration_record)}},
-    )
+    # Persist to Supabase integration_configs table
+    try:
+        from ..db.supabase_db import get_supabase_db
+        db = get_supabase_db()
+        db.client.table("integration_configs").upsert(
+            {
+                "tenant_id": state_data["tenant_id"],
+                "type": "slack",
+                "name": "slack-oauth",
+                "config": {"encrypted": encrypt_json(integration_record)},
+                "is_active": True,
+            },
+            on_conflict="tenant_id,type,name",
+        ).execute()
+        logger.info("slack_oauth_saved", tenant_id=state_data["tenant_id"])
+    except Exception as e:
+        logger.error("slack_oauth_save_failed", error=str(e))
+        return RedirectResponse(
+            url=f"{state_data['return_to']}?slack_error=token"
+        )
+
+    # Also update in-memory store (best-effort)
+    try:
+        await auth_service.update_tenant_integrations(
+            state_data["tenant_id"],
+            {"slack": {"encrypted": encrypt_json(integration_record)}},
+        )
+    except ValueError:
+        logger.warning("slack_oauth_inmemory_skip", tenant_id=state_data["tenant_id"])
 
     return RedirectResponse(url=f"{state_data['return_to']}?slack=connected")
