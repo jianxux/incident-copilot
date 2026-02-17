@@ -204,7 +204,10 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(DashboardAuthRedirect)
     async def _redirect_to_login(request, exc):
-        return RedirectResponse(url="/login", status_code=307)
+        response = RedirectResponse(url="/login?session_expired=1", status_code=307)
+        # Clear the auth cookie to break redirect loops
+        response.delete_cookie("ic_access_token", path="/")
+        return response
 
     # Include routers
     app.include_router(health_router)

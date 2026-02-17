@@ -4,8 +4,20 @@
 
 {% block content %}
 <script>
-    // Already logged in? Go to dashboard.
+    // If redirected here due to expired/invalid session, clear stale tokens first.
     (function() {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('session_expired')) {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('tenant');
+            // Clean URL
+            window.history.replaceState({}, '', '/login');
+            return; // Don't redirect back to dashboard
+        }
+
+        // Already logged in? Go to dashboard.
         var token = localStorage.getItem('access_token');
         if (token) {
             try {
@@ -15,6 +27,9 @@
                     return;
                 }
             } catch(e) {}
+            // Token expired or invalid — clear it
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
         }
     })();
 </script>
