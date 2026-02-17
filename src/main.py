@@ -43,11 +43,16 @@ from .billing.routes import router as billing_router
 from .config import get_settings
 from .copilot.adapters.slack_adapter import router as slack_copilot_router
 from .copilot.adapters.web_adapter import router as web_copilot_router
-from .api.oauth_integrations import router as oauth_integrations_router
-from .integrations.oauth_refresh import (
-    start_oauth_refresh_worker,
-    stop_oauth_refresh_worker,
-)
+# from .api.oauth_integrations import router as oauth_integrations_router  # disabled: uses missing integration_tokens table
+_oauth_refresh_available = False
+try:
+    from .integrations.oauth_refresh import (
+        start_oauth_refresh_worker,
+        stop_oauth_refresh_worker,
+    )
+    _oauth_refresh_available = True
+except ImportError:
+    pass
 from .metrics import HEALTH_STATUS, set_app_info
 from .metrics.middleware import PrometheusMiddleware
 from .oncall.scheduler import (
@@ -123,15 +128,17 @@ def create_app() -> FastAPI:
             )
 
         await start_oncall_handoff_scheduler(settings=settings)
-        try:
-            await start_oauth_refresh_worker()
-        except Exception as e:
-            logger.warning("oauth_refresh_worker_start_failed", error=str(e))
+        if _oauth_refresh_available:
+            try:
+                await start_oauth_refresh_worker()
+            except Exception as e:
+                logger.warning("oauth_refresh_worker_start_failed", error=str(e))
 
         yield
 
         await stop_oncall_handoff_scheduler()
-        await stop_oauth_refresh_worker()
+        if _oauth_refresh_available:
+            await stop_oauth_refresh_worker()
         logger.info("incident_copilot_shutting_down")
 
     app = FastAPI(
@@ -230,7 +237,7 @@ def create_app() -> FastAPI:
     app.include_router(slack_oauth_router)
     app.include_router(sso_router)
     app.include_router(supabase_auth_router)
-    app.include_router(oauth_integrations_router)
+    # app.include_router(oauth_integrations_router)  # disabled: uses missing integration_tokens table
     app.include_router(billing_router)
     app.include_router(webhooks_router)
     app.include_router(runbooks_router)
