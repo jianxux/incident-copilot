@@ -268,8 +268,8 @@ async def pagerduty_oauth_callback(
 
     # Persist to Supabase integration_configs table
     try:
-        from ..db.supabase_db import get_supabase_db
-        db = get_supabase_db()
+        from ..db.supabase_db import get_db
+        db = get_db()
         db.client.table("integration_configs").upsert(
             {
                 "tenant_id": state_data["tenant_id"],
