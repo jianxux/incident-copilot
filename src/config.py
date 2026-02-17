@@ -232,6 +232,10 @@ class Settings(BaseSettings):
     secret_key: str = Field(
         default="change-me-in-production", description="Secret key for signing tokens"
     )
+    encryption_key: str = Field(
+        default="",
+        description="Fernet encryption key for sensitive integration tokens",
+    )
     app_url: str = Field(
         default="http://localhost:8000", description="Public URL of the application"
     )

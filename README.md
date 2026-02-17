@@ -5,7 +5,7 @@
 **Stop wasting the first 15 minutes of every incident.**  
 Incident Copilot assembles the “what changed / what’s broken / where to look” context automatically when an alert fires — so on-call can start fixing, not spelunking.
 
-[Live demo](https://incident-copilot-production.up.railway.app) · [Docs](./docs/) · [Roadmap](./ROADMAP.md) · [Contributing](./CONTRIBUTING.md)
+[Live demo](https://incident-copilot-production.up.railway.app) · [Docs](./docs/index.md) · [Roadmap](./ROADMAP.md) · [Contributing](./CONTRIBUTING.md)
 
 <!-- Badges -->
 [![CI](https://github.com/jianxux/incident-copilot/actions/workflows/ci.yml/badge.svg)](https://github.com/jianxux/incident-copilot/actions/workflows/ci.yml)
@@ -54,14 +54,8 @@ The hosted product uses a separate/private AI engine service; locally/self-hoste
 
 ## Screenshots
 
-> Add real screenshots to `docs/images/` and update these links.
-
-- **Landing / onboarding**
-  - `docs/images/landing.png`
-- **Incident timeline**
-  - `docs/images/timeline.png`
-- **Slack / Teams context card**
-  - `docs/images/slack-card.png`
+Image assets are maintained under `docs/user-guide/images/`.
+If you are adding/updating screenshots, follow `docs/user-guide/images/README.md`.
 
 ---
 
@@ -91,7 +85,15 @@ If you want the detailed breakdown, see [`docs/architecture.md`](./docs/architec
 
 ---
 
-## Quick start (local)
+## Getting Started (local dev)
+
+For a full walkthrough, see `docs/getting-started/quickstart.md`. For local dev, the short path is:
+
+1. `cp .env.example .env` and set required credentials
+2. `docker compose up --build`
+3. Open `http://localhost:8000` and verify `http://localhost:8000/health`
+
+### Detailed local setup
 
 ### Prerequisites
 
@@ -118,7 +120,7 @@ Minimal setup to receive webhooks and render the UI:
 ### 2) Run with Docker (recommended)
 
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 Then open:
@@ -130,7 +132,7 @@ Then open:
 ### 2b) Run with Python
 
 ```bash
-pip install -e "./[dev]"
+pip install -e ".[dev]"
 uvicorn src.main:app --reload --port 8000
 ```
 
@@ -208,7 +210,8 @@ helm/             # Helm chart
 
 ```bash
 make install   # install deps
-make lint      # format + lint
+make format    # run black + isort
+make lint      # run ruff checks
 make test      # run tests
 make dev       # start dev server (if configured)
 ```

@@ -1,0 +1,344 @@
+"""OAuth integration connect/callback/status/disconnect endpoints."""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+from urllib.parse import urlencode
+
+import httpx
+import structlog
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import RedirectResponse
+
+from ..auth.middleware import AuthContext, get_auth_context, require_role
+from ..auth.models import UserRole
+from ..config import get_settings
+from ..integrations.oauth_providers import (
+    get_provider_config,
+    get_provider_credentials,
+    normalize_provider,
+)
+from ..integrations.oauth_tokens import OAuthStateRecord, oauth_token_store
+
+logger = structlog.get_logger()
+
+router = APIRouter(prefix="/api/integrations", tags=["integrations-oauth"])
+
+
+@router.get("/{provider}/connect")
+@require_role(UserRole.OWNER, UserRole.ADMIN)
+async def connect_provider(
+    provider: str,
+    request: Request,
+    auth: AuthContext = Depends(get_auth_context),
+    return_to: str | None = Query(default=None),
+):
+    """Start OAuth connect flow for a provider and redirect to auth screen."""
+    resolved = normalize_provider(provider)
+    config = get_provider_config(resolved)
+    client_id, client_secret = get_provider_credentials(resolved)
+
+    if not config:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Unknown provider: {provider}",
+        )
+
+    if not auth.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
+    if not client_id or not client_secret:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"OAuth not configured for {resolved}. "
+                f"Set {config.client_id_env} and {config.client_secret_env}."
+            ),
+        )
+
+    settings = get_settings()
+    redirect_uri = f"{settings.app_url}/api/integrations/{resolved}/callback"
+    state = await oauth_token_store.save_state(
+        provider=resolved,
+        tenant_id=auth.tenant_id,
+        user_id=auth.user_id,
+        redirect_uri=redirect_uri,
+        return_to=return_to or f"{settings.app_url}/settings",
+    )
+
+    params = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "state": state,
+    }
+
+    if resolved != "slack":
+        params["response_type"] = "code"
+
+    if config.default_scopes:
+        delimiter = "," if resolved == "slack" else " "
+        params["scope"] = delimiter.join(config.default_scopes)
+
+    params.update(config.auth_params)
+
+    authorize_url = f"{config.authorize_url}?{urlencode(params)}"
+
+    if "application/json" in request.headers.get("accept", ""):
+        return {"redirect_url": authorize_url}
+
+    return RedirectResponse(url=authorize_url)
+
+
+@router.get("/{provider}/callback")
+async def callback_provider(
+    provider: str,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+):
+    """Handle OAuth callback, exchange code, store encrypted tokens."""
+    settings = get_settings()
+    resolved = normalize_provider(provider)
+
+    if error:
+        return _redirect_result(
+            base_url=f"{settings.app_url}/settings",
+            provider=resolved,
+            ok=False,
+            reason=f"provider_error:{error}",
+        )
+
+    if not state or not code:
+        return _redirect_result(
+            base_url=f"{settings.app_url}/settings",
+            provider=resolved,
+            ok=False,
+            reason="missing_code_or_state",
+        )
+
+    state_data = await oauth_token_store.pop_state(state)
+    if not state_data:
+        return _redirect_result(
+            base_url=f"{settings.app_url}/settings",
+            provider=resolved,
+            ok=False,
+            reason="invalid_or_expired_state",
+        )
+
+    if state_data.provider != resolved:
+        return _redirect_result(
+            base_url=state_data.return_to,
+            provider=resolved,
+            ok=False,
+            reason="provider_mismatch",
+        )
+
+    try:
+        token_data = await _exchange_code_for_token(
+            provider=resolved,
+            code=code,
+            state_data=state_data,
+        )
+    except HTTPException as e:
+        return _redirect_result(
+            base_url=state_data.return_to,
+            provider=resolved,
+            ok=False,
+            reason=str(e.detail),
+        )
+
+    expires_in = token_data.get("expires_in")
+    expiry = None
+    if isinstance(expires_in, int) and expires_in > 0:
+        expiry = datetime.now(UTC) + timedelta(seconds=expires_in)
+
+    scopes = _parse_scopes(token_data.get("scope"), resolved)
+
+    await oauth_token_store.upsert_token(
+        tenant_id=state_data.tenant_id,
+        provider=resolved,
+        access_token=token_data["access_token"],
+        refresh_token=token_data.get("refresh_token"),
+        token_expiry=expiry,
+        scopes=scopes,
+    )
+
+    return _redirect_result(
+        base_url=state_data.return_to,
+        provider=resolved,
+        ok=True,
+        reason="connected",
+    )
+
+
+@router.get("/{provider}/status")
+async def provider_status(
+    provider: str,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Get OAuth connection status for current tenant."""
+    if not auth.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
+    resolved = normalize_provider(provider)
+    config = get_provider_config(resolved)
+    if not config:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Unknown provider: {provider}",
+        )
+
+    token = await oauth_token_store.get_token(auth.tenant_id, resolved)
+    return {
+        "provider": resolved,
+        "connected": bool(token),
+        "token_expiry": token.token_expiry.isoformat() if token and token.token_expiry else None,
+        "scopes": token.scopes if token else [],
+    }
+
+
+@router.delete("/{provider}/disconnect")
+@require_role(UserRole.OWNER, UserRole.ADMIN)
+async def provider_disconnect(
+    provider: str,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Disconnect OAuth integration and remove stored token."""
+    if not auth.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
+    resolved = normalize_provider(provider)
+    token = await oauth_token_store.get_token(auth.tenant_id, resolved)
+
+    revoked = False
+    revoke_error = None
+    if token:
+        try:
+            revoked = await _revoke_token(resolved, token.access_token)
+        except Exception as e:
+            revoke_error = str(e)
+
+    await oauth_token_store.delete_token(auth.tenant_id, resolved)
+
+    return {
+        "provider": resolved,
+        "disconnected": True,
+        "revoked": revoked,
+        "revoke_error": revoke_error,
+    }
+
+
+async def _exchange_code_for_token(
+    provider: str,
+    code: str,
+    state_data: OAuthStateRecord,
+) -> dict:
+    config = get_provider_config(provider)
+    client_id, client_secret = get_provider_credentials(provider)
+
+    if not config or not client_id or not client_secret:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="oauth_not_configured",
+        )
+
+    payload = {
+        "code": code,
+        "redirect_uri": state_data.redirect_uri,
+        "client_id": client_id,
+        "client_secret": client_secret,
+    }
+
+    if provider != "slack":
+        payload["grant_type"] = "authorization_code"
+
+    headers = {"Accept": "application/json"}
+
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        response = await client.post(config.token_url, data=payload, headers=headers)
+
+    if response.status_code != 200:
+        logger.warning(
+            "oauth_token_exchange_http_error",
+            provider=provider,
+            status=response.status_code,
+            body=response.text[:250],
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="token_exchange_failed",
+        )
+
+    body = response.json()
+
+    if provider == "slack":
+        if not body.get("ok") or not body.get("access_token"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"slack_token_error:{body.get('error', 'unknown')}",
+            )
+
+        return {
+            "access_token": body.get("access_token"),
+            "refresh_token": body.get("refresh_token"),
+            "expires_in": body.get("expires_in"),
+            "scope": body.get("scope"),
+        }
+
+    if not body.get("access_token"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="missing_access_token",
+        )
+
+    return body
+
+
+async def _revoke_token(provider: str, access_token: str) -> bool:
+    config = get_provider_config(provider)
+    client_id, client_secret = get_provider_credentials(provider)
+
+    if not config or not config.revoke_url:
+        return False
+
+    payload = {"token": access_token}
+    if client_id:
+        payload["client_id"] = client_id
+    if client_secret:
+        payload["client_secret"] = client_secret
+
+    headers = {"Accept": "application/json"}
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        response = await client.post(config.revoke_url, data=payload, headers=headers)
+
+    # Some providers return 200 with body, some 204 no content.
+    return response.status_code in (200, 201, 202, 204)
+
+
+
+def _parse_scopes(scope: str | None, provider: str) -> list[str]:
+    if not scope:
+        config = get_provider_config(provider)
+        return config.default_scopes if config else []
+
+    if "," in scope:
+        return [s.strip() for s in scope.split(",") if s.strip()]
+
+    return [s.strip() for s in scope.split(" ") if s.strip()]
+
+
+
+def _redirect_result(base_url: str, provider: str, ok: bool, reason: str):
+    join = "&" if "?" in base_url else "?"
+    url = f"{base_url}{join}oauth_provider={provider}&oauth_result={'success' if ok else 'error'}&oauth_reason={reason}"
+    return RedirectResponse(url=url)

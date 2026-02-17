@@ -1,19 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore } from '@/lib/store';
+import { integrationApi } from '@/lib/api';
 import {
   Bell,
   Check,
-  ChevronRight,
   Key,
-  Lock,
-  Mail,
   Moon,
   Palette,
   Shield,
@@ -26,6 +24,59 @@ import {
 export default function SettingsPage() {
   const { theme, setTheme, notificationsEnabled, setNotificationsEnabled, soundEnabled, setSoundEnabled } = useAppStore();
   const [activeSection, setActiveSection] = useState('profile');
+  const [integrationStatus, setIntegrationStatus] = useState<Record<string, boolean>>({});
+  const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+
+  const integrations = useMemo(
+    () => [
+      { id: 'slack', name: 'Slack', logo: '💬', description: 'Post incident context directly to channels.' },
+      { id: 'pagerduty', name: 'PagerDuty', logo: '🔔', description: 'Sync incidents and on-call context.' },
+      { id: 'github', name: 'GitHub', logo: '🐙', description: 'Attach repo commits and deployment context.' },
+      { id: 'gitlab', name: 'GitLab', logo: '🦊', description: 'Fetch merge request and pipeline context.' },
+      { id: 'jira', name: 'Jira', logo: '📋', description: 'Create and update Jira incident tickets.' },
+    ],
+    []
+  );
+
+  const callbackMessage = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    const provider = params.get('oauth_provider');
+    const result = params.get('oauth_result');
+    const reason = params.get('oauth_reason');
+    if (!provider || !result) return null;
+    if (result === 'success') return `Connected ${provider} successfully.`;
+    return `OAuth for ${provider} failed: ${reason ?? 'unknown_error'}.`;
+  }, []);
+
+  useEffect(() => {
+    const loadStatuses = async () => {
+      const next: Record<string, boolean> = {};
+      await Promise.all(
+        integrations.map(async (integration) => {
+          try {
+            const status = await integrationApi.oauthStatus(integration.id);
+            next[integration.id] = status.connected;
+          } catch {
+            next[integration.id] = false;
+          }
+        })
+      );
+      setIntegrationStatus(next);
+    };
+
+    void loadStatuses();
+  }, [integrations]);
+
+  const handleDisconnect = async (provider: string) => {
+    setLoadingProvider(provider);
+    try {
+      await integrationApi.oauthDisconnect(provider);
+      setIntegrationStatus((prev) => ({ ...prev, [provider]: false }));
+    } finally {
+      setLoadingProvider(null);
+    }
+  };
 
   const sections = [
     { id: 'profile', label: 'Profile', icon: User },
@@ -252,33 +303,49 @@ export default function SettingsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Integrations</CardTitle>
-                  <CardDescription>Connect your tools and services</CardDescription>
+                  <CardDescription>Connect your tools and services with OAuth</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {[
-                    { name: 'PagerDuty', status: 'connected', logo: '🔔' },
-                    { name: 'Datadog', status: 'connected', logo: '🐕' },
-                    { name: 'GitHub', status: 'connected', logo: '🐙' },
-                    { name: 'Slack', status: 'connected', logo: '💬' },
-                    { name: 'Jira', status: 'not connected', logo: '📋' },
-                    { name: 'Opsgenie', status: 'not connected', logo: '👁' },
-                  ].map((integration) => (
+                  {callbackMessage && (
+                    <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                      {callbackMessage}
+                    </div>
+                  )}
+                  {integrations.map((integration) => {
+                    const connected = integrationStatus[integration.id] === true;
+                    return (
                     <div
-                      key={integration.name}
+                      key={integration.id}
                       className="flex items-center justify-between rounded-lg border p-4"
                     >
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">{integration.logo}</span>
                         <div>
                           <h4 className="font-medium">{integration.name}</h4>
-                          <p className="text-sm text-muted-foreground capitalize">{integration.status}</p>
+                          <p className="text-sm text-muted-foreground">{integration.description}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {connected ? 'Connected ✓' : 'Not connected'}
+                          </p>
                         </div>
                       </div>
-                      <Button variant={integration.status === 'connected' ? 'outline' : 'default'}>
-                        {integration.status === 'connected' ? 'Configure' : 'Connect'}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {!connected && (
+                          <Button asChild>
+                            <a href={integrationApi.oauthConnectUrl(integration.id)}>Connect</a>
+                          </Button>
+                        )}
+                        {connected && (
+                          <Button
+                            variant="outline"
+                            onClick={() => void handleDisconnect(integration.id)}
+                            disabled={loadingProvider === integration.id}
+                          >
+                            Disconnect
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  ))}
+                  )})}
                 </CardContent>
               </Card>
             </>

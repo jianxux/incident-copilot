@@ -546,6 +546,92 @@ class SupabaseDB:
         )
         return result.data or []
 
+    # ==================== OAuth Integration Tokens ====================
+
+    async def upsert_integration_token(
+        self,
+        tenant_id: str,
+        provider: str,
+        access_token: str,
+        refresh_token: str | None = None,
+        token_expiry: str | None = None,
+        scopes: list[str] | None = None,
+    ) -> dict:
+        """Create or update an integration OAuth token record."""
+        self._check_enabled()
+
+        now = datetime.utcnow().isoformat()
+        payload = {
+            "tenant_id": tenant_id,
+            "provider": provider,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_expiry": token_expiry,
+            "scopes": scopes or [],
+            "updated_at": now,
+        }
+
+        existing = await self.get_integration_token(tenant_id=tenant_id, provider=provider)
+        if existing:
+            result = (
+                self.client.table("integration_tokens")
+                .update(payload)
+                .eq("tenant_id", tenant_id)
+                .eq("provider", provider)
+                .execute()
+            )
+            return result.data[0] if result.data else existing
+
+        payload["id"] = str(uuid4())
+        payload["created_at"] = now
+        result = self.client.table("integration_tokens").insert(payload).execute()
+        return result.data[0] if result.data else payload
+
+    async def get_integration_token(self, tenant_id: str, provider: str) -> dict | None:
+        """Fetch an integration token row for a tenant/provider."""
+        self._check_enabled()
+
+        try:
+            result = (
+                self.client.table("integration_tokens")
+                .select("*")
+                .eq("tenant_id", tenant_id)
+                .eq("provider", provider)
+                .single()
+                .execute()
+            )
+            return result.data
+        except Exception:
+            return None
+
+    async def delete_integration_token(self, tenant_id: str, provider: str) -> bool:
+        """Delete an integration token row for a tenant/provider."""
+        self._check_enabled()
+
+        self.client.table("integration_tokens").delete().eq("tenant_id", tenant_id).eq(
+            "provider", provider
+        ).execute()
+        return True
+
+    async def list_expiring_integration_tokens(
+        self,
+        expires_before: str,
+        limit: int = 200,
+    ) -> list[dict]:
+        """List tokens with refresh tokens that are expiring before the cutoff."""
+        self._check_enabled()
+
+        result = (
+            self.client.table("integration_tokens")
+            .select("*")
+            .neq("refresh_token", "")
+            .lte("token_expiry", expires_before)
+            .order("token_expiry")
+            .limit(limit)
+            .execute()
+        )
+        return result.data or []
+
     # ==================== Audit Logs ====================
 
     async def create_audit_log(
