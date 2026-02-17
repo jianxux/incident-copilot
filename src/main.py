@@ -123,7 +123,10 @@ def create_app() -> FastAPI:
             )
 
         await start_oncall_handoff_scheduler(settings=settings)
-        await start_oauth_refresh_worker()
+        try:
+            await start_oauth_refresh_worker()
+        except Exception as e:
+            logger.warning("oauth_refresh_worker_start_failed", error=str(e))
 
         yield
 
