@@ -137,14 +137,24 @@ class AICopilot:
 
     def __init__(self, settings=None):
         self._settings = settings
-        self._sessions: dict = {}
+        self._sessions: dict[str, IncidentSession] = {}
+
+    def list_sessions(self) -> list[str]:
+        """Return known incident session ids."""
+        return list(self._sessions.keys())
 
     async def get_or_create_session(self, incident_id: str, context=None):
         if incident_id not in self._sessions:
             self._sessions[incident_id] = IncidentSession(incident_id=incident_id)
         return self._sessions[incident_id]
 
-    async def chat(self, incident_id: str, message: str, context=None, **kwargs):
+    async def chat(self, incident_id: str, message: str | None = None, context=None, **kwargs):
+        # Backwards-compat: some callers use `user_message=`.
+        if message is None:
+            message = kwargs.get("user_message")
+        if message is None:
+            raise TypeError("chat() missing required argument: 'message'")
+
         result = await ai_client.chat(
             session_id=incident_id,
             message=message,
