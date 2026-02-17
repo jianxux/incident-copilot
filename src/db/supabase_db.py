@@ -94,23 +94,29 @@ class SupabaseDB:
         """Get a tenant by ID."""
         self._check_enabled()
 
-        result = (
-            self.client.table("tenants")
-            .select("*")
-            .eq("id", tenant_id)
-            .single()
-            .execute()
-        )
-        return result.data
+        try:
+            result = (
+                self.client.table("tenants")
+                .select("*")
+                .eq("id", tenant_id)
+                .single()
+                .execute()
+            )
+            return result.data
+        except Exception:
+            return None
 
     async def get_tenant_by_slug(self, slug: str) -> dict | None:
         """Get a tenant by slug."""
         self._check_enabled()
 
-        result = (
-            self.client.table("tenants").select("*").eq("slug", slug).single().execute()
-        )
-        return result.data
+        try:
+            result = (
+                self.client.table("tenants").select("*").eq("slug", slug).single().execute()
+            )
+            return result.data
+        except Exception:
+            return None
 
     async def update_tenant(self, tenant_id: str, **kwargs) -> dict | None:
         """Update a tenant."""
@@ -153,19 +159,27 @@ class SupabaseDB:
         """Get a user by ID."""
         self._check_enabled()
 
-        result = (
-            self.client.table("users").select("*").eq("id", user_id).single().execute()
-        )
-        return result.data
+        try:
+            result = (
+                self.client.table("users").select("*").eq("id", user_id).single().execute()
+            )
+            return result.data
+        except Exception:
+            return None
 
     async def get_user_by_email(self, email: str) -> dict | None:
         """Get a user by email."""
         self._check_enabled()
 
-        result = (
-            self.client.table("users").select("*").eq("email", email).single().execute()
-        )
-        return result.data
+        try:
+            result = (
+                self.client.table("users").select("*").eq("email", email).single().execute()
+            )
+            return result.data
+        except Exception:
+            # .single() throws when 0 rows found — return None so callers
+            # can auto-create the user profile.
+            return None
 
     async def update_user(self, user_id: str, **kwargs) -> dict | None:
         """Update a user."""
