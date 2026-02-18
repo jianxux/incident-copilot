@@ -1204,6 +1204,85 @@ async def test_integration(
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+@router.post("/api/onboarding/integrations/pagerduty/import-services")
+async def import_pagerduty_services(
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Import services from the connected PagerDuty account."""
+    tenant_id = auth.tenant_id or "default"
+
+    try:
+        from ..db.supabase_db import get_db
+        from ..security.crypto import decrypt_json
+
+        db = get_db(use_admin=True)
+        rows = db.client.table("integration_configs").select("config").eq(
+            "tenant_id", tenant_id
+        ).eq("type", "pagerduty").eq("is_active", True).limit(1).execute()
+
+        if not rows.data:
+            raise HTTPException(status_code=404, detail="PagerDuty not connected")
+
+        config = rows.data[0].get("config", {})
+        encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
+        if not encrypted:
+            raise HTTPException(status_code=400, detail="No PagerDuty credentials found")
+
+        decrypted = decrypt_json(encrypted)
+        oauth = decrypted.get("oauth", {})
+        token = oauth.get("access_token") or decrypted.get("api_key", "")
+        if not token:
+            raise HTTPException(status_code=400, detail="No PagerDuty API token found")
+
+        # Fetch services from PagerDuty API
+        import httpx
+
+        imported = 0
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                "https://api.pagerduty.com/services",
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                params={"limit": 100},
+            )
+            if resp.status_code != 200:
+                raise HTTPException(status_code=502, detail=f"PagerDuty API returned {resp.status_code}")
+
+            pd_services = resp.json().get("services", [])
+
+        # Import into service catalog
+        from ..services.models import ServiceCreate, ServiceCriticality
+        from ..services.store import get_service_catalog_store
+
+        store = get_service_catalog_store()
+        tenant_slug = tenant_slug_from_auth(auth)
+
+        for pd_svc in pd_services:
+            name = pd_svc.get("name", "").strip()
+            if not name:
+                continue
+            req = ServiceCreate(
+                name=name,
+                description=pd_svc.get("description") or f"Imported from PagerDuty",
+                team=pd_svc.get("teams", [{}])[0].get("summary") if pd_svc.get("teams") else None,
+                criticality=ServiceCriticality.CRITICAL if pd_svc.get("alert_creation") == "create_alerts_and_incidents" else ServiceCriticality.MEDIUM,
+                metadata={"pagerduty_id": pd_svc.get("id"), "pagerduty_url": pd_svc.get("html_url")},
+            )
+            await store.create_service(req, tenant_slug=tenant_slug)
+            imported += 1
+
+        # Mark onboarding step done
+        from ..onboarding import checklist_store
+        await checklist_store.set_step(tenant_id, "add_services", True)
+
+        return {"ok": True, "imported": imported, "total_pd_services": len(pd_services)}
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("import_pagerduty_services_failed", error=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @router.post("/api/onboarding/disconnect/{provider}")
 async def disconnect_integration(
     provider: str,

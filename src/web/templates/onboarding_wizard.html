@@ -65,7 +65,6 @@
           <div class="mt-4 flex flex-wrap gap-2">
             <button id="btn-connect-pagerduty" class="px-4 py-2 rounded-lg text-white font-semibold" style="background: var(--brand);" onclick="startOAuth('pagerduty')">Connect PagerDuty</button>
             <button class="px-4 py-2 rounded-lg border border-slate-300" onclick="verifyIntegration('pagerduty')">Test Connection</button>
-            <button class="px-4 py-2 rounded-lg border border-slate-300" onclick="importPagerDutyServices()">Import Services</button>
           </div>
           <div class="mt-3 text-xs text-slate-500">Webhook URL: <code id="webhook-url">{{ webhook_url }}</code></div>
           <div id="verify-pagerduty" class="verify-line"></div>
@@ -129,14 +128,18 @@
           <div class="flex items-start justify-between gap-4">
             <div>
               <h2 class="text-lg font-semibold text-slate-900">5) Add Services</h2>
-              <p class="text-sm text-slate-600 mt-1">Persist tenant service catalog to backend.</p>
+              <p class="text-sm text-slate-600 mt-1">Add services manually or import from PagerDuty.</p>
             </div>
             <span id="status-services" class="status-chip">0 services</span>
           </div>
-          <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <input id="service-name" class="px-3 py-2 rounded-lg border border-slate-300" placeholder="e.g. payments-api" onkeydown="if(event.key==='Enter'){event.preventDefault();addService();}" />
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button id="btn-import-pd" class="px-4 py-2 rounded-lg text-white font-semibold" style="background: var(--brand);" onclick="importPagerDutyServices()">Import from PagerDuty</button>
+          </div>
+          <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input id="service-name" class="px-3 py-2 rounded-lg border border-slate-300" placeholder="Or add manually, e.g. payments-api" onkeydown="if(event.key==='Enter'){event.preventDefault();addService();}" />
             <button class="px-4 py-2 rounded-lg text-white font-semibold" style="background: #1e293b;" onclick="addService()">Add Service</button>
           </div>
+          <div id="import-status" class="verify-line"></div>
           <ul id="services-list" class="mt-3 space-y-1"></ul>
         </div>
 
@@ -262,12 +265,16 @@ async function verifyIntegration(name) {
 }
 
 async function importPagerDutyServices() {
+  const statusEl = document.getElementById('import-status');
   try {
+    if (statusEl) statusEl.textContent = 'Importing services from PagerDuty…';
     const res = await api('/dashboard/api/onboarding/integrations/pagerduty/import-services', {method: 'POST'});
+    if (statusEl) statusEl.textContent = `Imported ${res.imported} services from PagerDuty.`;
     await loadServices();
     await loadChecklist();
     showToast(`Imported ${res.imported} PagerDuty services.`);
   } catch (e) {
+    if (statusEl) statusEl.textContent = '';
     showToast(`Service import failed: ${e.message}`, 'error');
   }
 }
@@ -356,6 +363,12 @@ async function loadStatus() {
     if (conn) {
       conn.classList.toggle('hidden', !!st.integrations[p]);
     }
+  }
+
+  // Show/hide PD import button based on connection status
+  const importBtn = document.getElementById('btn-import-pd');
+  if (importBtn) {
+    importBtn.classList.toggle('hidden', !st.integrations.pagerduty);
   }
 
   return st;
