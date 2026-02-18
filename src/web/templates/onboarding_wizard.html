@@ -253,7 +253,7 @@ async function loadChecklist() {
         </span>
         <span class="text-sm ${step.done ? '' : 'text-muted'}">${step.title}</span>
       </div>
-      <button class="text-xs text-brand hover:underline" onclick="toggleStep('${step.id}', ${!step.done})">${step.done ? 'Undo' : 'Mark done'}</button>
+      ${step.done ? '' : `<button class="text-xs text-brand hover:underline" onclick="toggleStep('${step.id}', true)">Mark done</button>`}
     `;
     ul.appendChild(li);
     if (step.done) doneCount++;
