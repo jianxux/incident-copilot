@@ -250,6 +250,23 @@ async def pagerduty_oauth_callback(
         token.access_token, webhook_url, signing_secret
     )
 
+    # Fetch account subdomain (best-effort)
+    pd_subdomain = ""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                "https://api.pagerduty.com/users/me",
+                headers={"Authorization": f"Bearer {token.access_token}"},
+            )
+            if resp.status_code == 200:
+                user_data = resp.json().get("user", {})
+                html_url = user_data.get("html_url", "")
+                # e.g. https://exciting.pagerduty.com/users/PXXXXXX
+                if ".pagerduty.com" in html_url:
+                    pd_subdomain = html_url.split("//")[1].split(".pagerduty.com")[0]
+    except Exception:
+        pass
+
     # Store encrypted token on tenant
     integration_record = {
         "oauth": {
@@ -258,6 +275,7 @@ async def pagerduty_oauth_callback(
             "expires_at": expires_at.isoformat() if expires_at else None,
             "token_type": token.token_type,
         },
+        "subdomain": pd_subdomain,
         "webhook": {
             "url": webhook_url,
             "subscription_id": subscription_id,

@@ -924,6 +924,8 @@ async def get_onboarding_status(
                             detail = {}
                             if team and isinstance(team, dict):
                                 detail["workspace"] = team.get("name", "")
+                            if decrypted.get("subdomain"):
+                                detail["subdomain"] = decrypted["subdomain"]
                             if oauth.get("scope"):
                                 detail["scopes"] = oauth["scope"]
                             detail["connected_at"] = decrypted.get("connected_at", "")
