@@ -66,13 +66,8 @@
           </div>
           <div id="pd-connected-info" class="hidden">
             <div class="mt-4 p-4 bg-white rounded-lg border border-green-200">
-              <div class="flex items-center justify-between">
-                <div>
-                  <div class="text-sm font-medium text-green-700">✓ PagerDuty connected</div>
-                  <div class="text-xs text-muted mt-1" id="pd-connected-at"></div>
-                </div>
-                <button class="text-xs text-red-500 hover:underline" onclick="disconnectOAuth('pagerduty')">Disconnect</button>
-              </div>
+              <div class="text-sm font-medium text-green-700">✓ PagerDuty connected</div>
+              <div class="text-xs text-muted mt-1" id="pd-connected-at"></div>
             </div>
             <div class="mt-4 p-4 bg-white rounded-lg">
               <div class="text-sm font-medium mb-1">Webhook URL</div>
@@ -100,13 +95,8 @@
           </div>
           <div id="slack-connected-info" class="hidden">
             <div class="mt-4 p-4 bg-white rounded-lg border border-green-200">
-              <div class="flex items-center justify-between">
-                <div>
-                  <div class="text-sm font-medium text-green-700">✓ Connected to <span id="slack-workspace" class="font-semibold"></span></div>
-                  <div class="text-xs text-muted mt-1" id="slack-connected-at"></div>
-                </div>
-                <button class="text-xs text-red-500 hover:underline" onclick="disconnectOAuth('slack')">Disconnect</button>
-              </div>
+              <div class="text-sm font-medium text-green-700">✓ Connected to <span id="slack-workspace" class="font-semibold"></span></div>
+              <div class="text-xs text-muted mt-1" id="slack-connected-at"></div>
             </div>
           </div>
         </div>
