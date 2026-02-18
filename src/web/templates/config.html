@@ -17,7 +17,7 @@
     ] %}
     
     {% for integration in integrations %}
-    {% set configured = config_items | selectattr('env_var', 'in', integration.keys | map('upper') | list) | selectattr('value') | list | length > 0 %}
+    {% set configured = config_items | selectattr('env_var', 'in', integration.keys() | map('upper') | list) | selectattr('value') | list | length > 0 %}
     <div class="bg-white rounded-xl border {% if configured %}border-green-200{% else %}border-slate-200{% endif %} p-5 card-shadow">
         <div class="flex items-center justify-between mb-4">
             <div class="flex items-center space-x-3">
