@@ -93,6 +93,13 @@ For a full walkthrough, see `docs/getting-started/quickstart.md`. For local dev,
 2. `docker compose up --build`
 3. Open `http://localhost:8000` and verify `http://localhost:8000/health`
 
+### Local development (uv)
+
+- Python **3.11+** is required; `uv` will manage the interpreter and environment for this project.
+- Install `uv`: https://docs.astral.sh/uv/getting-started/installation/
+- Install dev dependencies: `make install-dev`
+- Run tests: `make test`
+
 ### Detailed local setup
 
 ### Prerequisites
@@ -129,11 +136,11 @@ Then open:
 - Health: http://localhost:8000/health
 - Metrics (Prometheus): http://localhost:8000/metrics
 
-### 2b) Run with Python
+### 2b) Run with Python (uv)
 
 ```bash
-pip install -e ".[dev]"
-uvicorn src.main:app --reload --port 8000
+make install-dev
+make dev
 ```
 
 > Note: `docker-compose` runs Redis for you. If running without Docker, set `REDIS_URL` and ensure Redis is available.
