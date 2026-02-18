@@ -53,15 +53,31 @@
             <span id="pd-status" class="text-xs px-2 py-1 rounded bg-white border border-slate-200 text-muted">Not connected</span>
           </div>
 
-          <div class="mt-5 flex flex-wrap gap-3">
-            <button class="px-4 py-2 rounded-lg bg-[#e05a3a] text-white font-semibold hover:bg-[#c94f35]" onclick="startOAuth('pagerduty')">Connect PagerDuty</button>
-            <button class="px-4 py-2 rounded-lg border border-slate-200 hover:border-orange-500" onclick="copyWebhook()">Copy webhook URL</button>
+          <div id="pd-not-connected">
+            <div class="mt-5 flex flex-wrap gap-3">
+              <button class="px-4 py-2 rounded-lg bg-[#e05a3a] text-white font-semibold hover:bg-[#c94f35]" onclick="startOAuth('pagerduty')">Connect PagerDuty</button>
+              <button class="px-4 py-2 rounded-lg border border-slate-200 hover:border-orange-500" onclick="copyWebhook()">Copy webhook URL</button>
+            </div>
+            <div class="mt-4 p-4 bg-white rounded-lg">
+              <div class="text-sm font-medium mb-1">Webhook URL</div>
+              <code id="webhook-url" class="text-sm text-green-400 break-all">{{ webhook_url }}</code>
+              <p class="mt-2 text-xs text-muted">PagerDuty OAuth will auto-register this webhook subscription (best-effort). If you prefer, you can manually configure webhooks using this URL.</p>
+            </div>
           </div>
-
-          <div class="mt-4 p-4 bg-white rounded-lg">
-            <div class="text-sm font-medium mb-1">Webhook URL</div>
-            <code id="webhook-url" class="text-sm text-green-400 break-all">{{ webhook_url }}</code>
-            <p class="mt-2 text-xs text-muted">PagerDuty OAuth will auto-register this webhook subscription (best-effort). If you prefer, you can manually configure webhooks using this URL.</p>
+          <div id="pd-connected-info" class="hidden">
+            <div class="mt-4 p-4 bg-white rounded-lg border border-green-200">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-sm font-medium text-green-700">✓ PagerDuty connected</div>
+                  <div class="text-xs text-muted mt-1" id="pd-connected-at"></div>
+                </div>
+                <button class="text-xs text-red-500 hover:underline" onclick="disconnectOAuth('pagerduty')">Disconnect</button>
+              </div>
+            </div>
+            <div class="mt-4 p-4 bg-white rounded-lg">
+              <div class="text-sm font-medium mb-1">Webhook URL</div>
+              <code id="webhook-url-connected" class="text-sm text-green-400 break-all">{{ webhook_url }}</code>
+            </div>
           </div>
         </div>
 
@@ -74,12 +90,24 @@
             <span id="slack-status" class="text-xs px-2 py-1 rounded bg-white border border-slate-200 text-muted">Not connected</span>
           </div>
 
-          <div class="mt-5 flex flex-wrap gap-3">
-            <button class="px-4 py-2 rounded-lg bg-brand text-white font-semibold hover:bg-brand-dark" onclick="startOAuth('slack')">Connect Slack</button>
+          <div id="slack-not-connected">
+            <div class="mt-5 flex flex-wrap gap-3">
+              <button class="px-4 py-2 rounded-lg bg-brand text-white font-semibold hover:bg-brand-dark" onclick="startOAuth('slack')">Connect Slack</button>
+            </div>
+            <div class="mt-4 text-xs text-muted">
+              If your default channel is an ID like <code class="bg-white px-1 rounded">C0123ABCDEF</code>, we can auto-join it. Channel names like <code class="bg-white px-1 rounded">#incidents</code> are supported for posting but can't be auto-joined without resolving the ID.
+            </div>
           </div>
-
-          <div class="mt-4 text-xs text-muted">
-            If your default channel is an ID like <code class="bg-white px-1 rounded">C0123ABCDEF</code>, we can auto-join it. Channel names like <code class="bg-white px-1 rounded">#incidents</code> are supported for posting but can’t be auto-joined without resolving the ID.
+          <div id="slack-connected-info" class="hidden">
+            <div class="mt-4 p-4 bg-white rounded-lg border border-green-200">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-sm font-medium text-green-700">✓ Connected to <span id="slack-workspace" class="font-semibold"></span></div>
+                  <div class="text-xs text-muted mt-1" id="slack-connected-at"></div>
+                </div>
+                <button class="text-xs text-red-500 hover:underline" onclick="disconnectOAuth('slack')">Disconnect</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -104,7 +132,7 @@
           <div class="flex items-start justify-between">
             <div>
               <h2 class="text-xl font-semibold text-slate-900 dark:text-white">4) Run a test incident</h2>
-              <p class="text-slate-600 dark:text-slate-300 mt-1">We’ll generate a synthetic incident and run it through the pipeline.</p>
+              <p class="text-slate-600 dark:text-slate-300 mt-1">We'll generate a synthetic incident and run it through the pipeline.</p>
             </div>
             <span id="test-status" class="text-xs px-2 py-1 rounded bg-white border border-slate-200 text-muted">Not run</span>
           </div>
@@ -119,7 +147,7 @@
 
         <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur border border-stone-200 dark:border-slate-800 rounded-2xl p-6 card-shadow">
           <h2 class="text-xl font-semibold text-slate-900 dark:text-white">Done</h2>
-          <p class="text-slate-600 dark:text-slate-300 mt-1">Once you’re connected, you can go live. We’ll keep improving your setup over time.</p>
+          <p class="text-slate-600 dark:text-slate-300 mt-1">Once you're connected, you can go live. We'll keep improving your setup over time.</p>
           <div class="mt-4">
             <a class="inline-flex px-4 py-2 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800" href="/dashboard">Go to dashboard</a>
           </div>
@@ -208,6 +236,18 @@ async function startOAuth(provider) {
   }
 }
 
+async function disconnectOAuth(provider) {
+  if (!confirm(`Disconnect ${provider}? You can reconnect anytime.`)) return;
+  try {
+    await api(`/dashboard/api/onboarding/disconnect/${provider}`, {method: 'POST'});
+    showToast(`${provider} disconnected.`, 'info');
+    await loadStatus();
+    await loadChecklist();
+  } catch (err) {
+    showToast(`Failed to disconnect: ${err.message}`, 'error');
+  }
+}
+
 async function loadChecklist() {
   const data = await api('/dashboard/api/onboarding/checklist');
   const ul = document.getElementById('checklist');
@@ -245,12 +285,30 @@ async function loadStatus() {
 
   const pd = st.integrations.pagerduty;
   const sl = st.integrations.slack;
+  const details = st.details || {};
 
+  // PagerDuty status
   document.getElementById('pd-status').textContent = pd ? 'Connected' : 'Not connected';
   document.getElementById('pd-status').className = `text-xs px-2 py-1 rounded border ${pd ? 'bg-green-500/20 border-green-400 text-green-400' : 'bg-white border-slate-200 text-muted'}`;
+  document.getElementById('pd-not-connected').classList.toggle('hidden', pd);
+  document.getElementById('pd-connected-info').classList.toggle('hidden', !pd);
+  if (pd && details.pagerduty) {
+    const at = details.pagerduty.connected_at;
+    if (at) document.getElementById('pd-connected-at').textContent = `Connected ${new Date(at).toLocaleDateString()}`;
+  }
 
+  // Slack status
   document.getElementById('slack-status').textContent = sl ? 'Connected' : 'Not connected';
   document.getElementById('slack-status').className = `text-xs px-2 py-1 rounded border ${sl ? 'bg-green-500/20 border-green-400 text-green-400' : 'bg-white border-slate-200 text-muted'}`;
+  document.getElementById('slack-not-connected').classList.toggle('hidden', sl);
+  document.getElementById('slack-connected-info').classList.toggle('hidden', !sl);
+  if (sl && details.slack) {
+    const ws = details.slack.workspace;
+    if (ws) document.getElementById('slack-workspace').textContent = ws;
+    else document.getElementById('slack-workspace').textContent = 'Slack workspace';
+    const at = details.slack.connected_at;
+    if (at) document.getElementById('slack-connected-at').textContent = `Connected ${new Date(at).toLocaleDateString()}`;
+  }
 
   // Checklist auto-marking (best-effort)
   if (pd) await api('/dashboard/api/onboarding/checklist/connect_alerting?done=true', {method: 'POST'});
