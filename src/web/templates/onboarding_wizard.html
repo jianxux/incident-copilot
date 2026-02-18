@@ -60,7 +60,8 @@
             <span id="status-pagerduty" class="status-chip">Not connected</span>
           </div>
           <div class="mt-4 flex flex-wrap gap-2">
-            <button class="px-4 py-2 rounded-lg text-white font-semibold" style="background: var(--brand);" onclick="startOAuth('pagerduty')">Connect PagerDuty</button>
+            <button id="btn-connect-pagerduty" class="px-4 py-2 rounded-lg text-white font-semibold" style="background: var(--brand);" onclick="startOAuth('pagerduty')">Connect PagerDuty</button>
+            <button id="btn-disconnect-pagerduty" class="px-4 py-2 rounded-lg border border-red-300 text-red-600 hidden" onclick="disconnectIntegration('pagerduty')">Disconnect</button>
             <button class="px-4 py-2 rounded-lg border border-slate-300" onclick="verifyIntegration('pagerduty')">Test Connection</button>
             <button class="px-4 py-2 rounded-lg border border-slate-300" onclick="importPagerDutyServices()">Import Services</button>
           </div>
@@ -77,7 +78,8 @@
             <span id="status-slack" class="status-chip">Not connected</span>
           </div>
           <div class="mt-4 flex flex-wrap gap-2">
-            <button class="px-4 py-2 rounded-lg text-white font-semibold" style="background: #0f172a;" onclick="startOAuth('slack')">Connect Slack</button>
+            <button id="btn-connect-slack" class="px-4 py-2 rounded-lg text-white font-semibold" style="background: #0f172a;" onclick="startOAuth('slack')">Connect Slack</button>
+            <button id="btn-disconnect-slack" class="px-4 py-2 rounded-lg border border-red-300 text-red-600 hidden" onclick="disconnectIntegration('slack')">Disconnect</button>
             <button class="px-4 py-2 rounded-lg border border-slate-300" onclick="verifyIntegration('slack')">Test Connection</button>
           </div>
           <div id="verify-slack" class="verify-line"></div>
@@ -258,6 +260,18 @@ async function verifyIntegration(name) {
   }
 }
 
+async function disconnectIntegration(name) {
+  if (!confirm(`Disconnect ${name}? You can reconnect later.`)) return;
+  try {
+    await api(`/dashboard/api/onboarding/disconnect/${name}`, {method: 'POST'});
+    showToast(`${name} disconnected.`);
+    await loadStatus();
+    await loadChecklist();
+  } catch (e) {
+    showToast(`Failed to disconnect: ${e.message}`, 'error');
+  }
+}
+
 async function importPagerDutyServices() {
   try {
     const res = await api('/dashboard/api/onboarding/integrations/pagerduty/import-services', {method: 'POST'});
@@ -343,6 +357,22 @@ async function loadStatus() {
   setChip('status-slack', !!st.integrations.slack, connLabel('slack'));
   setChip('status-github', !!st.integrations.github, connLabel('github'));
   setChip('status-datadog', !!st.integrations.datadog, connLabel('datadog'));
+
+  // Toggle Connect/Disconnect buttons
+  for (const p of ['pagerduty', 'slack']) {
+    const conn = document.getElementById(`btn-connect-${p}`);
+    const disc = document.getElementById(`btn-disconnect-${p}`);
+    if (conn && disc) {
+      if (st.integrations[p]) {
+        conn.classList.add('hidden');
+        disc.classList.remove('hidden');
+      } else {
+        conn.classList.remove('hidden');
+        disc.classList.add('hidden');
+      }
+    }
+  }
+
   return st;
 }
 
