@@ -42,14 +42,15 @@
       <aside class="lg:col-span-1 step-card">
         <div class="flex items-center justify-between">
           <div class="font-semibold text-slate-900">Progress</div>
-          <div id="progress-label" class="text-xs text-slate-500">Loading…</div>
+          <div id="progress-label" class="text-xs text-slate-500"></div>
         </div>
-        <div class="mt-3 h-2 bg-slate-200 rounded-full overflow-hidden">
-          <div id="progress-bar" class="h-full rounded-full transition-all duration-500" style="width: 0%; background: linear-gradient(90deg, #d45a3b, #ef7d5e);"></div>
+        <div id="progress-section" class="hidden">
+          <div class="mt-3 h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div id="progress-bar" class="h-full rounded-full transition-all duration-500" style="width: 0%; background: linear-gradient(90deg, #d45a3b, #ef7d5e);"></div>
+          </div>
+          <ul id="checklist" class="mt-5 space-y-2"></ul>
         </div>
-        <ul id="checklist" class="mt-5 space-y-2">
-          <li class="text-sm text-slate-400">Loading checklist…</li>
-        </ul>
+        <div id="progress-loading" class="mt-3 text-sm text-slate-400">Loading…</div>
       </aside>
 
       <section class="lg:col-span-2 space-y-4">
@@ -63,7 +64,6 @@
           </div>
           <div class="mt-4 flex flex-wrap gap-2">
             <button id="btn-connect-pagerduty" class="px-4 py-2 rounded-lg text-white font-semibold" style="background: var(--brand);" onclick="startOAuth('pagerduty')">Connect PagerDuty</button>
-            <button id="btn-disconnect-pagerduty" class="px-4 py-2 rounded-lg border border-red-300 text-red-600 hidden" onclick="disconnectIntegration('pagerduty')">Disconnect</button>
             <button class="px-4 py-2 rounded-lg border border-slate-300" onclick="verifyIntegration('pagerduty')">Test Connection</button>
             <button class="px-4 py-2 rounded-lg border border-slate-300" onclick="importPagerDutyServices()">Import Services</button>
           </div>
@@ -81,7 +81,6 @@
           </div>
           <div class="mt-4 flex flex-wrap gap-2">
             <button id="btn-connect-slack" class="px-4 py-2 rounded-lg text-white font-semibold" style="background: #0f172a;" onclick="startOAuth('slack')">Connect Slack</button>
-            <button id="btn-disconnect-slack" class="px-4 py-2 rounded-lg border border-red-300 text-red-600 hidden" onclick="disconnectIntegration('slack')">Disconnect</button>
             <button class="px-4 py-2 rounded-lg border border-slate-300" onclick="verifyIntegration('slack')">Test Connection</button>
           </div>
           <div id="verify-slack" class="verify-line"></div>
@@ -262,18 +261,6 @@ async function verifyIntegration(name) {
   }
 }
 
-async function disconnectIntegration(name) {
-  if (!confirm(`Disconnect ${name}? You can reconnect later.`)) return;
-  try {
-    await api(`/dashboard/api/onboarding/disconnect/${name}`, {method: 'POST'});
-    showToast(`${name} disconnected.`);
-    await loadStatus();
-    await loadChecklist();
-  } catch (e) {
-    showToast(`Failed to disconnect: ${e.message}`, 'error');
-  }
-}
-
 async function importPagerDutyServices() {
   try {
     const res = await api('/dashboard/api/onboarding/integrations/pagerduty/import-services', {method: 'POST'});
@@ -337,6 +324,9 @@ async function loadChecklist() {
   const pct = Math.round((done / data.steps.length) * 100);
   document.getElementById('progress-label').textContent = `${pct}%`;
   document.getElementById('progress-bar').style.width = `${pct}%`;
+  document.getElementById('progress-section').classList.remove('hidden');
+  const loading = document.getElementById('progress-loading');
+  if (loading) loading.remove();
 }
 
 async function loadStatus() {
@@ -360,18 +350,11 @@ async function loadStatus() {
   setChip('status-github', !!st.integrations.github, connLabel('github'));
   setChip('status-datadog', !!st.integrations.datadog, connLabel('datadog'));
 
-  // Toggle Connect/Disconnect buttons
+  // Hide Connect button when already connected
   for (const p of ['pagerduty', 'slack']) {
     const conn = document.getElementById(`btn-connect-${p}`);
-    const disc = document.getElementById(`btn-disconnect-${p}`);
-    if (conn && disc) {
-      if (st.integrations[p]) {
-        conn.classList.add('hidden');
-        disc.classList.remove('hidden');
-      } else {
-        conn.classList.remove('hidden');
-        disc.classList.add('hidden');
-      }
+    if (conn) {
+      conn.classList.toggle('hidden', !!st.integrations[p]);
     }
   }
 
