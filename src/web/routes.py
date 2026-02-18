@@ -1100,6 +1100,110 @@ async def get_onboarding_status(
     }
 
 
+@router.post("/api/onboarding/test-integration/{provider}")
+async def test_integration(
+    provider: str,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Test an integration connection by making a lightweight API call."""
+    tenant_id = auth.tenant_id or "default"
+
+    try:
+        from ..db.supabase_db import get_db
+        from ..security.crypto import decrypt_json
+
+        db = get_db(use_admin=True)
+        rows = db.client.table("integration_configs").select("config").eq(
+            "tenant_id", tenant_id
+        ).eq("type", provider).eq("is_active", True).limit(1).execute()
+
+        if not rows.data:
+            raise HTTPException(status_code=404, detail=f"{provider} not connected")
+
+        config = rows.data[0].get("config", {})
+        encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
+        decrypted = {}
+        if encrypted:
+            decrypted = decrypt_json(encrypted)
+
+        oauth = decrypted.get("oauth", {})
+
+        if provider == "pagerduty":
+            import httpx
+
+            token = oauth.get("access_token") or decrypted.get("api_key", "")
+            subdomain = decrypted.get("subdomain", "unknown")
+            if not token:
+                return {"ok": True, "details": f"Connected to {subdomain}.pagerduty.com (no token to verify)"}
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    "https://api.pagerduty.com/abilities",
+                    headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                )
+            if resp.status_code == 200:
+                return {"ok": True, "details": f"PagerDuty ({subdomain}) — API responding, {len(resp.json().get('abilities', []))} abilities"}
+            return {"ok": False, "details": f"PagerDuty API returned {resp.status_code}"}
+
+        elif provider == "slack":
+            import httpx
+
+            token = oauth.get("access_token", "")
+            team = oauth.get("team", {})
+            team_name = team.get("name", "unknown") if isinstance(team, dict) else "unknown"
+            if not token:
+                return {"ok": True, "details": f"Connected to {team_name} (no token to verify)"}
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(
+                    "https://slack.com/api/auth.test",
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+            data = resp.json()
+            if data.get("ok"):
+                return {"ok": True, "details": f"Slack — {data.get('team', team_name)} as {data.get('user', 'bot')}"}
+            return {"ok": False, "details": f"Slack auth.test failed: {data.get('error', 'unknown')}"}
+
+        elif provider == "github":
+            import httpx
+
+            token = decrypted.get("token") or oauth.get("access_token", "")
+            if not token:
+                return {"ok": True, "details": "GitHub connected (no token to verify)"}
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    "https://api.github.com/user",
+                    headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
+                )
+            if resp.status_code == 200:
+                user = resp.json()
+                return {"ok": True, "details": f"GitHub — authenticated as {user.get('login', 'unknown')}"}
+            return {"ok": False, "details": f"GitHub API returned {resp.status_code}"}
+
+        elif provider == "datadog":
+            import httpx
+
+            api_key = decrypted.get("api_key", "")
+            app_key = decrypted.get("app_key", "")
+            if not api_key:
+                return {"ok": True, "details": "Datadog connected (no key to verify)"}
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    "https://api.datadoghq.com/api/v1/validate",
+                    headers={"DD-API-KEY": api_key, "DD-APPLICATION-KEY": app_key},
+                )
+            if resp.status_code == 200:
+                return {"ok": True, "details": "Datadog — API key valid"}
+            return {"ok": False, "details": f"Datadog returned {resp.status_code}"}
+
+        else:
+            raise HTTPException(status_code=400, detail=f"Unknown provider: {provider}")
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("test_integration_failed", provider=provider, error=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @router.post("/api/onboarding/disconnect/{provider}")
 async def disconnect_integration(
     provider: str,
