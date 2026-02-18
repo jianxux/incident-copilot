@@ -13,6 +13,26 @@
   </div>
 </div>
 
+<!-- Stats Bar -->
+<div id="stats-bar" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+  <div class="bg-white/70 dark:bg-slate-900/60 border border-stone-200/60 dark:border-slate-800 rounded-xl p-4">
+    <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Open</div>
+    <div id="stat-open" class="text-2xl font-bold text-slate-900 dark:text-white mt-1">—</div>
+  </div>
+  <div class="bg-white/70 dark:bg-slate-900/60 border border-stone-200/60 dark:border-slate-800 rounded-xl p-4">
+    <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Resolved Today</div>
+    <div id="stat-resolved" class="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">—</div>
+  </div>
+  <div class="bg-white/70 dark:bg-slate-900/60 border border-stone-200/60 dark:border-slate-800 rounded-xl p-4">
+    <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Avg MTTR</div>
+    <div id="stat-mttr" class="text-2xl font-bold text-slate-900 dark:text-white mt-1">—</div>
+  </div>
+  <div class="bg-white/70 dark:bg-slate-900/60 border border-stone-200/60 dark:border-slate-800 rounded-xl p-4">
+    <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">This Week</div>
+    <div id="stat-week" class="text-2xl font-bold text-slate-900 dark:text-white mt-1">—</div>
+  </div>
+</div>
+
 <!-- Filters -->
 <div class="bg-white/70 dark:bg-slate-900/60 border border-stone-200/60 dark:border-slate-800 rounded-xl p-4 mb-5">
   <div class="flex flex-col sm:flex-row gap-3">
@@ -152,6 +172,39 @@
         demo: 'fa-flask',
     };
 
+    // ---- Stats ----
+    function updateStats() {
+        const open = allIncidents.filter(i => i.status !== 'resolved' && i.status !== 'completed').length;
+        const today = new Date().toDateString();
+        const resolvedToday = allIncidents.filter(i =>
+            (i.status === 'resolved' || i.status === 'completed') &&
+            i.processed_at && new Date(i.processed_at).toDateString() === today
+        ).length;
+
+        const durations = allIncidents.filter(i => i.duration_seconds > 0).map(i => i.duration_seconds);
+        const avgMttr = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null;
+
+        const weekAgo = Date.now() - 7 * 86400000;
+        const thisWeek = allIncidents.filter(i => {
+            const t = new Date(i.triggered_at || i.created_at).getTime();
+            return t > weekAgo;
+        }).length;
+
+        document.getElementById('stat-open').textContent = open;
+        document.getElementById('stat-resolved').textContent = resolvedToday;
+        document.getElementById('stat-mttr').textContent = avgMttr ? formatDuration(avgMttr) : '—';
+        document.getElementById('stat-week').textContent = thisWeek;
+    }
+
+    function formatDuration(seconds) {
+        if (!seconds && seconds !== 0) return '—';
+        if (seconds < 60) return seconds + 's';
+        if (seconds < 3600) return Math.floor(seconds / 60) + 'm';
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        return h + 'h ' + (m ? m + 'm' : '');
+    }
+
     // ---- Fetch ----
     async function loadIncidents() {
         try {
@@ -164,6 +217,7 @@
                 i.service = i.service || i.service_name || '';
                 i.created_at = i.created_at || i.triggered_at;
             });
+            updateStats();
             applyFilters();
         } catch(e) {
             console.error('Failed to load incidents:', e);
@@ -263,15 +317,6 @@
         } else {
             pagination.classList.add('hidden');
         }
-    }
-
-    function formatDuration(seconds) {
-        if (!seconds && seconds !== 0) return '—';
-        if (seconds < 60) return seconds + 's';
-        if (seconds < 3600) return Math.floor(seconds / 60) + 'm';
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        return h + 'h ' + (m ? m + 'm' : '');
     }
 
     function rowHtml(i) {
