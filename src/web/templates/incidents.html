@@ -83,9 +83,10 @@
       Duration <i id="sort-duration_seconds" class="fas fa-sort ml-1 opacity-40"></i>
     </div>
     <div class="col-span-1">Source</div>
-    <div class="col-span-3 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200" onclick="toggleSort('created_at')">
+    <div class="col-span-2 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200" onclick="toggleSort('created_at')">
       Created <i id="sort-created_at" class="fas fa-sort ml-1 opacity-40"></i>
     </div>
+    <div class="col-span-1"></div>
   </div>
 
   <!-- Loading -->
@@ -359,8 +360,14 @@
             <div class="col-span-1 text-slate-400 mt-1 sm:mt-0">
                 ${sourceLink}
             </div>
-            <div class="col-span-3 text-xs text-slate-500 dark:text-slate-400 mt-1 sm:mt-0" title="${esc(i.triggered_at || i.created_at || '')}">
+            <div class="col-span-2 text-xs text-slate-500 dark:text-slate-400 mt-1 sm:mt-0" title="${esc(i.triggered_at || i.created_at || '')}">
                 ${ago}
+            </div>
+            <div class="col-span-1 mt-1 sm:mt-0 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                ${stat !== 'resolved' && stat !== 'completed' ? `
+                    ${stat === 'triggered' ? `<button onclick="event.preventDefault();event.stopPropagation();quickAction('${esc(id)}','acknowledged')" class="px-2 py-0.5 text-xs rounded border border-amber-300 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition" title="Acknowledge">Ack</button>` : ''}
+                    <button onclick="event.preventDefault();event.stopPropagation();quickAction('${esc(id)}','resolved')" class="px-2 py-0.5 text-xs rounded border border-green-300 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/30 transition" title="Resolve">Resolve</button>
+                ` : ''}
             </div>
         </a>`;
     }
@@ -380,6 +387,27 @@
     // ---- Pagination ----
     window.changePage = function(delta) { currentPage += delta; render(); };
     window.goToPage = function(p) { currentPage = p; render(); };
+
+    // ---- Quick Actions ----
+    window.quickAction = async function(incidentId, newStatus) {
+        try {
+            const r = await fetch(`/dashboard/api/incidents/${encodeURIComponent(incidentId)}/status`, {
+                method: 'PATCH',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus }),
+            });
+            if (r.ok) {
+                // Update locally for instant feedback
+                const inc = allIncidents.find(i => (i.incident_id || i.id) === incidentId);
+                if (inc) {
+                    inc.status = newStatus;
+                    if (newStatus === 'resolved') inc.processed_at = new Date().toISOString();
+                }
+                updateStats();
+                applyFilters();
+            }
+        } catch(e) { console.error('Quick action failed:', e); }
+    };
 
     // ---- Event listeners ----
     document.getElementById('filter-search').addEventListener('input', debounce(applyFilters, 300));

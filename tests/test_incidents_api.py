@@ -172,18 +172,82 @@ class TestIncidentFormatting:
         assert result["duration_seconds"] == 0
 
 
+class TestIncidentStatusUpdate:
+    """Test the PATCH /api/incidents/{id}/status endpoint validation."""
+
+    @pytest.fixture(scope="class")
+    def client(self):
+        from fastapi.testclient import TestClient
+        from src.main import create_app
+        from src.auth.middleware import AuthContext, get_auth_context
+        from src.web.routes import require_dashboard_auth
+
+        app = create_app()
+
+        mock_tenant = MagicMock()
+        mock_tenant.id = "test-tenant"
+        mock_tenant.slug = "test"
+        mock_tenant.integrations = {}
+
+        async def override_auth():
+            return AuthContext(user=MagicMock(id="u1"), tenant=mock_tenant)
+
+        async def override_dashboard_auth():
+            return {"tenant_id": "test-tenant", "user_id": "u1"}
+
+        app.dependency_overrides[get_auth_context] = override_auth
+        app.dependency_overrides[require_dashboard_auth] = override_dashboard_auth
+
+        with TestClient(app) as c:
+            yield c
+
+        app.dependency_overrides.clear()
+
+    def test_invalid_status_rejected(self, client):
+        resp = client.patch(
+            "/dashboard/api/incidents/inc-1/status",
+            json={"status": "invalid"},
+        )
+        assert resp.status_code == 400
+        assert "Invalid status" in resp.json()["detail"]
+
+    def test_acknowledged_accepted(self, client):
+        resp = client.patch(
+            "/dashboard/api/incidents/inc-1/status",
+            json={"status": "acknowledged"},
+        )
+        assert resp.status_code != 400  # May be 500 (no DB), but not validation error
+
+    def test_resolved_accepted(self, client):
+        resp = client.patch(
+            "/dashboard/api/incidents/inc-1/status",
+            json={"status": "resolved"},
+        )
+        assert resp.status_code != 400
+
+
 class TestIncidentsListAPI:
     """Test the /api/incidents endpoint returns correct shape."""
 
-    def test_empty_incidents_unauthenticated(self):
-        """Without auth, returns empty incidents list."""
+    @pytest.fixture(scope="class")
+    def client(self):
         from fastapi.testclient import TestClient
         from src.main import create_app
 
         app = create_app()
-        with TestClient(app) as client:
-            resp = client.get("/api/incidents")
-            assert resp.status_code == 200
-            data = resp.json()
-            assert "incidents" in data
-            assert isinstance(data["incidents"], list)
+        with TestClient(app) as c:
+            yield c
+
+    def test_empty_incidents_unauthenticated(self, client):
+        """Without auth, returns empty incidents list."""
+        resp = client.get("/api/incidents")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "incidents" in data
+        assert isinstance(data["incidents"], list)
+
+    def test_incidents_response_shape(self, client):
+        """Verify response has expected top-level keys."""
+        resp = client.get("/api/incidents")
+        data = resp.json()
+        assert "incidents" in data

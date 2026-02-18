@@ -901,6 +901,40 @@ async def api_incidents_dashboard_scope(request: Request):
     return await api_incidents(request)
 
 
+@router.patch("/api/incidents/{incident_id}/status")
+async def update_incident_status(
+    incident_id: str,
+    request: Request,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Update incident status (acknowledge/resolve) from dashboard."""
+    tenant_id = auth.tenant_id or "default"
+    body = await request.json()
+    new_status = body.get("status", "").strip()
+
+    if new_status not in ("acknowledged", "resolved", "triggered"):
+        raise HTTPException(status_code=400, detail="Invalid status. Use: triggered, acknowledged, resolved")
+
+    try:
+        from ..db.supabase_db import get_db
+
+        db = get_db(use_admin=True)
+        update_data: dict = {"status": new_status}
+        if new_status == "resolved":
+            from datetime import datetime, timezone
+            update_data["processed_at"] = datetime.now(timezone.utc).isoformat()
+
+        await db._to_thread(
+            lambda: db.client.table("incidents").update(update_data).eq(
+                "id", incident_id
+            ).eq("tenant_id", tenant_id).execute()
+        )
+        return {"ok": True, "incident_id": incident_id, "status": new_status}
+    except Exception as exc:
+        logger.warning("update_incident_status_failed", error=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @router.get("/api/stats")
 async def api_stats_dashboard_scope(request: Request):
     """Backward-compatible tenant-scoped stats endpoint under /dashboard."""
