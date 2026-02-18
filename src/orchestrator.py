@@ -763,8 +763,10 @@ class ContextOrchestrator:
         - critical_paths: Critical dependency chains
         """
         try:
-            # Get service by name (may need to look up by ID)
-            service = await self.dependencies.get_service(service_name)
+            # Resolve by catalog name first, then fallback to direct ID.
+            service = await self.dependencies.get_service_by_name(service_name)
+            if not service:
+                service = await self.dependencies.get_service(service_name)
             if not service:
                 logger.debug("service_not_in_topology", service=service_name)
                 return None

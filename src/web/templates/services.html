@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Service Catalog</h1>
+    <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">Persistent topology with service metadata, environments, and dependencies.</p>
+  </div>
+  <button onclick="openCreateForm()" class="px-4 py-2 rounded-lg bg-brand text-white text-sm font-medium hover:bg-brand-dark transition">
+    <i class="fas fa-plus mr-1"></i>Add Service
+  </button>
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
+  <section class="xl:col-span-4 bg-white/70 dark:bg-slate-900/60 border border-stone-200/70 dark:border-slate-800 rounded-xl p-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-semibold text-slate-900 dark:text-white">Services</h2>
+      <button onclick="loadServices()" class="text-xs text-brand hover:text-brand-dark">Refresh</button>
+    </div>
+    <input id="service-search" class="w-full rounded-lg border border-stone-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-800" placeholder="Search service..." oninput="renderServiceList()" />
+    <div id="service-list" class="mt-3 space-y-2 max-h-[34rem] overflow-y-auto"></div>
+  </section>
+
+  <section class="xl:col-span-5 bg-white/70 dark:bg-slate-900/60 border border-stone-200/70 dark:border-slate-800 rounded-xl p-4">
+    <h2 class="font-semibold text-slate-900 dark:text-white mb-3">Details</h2>
+    <div id="service-detail" class="text-sm text-slate-500">Select a service to view details.</div>
+  </section>
+
+  <section class="xl:col-span-3 bg-white/70 dark:bg-slate-900/60 border border-stone-200/70 dark:border-slate-800 rounded-xl p-4 space-y-5">
+    <div>
+      <h2 class="font-semibold text-slate-900 dark:text-white mb-2">Create / Edit</h2>
+      <form id="service-form" class="space-y-2">
+        <input id="svc-id" class="w-full rounded-lg border border-stone-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-800" placeholder="Service ID (e.g. payments-api)" />
+        <input id="svc-name" class="w-full rounded-lg border border-stone-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-800" placeholder="Name" required />
+        <input id="svc-team" class="w-full rounded-lg border border-stone-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-800" placeholder="Team" />
+        <select id="svc-criticality" class="w-full rounded-lg border border-stone-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-800">
+          <option value="critical">critical</option>
+          <option value="high">high</option>
+          <option value="medium" selected>medium</option>
+          <option value="low">low</option>
+        </select>
+        <input id="svc-environment" class="w-full rounded-lg border border-stone-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-800" placeholder="Environment (production)" />
+        <input id="svc-region" class="w-full rounded-lg border border-stone-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-800" placeholder="Region (us-east-1)" />
+        <input id="svc-cluster" class="w-full rounded-lg border border-stone-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-800" placeholder="Cluster" />
+        <input id="svc-version" class="w-full rounded-lg border border-stone-200 dark:border-slate-700 px-3 py-2 text-sm bg-white dark:bg-slate-800" placeholder="Version" />
+        <div class="flex gap-2">
+          <button type="submit" class="flex-1 px-3 py-2 rounded-lg bg-brand text-white text-sm hover:bg-brand-dark">Save</button>
+          <button type="button" onclick="resetForm()" class="px-3 py-2 rounded-lg border border-stone-200 dark:border-slate-700 text-sm">Reset</button>
+        </div>
+      </form>
+    </div>
+
+    <div>
+      <h2 class="font-semibold text-slate-900 dark:text-white mb-2">Import Wizard</h2>
+      <textarea id="import-json" rows="6" class="w-full rounded-lg border border-stone-200 dark:border-slate-700 px-3 py-2 text-xs font-mono bg-white dark:bg-slate-800" placeholder='{"services": [{"id":"payments-api","name":"Payments API"}]}'></textarea>
+      <button onclick="importJson()" class="mt-2 w-full px-3 py-2 rounded-lg bg-slate-900 text-white dark:bg-slate-700 text-sm">Import JSON</button>
+      <input id="csv-file" type="file" accept=".csv" class="mt-3 w-full text-xs" />
+      <button onclick="importCsv()" class="mt-2 w-full px-3 py-2 rounded-lg border border-stone-200 dark:border-slate-700 text-sm">Import CSV</button>
+      <div class="grid grid-cols-1 gap-2 mt-3">
+        <button onclick="discover('pagerduty')" class="px-3 py-2 rounded-lg border border-stone-200 dark:border-slate-700 text-xs">Discover from PagerDuty</button>
+        <button onclick="discover('datadog')" class="px-3 py-2 rounded-lg border border-stone-200 dark:border-slate-700 text-xs">Discover from Datadog APM</button>
+        <button onclick="discover('kubernetes')" class="px-3 py-2 rounded-lg border border-stone-200 dark:border-slate-700 text-xs">Discover from Kubernetes</button>
+      </div>
+      <p id="import-result" class="mt-2 text-xs text-slate-500"></p>
+    </div>
+  </section>
+</div>
+
+<script>
+let services = [];
+let selected = null;
+
+async function api(path, options = {}) {
+  const res = await fetch(path, {
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    ...options,
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(txt || `Request failed (${res.status})`);
+  }
+  if (res.status === 204) return null;
+  return await res.json();
+}
+
+async function loadServices() {
+  services = await api('/api/services');
+  renderServiceList();
+}
+
+function renderServiceList() {
+  const q = document.getElementById('service-search').value.toLowerCase();
+  const list = document.getElementById('service-list');
+  const filtered = services.filter(s => !q || s.id.toLowerCase().includes(q) || s.name.toLowerCase().includes(q));
+  if (!filtered.length) {
+    list.innerHTML = '<div class="text-sm text-slate-500 py-3">No services found.</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(s => `
+    <button onclick="selectService('${s.id}')" class="w-full text-left px-3 py-2 rounded-lg border ${selected && selected.id === s.id ? 'border-brand bg-brand/10' : 'border-stone-200 dark:border-slate-700'}">
+      <div class="text-sm font-medium text-slate-900 dark:text-white">${s.name}</div>
+      <div class="text-xs text-slate-500">${s.id} · ${s.team || 'unassigned'} · ${s.criticality}</div>
+    </button>
+  `).join('');
+}
+
+async function selectService(id) {
+  selected = await api(`/api/services/${id}`);
+  const deps = await api(`/api/services/${id}/dependencies`);
+  renderServiceList();
+  renderDetail(selected, deps);
+}
+
+function renderDetail(service, deps) {
+  document.getElementById('service-detail').innerHTML = `
+    <div class="space-y-3">
+      <div>
+        <h3 class="text-lg font-semibold text-slate-900 dark:text-white">${service.name}</h3>
+        <p class="text-xs text-slate-500">${service.id}</p>
+      </div>
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <div><span class="text-slate-500">Team</span><div class="font-medium">${service.team || '-'}</div></div>
+        <div><span class="text-slate-500">Criticality</span><div class="font-medium">${service.criticality}</div></div>
+        <div><span class="text-slate-500">Health</span><div class="font-medium">${service.health}</div></div>
+        <div><span class="text-slate-500">Dependencies</span><div class="font-medium">${deps.length}</div></div>
+      </div>
+      <div>
+        <p class="text-xs text-slate-500 mb-1">Environments</p>
+        <div class="space-y-1">${(service.environments || []).map(e => `<div class="text-xs px-2 py-1 rounded bg-stone-100 dark:bg-slate-800">${e.environment}${e.region ? ` · ${e.region}` : ''}${e.cluster ? ` · ${e.cluster}` : ''}${e.version ? ` · v${e.version}` : ''}</div>`).join('') || '<span class="text-xs text-slate-400">None</span>'}</div>
+      </div>
+      <div>
+        <p class="text-xs text-slate-500 mb-1">Dependency Edges</p>
+        <div class="space-y-1 max-h-48 overflow-y-auto">${deps.map(d => `<div class="text-xs px-2 py-1 rounded bg-stone-100 dark:bg-slate-800">${d.source_service_id} → ${d.target_service_id} (${d.dependency_type})</div>`).join('') || '<span class="text-xs text-slate-400">None</span>'}</div>
+      </div>
+      <div class="pt-2 flex gap-2">
+        <button onclick="populateForm()" class="px-3 py-1.5 rounded-lg border border-stone-200 dark:border-slate-700 text-xs">Edit</button>
+        <button onclick="deleteService()" class="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs">Delete</button>
+      </div>
+    </div>
+  `;
+}
+
+function openCreateForm() {
+  resetForm();
+  document.getElementById('svc-name').focus();
+}
+
+function populateForm() {
+  if (!selected) return;
+  document.getElementById('svc-id').value = selected.id || '';
+  document.getElementById('svc-name').value = selected.name || '';
+  document.getElementById('svc-team').value = selected.team || '';
+  document.getElementById('svc-criticality').value = selected.criticality || 'medium';
+  const env = (selected.environments || [])[0] || {};
+  document.getElementById('svc-environment').value = env.environment || '';
+  document.getElementById('svc-region').value = env.region || '';
+  document.getElementById('svc-cluster').value = env.cluster || '';
+  document.getElementById('svc-version').value = env.version || '';
+}
+
+function resetForm() {
+  document.getElementById('service-form').reset();
+}
+
+document.getElementById('service-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = document.getElementById('svc-id').value.trim();
+  const name = document.getElementById('svc-name').value.trim();
+  const team = document.getElementById('svc-team').value.trim();
+  const criticality = document.getElementById('svc-criticality').value;
+  const environment = document.getElementById('svc-environment').value.trim();
+  const region = document.getElementById('svc-region').value.trim();
+  const cluster = document.getElementById('svc-cluster').value.trim();
+  const version = document.getElementById('svc-version').value.trim();
+
+  const payload = {
+    id: id || undefined,
+    name,
+    team: team || undefined,
+    criticality,
+    environments: environment ? [{ service_id: id || name, environment, region: region || undefined, cluster: cluster || undefined, version: version || undefined, is_primary: true }] : [],
+  };
+
+  if (selected && selected.id === id) {
+    await api(`/api/services/${selected.id}`, { method: 'PUT', body: JSON.stringify(payload) });
+  } else {
+    await api('/api/services', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  await loadServices();
+  resetForm();
+});
+
+async function deleteService() {
+  if (!selected) return;
+  if (!confirm(`Delete ${selected.name}?`)) return;
+  await api(`/api/services/${selected.id}`, { method: 'DELETE' });
+  selected = null;
+  document.getElementById('service-detail').innerHTML = 'Select a service to view details.';
+  await loadServices();
+}
+
+async function importJson() {
+  const text = document.getElementById('import-json').value.trim();
+  if (!text) return;
+  const payload = JSON.parse(text);
+  const result = await api('/api/services/import/json', { method: 'POST', body: JSON.stringify(payload) });
+  document.getElementById('import-result').textContent = `JSON import: ${result.created} created, ${result.failed} failed.`;
+  await loadServices();
+}
+
+async function importCsv() {
+  const input = document.getElementById('csv-file');
+  if (!input.files.length) return;
+  const form = new FormData();
+  form.append('file', input.files[0]);
+  const res = await fetch('/api/services/import/csv', { method: 'POST', body: form });
+  const result = await res.json();
+  document.getElementById('import-result').textContent = `CSV import: ${result.created} created, ${result.failed} failed.`;
+  await loadServices();
+}
+
+async function discover(source) {
+  const result = await api(`/api/services/discovery/${source}`, { method: 'POST' });
+  document.getElementById('import-result').textContent = `${source}: discovered ${result.discovered}, created ${result.created}.`;
+  await loadServices();
+}
+
+loadServices();
+</script>
+{% endblock %}

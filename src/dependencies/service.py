@@ -1,8 +1,17 @@
 """Dependency service for managing service dependencies."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 
+from ..services.models import (
+    ServiceCreate as CatalogServiceCreate,
+    ServiceDependencyCreate as CatalogDependencyCreate,
+    ServiceDependencyUpdate as CatalogDependencyUpdate,
+    ServiceUpdate as CatalogServiceUpdate,
+)
+from ..services.store import ServiceCatalogStore, get_service_catalog_store
 from .graph import DependencyGraphAnalyzer
 from .models import (
     BlastRadius,
@@ -11,6 +20,7 @@ from .models import (
     DependencyCreate,
     DependencyGraph,
     DependencyPath,
+    DependencyType,
     GraphStats,
     HealthStatus,
     Service,
@@ -21,13 +31,86 @@ from .models import (
 class DependencyService:
     """Service layer for dependency management."""
 
-    def __init__(self) -> None:
+    def __init__(self, tenant_slug: str = "default") -> None:
         self._analyzer = DependencyGraphAnalyzer()
+        self._tenant_slug = tenant_slug
+        self._store: ServiceCatalogStore = get_service_catalog_store()
+
+    async def _refresh_graph(self) -> None:
+        """Rebuild in-memory analyzer from persistent service catalog."""
+        if not self._store.enabled:
+            return
+
+        self._analyzer = DependencyGraphAnalyzer()
+        services = await self._store.list_services(tenant_slug=self._tenant_slug)
+        for svc in services:
+            self._analyzer.add_service(
+                Service(
+                    id=svc.id,
+                    name=svc.name,
+                    description=svc.description,
+                    team=svc.team,
+                    criticality=CriticalityLevel(svc.criticality.value),
+                    health=HealthStatus(svc.health.value),
+                    tags=svc.tags,
+                    metadata=svc.metadata,
+                    created_at=svc.created_at or datetime.utcnow(),
+                    updated_at=svc.updated_at or datetime.utcnow(),
+                )
+            )
+
+        deps = await self._store.list_dependencies(tenant_slug=self._tenant_slug)
+        for dep in deps:
+            self._analyzer.add_dependency(
+                Dependency(
+                    id=dep.id or str(uuid.uuid4()),
+                    source_id=dep.source_service_id,
+                    target_id=dep.target_service_id,
+                    dependency_type=DependencyType(dep.dependency_type.value),
+                    is_critical=dep.is_critical,
+                    latency_p99_ms=dep.latency_p99_ms,
+                    error_rate=dep.error_rate,
+                    requests_per_min=dep.requests_per_min,
+                    health=HealthStatus(dep.health.value),
+                    discovered_at=dep.discovered_at or datetime.utcnow(),
+                    last_seen=dep.last_seen_at or datetime.utcnow(),
+                    metadata=dep.metadata,
+                )
+            )
 
     # --- Service Management ---
 
     async def create_service(self, request: ServiceCreate) -> Service:
         """Create a new service."""
+        if self._store.enabled:
+            svc = await self._store.create_service(
+                CatalogServiceCreate(
+                    id=request.id,
+                    name=request.name,
+                    description=request.description,
+                    team=request.team,
+                    criticality=request.criticality.value,
+                    health=HealthStatus.UNKNOWN.value,
+                    tags=request.tags,
+                    metadata=request.metadata,
+                ),
+                tenant_slug=self._tenant_slug,
+            )
+            created = Service(
+                id=svc.id,
+                name=svc.name,
+                description=svc.description,
+                team=svc.team,
+                criticality=CriticalityLevel(svc.criticality.value),
+                health=HealthStatus(svc.health.value),
+                tags=svc.tags,
+                metadata=svc.metadata,
+                created_at=svc.created_at or datetime.utcnow(),
+                updated_at=svc.updated_at or datetime.utcnow(),
+            )
+            await self._refresh_graph()
+            return created
+
         service = Service(
             id=request.id,
             name=request.name,
@@ -42,7 +125,51 @@ class DependencyService:
 
     async def get_service(self, service_id: str) -> Service | None:
         """Get a service by ID."""
+        if self._store.enabled:
+            svc = await self._store.get_service(service_id, tenant_slug=self._tenant_slug)
+            if not svc:
+                return None
+            return Service(
+                id=svc.id,
+                name=svc.name,
+                description=svc.description,
+                team=svc.team,
+                criticality=CriticalityLevel(svc.criticality.value),
+                health=HealthStatus(svc.health.value),
+                tags=svc.tags,
+                metadata=svc.metadata,
+                created_at=svc.created_at or datetime.utcnow(),
+                updated_at=svc.updated_at or datetime.utcnow(),
+            )
+
         return self._analyzer.get_service(service_id)
+
+    async def get_service_by_name(self, service_name: str) -> Service | None:
+        """Get a service by name (for orchestrator context lookup)."""
+        if self._store.enabled:
+            svc = await self._store.get_service_by_name(
+                service_name,
+                tenant_slug=self._tenant_slug,
+            )
+            if not svc:
+                return None
+            return Service(
+                id=svc.id,
+                name=svc.name,
+                description=svc.description,
+                team=svc.team,
+                criticality=CriticalityLevel(svc.criticality.value),
+                health=HealthStatus(svc.health.value),
+                tags=svc.tags,
+                metadata=svc.metadata,
+                created_at=svc.created_at or datetime.utcnow(),
+                updated_at=svc.updated_at or datetime.utcnow(),
+            )
+
+        return next(
+            (s for s in self._analyzer.get_all_services() if s.name == service_name),
+            None,
+        )
 
     async def list_services(
         self,
@@ -51,6 +178,31 @@ class DependencyService:
         team: str | None = None,
     ) -> list[Service]:
         """List services with optional filters."""
+        if self._store.enabled:
+            services = await self._store.list_services(
+                tenant_slug=self._tenant_slug,
+                team=team,
+                criticality=criticality.value if criticality else None,
+            )
+            result = [
+                Service(
+                    id=s.id,
+                    name=s.name,
+                    description=s.description,
+                    team=s.team,
+                    criticality=CriticalityLevel(s.criticality.value),
+                    health=HealthStatus(s.health.value),
+                    tags=s.tags,
+                    metadata=s.metadata,
+                    created_at=s.created_at or datetime.utcnow(),
+                    updated_at=s.updated_at or datetime.utcnow(),
+                )
+                for s in services
+            ]
+            if health:
+                result = [s for s in result if s.health == health]
+            return result
+
         services = self._analyzer.get_all_services()
 
         if criticality:
@@ -66,6 +218,28 @@ class DependencyService:
         self, service_id: str, health: HealthStatus
     ) -> Service | None:
         """Update a service's health status."""
+        if self._store.enabled:
+            svc = await self._store.update_service(
+                service_id,
+                CatalogServiceUpdate(health=health.value),
+                tenant_slug=self._tenant_slug,
+            )
+            if not svc:
+                return None
+            await self._refresh_graph()
+            return Service(
+                id=svc.id,
+                name=svc.name,
+                description=svc.description,
+                team=svc.team,
+                criticality=CriticalityLevel(svc.criticality.value),
+                health=HealthStatus(svc.health.value),
+                tags=svc.tags,
+                metadata=svc.metadata,
+                created_at=svc.created_at or datetime.utcnow(),
+                updated_at=svc.updated_at or datetime.utcnow(),
+            )
+
         service = self._analyzer.get_service(service_id)
         if not service:
             return None
@@ -76,13 +250,50 @@ class DependencyService:
 
     async def delete_service(self, service_id: str) -> bool:
         """Delete a service and its dependencies."""
+        if self._store.enabled:
+            deleted = await self._store.delete_service(
+                service_id,
+                tenant_slug=self._tenant_slug,
+            )
+            if deleted:
+                await self._refresh_graph()
+            return deleted
+
         return self._analyzer.remove_service(service_id)
 
     # --- Dependency Management ---
 
     async def create_dependency(self, request: DependencyCreate) -> Dependency | None:
         """Create a new dependency between services."""
-        # Validate services exist
+        if self._store.enabled:
+            dep = await self._store.create_dependency(
+                source_service_id=request.source_id,
+                request=CatalogDependencyCreate(
+                    target_service_id=request.target_id,
+                    dependency_type=request.dependency_type.value,
+                    is_critical=request.is_critical,
+                    metadata=request.metadata,
+                ),
+                tenant_slug=self._tenant_slug,
+            )
+            if not dep:
+                return None
+            await self._refresh_graph()
+            return Dependency(
+                id=dep.id or str(uuid.uuid4()),
+                source_id=dep.source_service_id,
+                target_id=dep.target_service_id,
+                dependency_type=DependencyType(dep.dependency_type.value),
+                is_critical=dep.is_critical,
+                latency_p99_ms=dep.latency_p99_ms,
+                error_rate=dep.error_rate,
+                requests_per_min=dep.requests_per_min,
+                health=HealthStatus(dep.health.value),
+                discovered_at=dep.discovered_at or datetime.utcnow(),
+                last_seen=dep.last_seen_at or datetime.utcnow(),
+                metadata=dep.metadata,
+            )
+
         if not self._analyzer.get_service(request.source_id):
             return None
         if not self._analyzer.get_service(request.target_id):
@@ -101,6 +312,28 @@ class DependencyService:
 
     async def get_dependency(self, dependency_id: str) -> Dependency | None:
         """Get a dependency by ID."""
+        if self._store.enabled:
+            dep = await self._store.get_dependency(
+                dependency_id,
+                tenant_slug=self._tenant_slug,
+            )
+            if not dep:
+                return None
+            return Dependency(
+                id=dep.id or dependency_id,
+                source_id=dep.source_service_id,
+                target_id=dep.target_service_id,
+                dependency_type=DependencyType(dep.dependency_type.value),
+                is_critical=dep.is_critical,
+                latency_p99_ms=dep.latency_p99_ms,
+                error_rate=dep.error_rate,
+                requests_per_min=dep.requests_per_min,
+                health=HealthStatus(dep.health.value),
+                discovered_at=dep.discovered_at or datetime.utcnow(),
+                last_seen=dep.last_seen_at or datetime.utcnow(),
+                metadata=dep.metadata,
+            )
+
         return self._analyzer.get_dependency(dependency_id)
 
     async def list_dependencies(
@@ -109,6 +342,30 @@ class DependencyService:
         target_id: str | None = None,
     ) -> list[Dependency]:
         """List dependencies with optional filters."""
+        if self._store.enabled:
+            deps = await self._store.list_dependencies(
+                tenant_slug=self._tenant_slug,
+                source_service_id=source_id,
+                target_service_id=target_id,
+            )
+            return [
+                Dependency(
+                    id=d.id or str(uuid.uuid4()),
+                    source_id=d.source_service_id,
+                    target_id=d.target_service_id,
+                    dependency_type=DependencyType(d.dependency_type.value),
+                    is_critical=d.is_critical,
+                    latency_p99_ms=d.latency_p99_ms,
+                    error_rate=d.error_rate,
+                    requests_per_min=d.requests_per_min,
+                    health=HealthStatus(d.health.value),
+                    discovered_at=d.discovered_at or datetime.utcnow(),
+                    last_seen=d.last_seen_at or datetime.utcnow(),
+                    metadata=d.metadata,
+                )
+                for d in deps
+            ]
+
         dependencies = self._analyzer.get_all_dependencies()
 
         if source_id:
@@ -126,6 +383,44 @@ class DependencyService:
         requests_per_min: float | None = None,
     ) -> Dependency | None:
         """Update dependency metrics."""
+        if self._store.enabled:
+            health = None
+            if error_rate is not None:
+                if error_rate > 0.1:
+                    health = HealthStatus.UNHEALTHY.value
+                elif error_rate > 0.01:
+                    health = HealthStatus.DEGRADED.value
+                else:
+                    health = HealthStatus.HEALTHY.value
+
+            dep = await self._store.update_dependency(
+                dependency_id,
+                CatalogDependencyUpdate(
+                    latency_p99_ms=latency_p99_ms,
+                    error_rate=error_rate,
+                    requests_per_min=requests_per_min,
+                    health=health,
+                ),
+                tenant_slug=self._tenant_slug,
+            )
+            if not dep:
+                return None
+            await self._refresh_graph()
+            return Dependency(
+                id=dep.id or dependency_id,
+                source_id=dep.source_service_id,
+                target_id=dep.target_service_id,
+                dependency_type=DependencyType(dep.dependency_type.value),
+                is_critical=dep.is_critical,
+                latency_p99_ms=dep.latency_p99_ms,
+                error_rate=dep.error_rate,
+                requests_per_min=dep.requests_per_min,
+                health=HealthStatus(dep.health.value),
+                discovered_at=dep.discovered_at or datetime.utcnow(),
+                last_seen=dep.last_seen_at or datetime.utcnow(),
+                metadata=dep.metadata,
+            )
+
         dependency = self._analyzer.get_dependency(dependency_id)
         if not dependency:
             return None
@@ -134,7 +429,6 @@ class DependencyService:
             dependency.latency_p99_ms = latency_p99_ms
         if error_rate is not None:
             dependency.error_rate = error_rate
-            # Auto-update health based on error rate
             if error_rate > 0.1:
                 dependency.health = HealthStatus.UNHEALTHY
             elif error_rate > 0.01:
@@ -149,6 +443,15 @@ class DependencyService:
 
     async def delete_dependency(self, dependency_id: str) -> bool:
         """Delete a dependency."""
+        if self._store.enabled:
+            deleted = await self._store.delete_dependency(
+                dependency_id,
+                tenant_slug=self._tenant_slug,
+            )
+            if deleted:
+                await self._refresh_graph()
+            return deleted
+
         return self._analyzer.remove_dependency(dependency_id)
 
     # --- Analysis ---
@@ -159,13 +462,15 @@ class DependencyService:
         max_depth: int | None = None,
     ) -> BlastRadius | None:
         """Calculate the blast radius if a service fails."""
+        if self._store.enabled:
+            await self._refresh_graph()
+
         service = self._analyzer.get_service(service_id)
         if not service:
             return None
 
         affected = self._analyzer.get_downstream(service_id, max_depth)
 
-        # Get critical services affected
         critical_affected = [
             svc_id
             for svc_id in affected
@@ -173,17 +478,13 @@ class DependencyService:
             and svc.criticality == CriticalityLevel.CRITICAL
         ]
 
-        # Build impact paths
         impact_paths = []
         for affected_id in affected:
             path = self._analyzer.find_path(affected_id, service_id)
             if path:
                 impact_paths.append(path)
 
-        # Calculate max depth
         max_impact_depth = max((p.length for p in impact_paths), default=0)
-
-        # Calculate risk score
         risk_score = self._analyzer.calculate_risk_score(service_id)
 
         return BlastRadius(
@@ -198,6 +499,8 @@ class DependencyService:
 
     async def get_service_dependencies(self, service_id: str) -> dict[str, list[str]]:
         """Get upstream and downstream dependencies for a service."""
+        if self._store.enabled:
+            await self._refresh_graph()
         return {
             "upstream": list(self._analyzer.get_upstream(service_id)),
             "downstream": list(self._analyzer.get_downstream(service_id)),
@@ -205,21 +508,27 @@ class DependencyService:
 
     async def find_path(self, source_id: str, target_id: str) -> DependencyPath | None:
         """Find the shortest path between two services."""
+        if self._store.enabled:
+            await self._refresh_graph()
         return self._analyzer.find_path(source_id, target_id)
 
     async def get_deployment_order(self) -> list[str] | None:
         """Get the recommended deployment order (topological sort)."""
+        if self._store.enabled:
+            await self._refresh_graph()
         return self._analyzer.topological_sort()
 
     # --- Graph Operations ---
 
     async def get_full_graph(self) -> DependencyGraph:
         """Get the complete dependency graph."""
+        if self._store.enabled:
+            await self._refresh_graph()
+
         services = self._analyzer.get_all_services()
         dependencies = self._analyzer.get_all_dependencies()
         cycles = self._analyzer.detect_cycles()
 
-        # Calculate max depth
         max_depth = 0
         for service in services:
             affected = self._analyzer.get_downstream(service.id)
@@ -240,6 +549,9 @@ class DependencyService:
 
     async def get_graph_stats(self) -> GraphStats:
         """Get statistics about the dependency graph."""
+        if self._store.enabled:
+            await self._refresh_graph()
+
         services = self._analyzer.get_all_services()
         stats = self._analyzer.get_graph_stats()
 
@@ -270,6 +582,9 @@ class DependencyService:
 
     async def get_high_risk_services(self, threshold: float = 50.0) -> list[dict]:
         """Get services with risk score above threshold."""
+        if self._store.enabled:
+            await self._refresh_graph()
+
         result = []
         for service in self._analyzer.get_all_services():
             score = self._analyzer.calculate_risk_score(service.id)
@@ -290,7 +605,6 @@ class DependencyService:
         return self._analyzer
 
 
-# Singleton instance
 _dependency_service: DependencyService | None = None
 
 
