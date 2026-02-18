@@ -11,6 +11,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel, Field
 
 from ..auth.middleware import AuthContext, get_auth_context
 from ..config import get_settings
@@ -106,6 +107,13 @@ def status_color(status: str) -> str:
         "error": "bg-red-500",
     }
     return colors.get(status, "bg-gray-500")
+
+
+def tenant_slug_from_auth(auth: AuthContext) -> str:
+    """Resolve a tenant slug for service catalog operations."""
+    if auth.tenant and auth.tenant.slug:
+        return auth.tenant.slug
+    return auth.tenant_id or "default"
 
 
 # Add template filters
@@ -526,6 +534,34 @@ async def onboarding_wizard_page(request: Request):
     )
 
 
+@router.get("/onboarding-success", response_class=HTMLResponse)
+async def onboarding_success_page(
+    request: Request,
+    incident_id: str | None = None,
+):
+    """Onboarding completion page after first successful test incident."""
+    return templates.TemplateResponse(
+        "onboarding_success.html",
+        {
+            "request": request,
+            "page_title": "Onboarding Complete",
+            "incident_id": incident_id,
+        },
+    )
+
+
+@router.get("/services", response_class=HTMLResponse)
+async def service_catalog_page(request: Request):
+    """Service catalog dashboard page."""
+    return templates.TemplateResponse(
+        "services.html",
+        {
+            "request": request,
+            "page_title": "Service Catalog",
+        },
+    )
+
+
 @router.get("/billing", response_class=HTMLResponse)
 async def billing_page(request: Request):
     """Billing and subscription management page."""
@@ -843,6 +879,89 @@ async def api_stats_dashboard_scope(request: Request):
 # =========================================================================
 # Onboarding APIs
 # =========================================================================
+
+
+class DashboardServiceCreateRequest(BaseModel):
+    """Create request for onboarding wizard service list."""
+
+    name: str = Field(min_length=1, max_length=120)
+
+
+@router.get("/api/services")
+async def dashboard_list_services(
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """List services for onboarding wizard via dashboard-scoped API."""
+    from ..services.store import get_service_catalog_store
+
+    tenant_slug = tenant_slug_from_auth(auth)
+    services = await get_service_catalog_store().list_services(tenant_slug=tenant_slug)
+    return {
+        "services": [
+            {
+                "id": service.id,
+                "name": service.name,
+                "source": (service.metadata or {}).get("source", "manual"),
+                "metadata": service.metadata or {},
+                "created_at": service.created_at.isoformat()
+                if service.created_at
+                else None,
+            }
+            for service in services
+        ]
+    }
+
+
+@router.post("/api/services", status_code=201)
+async def dashboard_create_service(
+    request: DashboardServiceCreateRequest,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Create a service for onboarding wizard via dashboard-scoped API."""
+    from ..onboarding import checklist_store
+    from ..services.models import ServiceCreate
+    from ..services.store import get_service_catalog_store
+
+    tenant_slug = tenant_slug_from_auth(auth)
+    tenant_id = auth.tenant_id or "default"
+    service_name = request.name.strip()
+    if not service_name:
+        raise HTTPException(status_code=400, detail="service_name_required")
+
+    service = await get_service_catalog_store().create_service(
+        ServiceCreate(name=service_name, metadata={"source": "manual"}),
+        tenant_slug=tenant_slug,
+    )
+
+    await checklist_store.set_step(tenant_id, "add_services", True)
+    return {
+        "id": service.id,
+        "name": service.name,
+        "source": (service.metadata or {}).get("source", "manual"),
+        "metadata": service.metadata or {},
+        "created_at": service.created_at.isoformat() if service.created_at else None,
+    }
+
+
+@router.delete("/api/services/{service_id}", status_code=204)
+async def dashboard_delete_service(
+    service_id: str,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Delete a service for onboarding wizard via dashboard-scoped API."""
+    from ..onboarding import checklist_store
+    from ..services.store import get_service_catalog_store
+
+    tenant_slug = tenant_slug_from_auth(auth)
+    tenant_id = auth.tenant_id or "default"
+    store = get_service_catalog_store()
+
+    deleted = await store.delete_service(service_id, tenant_slug=tenant_slug)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="service_not_found")
+
+    remaining = await store.list_services(tenant_slug=tenant_slug)
+    await checklist_store.set_step(tenant_id, "add_services", bool(remaining))
 
 
 @router.get("/api/onboarding/checklist")

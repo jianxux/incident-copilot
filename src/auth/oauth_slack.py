@@ -11,7 +11,7 @@ Docs: https://api.slack.com/authentication/oauth-v2
 from __future__ import annotations
 
 import secrets
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
 
 import httpx
@@ -21,6 +21,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from ..config import get_settings
+from ..onboarding import oauth_state_store
 from ..security import encrypt_json
 from .middleware import AuthContext, get_auth_context, require_role
 from .models import UserRole
@@ -30,13 +31,9 @@ logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/integrations/oauth/slack", tags=["integrations"])
 
-# In-memory state storage (replace with Redis in production)
-_slack_oauth_states: dict[str, dict] = {}
-
 
 class SlackOAuthResponse(BaseModel):
-    model_config = {"extra": "allow"}
-    ok: bool = False
+    ok: bool
     access_token: str | None = None
     token_type: str | None = None
     scope: str | None = None
@@ -138,13 +135,16 @@ async def start_slack_oauth(
     state = secrets.token_urlsafe(32)
     redirect_uri = f"{settings.app_url}/api/integrations/oauth/slack/callback"
 
-    _slack_oauth_states[state] = {
-        "tenant_id": auth.tenant_id,
-        "user_id": auth.user_id,
-        "redirect_uri": redirect_uri,
-        "return_to": return_to or f"{settings.app_url}/dashboard/onboarding-wizard",
-        "created_at": datetime.now(UTC).isoformat(),
-    }
+    await oauth_state_store.cleanup_expired()
+    await oauth_state_store.save(
+        provider="slack",
+        state=state,
+        tenant_id=str(auth.tenant_id),
+        user_id=str(auth.user_id),
+        redirect_uri=redirect_uri,
+        return_to=return_to or f"{settings.app_url}/dashboard/onboarding-wizard",
+        expires_at=datetime.now(UTC) + timedelta(minutes=15),
+    )
 
     authorize_url = oauth.get_authorization_url(state, redirect_uri)
 
@@ -177,27 +177,16 @@ async def slack_oauth_callback(
             url=f"{settings.app_url}/dashboard/onboarding-wizard?slack_error=invalid"
         )
 
-    state_data = _slack_oauth_states.pop(state, None)
+    state_data = await oauth_state_store.consume(provider="slack", state=state)
     if not state_data:
         return RedirectResponse(
             url=f"{settings.app_url}/dashboard/onboarding-wizard?slack_error=state"
         )
 
     oauth = SlackOAuth()
-    logger.info(
-        "slack_oauth_exchanging",
-        redirect_uri=state_data["redirect_uri"],
-        app_url=settings.app_url,
-    )
     token = await oauth.exchange_code(code, state_data["redirect_uri"])
     if not token.ok or not token.access_token:
-        logger.error(
-            "slack_oauth_token_failed",
-            error=token.error,
-            ok=token.ok,
-            redirect_uri=state_data["redirect_uri"],
-            raw=str(token),
-        )
+        logger.error("slack_oauth_token_failed", error=token.error)
         return RedirectResponse(
             url=f"{settings.app_url}/dashboard/onboarding-wizard?slack_error=token"
         )
@@ -225,34 +214,9 @@ async def slack_oauth_callback(
         "connected_at": datetime.now(UTC).isoformat(),
     }
 
-    # Persist to Supabase integration_configs table
-    try:
-        from ..db.supabase_db import get_db
-        db = get_db(use_admin=True)
-        db.client.table("integration_configs").upsert(
-            {
-                "tenant_id": state_data["tenant_id"],
-                "type": "slack",
-                "name": "slack-oauth",
-                "config": {"encrypted": encrypt_json(integration_record)},
-                "is_active": True,
-            },
-            on_conflict="tenant_id,type,name",
-        ).execute()
-        logger.info("slack_oauth_saved", tenant_id=state_data["tenant_id"])
-    except Exception as e:
-        logger.error("slack_oauth_save_failed", error=str(e))
-        return RedirectResponse(
-            url=f"{state_data['return_to']}?slack_error=token"
-        )
-
-    # Also update in-memory store (best-effort)
-    try:
-        await auth_service.update_tenant_integrations(
-            state_data["tenant_id"],
-            {"slack": {"encrypted": encrypt_json(integration_record)}},
-        )
-    except ValueError:
-        logger.warning("slack_oauth_inmemory_skip", tenant_id=state_data["tenant_id"])
+    await auth_service.update_tenant_integrations(
+        state_data["tenant_id"],
+        {"slack": {"encrypted": encrypt_json(integration_record)}},
+    )
 
     return RedirectResponse(url=f"{state_data['return_to']}?slack=connected")
