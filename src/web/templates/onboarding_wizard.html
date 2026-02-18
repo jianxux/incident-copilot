@@ -393,6 +393,8 @@ function checkOAuthParams() {
 // Init
 (async () => {
   checkOAuthParams();
+  // Auto-mark create_account since user is already logged in
+  await api('/dashboard/api/onboarding/checklist/create_account?done=true', {method: 'POST'}).catch(() => {});
   try {
     await loadStatus();
   } catch (e) {
