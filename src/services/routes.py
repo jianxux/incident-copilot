@@ -210,7 +210,7 @@ async def import_services_json(
 @router.post("/import/csv")
 async def import_services_csv(
     file: UploadFile = File(...),
-    store: StoreDep = Depends(get_store),
+    store: ServiceCatalogStore = Depends(get_store),
     tenant: str = Query("default", description="Tenant slug"),
 ) -> dict[str, int]:
     """Bulk import services from CSV upload."""
