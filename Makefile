@@ -1,4 +1,6 @@
-.PHONY: help dev test test-fast test-cov lint format typecheck check clean install docker-build docker-run eval
+.PHONY: help uv-check dev test test-fast test-cov lint format typecheck check clean install install-dev docker-build docker-run eval coverage deps-graph pre-commit security docker-compose-up docker-compose-down
+
+UV ?= uv
 
 # Default target
 help:
@@ -34,29 +36,36 @@ help:
 # Setup
 # ============================================================================
 
-install:
-	pip install -e .
+install: uv-check
+	$(UV) sync
 
-install-dev:
-	pip install -e ".[dev]"
-	pre-commit install
+install-dev: uv-check
+	$(UV) sync --extra dev
+	$(UV) run pre-commit install
+
+uv-check:
+	@command -v $(UV) >/dev/null 2>&1 || { \
+		echo "Error: '$(UV)' is not installed or not on PATH."; \
+		echo "Install uv from https://docs.astral.sh/uv/getting-started/installation/ and retry."; \
+		exit 1; \
+	}
 
 # ============================================================================
 # Development
 # ============================================================================
 
-dev:
-	uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+dev: uv-check
+	$(UV) run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 
-format:
-	black src tests
-	isort --profile black src tests
+format: uv-check
+	$(UV) run black src tests
+	$(UV) run isort --profile black src tests
 
-lint:
-	ruff check src tests
+lint: uv-check
+	$(UV) run ruff check src tests
 
-typecheck:
-	mypy src --ignore-missing-imports
+typecheck: uv-check
+	$(UV) run mypy src --ignore-missing-imports
 
 check: lint typecheck test
 	@echo "✓ All checks passed!"
@@ -65,21 +74,21 @@ check: lint typecheck test
 # Testing
 # ============================================================================
 
-test:
-	pytest tests/ -v
+test: uv-check
+	$(UV) run pytest tests/ -v
 
-test-fast:
-	pytest tests/ -v -m "not slow and not integration" --ignore=tests/integration
+test-fast: uv-check
+	$(UV) run pytest tests/ -v -m "not slow and not integration" --ignore=tests/integration
 
-test-cov:
-	pytest tests/ --cov=src --cov-report=term-missing
+test-cov: uv-check
+	$(UV) run pytest tests/ --cov=src --cov-report=term-missing
 
-coverage:
-	pytest tests/ --cov=src --cov-report=html
+coverage: uv-check
+	$(UV) run pytest tests/ --cov=src --cov-report=html
 	@echo "Coverage report: htmlcov/index.html"
 
-eval:
-	python -m src.eval.harness
+eval: uv-check
+	$(UV) run python -m src.eval.harness
 
 # ============================================================================
 # Docker
@@ -113,14 +122,14 @@ clean:
 	rm -rf *.egg-info
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
-deps-graph:
-	python scripts/dependency_graph.py
+deps-graph: uv-check
+	$(UV) run python scripts/dependency_graph.py
 
 # Pre-commit
-pre-commit:
-	pre-commit run --all-files
+pre-commit: uv-check
+	$(UV) run pre-commit run --all-files
 
 # Security scan
-security:
-	bandit -r src -ll
-	pip-audit
+security: uv-check
+	$(UV) run bandit -r src -ll
+	$(UV) run pip-audit
