@@ -8,6 +8,9 @@
     <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">View, filter, and manage all incidents across your integrations.</p>
   </div>
   <div class="flex items-center gap-2">
+    <button onclick="exportCSV()" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-stone-200 dark:border-slate-700 bg-white/70 dark:bg-slate-900/60 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800 transition" title="Export filtered incidents to CSV">
+      <i class="fas fa-download"></i> Export CSV
+    </button>
     <span id="incident-count" class="text-xs text-slate-500 dark:text-slate-400"></span>
     <span class="text-xs text-slate-500 dark:text-slate-400">Auto-refresh · 30s</span>
   </div>
@@ -387,6 +390,31 @@
     // ---- Pagination ----
     window.changePage = function(delta) { currentPage += delta; render(); };
     window.goToPage = function(p) { currentPage = p; render(); };
+
+    // ---- CSV Export ----
+    window.exportCSV = function() {
+        const rows = [['Title', 'Service', 'Severity', 'Status', 'Source', 'Duration (s)', 'Created', 'Verdict']];
+        filtered.forEach(i => {
+            rows.push([
+                (i.title || '').replace(/"/g, '""'),
+                (i.service || ''),
+                (i.severity || ''),
+                (i.status || ''),
+                (i.source || ''),
+                (i.duration_seconds || ''),
+                (i.triggered_at || i.created_at || ''),
+                (i.verdict_summary || '').replace(/"/g, '""'),
+            ]);
+        });
+        const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `incidents-${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
 
     // ---- Quick Actions ----
     window.quickAction = async function(incidentId, newStatus) {
