@@ -62,6 +62,8 @@ from .oncall.scheduler import (
 from .ratelimit.middleware import RateLimitMiddleware
 from .ratelimit.routes import router as ratelimit_router
 from .security.headers import SecurityHeadersMiddleware
+from .services.routes import router as service_catalog_router
+from .services.store import close_service_catalog_store, init_service_catalog_store
 from .web import landing_router, web_router
 
 # Configure structured logging
@@ -127,6 +129,8 @@ def create_app() -> FastAPI:
                 "audit_store_initialized", retention_days=settings.audit_retention_days
             )
 
+        await init_service_catalog_store()
+
         await start_oncall_handoff_scheduler(settings=settings)
         if _oauth_refresh_available:
             try:
@@ -137,6 +141,7 @@ def create_app() -> FastAPI:
         yield
 
         await stop_oncall_handoff_scheduler()
+        await close_service_catalog_store()
         if _oauth_refresh_available:
             await stop_oauth_refresh_worker()
         logger.info("incident_copilot_shutting_down")
@@ -258,6 +263,7 @@ def create_app() -> FastAPI:
     app.include_router(slack_copilot_router)
     app.include_router(web_copilot_router)
     app.include_router(memory_advanced_router)
+    app.include_router(service_catalog_router)
     app.include_router(landing_router)
     app.include_router(web_router)
 
