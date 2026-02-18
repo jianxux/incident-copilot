@@ -421,15 +421,9 @@ function checkOAuthParams() {
 (async () => {
   checkOAuthParams();
   try {
-    const st = await loadStatus();
+    await loadStatus();
     await loadChecklist();
     await loadServices();
-    if (st.integrations.pagerduty) {
-      const serviceData = await api('/dashboard/api/services');
-      if ((serviceData.services || []).length === 0) {
-        await importPagerDutyServices();
-      }
-    }
   } catch (e) {
     showToast(e.message, 'error');
   }
