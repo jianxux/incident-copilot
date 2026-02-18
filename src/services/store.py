@@ -41,15 +41,21 @@ class ServiceCatalogStore:
         return self._enabled
 
     async def connect(self) -> None:
-        """Connect to PostgreSQL."""
+        """Connect to PostgreSQL (graceful — does not crash on failure)."""
         if not self._enabled or self._pool is not None:
             return
 
-        self._pool = await asyncpg.create_pool(
-            self.database_url.replace("+asyncpg", ""),
-            min_size=1,
-            max_size=10,
-        )
+        try:
+            self._pool = await asyncpg.create_pool(
+                self.database_url.replace("+asyncpg", ""),
+                min_size=1,
+                max_size=10,
+                timeout=10,
+            )
+        except (OSError, asyncpg.PostgresError, Exception) as exc:
+            logger.warning("service_catalog_db_connect_failed", error=str(exc))
+            self._enabled = False
+            self._pool = None
 
     async def disconnect(self) -> None:
         """Close PostgreSQL pool."""
@@ -58,7 +64,7 @@ class ServiceCatalogStore:
             self._pool = None
 
     async def initialize(self) -> None:
-        """Initialize schema required by service catalog."""
+        """Initialize schema required by service catalog (graceful)."""
         if not self._enabled:
             return
 
@@ -69,13 +75,17 @@ class ServiceCatalogStore:
             if not self._pool:
                 return
 
-            init_sql_path = Path(__file__).parent / "init.sql"
-            sql = init_sql_path.read_text(encoding="utf-8")
-            async with self._pool.acquire() as conn:
-                await conn.execute(sql)
+            try:
+                init_sql_path = Path(__file__).parent / "init.sql"
+                sql = init_sql_path.read_text(encoding="utf-8")
+                async with self._pool.acquire() as conn:
+                    await conn.execute(sql)
 
-            self._initialized = True
-            logger.info("service_catalog_store_initialized")
+                self._initialized = True
+                logger.info("service_catalog_store_initialized")
+            except Exception as exc:
+                logger.warning("service_catalog_schema_init_failed", error=str(exc))
+                self._enabled = False
 
     async def _ensure_ready(self) -> bool:
         """Ensure pool/schema is ready when Postgres is enabled."""
