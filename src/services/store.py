@@ -184,7 +184,7 @@ class ServiceCatalogStore:
 
         result = await self._run(
             lambda: client.table("services").upsert(
-                data, on_conflict="tenant_id,service_key"
+                data, on_conflict="tenant_id,name"
             ).execute()
         )
         if result and result.data:
