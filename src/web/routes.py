@@ -968,10 +968,48 @@ async def dashboard_delete_service(
 async def get_onboarding_checklist(
     auth: AuthContext = Depends(get_auth_context),
 ):
-    """Get current tenant onboarding checklist."""
+    """Get current tenant onboarding checklist (auto-syncs from integrations)."""
     from ..onboarding import checklist_store
 
     tenant_id = auth.tenant_id or "default"
+
+    # Auto-sync: check integration_configs and mark steps done if connected
+    try:
+        from ..db.supabase_db import get_db
+
+        db = get_db(use_admin=True)
+        rows = db.client.table("integration_configs").select("type").eq(
+            "tenant_id", tenant_id
+        ).eq("is_active", True).execute()
+        if rows.data:
+            providers = {r["type"] for r in rows.data}
+            if "pagerduty" in providers or "opsgenie" in providers:
+                await checklist_store.set_step(tenant_id, "connect_alerting", True)
+            if "slack" in providers:
+                await checklist_store.set_step(tenant_id, "connect_slack", True)
+            if "github" in providers:
+                await checklist_store.set_step(tenant_id, "connect_github", True)
+            if "datadog" in providers:
+                await checklist_store.set_step(tenant_id, "connect_datadog", True)
+    except Exception:
+        pass  # Supabase unavailable — use local checklist only
+
+    # Also sync services
+    try:
+        from ..services.store import get_service_catalog_store
+
+        store = get_service_catalog_store()
+        tenant_slug = tenant_slug_from_auth(auth)
+        services = await store.list_services(tenant_slug=tenant_slug)
+        if services:
+            await checklist_store.set_step(tenant_id, "add_services", True)
+    except Exception:
+        pass
+
+    # Mark create_account done if authenticated
+    if auth.user:
+        await checklist_store.set_step(tenant_id, "create_account", True)
+
     checklist = await checklist_store.get(tenant_id)
     return checklist.to_dict()
 
