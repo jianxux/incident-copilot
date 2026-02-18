@@ -42,12 +42,14 @@
       <aside class="lg:col-span-1 step-card">
         <div class="flex items-center justify-between">
           <div class="font-semibold text-slate-900">Progress</div>
-          <div id="progress-label" class="text-xs text-slate-500">0%</div>
+          <div id="progress-label" class="text-xs text-slate-500">Loading…</div>
         </div>
         <div class="mt-3 h-2 bg-slate-200 rounded-full overflow-hidden">
-          <div id="progress-bar" class="h-full rounded-full" style="width: 0%; background: linear-gradient(90deg, #d45a3b, #ef7d5e);"></div>
+          <div id="progress-bar" class="h-full rounded-full transition-all duration-500" style="width: 0%; background: linear-gradient(90deg, #d45a3b, #ef7d5e);"></div>
         </div>
-        <ul id="checklist" class="mt-5 space-y-2"></ul>
+        <ul id="checklist" class="mt-5 space-y-2">
+          <li class="text-sm text-slate-400">Loading checklist…</li>
+        </ul>
       </aside>
 
       <section class="lg:col-span-2 space-y-4">
@@ -57,7 +59,7 @@
               <h2 class="text-lg font-semibold text-slate-900">1) Connect PagerDuty</h2>
               <p class="text-sm text-slate-600 mt-1">OAuth connect and webhook registration.</p>
             </div>
-            <span id="status-pagerduty" class="status-chip">Not connected</span>
+            <span id="status-pagerduty" class="status-chip">Checking…</span>
           </div>
           <div class="mt-4 flex flex-wrap gap-2">
             <button id="btn-connect-pagerduty" class="px-4 py-2 rounded-lg text-white font-semibold" style="background: var(--brand);" onclick="startOAuth('pagerduty')">Connect PagerDuty</button>
@@ -75,7 +77,7 @@
               <h2 class="text-lg font-semibold text-slate-900">2) Connect Slack</h2>
               <p class="text-sm text-slate-600 mt-1">Install the app and verify posting.</p>
             </div>
-            <span id="status-slack" class="status-chip">Not connected</span>
+            <span id="status-slack" class="status-chip">Checking…</span>
           </div>
           <div class="mt-4 flex flex-wrap gap-2">
             <button id="btn-connect-slack" class="px-4 py-2 rounded-lg text-white font-semibold" style="background: #0f172a;" onclick="startOAuth('slack')">Connect Slack</button>
@@ -91,7 +93,7 @@
               <h2 class="text-lg font-semibold text-slate-900">3) Connect GitHub</h2>
               <p class="text-sm text-slate-600 mt-1">Provide a PAT and organization for deploy and repo context.</p>
             </div>
-            <span id="status-github" class="status-chip">Not connected</span>
+            <span id="status-github" class="status-chip">Checking…</span>
           </div>
           <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
             <input id="github-token" class="px-3 py-2 rounded-lg border border-slate-300" placeholder="GitHub token" type="password" />
@@ -110,7 +112,7 @@
               <h2 class="text-lg font-semibold text-slate-900">4) Connect Datadog</h2>
               <p class="text-sm text-slate-600 mt-1">Store API/App keys and verify log query access.</p>
             </div>
-            <span id="status-datadog" class="status-chip">Not connected</span>
+            <span id="status-datadog" class="status-chip">Checking…</span>
           </div>
           <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
             <input id="datadog-api-key" class="px-3 py-2 rounded-lg border border-slate-300" placeholder="API key" type="password" />
