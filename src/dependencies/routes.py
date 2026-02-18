@@ -241,6 +241,7 @@ async def export_dot(
     show_metrics: bool = False,
 ) -> Response:
     """Export graph as DOT format for Graphviz."""
+    await service.get_full_graph()
     visualizer = GraphVisualizer(service.get_analyzer())
     dot = visualizer.to_dot(highlight, show_health, show_metrics)
     return Response(content=dot, media_type="text/vnd.graphviz")
@@ -252,6 +253,7 @@ async def export_d3_json(
     highlight: str | None = None,
 ) -> dict[str, Any]:
     """Export graph as D3.js force-directed graph JSON."""
+    await service.get_full_graph()
     visualizer = GraphVisualizer(service.get_analyzer())
     return visualizer.to_d3_json(highlight)
 
@@ -259,6 +261,7 @@ async def export_d3_json(
 @router.get("/visualization/cytoscape")
 async def export_cytoscape(service: ServiceDep) -> dict[str, Any]:
     """Export graph as Cytoscape.js format."""
+    await service.get_full_graph()
     visualizer = GraphVisualizer(service.get_analyzer())
     return visualizer.to_cytoscape_json()
 
@@ -269,6 +272,7 @@ async def export_mermaid(
     highlight: str | None = None,
 ) -> Response:
     """Export graph as Mermaid diagram."""
+    await service.get_full_graph()
     visualizer = GraphVisualizer(service.get_analyzer())
     mermaid = visualizer.to_mermaid(highlight)
     return Response(content=mermaid, media_type="text/plain")
@@ -277,6 +281,7 @@ async def export_mermaid(
 @router.get("/visualization/matrix")
 async def export_adjacency_matrix(service: ServiceDep) -> dict[str, Any]:
     """Export graph as adjacency matrix."""
+    await service.get_full_graph()
     visualizer = GraphVisualizer(service.get_analyzer())
     return visualizer.to_adjacency_matrix()
 

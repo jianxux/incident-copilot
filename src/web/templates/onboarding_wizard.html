@@ -4,250 +4,305 @@
 
 {% block content %}
 <style>
-  /* Use Inter consistently throughout the wizard — no serif mixing */
-  .min-h-screen h1,
-  .min-h-screen h2,
-  .min-h-screen h3,
-  .min-h-screen .font-display {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  :root {
+    --brand: #d45a3b;
+    --brand-dark: #b7482e;
+    --ok: #15803d;
+    --warn: #b45309;
+    --bad: #b91c1c;
   }
   #wizard-toast {
     position: fixed; top: 1rem; right: 1rem; z-index: 9999;
-    max-width: 28rem; padding: 0.75rem 1rem; border-radius: 0.5rem;
-    font-size: 0.875rem; line-height: 1.25rem;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    transition: opacity 0.3s, transform 0.3s;
-    opacity: 0; transform: translateY(-0.5rem); pointer-events: none;
+    max-width: 30rem; padding: 0.75rem 1rem; border-radius: 0.6rem;
+    font-size: 0.9rem; box-shadow: 0 8px 24px rgba(2, 6, 23, 0.18);
+    transition: opacity .2s, transform .2s;
+    opacity: 0; transform: translateY(-8px); pointer-events: none;
   }
   #wizard-toast.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  #wizard-toast.info { background: #eff6ff; color: #1e3a8a; border: 1px solid #bfdbfe; }
   #wizard-toast.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-  #wizard-toast.info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
-  #toast-container { display: none !important; }
+  .status-chip { font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 999px; border: 1px solid #e2e8f0; background: #fff; color: #64748b; }
+  .status-chip.ok { color: #166534; border-color: #86efac; background: #f0fdf4; }
+  .status-chip.bad { color: #991b1b; border-color: #fecaca; background: #fef2f2; }
+  .step-card { background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(248,250,252,0.9)); border: 1px solid #e5e7eb; border-radius: 1rem; padding: 1.25rem; }
+  .verify-line { margin-top: 0.75rem; font-size: 0.8rem; color: #64748b; min-height: 1.25rem; }
 </style>
+
 <div class="min-h-screen py-10 px-4 sm:px-6 lg:px-8">
-  <div class="max-w-5xl mx-auto">
+  <div class="max-w-6xl mx-auto">
     <div class="flex items-start justify-between gap-6">
       <div>
-        <h1 class="text-3xl font-bold">Get set up in ~5 minutes</h1>
-        <p class="text-muted mt-2">Connect PagerDuty and Slack, add services, then run a test incident.</p>
+        <h1 class="text-3xl font-bold text-slate-900">Production Onboarding</h1>
+        <p class="text-slate-600 mt-2">Connect integrations, verify each connection, add services, and run your first incident.</p>
       </div>
-      <a href="/dashboard" class="text-sm text-[#e05a3a] hover:underline">Skip for now →</a>
+      <a href="/dashboard" class="text-sm text-[var(--brand)] hover:underline">Skip for now</a>
     </div>
 
-    <!-- Checklist -->
     <div class="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-1 bg-white/70 border border-stone-200 rounded-2xl p-6">
-        <div id="checklist-loading" class="space-y-3 animate-pulse">
-          <div class="h-4 bg-stone-200 rounded w-1/2"></div>
-          <div class="h-2 bg-stone-200 rounded"></div>
-          <div class="h-3 bg-stone-100 rounded w-3/4 mt-4"></div>
-          <div class="h-3 bg-stone-100 rounded w-2/3"></div>
-          <div class="h-3 bg-stone-100 rounded w-3/4"></div>
-          <div class="h-3 bg-stone-100 rounded w-1/2"></div>
+      <aside class="lg:col-span-1 step-card">
+        <div class="flex items-center justify-between">
+          <div class="font-semibold text-slate-900">Progress</div>
+          <div id="progress-label" class="text-xs text-slate-500">0%</div>
         </div>
-        <div id="checklist-loaded" class="hidden">
-          <div class="flex items-center justify-between">
-            <div class="font-semibold">Progress</div>
-            <div class="text-xs text-muted" id="progress-label">0%</div>
-          </div>
-          <div class="mt-3 h-2 bg-white rounded-full overflow-hidden">
-            <div id="progress-bar" class="h-full bg-[#e05a3a] transition-all" style="width: 0%"></div>
-          </div>
-          <ul class="mt-5 space-y-3" id="checklist"></ul>
+        <div class="mt-3 h-2 bg-slate-200 rounded-full overflow-hidden">
+          <div id="progress-bar" class="h-full rounded-full" style="width: 0%; background: linear-gradient(90deg, #d45a3b, #ef7d5e);"></div>
         </div>
-        <p class="mt-4 text-xs text-muted">Tip: if you ever need it, manual API keys are still available on <a class="text-[#e05a3a] hover:underline" href="/dashboard/onboarding">the legacy setup page</a>.</p>
-      </div>
+        <ul id="checklist" class="mt-5 space-y-2"></ul>
+      </aside>
 
-      <!-- Steps -->
-      <div class="lg:col-span-2 space-y-6">
-
-        <div class="bg-white/70 border border-stone-200 rounded-2xl p-6">
-          <div class="flex items-start justify-between">
+      <section class="lg:col-span-2 space-y-4">
+        <div class="step-card">
+          <div class="flex items-start justify-between gap-4">
             <div>
-              <h2 class="text-xl font-bold">1) Connect PagerDuty</h2>
-              <p class="text-muted mt-1">Authorize Incident Copilot to read incidents and create a webhook subscription.</p>
+              <h2 class="text-lg font-semibold text-slate-900">1) Connect PagerDuty</h2>
+              <p class="text-sm text-slate-600 mt-1">OAuth connect and webhook registration.</p>
             </div>
-            <span id="pd-status" class="text-xs px-2 py-1 rounded bg-white border border-slate-200 text-muted">Not connected</span>
+            <span id="status-pagerduty" class="status-chip">Not connected</span>
           </div>
-
-          <div id="pd-not-connected">
-            <div class="mt-5 flex flex-wrap gap-3">
-              <button class="px-4 py-2 rounded-lg bg-[#e05a3a] text-white font-semibold hover:bg-[#c94f35]" onclick="startOAuth('pagerduty')">Connect PagerDuty</button>
-              <button class="px-4 py-2 rounded-lg border border-slate-200 hover:border-orange-500" onclick="copyWebhook()">Copy webhook URL</button>
-            </div>
-            <div class="mt-4 p-4 bg-white rounded-lg">
-              <div class="text-sm font-medium mb-1">Webhook URL</div>
-              <code id="webhook-url" class="text-sm text-green-400 break-all">{{ webhook_url }}</code>
-              <p class="mt-2 text-xs text-muted">PagerDuty OAuth will auto-register this webhook subscription (best-effort). If you prefer, you can manually configure webhooks using this URL.</p>
-            </div>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button class="px-4 py-2 rounded-lg text-white font-semibold" style="background: var(--brand);" onclick="startOAuth('pagerduty')">Connect PagerDuty</button>
+            <button class="px-4 py-2 rounded-lg border border-slate-300" onclick="verifyIntegration('pagerduty')">Test Connection</button>
+            <button class="px-4 py-2 rounded-lg border border-slate-300" onclick="importPagerDutyServices()">Import Services</button>
           </div>
-          <div id="pd-connected-info" class="hidden">
-            <div class="mt-4 p-4 bg-white rounded-lg border border-green-200">
-              <div class="text-sm font-medium text-green-700">✓ Connected to <span id="pd-subdomain" class="font-semibold">PagerDuty</span></div>
-              <div class="text-xs text-muted mt-1" id="pd-connected-at"></div>
-            </div>
-          </div>
+          <div class="mt-3 text-xs text-slate-500">Webhook URL: <code id="webhook-url">{{ webhook_url }}</code></div>
+          <div id="verify-pagerduty" class="verify-line"></div>
         </div>
 
-        <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur border border-stone-200 dark:border-slate-800 rounded-2xl p-6 card-shadow">
-          <div class="flex items-start justify-between">
+        <div class="step-card">
+          <div class="flex items-start justify-between gap-4">
             <div>
-              <h2 class="text-xl font-semibold text-slate-900 dark:text-white">2) Connect Slack</h2>
-              <p class="text-slate-600 dark:text-slate-300 mt-1">Install the Slack app so we can post context cards and reactions.</p>
+              <h2 class="text-lg font-semibold text-slate-900">2) Connect Slack</h2>
+              <p class="text-sm text-slate-600 mt-1">Install the app and verify posting.</p>
             </div>
-            <span id="slack-status" class="text-xs px-2 py-1 rounded bg-white border border-slate-200 text-muted">Not connected</span>
+            <span id="status-slack" class="status-chip">Not connected</span>
           </div>
-
-          <div id="slack-not-connected">
-            <div class="mt-5 flex flex-wrap gap-3">
-              <button class="px-4 py-2 rounded-lg bg-brand text-white font-semibold hover:bg-brand-dark" onclick="startOAuth('slack')">Connect Slack</button>
-            </div>
-            <div class="mt-4 text-xs text-muted">
-              If your default channel is an ID like <code class="bg-white px-1 rounded">C0123ABCDEF</code>, we can auto-join it. Channel names like <code class="bg-white px-1 rounded">#incidents</code> are supported for posting but can't be auto-joined without resolving the ID.
-            </div>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button class="px-4 py-2 rounded-lg text-white font-semibold" style="background: #0f172a;" onclick="startOAuth('slack')">Connect Slack</button>
+            <button class="px-4 py-2 rounded-lg border border-slate-300" onclick="verifyIntegration('slack')">Test Connection</button>
           </div>
-          <div id="slack-connected-info" class="hidden">
-            <div class="mt-4 p-4 bg-white rounded-lg border border-green-200">
-              <div class="text-sm font-medium text-green-700">✓ Connected to <span id="slack-workspace" class="font-semibold"></span></div>
-              <div class="text-xs text-muted mt-1" id="slack-connected-at"></div>
-            </div>
-          </div>
+          <div id="verify-slack" class="verify-line"></div>
         </div>
 
-        <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur border border-stone-200 dark:border-slate-800 rounded-2xl p-6 card-shadow">
-          <div class="flex items-start justify-between">
+        <div class="step-card">
+          <div class="flex items-start justify-between gap-4">
             <div>
-              <h2 class="text-xl font-semibold text-slate-900 dark:text-white">3) Add services</h2>
-              <p class="text-slate-600 dark:text-slate-300 mt-1">Tell us which services you want enriched context for.</p>
+              <h2 class="text-lg font-semibold text-slate-900">3) Connect GitHub</h2>
+              <p class="text-sm text-slate-600 mt-1">Provide a PAT and organization for deploy and repo context.</p>
             </div>
-            <span id="services-status" class="text-xs px-2 py-1 rounded bg-white border border-slate-200 text-muted">Optional</span>
+            <span id="status-github" class="status-chip">Not connected</span>
           </div>
+          <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input id="github-token" class="px-3 py-2 rounded-lg border border-slate-300" placeholder="GitHub token" type="password" />
+            <input id="github-org" class="px-3 py-2 rounded-lg border border-slate-300" placeholder="GitHub organization" />
+          </div>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button class="px-4 py-2 rounded-lg text-white font-semibold" style="background: #1f2937;" onclick="saveGitHub()">Save GitHub</button>
+            <button class="px-4 py-2 rounded-lg border border-slate-300" onclick="verifyIntegration('github')">Test Connection</button>
+          </div>
+          <div id="verify-github" class="verify-line"></div>
+        </div>
 
-          <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input id="service-name" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg" placeholder="e.g. payments-api" onkeydown="if(event.key==='Enter'){event.preventDefault();addService()}" />
-            <button class="px-4 py-2 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800" onclick="addService()">Add service</button>
+        <div class="step-card">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 class="text-lg font-semibold text-slate-900">4) Connect Datadog</h2>
+              <p class="text-sm text-slate-600 mt-1">Store API/App keys and verify log query access.</p>
+            </div>
+            <span id="status-datadog" class="status-chip">Not connected</span>
+          </div>
+          <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <input id="datadog-api-key" class="px-3 py-2 rounded-lg border border-slate-300" placeholder="API key" type="password" />
+            <input id="datadog-app-key" class="px-3 py-2 rounded-lg border border-slate-300" placeholder="App key" type="password" />
+            <input id="datadog-site" class="px-3 py-2 rounded-lg border border-slate-300" placeholder="datadoghq.com" value="datadoghq.com" />
+          </div>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button class="px-4 py-2 rounded-lg text-white font-semibold" style="background: #0f766e;" onclick="saveDatadog()">Save Datadog</button>
+            <button class="px-4 py-2 rounded-lg border border-slate-300" onclick="verifyIntegration('datadog')">Test Connection</button>
+          </div>
+          <div id="verify-datadog" class="verify-line"></div>
+        </div>
+
+        <div class="step-card">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 class="text-lg font-semibold text-slate-900">5) Add Services</h2>
+              <p class="text-sm text-slate-600 mt-1">Persist tenant service catalog to backend.</p>
+            </div>
+            <span id="status-services" class="status-chip">0 services</span>
+          </div>
+          <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input id="service-name" class="px-3 py-2 rounded-lg border border-slate-300" placeholder="e.g. payments-api" onkeydown="if(event.key==='Enter'){event.preventDefault();addService();}" />
+            <button class="px-4 py-2 rounded-lg text-white font-semibold" style="background: #1e293b;" onclick="addService()">Add Service</button>
           </div>
           <ul id="services-list" class="mt-3 space-y-1"></ul>
-          <p class="mt-2 text-xs text-muted">Add the services you want enriched context cards for.</p>
         </div>
 
-        <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur border border-stone-200 dark:border-slate-800 rounded-2xl p-6 card-shadow">
-          <div class="flex items-start justify-between">
+        <div class="step-card">
+          <div class="flex items-start justify-between gap-4">
             <div>
-              <h2 class="text-xl font-semibold text-slate-900 dark:text-white">4) Run a test incident</h2>
-              <p class="text-slate-600 dark:text-slate-300 mt-1">We'll generate a synthetic incident and run it through the pipeline.</p>
+              <h2 class="text-lg font-semibold text-slate-900">6) Run Test Incident</h2>
+              <p class="text-sm text-slate-600 mt-1">Generate a synthetic incident and verify end-to-end flow.</p>
             </div>
-            <span id="test-status" class="text-xs px-2 py-1 rounded bg-white border border-slate-200 text-muted">Not run</span>
+            <span id="status-test" class="status-chip">Not run</span>
           </div>
-
-          <div class="mt-5 flex flex-wrap gap-3 items-center">
-            <button class="px-4 py-2 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800" onclick="runTestIncident()">Send test incident</button>
-            <a id="test-link" class="text-sm text-brand hover:underline hidden" href="#">View incident →</a>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button class="px-4 py-2 rounded-lg text-white font-semibold" style="background: #0f172a;" onclick="runTestIncident()">Send Test Incident</button>
+            <a id="incident-link" class="hidden text-sm text-[var(--brand)] hover:underline" href="#">View incident</a>
           </div>
-
-          <div class="mt-4 text-xs text-muted">Watch the Dashboard updates in real-time. This uses the same incident pipeline as real PagerDuty/Opsgenie alerts.</div>
+          <div id="verify-test" class="verify-line"></div>
         </div>
-
-        <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur border border-stone-200 dark:border-slate-800 rounded-2xl p-6 card-shadow">
-          <h2 class="text-xl font-semibold text-slate-900 dark:text-white">Done</h2>
-          <p class="text-slate-600 dark:text-slate-300 mt-1">Once you're connected, you can go live. We'll keep improving your setup over time.</p>
-          <div class="mt-4">
-            <a class="inline-flex px-4 py-2 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800" href="/dashboard">Go to dashboard</a>
-          </div>
-        </div>
-
-      </div>
+      </section>
     </div>
   </div>
 </div>
-
 <div id="wizard-toast"></div>
 
 <script>
-function showToast(message, type = 'info') {
+function showToast(message, type='info') {
   const el = document.getElementById('wizard-toast');
-  el.textContent = message;
   el.className = `${type} show`;
+  el.textContent = message;
   clearTimeout(el._timer);
-  el._timer = setTimeout(() => { el.classList.remove('show'); }, 6000);
+  el._timer = setTimeout(() => el.classList.remove('show'), 5000);
 }
 
-function getAccessToken() {
-  return localStorage.getItem('access_token');
-}
+function token() { return localStorage.getItem('access_token'); }
 
-async function api(path, opts = {}) {
-  const token = getAccessToken();
+async function api(path, opts={}) {
   const headers = Object.assign({'Content-Type': 'application/json'}, opts.headers || {});
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const t = token();
+  if (t) headers['Authorization'] = `Bearer ${t}`;
   const res = await fetch(path, Object.assign({}, opts, {headers}));
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(txt || `HTTP ${res.status}`);
-  }
-  return await res.json();
+  const body = await res.text();
+  let data = {};
+  try { data = body ? JSON.parse(body) : {}; } catch (_) { data = {}; }
+  if (!res.ok) throw new Error(data.detail || body || `HTTP ${res.status}`);
+  return data;
 }
 
-function copyWebhook() {
-  const url = document.getElementById('webhook-url').textContent;
-  navigator.clipboard.writeText(url);
-  alert('Webhook URL copied');
+function setChip(id, ok, text) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = `status-chip ${ok ? 'ok' : ''}`;
+}
+
+function setVerify(name, ok, text) {
+  const el = document.getElementById(`verify-${name}`);
+  el.textContent = text || '';
+  el.style.color = ok ? 'var(--ok)' : (text ? 'var(--bad)' : '#64748b');
 }
 
 async function startOAuth(provider) {
-  // Use fetch with auth header to get the OAuth redirect URL, then navigate.
-  const endpoints = {
+  const map = {
     pagerduty: '/api/integrations/oauth/pagerduty/start',
-    slack: '/api/integrations/oauth/slack/start',
+    slack: '/api/integrations/oauth/slack/start'
   };
-  const url = endpoints[provider];
+  const url = map[provider];
   if (!url) return;
-
-  const token = getAccessToken();
-  if (!token) {
-    showToast('Please log in first to connect integrations.', 'error');
-    return;
-  }
-
   try {
     const res = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
+      headers: {'Authorization': `Bearer ${token()}`, 'Accept': 'application/json'}
     });
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      const detail = body?.detail || `HTTP ${res.status}`;
-      if (res.status === 401) {
-        showToast('Session expired. Please log in again.', 'error');
-      } else if (res.status === 400) {
-        showToast(detail, 'error');
-      } else {
-        showToast(`Failed to start ${provider} setup: ${detail}`, 'error');
-      }
-      return;
-    }
-
     const data = await res.json();
-    if (data.redirect_url) {
-      window.location.href = data.redirect_url;
-    }
-  } catch (err) {
-    showToast(`Connection error: ${err.message}`, 'error');
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    window.location.href = data.redirect_url;
+  } catch (e) {
+    showToast(e.message, 'error');
   }
 }
 
-async function disconnectOAuth(provider) {
-  if (!confirm(`Disconnect ${provider}? You can reconnect anytime.`)) return;
+async function saveGitHub() {
   try {
-    await api(`/dashboard/api/onboarding/disconnect/${provider}`, {method: 'POST'});
-    showToast(`${provider} disconnected.`, 'info');
-    await loadStatus();
+    const tokenValue = document.getElementById('github-token').value.trim();
+    const org = document.getElementById('github-org').value.trim();
+    await api('/dashboard/api/onboarding/integrations/github', {
+      method: 'POST',
+      body: JSON.stringify({token: tokenValue, org}),
+    });
+    setChip('status-github', true, 'Connected');
+    showToast('GitHub credentials saved.');
     await loadChecklist();
-  } catch (err) {
-    showToast(`Failed to disconnect: ${err.message}`, 'error');
+  } catch (e) {
+    showToast(`GitHub save failed: ${e.message}`, 'error');
+  }
+}
+
+async function saveDatadog() {
+  try {
+    const apiKey = document.getElementById('datadog-api-key').value.trim();
+    const appKey = document.getElementById('datadog-app-key').value.trim();
+    const site = document.getElementById('datadog-site').value.trim() || 'datadoghq.com';
+    await api('/dashboard/api/onboarding/integrations/datadog', {
+      method: 'POST',
+      body: JSON.stringify({api_key: apiKey, app_key: appKey, site}),
+    });
+    setChip('status-datadog', true, 'Connected');
+    showToast('Datadog credentials saved.');
+    await loadChecklist();
+  } catch (e) {
+    showToast(`Datadog save failed: ${e.message}`, 'error');
+  }
+}
+
+async function verifyIntegration(name) {
+  try {
+    setVerify(name, true, 'Testing...');
+    const res = await api(`/dashboard/api/onboarding/test-integration/${name}`, {method: 'POST'});
+    setVerify(name, true, res.details || 'Connection verified');
+    setChip(`status-${name}`, true, 'Verified');
+    await loadChecklist();
+  } catch (e) {
+    setVerify(name, false, e.message);
+    document.getElementById(`status-${name}`).classList.add('bad');
+    showToast(`${name} verification failed: ${e.message}`, 'error');
+  }
+}
+
+async function importPagerDutyServices() {
+  try {
+    const res = await api('/dashboard/api/onboarding/integrations/pagerduty/import-services', {method: 'POST'});
+    await loadServices();
+    await loadChecklist();
+    showToast(`Imported ${res.imported} PagerDuty services.`);
+  } catch (e) {
+    showToast(`Service import failed: ${e.message}`, 'error');
+  }
+}
+
+async function loadServices() {
+  const data = await api('/dashboard/api/services');
+  const list = document.getElementById('services-list');
+  list.innerHTML = '';
+  const services = data.services || [];
+  for (const svc of services) {
+    const li = document.createElement('li');
+    li.className = 'flex items-center justify-between px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm';
+    const source = svc.source ? ` · ${svc.source}` : '';
+    li.innerHTML = `<span>${svc.name}${source}</span><button class="text-xs text-red-700" data-id="${svc.id}">Remove</button>`;
+    li.querySelector('button').addEventListener('click', async () => {
+      await api(`/dashboard/api/services/${encodeURIComponent(svc.id)}`, {method: 'DELETE'});
+      await loadServices();
+      await loadChecklist();
+    });
+    list.appendChild(li);
+  }
+  setChip('status-services', services.length > 0, `${services.length} services`);
+}
+
+async function addService() {
+  const input = document.getElementById('service-name');
+  const serviceName = input.value.trim();
+  if (!serviceName) return;
+  try {
+    await api('/dashboard/api/services', {
+      method: 'POST',
+      body: JSON.stringify({name: serviceName})
+    });
+    input.value = '';
+    await loadServices();
+    await loadChecklist();
+  } catch (e) {
+    showToast(`Add service failed: ${e.message}`, 'error');
   }
 }
 
@@ -255,175 +310,87 @@ async function loadChecklist() {
   const data = await api('/dashboard/api/onboarding/checklist');
   const ul = document.getElementById('checklist');
   ul.innerHTML = '';
-  let doneCount = 0;
-  data.steps.forEach(step => {
+  let done = 0;
+  for (const step of data.steps) {
     const li = document.createElement('li');
-    li.className = 'flex items-center justify-between';
-    li.innerHTML = `
-      <div class="flex items-center gap-2">
-        <span class="inline-flex w-5 h-5 items-center justify-center rounded-full border ${step.done ? 'bg-green-500/20 border-green-400 text-green-400' : 'bg-white border-slate-200 text-muted'}">
-          ${step.done ? '✓' : '•'}
-        </span>
-        <span class="text-sm ${step.done ? '' : 'text-muted'}">${step.title}</span>
-      </div>
-      ${step.done ? '' : `<button class="text-xs text-brand hover:underline" onclick="toggleStep('${step.id}', true)">Mark done</button>`}
-    `;
+    li.className = 'flex items-center justify-between text-sm';
+    li.innerHTML = `<span class="${step.done ? 'text-slate-900' : 'text-slate-500'}">${step.done ? '✓' : '○'} ${step.title}</span>`;
     ul.appendChild(li);
-    if (step.done) doneCount++;
-  });
-
-  const pct = Math.round((doneCount / data.steps.length) * 100);
+    if (step.done) done++;
+  }
+  const pct = Math.round((done / data.steps.length) * 100);
   document.getElementById('progress-label').textContent = `${pct}%`;
   document.getElementById('progress-bar').style.width = `${pct}%`;
-  document.getElementById('checklist-loading').classList.add('hidden');
-  document.getElementById('checklist-loaded').classList.remove('hidden');
-}
-
-async function toggleStep(step, done) {
-  await api(`/dashboard/api/onboarding/checklist/${step}?done=${done}`, {method: 'POST'});
-  await loadChecklist();
 }
 
 async function loadStatus() {
   const st = await api('/dashboard/api/onboarding/status');
-  if (!st.authenticated) return;
-
-  const pd = st.integrations.pagerduty;
-  const sl = st.integrations.slack;
-  const details = st.details || {};
-
-  // PagerDuty status
-  document.getElementById('pd-status').textContent = pd ? 'Connected' : 'Not connected';
-  document.getElementById('pd-status').className = `text-xs px-2 py-1 rounded border ${pd ? 'bg-green-500/20 border-green-400 text-green-400' : 'bg-white border-slate-200 text-muted'}`;
-  document.getElementById('pd-not-connected').classList.toggle('hidden', pd);
-  document.getElementById('pd-connected-info').classList.toggle('hidden', !pd);
-  if (pd && details.pagerduty) {
-    const sub = details.pagerduty.subdomain;
-    if (sub) document.getElementById('pd-subdomain').textContent = sub;
-    const at = details.pagerduty.connected_at;
-    if (at) document.getElementById('pd-connected-at').textContent = `Connected ${new Date(at).toLocaleDateString()}`;
-  }
-
-  // Slack status
-  document.getElementById('slack-status').textContent = sl ? 'Connected' : 'Not connected';
-  document.getElementById('slack-status').className = `text-xs px-2 py-1 rounded border ${sl ? 'bg-green-500/20 border-green-400 text-green-400' : 'bg-white border-slate-200 text-muted'}`;
-  document.getElementById('slack-not-connected').classList.toggle('hidden', sl);
-  document.getElementById('slack-connected-info').classList.toggle('hidden', !sl);
-  if (sl && details.slack) {
-    const ws = details.slack.workspace;
-    if (ws) document.getElementById('slack-workspace').textContent = ws;
-    else document.getElementById('slack-workspace').textContent = 'Slack workspace';
-    const at = details.slack.connected_at;
-    if (at) document.getElementById('slack-connected-at').textContent = `Connected ${new Date(at).toLocaleDateString()}`;
-  }
-
-  // Checklist auto-marking (best-effort)
-  if (pd) await api('/dashboard/api/onboarding/checklist/connect_alerting?done=true', {method: 'POST'});
-  if (sl) await api('/dashboard/api/onboarding/checklist/connect_slack?done=true', {method: 'POST'});
-}
-
-function getServices() {
-  try { return JSON.parse(localStorage.getItem('onboarding_services') || '[]'); } catch { return []; }
-}
-
-function renderServices() {
-  const list = document.getElementById('services-list');
-  const services = getServices();
-  list.innerHTML = '';
-  services.forEach((s, i) => {
-    const li = document.createElement('li');
-    li.className = 'flex items-center justify-between bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm';
-    li.innerHTML = `<span>${s}</span><button class="text-xs text-red-400 hover:underline" onclick="removeService(${i})">Remove</button>`;
-    list.appendChild(li);
-  });
-  if (services.length > 0) {
-    document.getElementById('services-status').textContent = `${services.length} added`;
-    document.getElementById('services-status').className = 'text-xs px-2 py-1 rounded border bg-green-500/20 border-green-400 text-green-400';
-  }
-}
-
-async function addService() {
-  const input = document.getElementById('service-name');
-  const name = input.value.trim();
-  if (!name) return;
-  const services = getServices();
-  if (!services.includes(name)) {
-    services.push(name);
-    localStorage.setItem('onboarding_services', JSON.stringify(services));
-  }
-  input.value = '';
-  renderServices();
-  await api('/dashboard/api/onboarding/checklist/add_services?done=true', {method: 'POST'}).catch(() => {});
-  await loadChecklist();
-}
-
-function removeService(i) {
-  const services = getServices();
-  services.splice(i, 1);
-  localStorage.setItem('onboarding_services', JSON.stringify(services));
-  renderServices();
+  setChip('status-pagerduty', !!st.integrations.pagerduty, st.integrations.pagerduty ? 'Connected' : 'Not connected');
+  setChip('status-slack', !!st.integrations.slack, st.integrations.slack ? 'Connected' : 'Not connected');
+  setChip('status-github', !!st.integrations.github, st.integrations.github ? 'Connected' : 'Not connected');
+  setChip('status-datadog', !!st.integrations.datadog, st.integrations.datadog ? 'Connected' : 'Not connected');
+  return st;
 }
 
 async function runTestIncident() {
-  document.getElementById('test-status').textContent = 'Running…';
   try {
-    const res = await api('/dashboard/api/onboarding/test-incident', {method: 'POST'});
-    document.getElementById('test-status').textContent = 'Processing';
-    const link = document.getElementById('test-link');
-    link.href = `/dashboard/incident/${res.incident_id}`;
-    link.classList.remove('hidden');
-    await loadChecklist();
+    setChip('status-test', false, 'Running');
+    const serviceName = (document.getElementById('service-name').value || 'payments-api').trim() || 'payments-api';
+    const res = await api(`/dashboard/api/onboarding/test-incident?service_name=${encodeURIComponent(serviceName)}`, {method: 'POST'});
+    setChip('status-test', true, 'Processing');
+    document.getElementById('incident-link').href = `/dashboard/incident/${res.incident_id}`;
+    document.getElementById('incident-link').classList.remove('hidden');
+    await pollIncident(res.incident_id);
   } catch (e) {
-    document.getElementById('test-status').textContent = 'Failed';
-    alert(`Failed to start test incident: ${e.message}`);
+    setVerify('test', false, e.message);
+    showToast(`Test incident failed: ${e.message}`, 'error');
   }
 }
 
-// Show feedback from OAuth callback redirects
+async function pollIncident(incidentId) {
+  for (let i = 0; i < 45; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    try {
+      const st = await api(`/dashboard/api/onboarding/test-incident/${incidentId}`);
+      if (st.status === 'completed') {
+        setChip('status-test', true, 'Completed');
+        window.location.href = `/dashboard/onboarding-success?incident_id=${encodeURIComponent(incidentId)}`;
+        return;
+      }
+      if (st.status === 'error') {
+        setChip('status-test', false, 'Failed');
+        setVerify('test', false, st.error_message || 'Processing failed');
+        return;
+      }
+    } catch (_) {}
+  }
+  setVerify('test', false, 'Timed out waiting for completion. You can check the incident page.');
+}
+
 function checkOAuthParams() {
-  const params = new URLSearchParams(window.location.search);
-  const errorMessages = {
-    denied: 'OAuth authorization was denied.',
-    invalid: 'Invalid OAuth callback (missing parameters).',
-    state: 'OAuth session expired. Please try again.',
-    token: 'Failed to exchange OAuth token. Please try again.',
-  };
-
-  if (params.get('pd') === 'connected') {
-    showToast('PagerDuty connected successfully!', 'info');
-  } else if (params.get('pd_error')) {
-    showToast(`PagerDuty: ${errorMessages[params.get('pd_error')] || 'Connection failed.'}`, 'error');
-  }
-
-  if (params.get('slack') === 'connected') {
-    showToast('Slack connected successfully!', 'info');
-  } else if (params.get('slack_error')) {
-    showToast(`Slack: ${errorMessages[params.get('slack_error')] || 'Connection failed.'}`, 'error');
-  }
-
-  // Clean URL params
-  if (params.toString()) {
-    window.history.replaceState({}, '', window.location.pathname);
-  }
+  const p = new URLSearchParams(window.location.search);
+  if (p.get('pd') === 'connected') showToast('PagerDuty connected.');
+  if (p.get('slack') === 'connected') showToast('Slack connected.');
+  if (p.get('pd_error')) showToast(`PagerDuty connect error: ${p.get('pd_error')}`, 'error');
+  if (p.get('slack_error')) showToast(`Slack connect error: ${p.get('slack_error')}`, 'error');
+  if (p.toString()) window.history.replaceState({}, '', window.location.pathname);
 }
 
-// Init
 (async () => {
   checkOAuthParams();
-  // Auto-mark create_account since user is already logged in
-  await api('/dashboard/api/onboarding/checklist/create_account?done=true', {method: 'POST'}).catch(() => {});
   try {
-    await loadStatus();
-  } catch (e) {
-    console.warn('Status load failed:', e);
-  }
-  try {
+    const st = await loadStatus();
     await loadChecklist();
+    await loadServices();
+    if (st.integrations.pagerduty) {
+      const serviceData = await api('/dashboard/api/services');
+      if ((serviceData.services || []).length === 0) {
+        await importPagerDutyServices();
+      }
+    }
   } catch (e) {
-    console.warn('Checklist load failed:', e);
-    document.getElementById('checklist').innerHTML = '<li class="text-sm text-muted">Could not load checklist. Try refreshing.</li>';
+    showToast(e.message, 'error');
   }
-  renderServices();
 })();
 </script>
 {% endblock %}

@@ -22,6 +22,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from ..config import get_settings
+from ..onboarding import oauth_state_store
 from ..security import encrypt_json
 from .middleware import AuthContext, get_auth_context, require_role
 from .models import UserRole
@@ -30,9 +31,6 @@ from .service import auth_service
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/integrations/oauth/pagerduty", tags=["integrations"])
-
-# In-memory state storage (replace with Redis in production)
-_pd_oauth_states: dict[str, dict] = {}
 
 
 class PagerDutyToken(BaseModel):
@@ -187,13 +185,17 @@ async def start_pagerduty_oauth(
     state = secrets.token_urlsafe(32)
     redirect_uri = f"{settings.app_url}/api/integrations/oauth/pagerduty/callback"
 
-    _pd_oauth_states[state] = {
-        "tenant_id": auth.tenant_id,
-        "user_id": auth.user_id,
-        "redirect_uri": redirect_uri,
-        "return_to": return_to or f"{settings.app_url}/dashboard/onboarding-wizard",
-        "created_at": datetime.now(UTC).isoformat(),
-    }
+    # Best-effort cleanup so stale states do not accumulate.
+    await oauth_state_store.cleanup_expired()
+    await oauth_state_store.save(
+        provider="pagerduty",
+        state=state,
+        tenant_id=str(auth.tenant_id),
+        user_id=str(auth.user_id),
+        redirect_uri=redirect_uri,
+        return_to=return_to or f"{settings.app_url}/dashboard/onboarding-wizard",
+        expires_at=datetime.now(UTC) + timedelta(minutes=15),
+    )
 
     authorize_url = oauth.get_authorization_url(state, redirect_uri)
 
@@ -226,7 +228,7 @@ async def pagerduty_oauth_callback(
             url=f"{settings.app_url}/dashboard/onboarding-wizard?pd_error=invalid"
         )
 
-    state_data = _pd_oauth_states.pop(state, None)
+    state_data = await oauth_state_store.consume(provider="pagerduty", state=state)
     if not state_data:
         return RedirectResponse(
             url=f"{settings.app_url}/dashboard/onboarding-wizard?pd_error=state"
@@ -250,23 +252,6 @@ async def pagerduty_oauth_callback(
         token.access_token, webhook_url, signing_secret
     )
 
-    # Fetch account subdomain (best-effort)
-    pd_subdomain = ""
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(
-                "https://api.pagerduty.com/users/me",
-                headers={"Authorization": f"Bearer {token.access_token}"},
-            )
-            if resp.status_code == 200:
-                user_data = resp.json().get("user", {})
-                html_url = user_data.get("html_url", "")
-                # e.g. https://exciting.pagerduty.com/users/PXXXXXX
-                if ".pagerduty.com" in html_url:
-                    pd_subdomain = html_url.split("//")[1].split(".pagerduty.com")[0]
-    except Exception:
-        pass
-
     # Store encrypted token on tenant
     integration_record = {
         "oauth": {
@@ -275,7 +260,6 @@ async def pagerduty_oauth_callback(
             "expires_at": expires_at.isoformat() if expires_at else None,
             "token_type": token.token_type,
         },
-        "subdomain": pd_subdomain,
         "webhook": {
             "url": webhook_url,
             "subscription_id": subscription_id,
@@ -284,35 +268,10 @@ async def pagerduty_oauth_callback(
         "connected_at": datetime.now(UTC).isoformat(),
     }
 
-    # Persist to Supabase integration_configs table
-    try:
-        from ..db.supabase_db import get_db
-        db = get_db(use_admin=True)
-        db.client.table("integration_configs").upsert(
-            {
-                "tenant_id": state_data["tenant_id"],
-                "type": "pagerduty",
-                "name": "pagerduty-oauth",
-                "config": {"encrypted": encrypt_json(integration_record)},
-                "is_active": True,
-            },
-            on_conflict="tenant_id,type,name",
-        ).execute()
-        logger.info("pagerduty_oauth_saved", tenant_id=state_data["tenant_id"])
-    except Exception as e:
-        logger.error("pagerduty_oauth_save_failed", error=str(e))
-        return RedirectResponse(
-            url=f"{state_data['return_to']}?pd_error=token"
-        )
-
-    # Also update in-memory store (best-effort)
-    try:
-        await auth_service.update_tenant_integrations(
-            state_data["tenant_id"],
-            {"pagerduty": {"encrypted": encrypt_json(integration_record)}},
-        )
-    except ValueError:
-        logger.warning("pagerduty_oauth_inmemory_skip", tenant_id=state_data["tenant_id"])
+    await auth_service.update_tenant_integrations(
+        state_data["tenant_id"],
+        {"pagerduty": {"encrypted": encrypt_json(integration_record)}},
+    )
 
     # NOTE: existing PagerDutyAdapter reads signing secret from env settings.
     # This stored secret is for future multi-tenant support and auditing.
