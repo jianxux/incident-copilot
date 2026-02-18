@@ -4,6 +4,13 @@
 
 {% block content %}
 <style>
+  /* Use Inter consistently throughout the wizard — no serif mixing */
+  .min-h-screen h1,
+  .min-h-screen h2,
+  .min-h-screen h3,
+  .min-h-screen .font-display {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
   #wizard-toast {
     position: fixed; top: 1rem; right: 1rem; z-index: 9999;
     max-width: 28rem; padding: 0.75rem 1rem; border-radius: 0.5rem;
