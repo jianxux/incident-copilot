@@ -896,12 +896,14 @@ async def get_onboarding_status(
     }
 
     # Also check Supabase integration_configs for OAuth connections
+    details: dict[str, dict] = {}
     try:
         from ..db.supabase_db import get_db
+        from ..security.crypto import decrypt_json
         db = get_db(use_admin=True)
         rows = (
             db.client.table("integration_configs")
-            .select("type")
+            .select("type,config")
             .eq("tenant_id", tenant_id)
             .eq("is_active", True)
             .execute()
@@ -911,6 +913,23 @@ async def get_onboarding_status(
                 provider = row.get("type")
                 if provider and provider in result:
                     result[provider] = True
+                    # Extract display info from encrypted config
+                    try:
+                        config = row.get("config", {})
+                        encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
+                        if encrypted:
+                            decrypted = decrypt_json(encrypted)
+                            oauth = decrypted.get("oauth", {})
+                            team = oauth.get("team", {})
+                            detail = {}
+                            if team and isinstance(team, dict):
+                                detail["workspace"] = team.get("name", "")
+                            if oauth.get("scope"):
+                                detail["scopes"] = oauth["scope"]
+                            detail["connected_at"] = decrypted.get("connected_at", "")
+                            details[provider] = detail
+                    except Exception:
+                        details[provider] = {}
     except Exception:
         pass  # Supabase unavailable — fall back to in-memory only
 
@@ -918,7 +937,26 @@ async def get_onboarding_status(
         "authenticated": True,
         "tenant": {"id": tenant_id},
         "integrations": result,
+        "details": details,
     }
+
+
+@router.post("/api/onboarding/disconnect/{provider}")
+async def disconnect_integration(
+    provider: str,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Disconnect an OAuth integration."""
+    tenant_id = auth.tenant_id or "default"
+    try:
+        from ..db.supabase_db import get_db
+        db = get_db(use_admin=True)
+        db.client.table("integration_configs").delete().eq(
+            "tenant_id", tenant_id
+        ).eq("type", provider).execute()
+        return {"ok": True, "provider": provider}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/api/onboarding/test-incident")
