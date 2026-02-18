@@ -76,12 +76,8 @@
           </div>
           <div id="pd-connected-info" class="hidden">
             <div class="mt-4 p-4 bg-white rounded-lg border border-green-200">
-              <div class="text-sm font-medium text-green-700">✓ PagerDuty connected</div>
+              <div class="text-sm font-medium text-green-700">✓ Connected to <span id="pd-subdomain" class="font-semibold">PagerDuty</span></div>
               <div class="text-xs text-muted mt-1" id="pd-connected-at"></div>
-            </div>
-            <div class="mt-4 p-4 bg-white rounded-lg">
-              <div class="text-sm font-medium mb-1">Webhook URL</div>
-              <code id="webhook-url-connected" class="text-sm text-green-400 break-all">{{ webhook_url }}</code>
             </div>
           </div>
         </div>
@@ -295,6 +291,8 @@ async function loadStatus() {
   document.getElementById('pd-not-connected').classList.toggle('hidden', pd);
   document.getElementById('pd-connected-info').classList.toggle('hidden', !pd);
   if (pd && details.pagerduty) {
+    const sub = details.pagerduty.subdomain;
+    if (sub) document.getElementById('pd-subdomain').textContent = sub;
     const at = details.pagerduty.connected_at;
     if (at) document.getElementById('pd-connected-at').textContent = `Connected ${new Date(at).toLocaleDateString()}`;
   }
