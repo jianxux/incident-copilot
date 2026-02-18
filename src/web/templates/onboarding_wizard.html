@@ -325,10 +325,24 @@ async function loadChecklist() {
 
 async function loadStatus() {
   const st = await api('/dashboard/api/onboarding/status');
-  setChip('status-pagerduty', !!st.integrations.pagerduty, st.integrations.pagerduty ? 'Connected' : 'Not connected');
-  setChip('status-slack', !!st.integrations.slack, st.integrations.slack ? 'Connected' : 'Not connected');
-  setChip('status-github', !!st.integrations.github, st.integrations.github ? 'Connected' : 'Not connected');
-  setChip('status-datadog', !!st.integrations.datadog, st.integrations.datadog ? 'Connected' : 'Not connected');
+  const details = st.details || {};
+
+  function connLabel(provider) {
+    if (!st.integrations[provider]) return 'Not connected';
+    const d = details[provider] || {};
+    const parts = ['Connected'];
+    if (d.subdomain) parts.push(`· ${d.subdomain}.pagerduty.com`);
+    if (d.workspace) parts.push(`· ${d.workspace}`);
+    if (d.connected_at) {
+      try { parts.push(`· ${new Date(d.connected_at).toLocaleDateString()}`); } catch(e) {}
+    }
+    return parts.join(' ');
+  }
+
+  setChip('status-pagerduty', !!st.integrations.pagerduty, connLabel('pagerduty'));
+  setChip('status-slack', !!st.integrations.slack, connLabel('slack'));
+  setChip('status-github', !!st.integrations.github, connLabel('github'));
+  setChip('status-datadog', !!st.integrations.datadog, connLabel('datadog'));
   return st;
 }
 
