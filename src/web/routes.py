@@ -1283,6 +1283,112 @@ async def import_pagerduty_services(
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+@router.post("/api/onboarding/integrations/github")
+async def save_github_integration(
+    request: Request,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Save GitHub PAT and org for deploy and repo context."""
+    tenant_id = auth.tenant_id or "default"
+    body = await request.json()
+    token_val = body.get("token", "").strip()
+    org = body.get("org", "").strip()
+
+    if not token_val:
+        raise HTTPException(status_code=400, detail="GitHub token is required")
+
+    try:
+        from ..db.supabase_db import get_db
+        from ..security.crypto import encrypt_json
+
+        db = get_db(use_admin=True)
+        encrypted = encrypt_json({"token": token_val, "org": org})
+        db.client.table("integration_configs").upsert({
+            "tenant_id": tenant_id,
+            "type": "github",
+            "config": {"encrypted": encrypted},
+            "is_active": True,
+        }, on_conflict="tenant_id,type").execute()
+
+        from ..onboarding import checklist_store
+        await checklist_store.set_step(tenant_id, "connect_github", True)
+
+        return {"ok": True, "provider": "github"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("save_github_failed", error=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.post("/api/onboarding/integrations/datadog")
+async def save_datadog_integration(
+    request: Request,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Save Datadog API/App keys."""
+    tenant_id = auth.tenant_id or "default"
+    body = await request.json()
+    api_key = body.get("api_key", "").strip()
+    app_key = body.get("app_key", "").strip()
+    site = body.get("site", "datadoghq.com").strip()
+
+    if not api_key:
+        raise HTTPException(status_code=400, detail="Datadog API key is required")
+
+    try:
+        from ..db.supabase_db import get_db
+        from ..security.crypto import encrypt_json
+
+        db = get_db(use_admin=True)
+        encrypted = encrypt_json({"api_key": api_key, "app_key": app_key, "site": site})
+        db.client.table("integration_configs").upsert({
+            "tenant_id": tenant_id,
+            "type": "datadog",
+            "config": {"encrypted": encrypted},
+            "is_active": True,
+        }, on_conflict="tenant_id,type").execute()
+
+        from ..onboarding import checklist_store
+        await checklist_store.set_step(tenant_id, "connect_datadog", True)
+
+        return {"ok": True, "provider": "datadog"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("save_datadog_failed", error=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/api/onboarding/test-incident/{incident_id}")
+async def get_test_incident_status(
+    incident_id: str,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Poll for test incident processing status."""
+    try:
+        from ..db.supabase_db import get_db
+
+        db = get_db(use_admin=True)
+        rows = db.client.table("incidents").select("id,status,title,verdict").eq(
+            "id", incident_id
+        ).limit(1).execute()
+
+        if not rows.data:
+            return {"incident_id": incident_id, "status": "processing"}
+
+        incident = rows.data[0]
+        status = "completed" if incident.get("verdict") else "processing"
+        return {
+            "incident_id": incident_id,
+            "status": status,
+            "title": incident.get("title"),
+            "verdict": incident.get("verdict"),
+        }
+    except Exception:
+        return {"incident_id": incident_id, "status": "processing"}
+
+
 @router.post("/api/onboarding/disconnect/{provider}")
 async def disconnect_integration(
     provider: str,
