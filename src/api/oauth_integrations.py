@@ -60,7 +60,13 @@ async def connect_provider(
         )
 
     settings = get_settings()
-    redirect_uri = f"{settings.app_url}/api/integrations/{resolved}/callback"
+    # Some providers (PagerDuty) have legacy callback URLs registered in their OAuth app settings.
+    # Map them to maintain compatibility.
+    legacy_callback_map = {
+        "pagerduty": f"{settings.app_url}/api/integrations/oauth/pagerduty/callback",
+        "slack": f"{settings.app_url}/api/integrations/oauth/slack/callback",
+    }
+    redirect_uri = legacy_callback_map.get(resolved, f"{settings.app_url}/api/integrations/{resolved}/callback")
     state = await oauth_token_store.save_state(
         provider=resolved,
         tenant_id=auth.tenant_id,
@@ -90,6 +96,17 @@ async def connect_provider(
         return {"redirect_url": authorize_url}
 
     return RedirectResponse(url=authorize_url)
+
+
+@router.get("/oauth/{provider}/callback")
+async def callback_provider_legacy(
+    provider: str,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+):
+    """Legacy callback path alias — delegates to generic handler."""
+    return await callback_provider(provider=provider, code=code, state=state, error=error)
 
 
 @router.get("/{provider}/callback")
