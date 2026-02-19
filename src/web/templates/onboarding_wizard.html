@@ -88,17 +88,13 @@
         <div class="step-card">
           <div class="flex items-start justify-between gap-4">
             <div>
-              <h2 class="text-lg font-semibold text-slate-900">3) Connect GitHub</h2>
-              <p class="text-sm text-slate-600 mt-1">Provide a PAT and organization for deploy and repo context.</p>
+              <h2 class="text-lg font-semibold text-slate-900">3) Connect GitHub <span style="font-size:0.75rem;font-weight:normal;color:#94a3b8;">(optional)</span></h2>
+              <p class="text-sm text-slate-600 mt-1">Shows recent code changes when incidents fire — helps identify if a deploy caused the issue.</p>
             </div>
             <span id="status-github" class="status-chip">Checking…</span>
           </div>
-          <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <input id="github-token" class="px-3 py-2 rounded-lg border border-slate-300" placeholder="GitHub token" type="password" />
-            <input id="github-org" class="px-3 py-2 rounded-lg border border-slate-300" placeholder="GitHub organization" />
-          </div>
-          <div class="mt-3 flex flex-wrap gap-2">
-            <button class="px-4 py-2 rounded-lg text-white font-semibold" style="background: #1f2937;" onclick="saveGitHub()">Save GitHub</button>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button id="btn-connect-github" class="px-4 py-2 rounded-lg text-white font-semibold" style="background: #1f2937;" onclick="startOAuth('github')">Connect GitHub</button>
             <button class="px-4 py-2 rounded-lg border border-slate-300" onclick="verifyIntegration('github')">Test Connection</button>
           </div>
           <div id="verify-github" class="verify-line"></div>
@@ -107,8 +103,8 @@
         <div class="step-card">
           <div class="flex items-start justify-between gap-4">
             <div>
-              <h2 class="text-lg font-semibold text-slate-900">4) Connect Datadog</h2>
-              <p class="text-sm text-slate-600 mt-1">Store API/App keys and verify log query access.</p>
+              <h2 class="text-lg font-semibold text-slate-900">4) Connect Datadog <span style="font-size:0.75rem;font-weight:normal;color:#94a3b8;">(optional)</span></h2>
+              <p class="text-sm text-slate-600 mt-1">Pulls relevant logs and metrics when incidents fire — helps with faster root cause analysis.</p>
             </div>
             <span id="status-datadog" class="status-chip">Checking…</span>
           </div>
@@ -199,37 +195,27 @@ function setVerify(name, ok, text) {
 }
 
 async function startOAuth(provider) {
-  const map = {
+  // Try generic OAuth integrations endpoint first, fall back to legacy per-provider routes
+  const returnTo = encodeURIComponent(window.location.pathname);
+  const genericUrl = `/api/integrations/${provider}/connect?return_to=${returnTo}`;
+  const legacyMap = {
     pagerduty: '/api/integrations/oauth/pagerduty/start',
     slack: '/api/integrations/oauth/slack/start'
   };
-  const url = map[provider];
-  if (!url) return;
   try {
-    const res = await fetch(url, {
+    let res = await fetch(genericUrl, {
       headers: {'Authorization': `Bearer ${token()}`, 'Accept': 'application/json'}
     });
+    if (!res.ok && legacyMap[provider]) {
+      res = await fetch(legacyMap[provider], {
+        headers: {'Authorization': `Bearer ${token()}`, 'Accept': 'application/json'}
+      });
+    }
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
     window.location.href = data.redirect_url;
   } catch (e) {
     showToast(e.message, 'error');
-  }
-}
-
-async function saveGitHub() {
-  try {
-    const tokenValue = document.getElementById('github-token').value.trim();
-    const org = document.getElementById('github-org').value.trim();
-    await api('/dashboard/api/onboarding/integrations/github', {
-      method: 'POST',
-      body: JSON.stringify({token: tokenValue, org}),
-    });
-    setChip('status-github', true, 'Connected');
-    showToast('GitHub credentials saved.');
-    await loadChecklist();
-  } catch (e) {
-    showToast(`GitHub save failed: ${e.message}`, 'error');
   }
 }
 
@@ -358,7 +344,7 @@ async function loadStatus() {
   setChip('status-datadog', !!st.integrations.datadog, connLabel('datadog'));
 
   // Hide Connect button when already connected
-  for (const p of ['pagerduty', 'slack']) {
+  for (const p of ['pagerduty', 'slack', 'github']) {
     const conn = document.getElementById(`btn-connect-${p}`);
     if (conn) {
       conn.classList.toggle('hidden', !!st.integrations[p]);
@@ -415,6 +401,12 @@ function checkOAuthParams() {
   if (p.get('slack') === 'connected') showToast('Slack connected.');
   if (p.get('pd_error')) showToast(`PagerDuty connect error: ${p.get('pd_error')}`, 'error');
   if (p.get('slack_error')) showToast(`Slack connect error: ${p.get('slack_error')}`, 'error');
+  // Generic OAuth callback (used by GitHub and others)
+  if (p.get('oauth_provider') && p.get('oauth_result') === 'success') {
+    showToast(`${p.get('oauth_provider')} connected.`);
+  } else if (p.get('oauth_provider') && p.get('oauth_result') === 'error') {
+    showToast(`${p.get('oauth_provider')} connect error: ${p.get('oauth_reason') || 'unknown'}`, 'error');
+  }
   if (p.toString()) window.history.replaceState({}, '', window.location.pathname);
 }
 
