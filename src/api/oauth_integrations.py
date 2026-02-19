@@ -166,6 +166,21 @@ async def callback_provider(
         scopes=scopes,
     )
 
+    # Update onboarding checklist if applicable
+    checklist_map = {
+        "pagerduty": "connect_alerting",
+        "slack": "connect_slack",
+        "github": "connect_github",
+        "datadog": "connect_datadog",
+    }
+    checklist_step = checklist_map.get(resolved)
+    if checklist_step:
+        try:
+            from ..onboarding import checklist_store
+            await checklist_store.set_step(state_data.tenant_id, checklist_step, True)
+        except Exception:
+            logger.warning("checklist_update_failed", provider=resolved)
+
     return _redirect_result(
         base_url=state_data.return_to,
         provider=resolved,

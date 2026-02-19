@@ -1196,14 +1196,21 @@ async def test_integration(
         if provider == "pagerduty":
             import httpx
 
-            token = oauth.get("access_token") or decrypted.get("api_key", "")
+            oauth_token = oauth.get("access_token", "")
+            api_key = decrypted.get("api_key", "")
+            token = oauth_token or api_key
             subdomain = decrypted.get("subdomain", "unknown")
             if not token:
                 return {"ok": True, "details": f"Connected to {subdomain}.pagerduty.com (no token to verify)"}
+            # PagerDuty uses "Bearer" for OAuth tokens, "Token token=" for API keys
+            if oauth_token:
+                auth_header = f"Bearer {oauth_token}"
+            else:
+                auth_header = f"Token token={api_key}"
             async with httpx.AsyncClient(timeout=10) as client:
                 resp = await client.get(
                     "https://api.pagerduty.com/abilities",
-                    headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                    headers={"Authorization": auth_header, "Content-Type": "application/json"},
                 )
             if resp.status_code == 200:
                 return {"ok": True, "details": f"PagerDuty ({subdomain}) — API responding, {len(resp.json().get('abilities', []))} abilities"}
@@ -1295,9 +1302,17 @@ async def import_pagerduty_services(
 
         decrypted = decrypt_json(encrypted)
         oauth = decrypted.get("oauth", {})
-        token = oauth.get("access_token") or decrypted.get("api_key", "")
+        oauth_token = oauth.get("access_token", "")
+        api_key = decrypted.get("api_key", "")
+        token = oauth_token or api_key
         if not token:
             raise HTTPException(status_code=400, detail="No PagerDuty API token found")
+
+        # PagerDuty uses "Bearer" for OAuth tokens, "Token token=" for API keys
+        if oauth_token:
+            pd_auth = f"Bearer {oauth_token}"
+        else:
+            pd_auth = f"Token token={api_key}"
 
         # Fetch services from PagerDuty API
         import httpx
@@ -1306,7 +1321,7 @@ async def import_pagerduty_services(
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.get(
                 "https://api.pagerduty.com/services",
-                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                headers={"Authorization": pd_auth, "Content-Type": "application/json"},
                 params={"limit": 100},
             )
             if resp.status_code != 200:
