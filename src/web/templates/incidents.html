@@ -8,8 +8,31 @@
     <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">View, filter, and manage all incidents across your integrations.</p>
   </div>
   <div class="flex items-center gap-2">
+    <button onclick="exportCSV()" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-stone-200 dark:border-slate-700 bg-white/70 dark:bg-slate-900/60 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800 transition" title="Export filtered incidents to CSV">
+      <i class="fas fa-download"></i> Export CSV
+    </button>
     <span id="incident-count" class="text-xs text-slate-500 dark:text-slate-400"></span>
     <span class="text-xs text-slate-500 dark:text-slate-400">Auto-refresh · 30s</span>
+  </div>
+</div>
+
+<!-- Stats Bar -->
+<div id="stats-bar" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+  <div class="bg-white/70 dark:bg-slate-900/60 border border-stone-200/60 dark:border-slate-800 rounded-xl p-4">
+    <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Open</div>
+    <div id="stat-open" class="text-2xl font-bold text-slate-900 dark:text-white mt-1">—</div>
+  </div>
+  <div class="bg-white/70 dark:bg-slate-900/60 border border-stone-200/60 dark:border-slate-800 rounded-xl p-4">
+    <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Resolved Today</div>
+    <div id="stat-resolved" class="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">—</div>
+  </div>
+  <div class="bg-white/70 dark:bg-slate-900/60 border border-stone-200/60 dark:border-slate-800 rounded-xl p-4">
+    <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Avg MTTR</div>
+    <div id="stat-mttr" class="text-2xl font-bold text-slate-900 dark:text-white mt-1">—</div>
+  </div>
+  <div class="bg-white/70 dark:bg-slate-900/60 border border-stone-200/60 dark:border-slate-800 rounded-xl p-4">
+    <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">This Week</div>
+    <div id="stat-week" class="text-2xl font-bold text-slate-900 dark:text-white mt-1">—</div>
   </div>
 </div>
 
@@ -47,8 +70,8 @@
 <div class="bg-white/70 dark:bg-slate-900/60 border border-stone-200/60 dark:border-slate-800 rounded-xl overflow-hidden">
   <!-- Table header -->
   <div class="hidden sm:grid grid-cols-12 gap-2 px-5 py-3 bg-stone-50/80 dark:bg-slate-800/60 border-b border-stone-200/60 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-    <div class="col-span-4 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200" onclick="toggleSort('title')">
-      Title <i id="sort-title" class="fas fa-sort ml-1 opacity-40"></i>
+    <div class="col-span-3 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200" onclick="toggleSort('title')">
+      Incident <i id="sort-title" class="fas fa-sort ml-1 opacity-40"></i>
     </div>
     <div class="col-span-2 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200" onclick="toggleSort('service')">
       Service <i id="sort-service" class="fas fa-sort ml-1 opacity-40"></i>
@@ -56,13 +79,17 @@
     <div class="col-span-1 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200" onclick="toggleSort('severity')">
       Severity <i id="sort-severity" class="fas fa-sort ml-1 opacity-40"></i>
     </div>
-    <div class="col-span-2 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200" onclick="toggleSort('status')">
+    <div class="col-span-1 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200" onclick="toggleSort('status')">
       Status <i id="sort-status" class="fas fa-sort ml-1 opacity-40"></i>
+    </div>
+    <div class="col-span-1 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200" onclick="toggleSort('duration_seconds')">
+      Duration <i id="sort-duration_seconds" class="fas fa-sort ml-1 opacity-40"></i>
     </div>
     <div class="col-span-1">Source</div>
     <div class="col-span-2 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200" onclick="toggleSort('created_at')">
       Created <i id="sort-created_at" class="fas fa-sort ml-1 opacity-40"></i>
     </div>
+    <div class="col-span-1"></div>
   </div>
 
   <!-- Loading -->
@@ -75,8 +102,18 @@
     <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-stone-100 dark:bg-slate-800 mb-4">
       <i class="fas fa-shield-halved text-xl text-slate-400"></i>
     </div>
-    <h3 class="text-slate-800 dark:text-slate-100 font-semibold">No incidents found</h3>
-    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">No incidents match your filters, or none have been received yet.</p>
+    <h3 class="text-slate-800 dark:text-slate-100 font-semibold">No incidents yet</h3>
+    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1 max-w-md mx-auto">
+      Incidents appear here when alerts fire from your connected integrations (PagerDuty, Opsgenie, Datadog).
+    </p>
+    <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+      <a href="/dashboard/onboarding" class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white transition" style="background: #e05a3a;">
+        <i class="fas fa-plug mr-2"></i>Connect Integrations
+      </a>
+      <a href="/dashboard/onboarding" class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium border border-stone-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-stone-50 dark:hover:bg-slate-700 transition">
+        <i class="fas fa-flask mr-2"></i>Run Test Incident
+      </a>
+    </div>
   </div>
 
   <!-- Rows -->
@@ -139,6 +176,39 @@
         demo: 'fa-flask',
     };
 
+    // ---- Stats ----
+    function updateStats() {
+        const open = allIncidents.filter(i => i.status !== 'resolved' && i.status !== 'completed').length;
+        const today = new Date().toDateString();
+        const resolvedToday = allIncidents.filter(i =>
+            (i.status === 'resolved' || i.status === 'completed') &&
+            i.processed_at && new Date(i.processed_at).toDateString() === today
+        ).length;
+
+        const durations = allIncidents.filter(i => i.duration_seconds > 0).map(i => i.duration_seconds);
+        const avgMttr = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null;
+
+        const weekAgo = Date.now() - 7 * 86400000;
+        const thisWeek = allIncidents.filter(i => {
+            const t = new Date(i.triggered_at || i.created_at).getTime();
+            return t > weekAgo;
+        }).length;
+
+        document.getElementById('stat-open').textContent = open;
+        document.getElementById('stat-resolved').textContent = resolvedToday;
+        document.getElementById('stat-mttr').textContent = avgMttr ? formatDuration(avgMttr) : '—';
+        document.getElementById('stat-week').textContent = thisWeek;
+    }
+
+    function formatDuration(seconds) {
+        if (!seconds && seconds !== 0) return '—';
+        if (seconds < 60) return seconds + 's';
+        if (seconds < 3600) return Math.floor(seconds / 60) + 'm';
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        return h + 'h ' + (m ? m + 'm' : '');
+    }
+
     // ---- Fetch ----
     async function loadIncidents() {
         try {
@@ -146,6 +216,12 @@
             if (r.status === 401) { window.location.href = '/login?session_expired=1'; return; }
             const data = await r.json();
             allIncidents = (data && data.incidents) ? data.incidents : [];
+            // Normalize field names for filtering/sorting
+            allIncidents.forEach(i => {
+                i.service = i.service || i.service_name || '';
+                i.created_at = i.created_at || i.triggered_at;
+            });
+            updateStats();
             applyFilters();
         } catch(e) {
             console.error('Failed to load incidents:', e);
@@ -253,32 +329,48 @@
         const sevClass = severityColors[sev] || severityColors.unknown;
         const statClass = statusColors[stat] || statusColors.triggered;
         const srcIcon = sourceIcons[(i.source || '').toLowerCase()] || 'fa-circle-nodes';
-        const ago = timeAgo(i.created_at);
+        const ago = timeAgo(i.triggered_at || i.created_at);
         const id = i.incident_id || i.id;
+        const service = i.service || i.service_name || '—';
+        const duration = formatDuration(i.duration_seconds);
+        const verdict = i.verdict_summary ? `<div class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5"><i class="fas fa-robot mr-1 text-[#e05a3a]"></i>${esc(i.verdict_summary)}</div>` : '';
+        const sourceLink = i.source_url ? `<a href="${esc(i.source_url)}" target="_blank" onclick="event.stopPropagation()" class="hover:text-[#e05a3a] transition" title="Open in ${esc(i.source || 'source')}"><i class="fas ${srcIcon} text-sm"></i></a>` : `<i class="fas ${srcIcon} text-sm" title="${esc(i.source || '')}"></i>`;
 
         return `
         <a href="/dashboard/incident/${encodeURIComponent(id)}" class="block sm:grid grid-cols-12 gap-2 px-5 py-3.5 hover:bg-stone-50/80 dark:hover:bg-slate-800/60 transition cursor-pointer group">
-            <div class="col-span-4 font-medium text-sm text-slate-900 dark:text-white group-hover:text-brand transition truncate">
-                ${esc(i.title || 'Untitled')}
+            <div class="col-span-3 min-w-0">
+                <div class="font-medium text-sm text-slate-900 dark:text-white group-hover:text-brand transition truncate">
+                    ${esc(i.title || 'Untitled')}
+                </div>
+                ${verdict}
             </div>
             <div class="col-span-2 text-sm text-slate-600 dark:text-slate-300 truncate mt-1 sm:mt-0">
-                ${esc(i.service || '—')}
+                ${esc(service)}
             </div>
             <div class="col-span-1 mt-1 sm:mt-0">
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${sevClass}">
                     ${sev}
                 </span>
             </div>
-            <div class="col-span-2 mt-1 sm:mt-0">
+            <div class="col-span-1 mt-1 sm:mt-0">
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statClass}">
                     ${stat}
                 </span>
             </div>
-            <div class="col-span-1 text-slate-400 mt-1 sm:mt-0">
-                <i class="fas ${srcIcon} text-sm" title="${esc(i.source || '')}"></i>
+            <div class="col-span-1 text-xs text-slate-600 dark:text-slate-400 mt-1 sm:mt-0 font-mono">
+                ${duration}
             </div>
-            <div class="col-span-2 text-xs text-slate-500 dark:text-slate-400 mt-1 sm:mt-0" title="${esc(i.created_at || '')}">
+            <div class="col-span-1 text-slate-400 mt-1 sm:mt-0">
+                ${sourceLink}
+            </div>
+            <div class="col-span-2 text-xs text-slate-500 dark:text-slate-400 mt-1 sm:mt-0" title="${esc(i.triggered_at || i.created_at || '')}">
                 ${ago}
+            </div>
+            <div class="col-span-1 mt-1 sm:mt-0 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                ${stat !== 'resolved' && stat !== 'completed' ? `
+                    ${stat === 'triggered' ? `<button onclick="event.preventDefault();event.stopPropagation();quickAction('${esc(id)}','acknowledged')" class="px-2 py-0.5 text-xs rounded border border-amber-300 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition" title="Acknowledge">Ack</button>` : ''}
+                    <button onclick="event.preventDefault();event.stopPropagation();quickAction('${esc(id)}','resolved')" class="px-2 py-0.5 text-xs rounded border border-green-300 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/30 transition" title="Resolve">Resolve</button>
+                ` : ''}
             </div>
         </a>`;
     }
@@ -298,6 +390,52 @@
     // ---- Pagination ----
     window.changePage = function(delta) { currentPage += delta; render(); };
     window.goToPage = function(p) { currentPage = p; render(); };
+
+    // ---- CSV Export ----
+    window.exportCSV = function() {
+        const rows = [['Title', 'Service', 'Severity', 'Status', 'Source', 'Duration (s)', 'Created', 'Verdict']];
+        filtered.forEach(i => {
+            rows.push([
+                (i.title || '').replace(/"/g, '""'),
+                (i.service || ''),
+                (i.severity || ''),
+                (i.status || ''),
+                (i.source || ''),
+                (i.duration_seconds || ''),
+                (i.triggered_at || i.created_at || ''),
+                (i.verdict_summary || '').replace(/"/g, '""'),
+            ]);
+        });
+        const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `incidents-${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    // ---- Quick Actions ----
+    window.quickAction = async function(incidentId, newStatus) {
+        try {
+            const r = await fetch(`/dashboard/api/incidents/${encodeURIComponent(incidentId)}/status`, {
+                method: 'PATCH',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus }),
+            });
+            if (r.ok) {
+                // Update locally for instant feedback
+                const inc = allIncidents.find(i => (i.incident_id || i.id) === incidentId);
+                if (inc) {
+                    inc.status = newStatus;
+                    if (newStatus === 'resolved') inc.processed_at = new Date().toISOString();
+                }
+                updateStats();
+                applyFilters();
+            }
+        } catch(e) { console.error('Quick action failed:', e); }
+    };
 
     // ---- Event listeners ----
     document.getElementById('filter-search').addEventListener('input', debounce(applyFilters, 300));

@@ -241,19 +241,50 @@ async def api_incidents(request: Request):
     db = get_db(use_admin=True)
     rows = await db.list_processing_incidents(tenant_id=tenant_id, limit=100, offset=0)
 
+    def _format_incident(r: dict) -> dict:
+        triggered = r.get("triggered_at")
+        processed = r.get("processed_at")
+        duration_seconds = None
+        if triggered and processed:
+            try:
+                from datetime import datetime, timezone
+                t0 = datetime.fromisoformat(str(triggered).replace("Z", "+00:00"))
+                t1 = datetime.fromisoformat(str(processed).replace("Z", "+00:00"))
+                duration_seconds = int((t1 - t0).total_seconds())
+            except Exception:
+                pass
+
+        # Extract verdict summary from metadata if available
+        meta = r.get("metadata") or {}
+        verdict_summary = None
+        if isinstance(meta, dict):
+            verdict = meta.get("verdict") or meta.get("ai_verdict") or {}
+            if isinstance(verdict, dict):
+                verdict_summary = verdict.get("summary") or verdict.get("one_liner")
+            elif isinstance(verdict, str):
+                verdict_summary = verdict[:200]
+
+        return {
+            "incident_id": r["id"],
+            "title": r.get("title") or "",
+            "description": r.get("description") or "",
+            "service": r.get("service") or "",
+            "service_name": r.get("service") or "",  # backward compat
+            "severity": r.get("severity") or "medium",
+            "status": r.get("status") or "processing",
+            "source": r.get("source") or "",
+            "source_url": r.get("source_url") or "",
+            "source_id": r.get("source_id") or "",
+            "triggered_at": triggered,
+            "processed_at": processed,
+            "created_at": r.get("created_at"),
+            "duration_seconds": duration_seconds,
+            "verdict_summary": verdict_summary,
+            "error_message": r.get("error_message"),
+        }
+
     return {
-        "incidents": [
-            {
-                "incident_id": r["id"],
-                "title": r.get("title") or "",
-                "service_name": r.get("service") or "",
-                "severity": r.get("severity") or "medium",
-                "status": r.get("status") or "processing",
-                "triggered_at": r.get("triggered_at"),
-                "processed_at": r.get("processed_at"),
-            }
-            for r in rows
-        ]
+        "incidents": [_format_incident(r) for r in rows]
     }
 
 
@@ -868,6 +899,40 @@ async def sse_events(request: Request):
 async def api_incidents_dashboard_scope(request: Request):
     """Backward-compatible tenant-scoped incidents endpoint under /dashboard."""
     return await api_incidents(request)
+
+
+@router.patch("/api/incidents/{incident_id}/status")
+async def update_incident_status(
+    incident_id: str,
+    request: Request,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Update incident status (acknowledge/resolve) from dashboard."""
+    tenant_id = auth.tenant_id or "default"
+    body = await request.json()
+    new_status = body.get("status", "").strip()
+
+    if new_status not in ("acknowledged", "resolved", "triggered"):
+        raise HTTPException(status_code=400, detail="Invalid status. Use: triggered, acknowledged, resolved")
+
+    try:
+        from ..db.supabase_db import get_db
+
+        db = get_db(use_admin=True)
+        update_data: dict = {"status": new_status}
+        if new_status == "resolved":
+            from datetime import datetime, timezone
+            update_data["processed_at"] = datetime.now(timezone.utc).isoformat()
+
+        await db._to_thread(
+            lambda: db.client.table("incidents").update(update_data).eq(
+                "id", incident_id
+            ).eq("tenant_id", tenant_id).execute()
+        )
+        return {"ok": True, "incident_id": incident_id, "status": new_status}
+    except Exception as exc:
+        logger.warning("update_incident_status_failed", error=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.get("/api/stats")
