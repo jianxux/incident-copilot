@@ -43,7 +43,7 @@ from .billing.routes import router as billing_router
 from .config import get_settings
 from .copilot.adapters.slack_adapter import router as slack_copilot_router
 from .copilot.adapters.web_adapter import router as web_copilot_router
-# from .api.oauth_integrations import router as oauth_integrations_router  # disabled: uses missing integration_tokens table
+from .api.oauth_integrations import router as oauth_integrations_router
 _oauth_refresh_available = False
 try:
     from .integrations.oauth_refresh import (
@@ -242,7 +242,7 @@ def create_app() -> FastAPI:
     app.include_router(slack_oauth_router)
     app.include_router(sso_router)
     app.include_router(supabase_auth_router)
-    # app.include_router(oauth_integrations_router)  # disabled: uses missing integration_tokens table
+    app.include_router(oauth_integrations_router)
     app.include_router(billing_router)
     app.include_router(webhooks_router)
     app.include_router(runbooks_router)
