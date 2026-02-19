@@ -343,11 +343,15 @@ async function loadStatus() {
   setChip('status-github', !!st.integrations.github, connLabel('github'));
   setChip('status-datadog', !!st.integrations.datadog, connLabel('datadog'));
 
-  // Hide Connect button when already connected
+  // Show Connect or Reconnect button depending on status
   for (const p of ['pagerduty', 'slack', 'github']) {
     const conn = document.getElementById(`btn-connect-${p}`);
     if (conn) {
-      conn.classList.toggle('hidden', !!st.integrations[p]);
+      if (st.integrations[p]) {
+        conn.textContent = `Reconnect ${conn.textContent.replace('Connect ', '').replace('Reconnect ', '')}`;
+        conn.style.opacity = '0.8';
+      }
+      // Always show the button so users can reconnect
     }
   }
 
