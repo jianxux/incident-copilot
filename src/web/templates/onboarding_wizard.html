@@ -195,27 +195,17 @@ function setVerify(name, ok, text) {
 }
 
 async function startOAuth(provider) {
-  // Try generic OAuth integrations endpoint first, fall back to legacy per-provider routes
   const returnTo = encodeURIComponent(window.location.pathname);
-  const genericUrl = `/api/integrations/${provider}/connect?return_to=${returnTo}`;
-  const legacyMap = {
-    pagerduty: '/api/integrations/oauth/pagerduty/start',
-    slack: '/api/integrations/oauth/slack/start'
-  };
+  const url = `/api/integrations/${provider}/connect?return_to=${returnTo}`;
   try {
-    let res = await fetch(genericUrl, {
+    const res = await fetch(url, {
       headers: {'Authorization': `Bearer ${token()}`, 'Accept': 'application/json'}
     });
-    if (!res.ok && legacyMap[provider]) {
-      res = await fetch(legacyMap[provider], {
-        headers: {'Authorization': `Bearer ${token()}`, 'Accept': 'application/json'}
-      });
-    }
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
     window.location.href = data.redirect_url;
   } catch (e) {
-    showToast(e.message, 'error');
+    showToast(`${provider} connect failed: ${e.message}`, 'error');
   }
 }
 
