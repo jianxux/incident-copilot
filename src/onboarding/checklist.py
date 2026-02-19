@@ -16,6 +16,9 @@ CHECKLIST_STEPS = [
     "go_live",
 ]
 
+# Optional steps don't count toward progress percentage
+OPTIONAL_STEPS = {"connect_github", "connect_datadog"}
+
 
 @dataclass
 class OnboardingChecklist:
@@ -35,8 +38,9 @@ class OnboardingChecklist:
 
     @property
     def progress(self) -> float:
-        total = len(CHECKLIST_STEPS)
-        done = sum(1 for s in CHECKLIST_STEPS if self.completed.get(s))
+        required = [s for s in CHECKLIST_STEPS if s not in OPTIONAL_STEPS]
+        total = len(required)
+        done = sum(1 for s in required if self.completed.get(s))
         return done / total if total else 0.0
 
     def to_dict(self) -> dict:
@@ -47,6 +51,7 @@ class OnboardingChecklist:
                     "id": s,
                     "title": _title(s),
                     "done": bool(self.completed.get(s)),
+                    "optional": s in OPTIONAL_STEPS,
                 }
                 for s in CHECKLIST_STEPS
             ],
@@ -60,8 +65,8 @@ def _title(step: str) -> str:
         "create_account": "Create account",
         "connect_alerting": "Connect alerting (PagerDuty/Opsgenie)",
         "connect_slack": "Connect Slack",
-        "connect_github": "Connect GitHub",
-        "connect_datadog": "Connect Datadog",
+        "connect_github": "Connect GitHub (optional)",
+        "connect_datadog": "Connect Datadog (optional)",
         "add_services": "Add services",
         "run_test": "Run a test incident",
         "go_live": "Go live",
