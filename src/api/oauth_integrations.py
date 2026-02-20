@@ -301,18 +301,18 @@ async def provider_test(
         async with httpx.AsyncClient(timeout=10.0) as client:
             if resolved == "pagerduty":
                 resp = await client.get(
-                    "https://api.pagerduty.com/users/me",
+                    "https://api.pagerduty.com/services?limit=1",
                     headers={
                         "Authorization": f"Bearer {token.access_token}",
                         "Accept": "application/vnd.pagerduty+json;version=2",
                     },
                 )
                 if resp.status_code == 200:
-                    user = resp.json().get("user", {})
+                    svc_count = resp.json().get("total", 0)
                     return {
                         "provider": resolved,
                         "ok": True,
-                        "details": f"PagerDuty — authenticated as {user.get('name', user.get('email', 'unknown'))}",
+                        "details": f"PagerDuty — API responding, {svc_count} services found",
                     }
                 return {
                     "provider": resolved,

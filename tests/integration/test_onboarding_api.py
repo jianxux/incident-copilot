@@ -126,7 +126,7 @@ def test_test_integration_pagerduty_users_me_success(authed_client, monkeypatch)
 
     async def _mock_get(self, url, headers=None):
         calls.append(url)
-        return _Resp(200, {"user": {"name": "SRE User", "email": "sre@example.com"}})
+        return _Resp(200, {"services": [], "total": 5})
 
     monkeypatch.setattr("httpx.AsyncClient.get", _mock_get)
     _run(
@@ -142,8 +142,8 @@ def test_test_integration_pagerduty_users_me_success(authed_client, monkeypatch)
     assert resp.status_code == 200
     data = resp.json()
     assert data["ok"] is True
-    assert "authenticated as SRE User" in data["details"]
-    assert calls == ["https://api.pagerduty.com/users/me"]
+    assert "services" in data["details"].lower()
+    assert calls == ["https://api.pagerduty.com/services?limit=1"]
 
 
 def test_test_integration_pagerduty_users_me_forbidden(authed_client, monkeypatch):
@@ -207,10 +207,10 @@ def test_test_integration_pagerduty_refresh_retries_inside_client_scope(authed_c
                 raise RuntimeError("client is closed")
             self.calls.append(("get", url, headers))
             auth = (headers or {}).get("Authorization")
-            if url == "https://api.pagerduty.com/users/me" and auth == "Bearer old-token":
+            if url == "https://api.pagerduty.com/services?limit=1" and auth == "Bearer old-token":
                 return _Resp(401, {})
-            if url == "https://api.pagerduty.com/users/me" and auth == "Bearer new-token":
-                return _Resp(200, {"user": {"name": "Refreshed User"}})
+            if url == "https://api.pagerduty.com/services?limit=1" and auth == "Bearer new-token":
+                return _Resp(200, {"services": [], "total": 3})
             return _Resp(500, {})
 
         async def post(self, url, data=None, headers=None):
