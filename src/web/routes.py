@@ -904,9 +904,12 @@ async def sse_events(request: Request):
 
 
 @router.get("/api/incidents")
-async def api_incidents_dashboard_scope(request: Request):
+async def api_incidents_dashboard_scope(
+    request: Request,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
     """Backward-compatible tenant-scoped incidents endpoint under /dashboard."""
-    return await api_incidents(request)
+    return await api_incidents(request, auth_data)
 
 
 @router.patch("/api/incidents/{incident_id}/status")
@@ -944,9 +947,12 @@ async def update_incident_status(
 
 
 @router.get("/api/stats")
-async def api_stats_dashboard_scope(request: Request):
+async def api_stats_dashboard_scope(
+    request: Request,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
     """Backward-compatible tenant-scoped stats endpoint under /dashboard."""
-    return await api_dashboard_stats(request)
+    return await api_dashboard_stats(request, auth_data)
 
 
 # =========================================================================
