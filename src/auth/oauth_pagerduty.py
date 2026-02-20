@@ -60,8 +60,9 @@ class PagerDutyOAuth:
             "client_id": self.client_id,
             "redirect_uri": redirect_uri,
             "response_type": "code",
-            # PagerDuty scopes vary; start broad and tighten later.
-            "scope": "webhook_read webhook_write incidents_read services_read",
+            # Classic User OAuth scopes — full REST API v2 access.
+            # Scoped OAuth restricts most endpoints; classic is more compatible.
+            "scope": "read write",
             "state": state,
         }
         return f"{self.AUTHORIZE_URL}?{urlencode(params)}"
