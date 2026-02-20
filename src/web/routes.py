@@ -1052,7 +1052,16 @@ async def get_onboarding_checklist(
 
     tenant_id = auth.tenant_id or "default"
 
-    # Auto-sync: check integration_configs and mark steps done if connected
+    # Auto-sync: check oauth_token_store + integration_configs and mark steps done
+    providers: set[str] = set()
+    try:
+        from ..integrations.oauth_tokens import oauth_token_store
+        for p in ("pagerduty", "slack", "github", "datadog"):
+            tok = await oauth_token_store.get_token(tenant_id, p)
+            if tok and tok.access_token:
+                providers.add(p)
+    except Exception:
+        pass
     try:
         from ..db.supabase_db import get_db
 
@@ -1061,15 +1070,18 @@ async def get_onboarding_checklist(
             "tenant_id", tenant_id
         ).eq("is_active", True).execute()
         if rows.data:
-            providers = {r["type"] for r in rows.data}
-            if "pagerduty" in providers or "opsgenie" in providers:
-                await checklist_store.set_step(tenant_id, "connect_alerting", True)
-            if "slack" in providers:
-                await checklist_store.set_step(tenant_id, "connect_slack", True)
-            if "github" in providers:
-                await checklist_store.set_step(tenant_id, "connect_github", True)
-            if "datadog" in providers:
-                await checklist_store.set_step(tenant_id, "connect_datadog", True)
+            providers.update(r["type"] for r in rows.data if r.get("type"))
+    except Exception:
+        pass
+    try:
+        if "pagerduty" in providers or "opsgenie" in providers:
+            await checklist_store.set_step(tenant_id, "connect_alerting", True)
+        if "slack" in providers:
+            await checklist_store.set_step(tenant_id, "connect_slack", True)
+        if "github" in providers:
+            await checklist_store.set_step(tenant_id, "connect_github", True)
+        if "datadog" in providers:
+            await checklist_store.set_step(tenant_id, "connect_datadog", True)
     except Exception as e:
         logger.warning(
             "onboarding_integration_sync_failed",
@@ -1645,11 +1657,23 @@ async def disconnect_integration(
     """Disconnect an OAuth integration."""
     tenant_id = auth.tenant_id or "default"
     try:
-        from ..db.supabase_db import get_db
-        db = get_db(use_admin=True)
-        db.client.table("integration_configs").delete().eq(
-            "tenant_id", tenant_id
-        ).eq("type", provider).execute()
+        # Remove from oauth_token_store
+        try:
+            from ..integrations.oauth_tokens import oauth_token_store
+            await oauth_token_store.delete_token(tenant_id, provider)
+        except Exception:
+            pass  # store may not have this token
+
+        # Remove from legacy integration_configs
+        try:
+            from ..db.supabase_db import get_db
+            db = get_db(use_admin=True)
+            db.client.table("integration_configs").delete().eq(
+                "tenant_id", tenant_id
+            ).eq("type", provider).execute()
+        except Exception:
+            pass
+
         return {"ok": True, "provider": provider}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
