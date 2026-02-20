@@ -342,6 +342,52 @@ def test_test_integration_pagerduty_refresh_retries_inside_client_scope(authed_c
     }) in client.calls
 
 
+def test_import_pagerduty_services_uses_oauth_token_store(authed_client, monkeypatch):
+    """Import services should read token from oauth_token_store."""
+
+    class _Resp:
+        def __init__(self, status_code, payload):
+            self.status_code = status_code
+            self._payload = payload
+            self.text = str(payload)
+
+        def json(self):
+            return self._payload
+
+    async def _mock_get(self, url, headers=None, params=None):
+        if "/services" in url:
+            return _Resp(200, {
+                "services": [
+                    {"id": "P1", "name": "Web App", "html_url": "https://acme.pagerduty.com/services/P1",
+                     "description": "Main web app", "status": "active"},
+                ],
+            })
+        raise AssertionError(f"unexpected GET: {url}")
+
+    monkeypatch.setattr("httpx.AsyncClient.get", _mock_get)
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id="test-tenant-id",
+            provider="pagerduty",
+            access_token="valid-pd-token",
+            refresh_token=None,
+            scopes=["services_read"],
+        )
+    )
+
+    resp = authed_client.post("/dashboard/api/onboarding/integrations/pagerduty/import-services")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ok"] is True
+    assert data["imported"] >= 1
+
+
+def test_import_pagerduty_services_not_connected(authed_client):
+    """Import should fail when no PagerDuty token exists."""
+    resp = authed_client.post("/dashboard/api/onboarding/integrations/pagerduty/import-services")
+    assert resp.status_code in (404, 502)
+
+
 def test_service_api_list_empty(anon_client):
     resp = anon_client.get("/api/services")
     assert resp.status_code == 200

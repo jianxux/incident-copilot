@@ -1442,29 +1442,39 @@ async def import_pagerduty_services(
     tenant_id = auth.tenant_id or "default"
 
     try:
-        from ..db.supabase_db import get_db
-        from ..security.crypto import decrypt_json
+        # Try oauth_token_store first (new normalized store), then legacy integration_configs
+        from ..integrations.oauth_tokens import oauth_token_store
 
-        db = get_db(use_admin=True)
-        rows = db.client.table("integration_configs").select("config").eq(
-            "tenant_id", tenant_id
-        ).eq("type", "pagerduty").eq("is_active", True).limit(1).execute()
+        token_rec = await oauth_token_store.get_token(tenant_id, "pagerduty")
+        oauth_token = ""
+        api_key = ""
 
-        if not rows.data:
-            raise HTTPException(status_code=404, detail="PagerDuty not connected")
+        if token_rec and token_rec.access_token:
+            oauth_token = token_rec.access_token
+        else:
+            try:
+                from ..db.supabase_db import get_db
+                from ..security.crypto import decrypt_json
 
-        config = rows.data[0].get("config", {})
-        encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
-        if not encrypted:
-            raise HTTPException(status_code=400, detail="No PagerDuty credentials found")
+                db = get_db(use_admin=True)
+                rows = db.client.table("integration_configs").select("config").eq(
+                    "tenant_id", tenant_id
+                ).eq("type", "pagerduty").eq("is_active", True).limit(1).execute()
 
-        decrypted = decrypt_json(encrypted)
-        oauth = decrypted.get("oauth", {})
-        oauth_token = oauth.get("access_token", "")
-        api_key = decrypted.get("api_key", "")
+                if rows.data:
+                    config = rows.data[0].get("config", {})
+                    encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
+                    if encrypted:
+                        decrypted = decrypt_json(encrypted)
+                        oauth = decrypted.get("oauth", {})
+                        oauth_token = oauth.get("access_token", "")
+                        api_key = decrypted.get("api_key", "")
+            except Exception as exc:
+                logger.warning("import_services_legacy_lookup_failed", error=str(exc))
+
         token = oauth_token or api_key
         if not token:
-            raise HTTPException(status_code=400, detail="No PagerDuty API token found")
+            raise HTTPException(status_code=404, detail="PagerDuty not connected")
 
         # PagerDuty uses "Bearer" for OAuth tokens, "Token token=" for API keys
         if oauth_token:
