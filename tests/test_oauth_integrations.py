@@ -199,7 +199,7 @@ def test_provider_test_pagerduty_users_me_success(monkeypatch):
 
     async def _mock_get(self, url, headers=None):
         seen.append((url, headers))
-        return _DummyResponse(200, {"user": {"name": "Jane PD", "email": "jane@example.com"}})
+        return _DummyResponse(200, {"services": [], "total": 5})
 
     monkeypatch.setattr("src.api.oauth_integrations.httpx.AsyncClient.get", _mock_get)
 
@@ -219,8 +219,8 @@ def test_provider_test_pagerduty_users_me_success(monkeypatch):
     data = response.json()
     assert data["provider"] == "pagerduty"
     assert data["ok"] is True
-    assert "Jane PD" in data["details"]
-    assert seen and seen[0][0] == "https://api.pagerduty.com/users/me"
+    assert "services" in data["details"].lower()
+    assert seen and seen[0][0] == "https://api.pagerduty.com/services?limit=1"
     assert "version=2" in (seen[0][1] or {}).get("Accept", "")
 
 
@@ -251,4 +251,4 @@ def test_provider_test_pagerduty_users_me_forbidden(monkeypatch):
     assert data["provider"] == "pagerduty"
     assert data["ok"] is False
     assert "403" in data["details"]
-    assert seen_urls == ["https://api.pagerduty.com/users/me"]
+    assert seen_urls == ["https://api.pagerduty.com/services?limit=1"]
