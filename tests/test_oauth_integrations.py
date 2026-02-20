@@ -194,14 +194,14 @@ def test_provider_test_slack_success(monkeypatch):
 
 
 @pytest.mark.unit
-def test_provider_test_pagerduty_users_me_success(monkeypatch):
+def test_provider_test_pagerduty_token_info_success(monkeypatch):
     seen: list[tuple[str, dict | None]] = []
 
-    async def _mock_get(self, url, headers=None):
-        seen.append((url, headers))
-        return _DummyResponse(200, {"services": [], "total": 5})
+    async def _mock_post(self, url, data=None, headers=None):
+        seen.append((url, data))
+        return _DummyResponse(200, {"scope": "read write", "token_type": "Bearer"})
 
-    monkeypatch.setattr("src.api.oauth_integrations.httpx.AsyncClient.get", _mock_get)
+    monkeypatch.setattr("src.api.oauth_integrations.httpx.AsyncClient.post", _mock_post)
 
     app = create_app()
     client = TestClient(app)
@@ -219,20 +219,19 @@ def test_provider_test_pagerduty_users_me_success(monkeypatch):
     data = response.json()
     assert data["provider"] == "pagerduty"
     assert data["ok"] is True
-    assert "services" in data["details"].lower()
-    assert seen and seen[0][0] == "https://api.pagerduty.com/services?limit=1"
-    assert "version=2" in (seen[0][1] or {}).get("Accept", "")
+    assert "token valid" in data["details"].lower() or "scopes" in data["details"].lower()
+    assert any(url == "https://app.pagerduty.com/oauth/token_info" for url, _ in seen)
 
 
 @pytest.mark.unit
-def test_provider_test_pagerduty_users_me_forbidden(monkeypatch):
+def test_provider_test_pagerduty_token_info_forbidden(monkeypatch):
     seen_urls: list[str] = []
 
-    async def _mock_get(self, url, headers=None):
+    async def _mock_post(self, url, data=None, headers=None):
         seen_urls.append(url)
         return _DummyResponse(403, {"error": {"message": "forbidden"}})
 
-    monkeypatch.setattr("src.api.oauth_integrations.httpx.AsyncClient.get", _mock_get)
+    monkeypatch.setattr("src.api.oauth_integrations.httpx.AsyncClient.post", _mock_post)
 
     app = create_app()
     client = TestClient(app)
@@ -251,4 +250,4 @@ def test_provider_test_pagerduty_users_me_forbidden(monkeypatch):
     assert data["provider"] == "pagerduty"
     assert data["ok"] is False
     assert "403" in data["details"]
-    assert seen_urls == ["https://api.pagerduty.com/services?limit=1"]
+    assert "https://app.pagerduty.com/oauth/token_info" in seen_urls

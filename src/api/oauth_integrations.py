@@ -300,24 +300,23 @@ async def provider_test(
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             if resolved == "pagerduty":
-                resp = await client.get(
-                    "https://api.pagerduty.com/services?limit=1",
-                    headers={
-                        "Authorization": f"Bearer {token.access_token}",
-                        "Accept": "application/vnd.pagerduty+json;version=2",
-                    },
+                resp = await client.post(
+                    "https://app.pagerduty.com/oauth/token_info",
+                    data={"token": token.access_token},
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
                 )
                 if resp.status_code == 200:
-                    svc_count = resp.json().get("total", 0)
+                    info = resp.json()
+                    scopes = info.get("scope", "")
                     return {
                         "provider": resolved,
                         "ok": True,
-                        "details": f"PagerDuty — API responding, {svc_count} services found",
+                        "details": f"PagerDuty — OAuth token valid, scopes: {scopes}",
                     }
                 return {
                     "provider": resolved,
                     "ok": False,
-                    "details": f"PagerDuty API returned {resp.status_code}",
+                    "details": f"PagerDuty token validation returned {resp.status_code}",
                 }
 
             if resolved == "slack":
