@@ -117,10 +117,29 @@ def test_test_integration_not_connected(authed_client):
 
 
 def test_test_integration_pagerduty_stored_token_success(authed_client, monkeypatch):
+    """Valid stored token should return ok:true with subdomain from /oauth/token_info."""
+
+    class _Resp:
+        def __init__(self, status_code, payload):
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
     async def _unexpected_post(self, url, data=None, headers=None):
-        raise AssertionError(f"unexpected network call: {url}")
+        raise AssertionError(f"unexpected POST call: {url}")
+
+    async def _mock_get(self, url, headers=None):
+        if "token_info" in url:
+            return _Resp(200, {
+                "user_id": "PUSER123",
+                "account": {"subdomain": "acme-corp", "name": "Acme Corp"},
+            })
+        raise AssertionError(f"unexpected GET call: {url}")
 
     monkeypatch.setattr("httpx.AsyncClient.post", _unexpected_post)
+    monkeypatch.setattr("httpx.AsyncClient.get", _mock_get)
     _run(
         oauth_token_store.upsert_token(
             tenant_id="test-tenant-id",
@@ -136,8 +155,51 @@ def test_test_integration_pagerduty_stored_token_success(authed_client, monkeypa
     data = resp.json()
     assert data["ok"] is True
     assert isinstance(data["details"], dict)
+    assert data["details"]["subdomain"] == "acme-corp"
+    assert data["details"]["account_name"] == "Acme Corp"
     assert data["details"]["scopes"] == ["read", "write"]
     assert data["details"]["connected_at"]
+
+
+def test_test_integration_pagerduty_token_info_fails_gracefully(authed_client, monkeypatch):
+    """If /oauth/token_info fails, should still return ok:true without subdomain."""
+
+    class _Resp:
+        def __init__(self, status_code, payload):
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    async def _unexpected_post(self, url, data=None, headers=None):
+        raise AssertionError(f"unexpected POST call: {url}")
+
+    async def _mock_get(self, url, headers=None):
+        if "token_info" in url:
+            return _Resp(401, {"error": "invalid_token"})
+        raise AssertionError(f"unexpected GET call: {url}")
+
+    monkeypatch.setattr("httpx.AsyncClient.post", _unexpected_post)
+    monkeypatch.setattr("httpx.AsyncClient.get", _mock_get)
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id="test-tenant-id",
+            provider="pagerduty",
+            access_token="valid-token",
+            refresh_token="refresh-token",
+            scopes=["incidents.read"],
+        )
+    )
+
+    resp = authed_client.post("/dashboard/api/onboarding/test-integration/pagerduty")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ok"] is True
+    assert isinstance(data["details"], dict)
+    # subdomain should be None since token_info returned 401
+    assert data["details"].get("subdomain") is None
+    assert data["details"]["scopes"] == ["incidents.read"]
 
 
 def test_test_integration_pagerduty_expired_refresh_failed(authed_client, monkeypatch):

@@ -238,6 +238,7 @@ async function verifyIntegration(name) {
       else {
         const parts = [];
         if (details.subdomain) parts.push(details.subdomain + '.pagerduty.com');
+        else if (details.account_name) parts.push(details.account_name);
         else if (name === 'slack' && details.team) parts.push(details.team);
         if (details.scopes && details.scopes.length) parts.push(details.scopes.length + ' scope' + (details.scopes.length > 1 ? 's' : ''));
         detailText = parts.length ? 'Connected → ' + parts.join(' · ') : 'Connected';
