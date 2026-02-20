@@ -1244,59 +1244,59 @@ async def test_integration(
                     "https://api.pagerduty.com/abilities",
                     headers={"Authorization": auth_header, "Content-Type": "application/json"},
                 )
-            if resp.status_code == 200:
-                return {"ok": True, "details": f"PagerDuty ({subdomain}) — API responding, {len(resp.json().get('abilities', []))} abilities"}
+                if resp.status_code == 200:
+                    return {"ok": True, "details": f"PagerDuty ({subdomain}) — API responding, {len(resp.json().get('abilities', []))} abilities"}
 
-            # If 401 with OAuth token, try refreshing
-            if resp.status_code == 401 and oauth_token:
-                try:
-                    from ..integrations.oauth_tokens import oauth_token_store
-                    from ..integrations.oauth_providers import get_provider_credentials
-                    stored = await oauth_token_store.get_token(tenant_id, "pagerduty")
-                    if stored and stored.refresh_token:
-                        client_id, client_secret = get_provider_credentials("pagerduty")
-                        if client_id and client_secret:
-                            refresh_resp = await client.post(
-                                "https://app.pagerduty.com/oauth/token",
-                                data={
-                                    "grant_type": "refresh_token",
-                                    "refresh_token": stored.refresh_token,
-                                    "client_id": client_id,
-                                    "client_secret": client_secret,
-                                },
-                                headers={"Accept": "application/json"},
-                            )
-                            if refresh_resp.status_code == 200:
-                                new_tokens = refresh_resp.json()
-                                new_at = new_tokens.get("access_token", "")
-                                if new_at:
-                                    from datetime import timedelta
-                                    new_expiry = None
-                                    if new_tokens.get("expires_in"):
-                                        new_expiry = datetime.now(UTC) + timedelta(seconds=int(new_tokens["expires_in"]))
-                                    await oauth_token_store.upsert_token(
-                                        tenant_id=tenant_id,
-                                        provider="pagerduty",
-                                        access_token=new_at,
-                                        refresh_token=new_tokens.get("refresh_token", stored.refresh_token),
-                                        token_expiry=new_expiry,
-                                        scopes=stored.scopes,
-                                    )
-                                    # Retry with new token
-                                    retry_resp = await client.get(
-                                        "https://api.pagerduty.com/abilities",
-                                        headers={"Authorization": f"Bearer {new_at}", "Content-Type": "application/json"},
-                                    )
-                                    if retry_resp.status_code == 200:
-                                        return {"ok": True, "details": f"PagerDuty ({subdomain}) — token refreshed, API responding"}
-                                    return {"ok": False, "details": f"PagerDuty API returned {retry_resp.status_code} after token refresh"}
-                            else:
-                                logger.warning("pagerduty_refresh_failed", status=refresh_resp.status_code)
-                except Exception as exc:
-                    logger.warning("pagerduty_refresh_error", error=str(exc))
+                # If 401 with OAuth token, try refreshing
+                if resp.status_code == 401 and oauth_token:
+                    try:
+                        from ..integrations.oauth_tokens import oauth_token_store
+                        from ..integrations.oauth_providers import get_provider_credentials
+                        stored = await oauth_token_store.get_token(tenant_id, "pagerduty")
+                        if stored and stored.refresh_token:
+                            client_id, client_secret = get_provider_credentials("pagerduty")
+                            if client_id and client_secret:
+                                refresh_resp = await client.post(
+                                    "https://app.pagerduty.com/oauth/token",
+                                    data={
+                                        "grant_type": "refresh_token",
+                                        "refresh_token": stored.refresh_token,
+                                        "client_id": client_id,
+                                        "client_secret": client_secret,
+                                    },
+                                    headers={"Accept": "application/json"},
+                                )
+                                if refresh_resp.status_code == 200:
+                                    new_tokens = refresh_resp.json()
+                                    new_at = new_tokens.get("access_token", "")
+                                    if new_at:
+                                        from datetime import timedelta
+                                        new_expiry = None
+                                        if new_tokens.get("expires_in"):
+                                            new_expiry = datetime.now(UTC) + timedelta(seconds=int(new_tokens["expires_in"]))
+                                        await oauth_token_store.upsert_token(
+                                            tenant_id=tenant_id,
+                                            provider="pagerduty",
+                                            access_token=new_at,
+                                            refresh_token=new_tokens.get("refresh_token", stored.refresh_token),
+                                            token_expiry=new_expiry,
+                                            scopes=stored.scopes,
+                                        )
+                                        # Retry with new token
+                                        retry_resp = await client.get(
+                                            "https://api.pagerduty.com/abilities",
+                                            headers={"Authorization": f"Bearer {new_at}", "Content-Type": "application/json"},
+                                        )
+                                        if retry_resp.status_code == 200:
+                                            return {"ok": True, "details": f"PagerDuty ({subdomain}) — token refreshed, API responding"}
+                                        return {"ok": False, "details": f"PagerDuty API returned {retry_resp.status_code} after token refresh"}
+                                else:
+                                    logger.warning("pagerduty_refresh_failed", status=refresh_resp.status_code)
+                    except Exception as exc:
+                        logger.warning("pagerduty_refresh_error", error=str(exc))
 
-                return {"ok": False, "details": "PagerDuty OAuth token expired. Please disconnect and reconnect PagerDuty."}
-            return {"ok": False, "details": f"PagerDuty API returned {resp.status_code}"}
+                    return {"ok": False, "details": "PagerDuty OAuth token expired. Please disconnect and reconnect PagerDuty."}
+                return {"ok": False, "details": f"PagerDuty API returned {resp.status_code}"}
 
         elif provider == "slack":
             import httpx
