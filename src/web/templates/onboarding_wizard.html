@@ -230,7 +230,14 @@ async function verifyIntegration(name) {
   try {
     setVerify(name, true, 'Testing...');
     const res = await api(`/dashboard/api/onboarding/test-integration/${name}`, {method: 'POST'});
-    setVerify(name, res && res.ok, res ? (res.details || 'Connection verified') : 'No response from server');
+    const details = res ? res.details : null;
+    let detailText = 'No response from server';
+    if (res) {
+      if (!details) detailText = 'Connection verified';
+      else if (typeof details === 'string') detailText = details;
+      else detailText = details.subdomain ? `Connected (${details.subdomain})` : 'Connected';
+    }
+    setVerify(name, res && res.ok, detailText);
     setChip(`status-${name}`, true, 'Verified');
     await loadChecklist();
   } catch (e) {
