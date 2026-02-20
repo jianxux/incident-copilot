@@ -117,7 +117,7 @@ def test_test_integration_not_connected(authed_client):
 
 
 def test_test_integration_pagerduty_stored_token_success(authed_client, monkeypatch):
-    """Valid stored token should return ok:true with subdomain from /oauth/token_info."""
+    """Valid stored token should return ok:true with subdomain from /services."""
 
     class _Resp:
         def __init__(self, status_code, payload):
@@ -131,10 +131,10 @@ def test_test_integration_pagerduty_stored_token_success(authed_client, monkeypa
         raise AssertionError(f"unexpected POST call: {url}")
 
     async def _mock_get(self, url, headers=None):
-        if "token_info" in url:
+        if "/services" in url:
             return _Resp(200, {
-                "user_id": "PUSER123",
-                "account": {"subdomain": "acme-corp", "name": "Acme Corp"},
+                "services": [{"html_url": "https://acme-corp.pagerduty.com/services/P123"}],
+                "total": 1,
             })
         raise AssertionError(f"unexpected GET call: {url}")
 
@@ -161,7 +161,7 @@ def test_test_integration_pagerduty_stored_token_success(authed_client, monkeypa
 
 
 def test_test_integration_pagerduty_token_info_fails_gracefully(authed_client, monkeypatch):
-    """If /oauth/token_info fails, should still return ok:true without subdomain."""
+    """If /services call fails, should still return ok:true without subdomain."""
 
     class _Resp:
         def __init__(self, status_code, payload):
@@ -175,8 +175,8 @@ def test_test_integration_pagerduty_token_info_fails_gracefully(authed_client, m
         raise AssertionError(f"unexpected POST call: {url}")
 
     async def _mock_get(self, url, headers=None):
-        if "token_info" in url:
-            return _Resp(401, {"error": "invalid_token"})
+        if "/services" in url:
+            return _Resp(403, {"error": {"message": "Forbidden"}})
         raise AssertionError(f"unexpected GET call: {url}")
 
     monkeypatch.setattr("httpx.AsyncClient.post", _unexpected_post)
