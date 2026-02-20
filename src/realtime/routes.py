@@ -33,24 +33,61 @@ security = HTTPBearer(auto_error=False)
 async def validate_token(token: str) -> tuple[str, str]:
     """
     Validate authentication token and return (user_id, user_name).
-
-    This is a placeholder - integrate with your auth system.
     """
-    # TODO: Integrate with actual auth system
-    # For now, accept tokens in format "user_id:user_name" for testing
-    if ":" in token:
-        parts = token.split(":", 1)
-        return parts[0], parts[1]
+    # First try internal session tokens.
+    from ..auth.service import auth_service
 
-    # For JWT tokens, decode and validate
-    # from your_auth_module import decode_jwt
-    # payload = decode_jwt(token)
-    # return payload["user_id"], payload["user_name"]
+    session = await auth_service.get_session_by_token(token)
+    if session:
+        user = await auth_service.get_user(session.user_id)
+        if user:
+            return user.id, user.name
+
+    # Then try Supabase bearer tokens.
+    from ..supabase_client import get_supabase_admin_client
+
+    admin = get_supabase_admin_client()
+    if admin:
+        try:
+            user_response = admin.auth.get_user(token)
+        except Exception as e:
+            logger.warning(
+                "realtime_token_validation_failed",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+        else:
+            if user_response and user_response.user:
+                user = user_response.user
+                user_name = (
+                    (user.user_metadata or {}).get("full_name")
+                    or (user.user_metadata or {}).get("name")
+                    or user.email
+                    or str(user.id)
+                )
+                return str(user.id), user_name
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid authentication token",
     )
+
+
+async def require_authenticated_bearer(
+    credentials: HTTPAuthorizationCredentials | None,
+) -> tuple[str, str]:
+    """Require and validate a bearer token."""
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing authorization",
+        )
+    if credentials.scheme.lower() != "bearer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization scheme",
+        )
+    return await validate_token(credentials.credentials)
 
 
 @router.websocket("/connect")
@@ -195,13 +232,7 @@ async def publish_event(
 
     This endpoint is for internal use by other services.
     """
-    if not credentials:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing authorization",
-        )
-
-    # TODO: Validate internal service token
+    await require_authenticated_bearer(credentials)
 
     try:
         from .events import EVENT_CLASSES, EventType
@@ -236,11 +267,7 @@ async def get_stats(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Get WebSocket connection statistics."""
-    if not credentials:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing authorization",
-        )
+    await require_authenticated_bearer(credentials)
 
     return manager.get_stats()
 
@@ -251,11 +278,7 @@ async def get_room_presence(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Get presence information for a room."""
-    if not credentials:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing authorization",
-        )
+    await require_authenticated_bearer(credentials)
 
     presence = manager.get_room_presence(room_key)
     return {

@@ -12,7 +12,7 @@ import pytest_asyncio
 os.environ["SUPABASE_DB_ENABLED"] = "false"
 os.environ.pop("SUPABASE_URL", None)
 
-from src.onboarding.checklist import CHECKLIST_STEPS, OnboardingChecklist
+from src.onboarding.checklist import CHECKLIST_STEPS, OPTIONAL_STEPS, OnboardingChecklist
 
 
 # ── Checklist Model Tests ──────────────────────────────────────────
@@ -29,7 +29,8 @@ class TestOnboardingChecklist:
         c = OnboardingChecklist(tenant_id="t1")
         c.mark("create_account", True)
         assert c.completed["create_account"] is True
-        assert c.progress == 1 / len(CHECKLIST_STEPS)
+        required = [s for s in CHECKLIST_STEPS if s not in OPTIONAL_STEPS]
+        assert c.progress == 1 / len(required)
 
     def test_mark_unknown_step_raises(self):
         c = OnboardingChecklist(tenant_id="t1")
@@ -55,7 +56,8 @@ class TestOnboardingChecklist:
         c.mark("create_account", True)
         c.mark("connect_alerting", True)
         c.mark("connect_slack", True)
-        expected = 3 / len(CHECKLIST_STEPS)
+        required = [s for s in CHECKLIST_STEPS if s not in OPTIONAL_STEPS]
+        expected = 3 / len(required)
         assert abs(c.progress - expected) < 0.01
 
     def test_to_dict_structure(self):
@@ -147,7 +149,8 @@ class TestChecklistStore:
         await store.set_step("t1", "connect_alerting", True)
         await store.set_step("t1", "connect_slack", True)
         c = await store.get("t1")
-        assert abs(c.progress - 3 / len(CHECKLIST_STEPS)) < 0.01
+        required = [s for s in CHECKLIST_STEPS if s not in OPTIONAL_STEPS]
+        assert abs(c.progress - 3 / len(required)) < 0.01
 
 
 # ── API Endpoint Tests (via TestClient) ────────────────────────────

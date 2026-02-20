@@ -269,6 +269,120 @@ async def provider_disconnect(
     }
 
 
+@router.post("/{provider}/test")
+async def provider_test(
+    provider: str,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Test OAuth integration connectivity for current tenant."""
+    if not auth.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
+    resolved = normalize_provider(provider)
+    config = get_provider_config(resolved)
+    if not config:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Unknown provider: {provider}",
+        )
+
+    token = await oauth_token_store.get_token(auth.tenant_id, resolved)
+    if not token or not token.access_token:
+        return {
+            "provider": resolved,
+            "ok": False,
+            "details": "Integration is not connected",
+        }
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            if resolved == "pagerduty":
+                resp = await client.get(
+                    "https://api.pagerduty.com/abilities",
+                    headers={
+                        "Authorization": f"Bearer {token.access_token}",
+                        "Accept": "application/vnd.pagerduty+json;version=2",
+                    },
+                )
+                if resp.status_code == 200:
+                    return {
+                        "provider": resolved,
+                        "ok": True,
+                        "details": "PagerDuty API reachable",
+                    }
+                return {
+                    "provider": resolved,
+                    "ok": False,
+                    "details": f"PagerDuty API returned {resp.status_code}",
+                }
+
+            if resolved == "slack":
+                resp = await client.post(
+                    "https://slack.com/api/auth.test",
+                    headers={"Authorization": f"Bearer {token.access_token}"},
+                )
+                data = resp.json() if resp.content else {}
+                if data.get("ok"):
+                    return {
+                        "provider": resolved,
+                        "ok": True,
+                        "details": "Slack API reachable",
+                    }
+                return {
+                    "provider": resolved,
+                    "ok": False,
+                    "details": f"Slack auth failed: {data.get('error', 'unknown')}",
+                }
+
+            if resolved == "github":
+                resp = await client.get(
+                    "https://api.github.com/user",
+                    headers={
+                        "Authorization": f"Bearer {token.access_token}",
+                        "Accept": "application/vnd.github+json",
+                    },
+                )
+                if resp.status_code == 200:
+                    return {
+                        "provider": resolved,
+                        "ok": True,
+                        "details": "GitHub API reachable",
+                    }
+                return {
+                    "provider": resolved,
+                    "ok": False,
+                    "details": f"GitHub API returned {resp.status_code}",
+                }
+
+            if resolved == "datadog":
+                return {
+                    "provider": resolved,
+                    "ok": True,
+                    "details": "Datadog token stored",
+                }
+    except Exception as e:
+        logger.warning(
+            "integration_test_failed",
+            provider=resolved,
+            tenant_id=auth.tenant_id,
+            error=str(e),
+        )
+        return {
+            "provider": resolved,
+            "ok": False,
+            "details": f"Connection test failed: {type(e).__name__}",
+        }
+
+    return {
+        "provider": resolved,
+        "ok": False,
+        "details": "Unsupported integration provider for test",
+    }
+
+
 async def _exchange_code_for_token(
     provider: str,
     code: str,

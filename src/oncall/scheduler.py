@@ -61,7 +61,10 @@ class OnCallHandoffScheduler:
         if self._task:
             self._task.cancel()
             try:
-                await self._task
+                # TestClient lifespans may stop on a different loop than start.
+                # In that case, awaiting the task raises "attached to a different loop".
+                if self._task.get_loop() is asyncio.get_running_loop():
+                    await self._task
             except asyncio.CancelledError:
                 pass
             self._task = None
@@ -138,8 +141,21 @@ def get_oncall_handoff_scheduler(
     settings: Settings,
     poll_interval_seconds: int = 300,
 ) -> OnCallHandoffScheduler:
-    """Get or create singleton scheduler instance."""
+    """Get or create singleton scheduler instance.
+
+    Note: unit/integration tests may create multiple event loops (via TestClient).
+    If a scheduler task was created on a different loop, discard it and recreate.
+    """
     global _scheduler
+
+    if _scheduler is not None and _scheduler._task is not None:
+        try:
+            if _scheduler._task.get_loop() is not asyncio.get_running_loop():
+                _scheduler = None
+        except RuntimeError:
+            # No running loop in this context; keep existing.
+            pass
+
     if _scheduler is None:
         _scheduler = OnCallHandoffScheduler(
             settings=settings,

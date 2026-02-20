@@ -230,7 +230,7 @@ async function verifyIntegration(name) {
   try {
     setVerify(name, true, 'Testing...');
     const res = await api(`/dashboard/api/onboarding/test-integration/${name}`, {method: 'POST'});
-    setVerify(name, true, res.details || 'Connection verified');
+    setVerify(name, res && res.ok, res ? (res.details || 'Connection verified') : 'No response from server');
     setChip(`status-${name}`, true, 'Verified');
     await loadChecklist();
   } catch (e) {
