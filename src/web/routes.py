@@ -1257,28 +1257,31 @@ async def test_integration(
             }
 
             async def _fetch_pd_subdomain(access_token: str) -> str | None:
-                """Fetch PagerDuty account subdomain via /oauth/token_info."""
+                """Fetch PagerDuty account subdomain via /services (we have services_read scope)."""
                 try:
                     async with httpx.AsyncClient(timeout=10) as hc:
                         resp = await hc.get(
-                            "https://app.pagerduty.com/oauth/token_info",
-                            headers={"Authorization": f"Bearer {access_token}", "Accept": "application/json"},
+                            "https://api.pagerduty.com/services?limit=1",
+                            headers={
+                                "Authorization": f"Bearer {access_token}",
+                                "Accept": "application/vnd.pagerduty+json;version=2",
+                            },
                         )
                         if resp.status_code == 200:
-                            data = resp.json()
-                            logger.info("pagerduty_token_info_response", keys=list(data.keys()), data=data)
-                            # Try multiple known paths for subdomain
-                            sub = (
-                                data.get("subdomain")
-                                or (data.get("account", {}) or {}).get("subdomain")
-                                or (data.get("account", {}) or {}).get("type")
-                            )
-                            if sub:
-                                return sub
+                            services = resp.json().get("services", [])
+                            if services:
+                                html_url = services[0].get("html_url", "")
+                                # html_url: https://acme.pagerduty.com/services/PXXXXXX
+                                if "pagerduty.com" in html_url:
+                                    from urllib.parse import urlparse
+                                    host = urlparse(html_url).hostname or ""
+                                    sub = host.replace(".pagerduty.com", "")
+                                    if sub and sub != "app":
+                                        return sub
                         else:
-                            logger.warning("pagerduty_token_info_status", status=resp.status_code, body=resp.text[:200])
+                            logger.warning("pagerduty_services_status", status=resp.status_code, body=resp.text[:200])
                 except Exception as exc:
-                    logger.warning("pagerduty_token_info_failed", error=str(exc))
+                    logger.warning("pagerduty_subdomain_fetch_failed", error=str(exc))
                 return None
 
             # Prefer normalized OAuth token store record.
