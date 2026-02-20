@@ -113,7 +113,7 @@ def test_test_integration_not_connected(authed_client):
     assert resp.status_code in (404, 500)
 
 
-def test_test_integration_pagerduty_users_me_success(authed_client, monkeypatch):
+def test_test_integration_pagerduty_token_info_success(authed_client, monkeypatch):
     calls: list[str] = []
 
     class _Resp:
@@ -124,11 +124,11 @@ def test_test_integration_pagerduty_users_me_success(authed_client, monkeypatch)
         def json(self):
             return self._payload
 
-    async def _mock_get(self, url, headers=None):
+    async def _mock_post(self, url, data=None, headers=None):
         calls.append(url)
-        return _Resp(200, {"services": [], "total": 5})
+        return _Resp(200, {"scope": "read write", "token_type": "Bearer"})
 
-    monkeypatch.setattr("httpx.AsyncClient.get", _mock_get)
+    monkeypatch.setattr("httpx.AsyncClient.post", _mock_post)
     _run(
         oauth_token_store.upsert_token(
             tenant_id="test-tenant-id",
@@ -142,11 +142,11 @@ def test_test_integration_pagerduty_users_me_success(authed_client, monkeypatch)
     assert resp.status_code == 200
     data = resp.json()
     assert data["ok"] is True
-    assert "services" in data["details"].lower()
-    assert calls == ["https://api.pagerduty.com/services?limit=1"]
+    assert "token valid" in data["details"].lower() or "scopes" in data["details"].lower()
+    assert "https://app.pagerduty.com/oauth/token_info" in calls
 
 
-def test_test_integration_pagerduty_users_me_forbidden(authed_client, monkeypatch):
+def test_test_integration_pagerduty_token_info_forbidden(authed_client, monkeypatch):
     class _Resp:
         def __init__(self, status_code, payload):
             self.status_code = status_code
@@ -155,10 +155,10 @@ def test_test_integration_pagerduty_users_me_forbidden(authed_client, monkeypatc
         def json(self):
             return self._payload
 
-    async def _mock_get(self, url, headers=None):
+    async def _mock_post(self, url, data=None, headers=None):
         return _Resp(403, {"error": {"message": "forbidden"}})
 
-    monkeypatch.setattr("httpx.AsyncClient.get", _mock_get)
+    monkeypatch.setattr("httpx.AsyncClient.post", _mock_post)
     _run(
         oauth_token_store.upsert_token(
             tenant_id="test-tenant-id",
@@ -206,17 +206,19 @@ def test_test_integration_pagerduty_refresh_retries_inside_client_scope(authed_c
             if self.closed:
                 raise RuntimeError("client is closed")
             self.calls.append(("get", url, headers))
-            auth = (headers or {}).get("Authorization")
-            if url == "https://api.pagerduty.com/services?limit=1" and auth == "Bearer old-token":
-                return _Resp(401, {})
-            if url == "https://api.pagerduty.com/services?limit=1" and auth == "Bearer new-token":
-                return _Resp(200, {"services": [], "total": 3})
             return _Resp(500, {})
 
         async def post(self, url, data=None, headers=None):
             if self.closed:
                 raise RuntimeError("client is closed")
             self.calls.append(("post", url, data))
+            if url == "https://app.pagerduty.com/oauth/token_info":
+                token = (data or {}).get("token", "")
+                if token == "old-token":
+                    return _Resp(401, {})
+                if token == "new-token":
+                    return _Resp(200, {"scope": "read write"})
+                return _Resp(401, {})
             if url == "https://app.pagerduty.com/oauth/token":
                 return _Resp(
                     200,
