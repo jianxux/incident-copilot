@@ -1256,34 +1256,34 @@ async def test_integration(
                 "connected_at": decrypted.get("connected_at") or (token_rec.created_at.isoformat() if token_rec else None),
             }
 
-            async def _fetch_pd_subdomain(access_token: str) -> str | None:
-                """Fetch PagerDuty account subdomain via /users/me."""
+            async def _fetch_pd_account_info(access_token: str) -> dict:
+                """Fetch PagerDuty account info via /oauth/token_info (no scopes required)."""
                 try:
                     async with httpx.AsyncClient(timeout=10) as client:
                         resp = await client.get(
-                            "https://api.pagerduty.com/users/me",
+                            "https://app.pagerduty.com/oauth/token_info",
                             headers={"Authorization": f"Bearer {access_token}", "Accept": "application/json"},
                         )
                         if resp.status_code == 200:
-                            user_data = resp.json().get("user", {})
-                            html_url = user_data.get("html_url", "")
-                            # html_url looks like https://acme.pagerduty.com/users/PXXXXXX
-                            if "pagerduty.com" in html_url:
-                                from urllib.parse import urlparse
-                                host = urlparse(html_url).hostname or ""
-                                sub = host.replace(".pagerduty.com", "")
-                                if sub and sub != "app":
-                                    return sub
+                            data = resp.json()
+                            return {
+                                "subdomain": data.get("account", {}).get("subdomain"),
+                                "user_id": data.get("user_id"),
+                                "account_name": data.get("account", {}).get("name"),
+                            }
                 except Exception as exc:
-                    logger.warning("pagerduty_subdomain_fetch_failed", error=str(exc))
-                return None
+                    logger.warning("pagerduty_token_info_failed", error=str(exc))
+                return {}
 
             # Prefer normalized OAuth token store record.
             if token_rec and token_rec.access_token:
                 now = datetime.now(UTC)
                 if not token_rec.token_expiry or token_rec.token_expiry > now:
-                    if not details.get("subdomain"):
-                        details["subdomain"] = await _fetch_pd_subdomain(token_rec.access_token)
+                    account_info = await _fetch_pd_account_info(token_rec.access_token)
+                    if account_info.get("subdomain"):
+                        details["subdomain"] = account_info["subdomain"]
+                    if account_info.get("account_name"):
+                        details["account_name"] = account_info["account_name"]
                     return {"ok": True, "details": details}
 
                 # Expired token: attempt refresh.
