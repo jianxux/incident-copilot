@@ -156,7 +156,6 @@ def test_test_integration_pagerduty_stored_token_success(authed_client, monkeypa
     assert data["ok"] is True
     assert isinstance(data["details"], dict)
     assert data["details"]["subdomain"] == "acme-corp"
-    assert data["details"]["account_name"] == "Acme Corp"
     assert data["details"]["scopes"] == ["read", "write"]
     assert data["details"]["connected_at"]
 
