@@ -230,7 +230,7 @@ async function verifyIntegration(name) {
   try {
     setVerify(name, true, 'Testing...');
     const res = await api(`/dashboard/api/onboarding/test-integration/${name}`, {method: 'POST'});
-    setVerify(name, res && res.ok, res ? (res.details || 'Connection verified') : 'No response from server');
+    setVerify(name, res && res.ok, (res && res.details) ? res.details : 'Connection verified');
     setChip(`status-${name}`, true, 'Verified');
     await loadChecklist();
   } catch (e) {
@@ -314,7 +314,7 @@ async function loadChecklist() {
 
 async function loadStatus() {
   const st = await api('/dashboard/api/onboarding/status');
-  const details = st.details || {};
+  const details = (st && st.details) ? st.details : {};
 
   function connLabel(provider) {
     if (!st.integrations[provider]) return 'Not connected';
