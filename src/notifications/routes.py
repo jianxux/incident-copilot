@@ -4,9 +4,13 @@ from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
+from ..auth.middleware import _try_supabase_auth
+from ..auth.service import auth_service
 from .models import (
     ChannelType,
     DigestFrequency,
@@ -21,6 +25,8 @@ from .models import (
 from .service import NotificationService, get_notification_service
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
+logger = structlog.get_logger()
+security = HTTPBearer(auto_error=False)
 
 
 # Request/Response Models
@@ -116,10 +122,35 @@ class NotificationResult(BaseModel):
 
 
 # Dependency for getting current user (stub - replace with your auth)
-async def get_current_user_id() -> str:
+async def get_current_user_id(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+) -> str:
     """Get the current user ID from auth context."""
-    # TODO: Replace with actual auth implementation
-    return "current-user-id"
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing authorization",
+        )
+    if credentials.scheme.lower() != "bearer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization scheme",
+        )
+
+    token = credentials.credentials
+    session = await auth_service.get_session_by_token(token)
+    if session:
+        return session.user_id
+
+    ctx = await _try_supabase_auth(token)
+    if ctx and ctx.user:
+        return ctx.user.id
+
+    logger.warning("notifications_auth_failed")
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid authentication token",
+    )
 
 
 # Routes

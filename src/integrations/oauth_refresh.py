@@ -14,7 +14,7 @@ from .oauth_tokens import oauth_token_store
 logger = structlog.get_logger()
 
 _refresh_task: asyncio.Task | None = None
-_stop_event = asyncio.Event()
+_stop_event: asyncio.Event | None = None
 
 
 async def refresh_expiring_tokens(refresh_window_minutes: int = 20) -> int:
@@ -102,8 +102,8 @@ async def refresh_expiring_tokens(refresh_window_minutes: int = 20) -> int:
     return refreshed
 
 
-async def _refresh_loop(interval_seconds: int) -> None:
-    while not _stop_event.is_set():
+async def _refresh_loop(interval_seconds: int, stop_event: asyncio.Event) -> None:
+    while not stop_event.is_set():
         try:
             count = await refresh_expiring_tokens()
             if count:
@@ -112,32 +112,40 @@ async def _refresh_loop(interval_seconds: int) -> None:
             logger.warning("oauth_refresh_loop_failed", error=str(e))
 
         try:
-            await asyncio.wait_for(_stop_event.wait(), timeout=interval_seconds)
+            await asyncio.wait_for(stop_event.wait(), timeout=interval_seconds)
         except TimeoutError:
             continue
 
 
 async def start_oauth_refresh_worker(interval_seconds: int = 300) -> None:
     """Start periodic OAuth token refresh worker."""
-    global _refresh_task
+    global _refresh_task, _stop_event
     if _refresh_task and not _refresh_task.done():
         return
 
-    _stop_event.clear()
-    _refresh_task = asyncio.create_task(_refresh_loop(interval_seconds))
+    # Important: create the Event on the currently running loop.
+    # Creating it at import time can bind it to a different event loop,
+    # which breaks Starlette/FastAPI TestClient shutdown.
+    _stop_event = asyncio.Event()
+    _refresh_task = asyncio.create_task(_refresh_loop(interval_seconds, _stop_event))
 
 
 async def stop_oauth_refresh_worker() -> None:
     """Stop periodic OAuth token refresh worker."""
-    global _refresh_task
+    global _refresh_task, _stop_event
     if not _refresh_task:
         return
 
-    _stop_event.set()
+    if _stop_event is not None:
+        _stop_event.set()
+
     _refresh_task.cancel()
     try:
-        await _refresh_task
+        # Starlette TestClient may stop the app on a different loop than it started.
+        if _refresh_task.get_loop() is asyncio.get_running_loop():
+            await _refresh_task
     except asyncio.CancelledError:
         pass
     finally:
         _refresh_task = None
+        _stop_event = None

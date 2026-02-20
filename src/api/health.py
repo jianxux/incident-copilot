@@ -34,7 +34,23 @@ class ComponentHealth(BaseModel):
     status: HealthStatus
     latency_ms: float | None = None
     message: str | None = None
-    details: dict[str, Any] = Field(default_factory=dict)
+    details: dict[str, Any] | None = Field(default_factory=dict)
+
+
+def _normalize_component(component: ComponentHealth | None) -> ComponentHealth:
+    """Ensure health components are always JSON-safe and non-null."""
+    if component is None:
+        return ComponentHealth(
+            name="unknown",
+            status=HealthStatus.UNHEALTHY,
+            message="Health check returned no data",
+            details={},
+        )
+
+    details = component.details if isinstance(component.details, dict) else {}
+    if details == component.details:
+        return component
+    return component.model_copy(update={"details": details})
 
 
 class HealthResponse(BaseModel):
@@ -445,7 +461,7 @@ async def health_check(
                     )
                 )
             else:
-                components.append(check)
+                components.append(_normalize_component(check))
     else:
         # Quick health check - just Redis and DB
         checks = await asyncio.gather(
@@ -464,7 +480,7 @@ async def health_check(
                     )
                 )
             else:
-                components.append(check)
+                components.append(_normalize_component(check))
 
     # Determine overall status
     statuses = [c.status for c in components]

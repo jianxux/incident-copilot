@@ -125,3 +125,64 @@ def test_oauth_callback_rejects_invalid_state(monkeypatch):
     assert response.status_code in (302, 307)
     assert "oauth_result=error" in response.headers["location"]
     assert "invalid_or_expired_state" in response.headers["location"]
+
+
+@pytest.mark.unit
+def test_provider_test_returns_structured_result_when_disconnected():
+    app = create_app()
+    client = TestClient(app)
+    headers = _run(_create_headers())
+
+    response = client.post("/api/integrations/slack/test", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "slack"
+    assert data["ok"] is False
+    assert isinstance(data["details"], str)
+
+
+@pytest.mark.unit
+def test_provider_test_slack_success(monkeypatch):
+    class _SlackResponse:
+        status_code = 200
+        content = b'{"ok": true}'
+
+        @staticmethod
+        def json():
+            return {"ok": True}
+
+    async def _mock_post(self, url, data=None, headers=None):
+        if "oauth.v2.access" in url:
+            return _DummyResponse(
+                200,
+                {
+                    "ok": True,
+                    "access_token": "xoxb-test-token",
+                    "refresh_token": "refresh-token",
+                    "expires_in": 3600,
+                    "scope": "channels:read",
+                },
+            )
+        return _SlackResponse()
+
+    monkeypatch.setenv("SLACK_CLIENT_ID", "client-id")
+    monkeypatch.setenv("SLACK_CLIENT_SECRET", "client-secret")
+    monkeypatch.setattr("src.api.oauth_integrations.httpx.AsyncClient.post", _mock_post)
+
+    app = create_app()
+    client = TestClient(app)
+    headers = _run(_create_headers())
+
+    connect = client.get("/api/integrations/slack/connect", headers=headers, follow_redirects=False)
+    parsed = urlparse(connect.headers["location"])
+    state = parse_qs(parsed.query)["state"][0]
+    client.get(
+        f"/api/integrations/slack/callback?code=test-code&state={state}",
+        follow_redirects=False,
+    )
+
+    response = client.post("/api/integrations/slack/test", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+    assert isinstance(data["details"], str)

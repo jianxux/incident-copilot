@@ -6,7 +6,7 @@ import pytest
 from src.auth.models import UserRole
 from src.auth.service import auth_service
 from src.onboarding.analytics import OnboardingAnalytics
-from src.onboarding.checklist import CHECKLIST_STEPS
+from src.onboarding.checklist import CHECKLIST_STEPS, OPTIONAL_STEPS
 from src.onboarding.db_store import ChecklistStore, migrate_onboarding_checklist
 from src.onboarding.email_verification import EmailVerificationService
 from src.onboarding.invites import InviteService, InviteStatus
@@ -32,7 +32,8 @@ async def test_checklist_db_set_step_updates(tmp_path):
     checklist = await store.set_step("tenant-1", "connect_slack", True)
 
     assert checklist.completed["connect_slack"] is True
-    assert checklist.progress == pytest.approx(1 / len(CHECKLIST_STEPS))
+    required = [s for s in CHECKLIST_STEPS if s not in OPTIONAL_STEPS]
+    assert checklist.progress == pytest.approx(1 / len(required))
 
 
 @pytest.mark.asyncio
