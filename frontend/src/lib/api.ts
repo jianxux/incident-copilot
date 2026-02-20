@@ -165,7 +165,11 @@ export const integrationApi = {
 
   test: async (id: string) => {
     const response = await api.post(`/integrations/${id}/test`);
-    return response.data;
+    const payload = response.data as { ok?: boolean; details?: string } | null;
+    return {
+      ok: Boolean(payload?.ok),
+      details: payload?.details ?? 'No test details returned',
+    };
   },
 
   update: async (id: string, config: Record<string, unknown>) => {
@@ -175,11 +179,17 @@ export const integrationApi = {
 
   oauthStatus: async (provider: string) => {
     const response = await api.get(`/integrations/${provider}/status`);
-    return response.data as {
+    const payload = response.data as {
       provider: string;
       connected: boolean;
       token_expiry: string | null;
       scopes: string[];
+    } | null;
+    return {
+      provider,
+      connected: payload?.connected === true,
+      token_expiry: payload?.token_expiry ?? null,
+      scopes: Array.isArray(payload?.scopes) ? payload.scopes : [],
     };
   },
 
@@ -215,7 +225,28 @@ export const oncallApi = {
 export const healthApi = {
   check: async () => {
     const response = await api.get('/health');
-    return response.data;
+    const payload = response.data as {
+      components?: Array<{
+        name: string;
+        status: string;
+        latency_ms?: number | null;
+        message?: string | null;
+        details?: Record<string, unknown> | null;
+      } | null>;
+      [key: string]: unknown;
+    } | null;
+    const components = Array.isArray(payload?.components)
+      ? payload.components
+          .filter((component): component is NonNullable<typeof component> => component !== null)
+          .map((component) => ({
+            ...component,
+            details: component.details ?? {},
+          }))
+      : [];
+    return {
+      ...(payload ?? {}),
+      components,
+    };
   },
 
   ready: async () => {

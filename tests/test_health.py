@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from src.api.health import (
     ComponentHealth,
     HealthStatus,
+    _normalize_component,
     check_github_health,
     check_redis_health,
     check_slack_health,
@@ -205,3 +206,26 @@ class TestComponentHealthModel:
         assert health.name == "github"
         assert health.latency_ms == 150.5
         assert health.details["rate_limit_remaining"] == 4999
+
+    def test_component_health_allows_null_details(self):
+        """Null details should not crash model creation."""
+        health = ComponentHealth(
+            name="github",
+            status=HealthStatus.HEALTHY,
+            details=None,
+        )
+        assert health.details is None
+
+    def test_normalize_component_handles_null_component_and_details(self):
+        """Normalization should coerce nulls to safe defaults."""
+        null_component = _normalize_component(None)
+        assert null_component.name == "unknown"
+        assert null_component.details == {}
+
+        with_null_details = ComponentHealth(
+            name="slack",
+            status=HealthStatus.HEALTHY,
+            details=None,
+        )
+        normalized = _normalize_component(with_null_details)
+        assert normalized.details == {}
