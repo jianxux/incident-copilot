@@ -108,6 +108,30 @@ def test_onboarding_status(authed_client):
     assert "details" in data
 
 
+def test_onboarding_status_reflects_oauth_token_store(authed_client):
+    """Status endpoint should show connected when token exists in oauth_token_store."""
+    # Before storing token, github should be not connected
+    resp = authed_client.get("/dashboard/api/onboarding/status")
+    assert resp.json()["integrations"]["github"] is False
+
+    # Store a GitHub token
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id="test-tenant-id",
+            provider="github",
+            access_token="ghp_test123",
+            refresh_token=None,
+            scopes=["repo", "read:org"],
+        )
+    )
+
+    resp = authed_client.get("/dashboard/api/onboarding/status")
+    data = resp.json()
+    assert data["integrations"]["github"] is True
+    assert "github" in data["details"]
+    assert data["details"]["github"]["scopes"] == ["repo", "read:org"]
+
+
 def test_test_integration_not_connected(authed_client):
     resp = authed_client.post("/dashboard/api/onboarding/test-integration/pagerduty")
     assert resp.status_code == 200
