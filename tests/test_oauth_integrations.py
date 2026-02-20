@@ -194,15 +194,11 @@ def test_provider_test_slack_success(monkeypatch):
 
 
 @pytest.mark.unit
-def test_provider_test_pagerduty_token_info_success(monkeypatch):
-    seen: list[tuple[str, dict | None]] = []
+def test_provider_test_pagerduty_uses_stored_token_without_api_calls(monkeypatch):
+    async def _unexpected_post(self, url, data=None, headers=None):
+        raise AssertionError(f"unexpected network call: {url}")
 
-    async def _mock_post(self, url, data=None, headers=None):
-        seen.append((url, data))
-        return _DummyResponse(200, {"scope": "read write", "token_type": "Bearer"})
-
-    monkeypatch.setattr("src.api.oauth_integrations.httpx.AsyncClient.post", _mock_post)
-
+    monkeypatch.setattr("src.api.oauth_integrations.httpx.AsyncClient.post", _unexpected_post)
     app = create_app()
     client = TestClient(app)
     headers, tenant_id = _run(_create_headers_and_tenant())
@@ -211,6 +207,7 @@ def test_provider_test_pagerduty_token_info_success(monkeypatch):
             tenant_id=tenant_id,
             provider="pagerduty",
             access_token="pd-access-token",
+            scopes=["read", "write"],
         )
     )
 
@@ -219,17 +216,69 @@ def test_provider_test_pagerduty_token_info_success(monkeypatch):
     data = response.json()
     assert data["provider"] == "pagerduty"
     assert data["ok"] is True
-    assert "token valid" in data["details"].lower() or "scopes" in data["details"].lower()
-    assert any(url == "https://app.pagerduty.com/oauth/token_info" for url, _ in seen)
+    assert data["details"]["scopes"] == ["read", "write"]
+    assert data["details"]["connected_at"]
 
 
 @pytest.mark.unit
-def test_provider_test_pagerduty_token_info_forbidden(monkeypatch):
+def test_provider_test_pagerduty_expired_refresh_success(monkeypatch):
+    from datetime import UTC, datetime, timedelta
+
+    monkeypatch.setenv("PAGERDUTY_CLIENT_ID", "pd-client")
+    monkeypatch.setenv("PAGERDUTY_CLIENT_SECRET", "pd-secret")
     seen_urls: list[str] = []
 
     async def _mock_post(self, url, data=None, headers=None):
         seen_urls.append(url)
-        return _DummyResponse(403, {"error": {"message": "forbidden"}})
+        if url == "https://app.pagerduty.com/oauth/token":
+            return _DummyResponse(
+                200,
+                {
+                    "access_token": "new-access-token",
+                    "refresh_token": "new-refresh-token",
+                    "expires_in": 3600,
+                    "scope": "read write",
+                },
+            )
+        return _DummyResponse(500, {})
+
+    monkeypatch.setattr("src.api.oauth_integrations.httpx.AsyncClient.post", _mock_post)
+    app = create_app()
+    client = TestClient(app)
+    headers, tenant_id = _run(_create_headers_and_tenant())
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id=tenant_id,
+            provider="pagerduty",
+            access_token="expired-access-token",
+            refresh_token="old-refresh-token",
+            token_expiry=datetime.now(UTC) - timedelta(minutes=1),
+        )
+    )
+
+    response = client.post("/api/integrations/pagerduty/test", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "pagerduty"
+    assert data["ok"] is True
+    assert data["details"]["refreshed_at"]
+    assert "https://app.pagerduty.com/oauth/token" in seen_urls
+
+    stored = _run(oauth_token_store.get_token(tenant_id, "pagerduty"))
+    assert stored is not None
+    assert stored.access_token == "new-access-token"
+    assert stored.refresh_token == "new-refresh-token"
+
+
+@pytest.mark.unit
+def test_provider_test_pagerduty_expired_refresh_failed(monkeypatch):
+    from datetime import UTC, datetime, timedelta
+
+    monkeypatch.setenv("PAGERDUTY_CLIENT_ID", "pd-client")
+    monkeypatch.setenv("PAGERDUTY_CLIENT_SECRET", "pd-secret")
+
+    async def _mock_post(self, url, data=None, headers=None):
+        return _DummyResponse(401, {"error": "invalid_grant"})
 
     monkeypatch.setattr("src.api.oauth_integrations.httpx.AsyncClient.post", _mock_post)
 
@@ -240,7 +289,9 @@ def test_provider_test_pagerduty_token_info_forbidden(monkeypatch):
         oauth_token_store.upsert_token(
             tenant_id=tenant_id,
             provider="pagerduty",
-            access_token="pd-access-token",
+            access_token="expired-access-token",
+            refresh_token="old-refresh-token",
+            token_expiry=datetime.now(UTC) - timedelta(minutes=1),
         )
     )
 
@@ -249,5 +300,4 @@ def test_provider_test_pagerduty_token_info_forbidden(monkeypatch):
     data = response.json()
     assert data["provider"] == "pagerduty"
     assert data["ok"] is False
-    assert "403" in data["details"]
-    assert "https://app.pagerduty.com/oauth/token_info" in seen_urls
+    assert "refresh failed" in data["details"].lower()
