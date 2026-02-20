@@ -251,3 +251,80 @@ class TestIncidentsListAPI:
         resp = client.get("/api/incidents")
         data = resp.json()
         assert "incidents" in data
+
+
+class TestDashboardWrapperEndpoints:
+    """Test dashboard wrapper endpoints pass auth_data correctly."""
+
+    @pytest.fixture
+    def authed_client(self):
+        from fastapi.testclient import TestClient
+        from src.main import create_app
+        from src.auth.middleware import AuthContext, get_auth_context
+        from src.web.routes import require_dashboard_auth
+
+        app = create_app()
+
+        mock_tenant = MagicMock()
+        mock_tenant.id = "test-tenant"
+        mock_tenant.slug = "test"
+        mock_tenant.integrations = {}
+
+        async def override_auth():
+            return AuthContext(user=MagicMock(id="u1"), tenant=mock_tenant)
+
+        async def override_dashboard_auth():
+            return {"tenant_id": "test-tenant", "user_id": "u1"}
+
+        app.dependency_overrides[get_auth_context] = override_auth
+        app.dependency_overrides[require_dashboard_auth] = override_dashboard_auth
+
+        with TestClient(app) as c:
+            yield c
+
+        app.dependency_overrides.clear()
+
+    def test_dashboard_stats_wrapper_returns_200_with_auth(self, authed_client):
+        resp = authed_client.get("/dashboard/api/stats")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "total" in data
+
+    def test_dashboard_incidents_wrapper_returns_200_with_auth(self, authed_client):
+        resp = authed_client.get("/dashboard/api/incidents")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "incidents" in data
+        assert isinstance(data["incidents"], list)
+
+    def test_dashboard_stats_wrapper_returns_401_without_auth(self, monkeypatch):
+        from fastapi.testclient import TestClient
+        from src.main import create_app
+
+        monkeypatch.setattr("src.supabase_client.is_supabase_auth_enabled", lambda: True)
+
+        async def _no_auth(_request):
+            return None, None
+
+        monkeypatch.setattr("src.web.routes._get_tenant_id_from_request", _no_auth)
+
+        app = create_app()
+        with TestClient(app) as client:
+            resp = client.get("/dashboard/api/stats")
+        assert resp.status_code == 401
+
+    def test_dashboard_incidents_wrapper_returns_401_without_auth(self, monkeypatch):
+        from fastapi.testclient import TestClient
+        from src.main import create_app
+
+        monkeypatch.setattr("src.supabase_client.is_supabase_auth_enabled", lambda: True)
+
+        async def _no_auth(_request):
+            return None, None
+
+        monkeypatch.setattr("src.web.routes._get_tenant_id_from_request", _no_auth)
+
+        app = create_app()
+        with TestClient(app) as client:
+            resp = client.get("/dashboard/api/incidents")
+        assert resp.status_code == 401

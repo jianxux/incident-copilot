@@ -6,10 +6,13 @@ Run separately: uv run pytest tests/integration/test_onboarding_api.py -v
 
 from __future__ import annotations
 
+import asyncio
 import os
 from unittest.mock import MagicMock
 
 import pytest
+
+from src.integrations.oauth_tokens import oauth_token_store
 
 os.environ["SUPABASE_DB_ENABLED"] = "false"
 os.environ.pop("SUPABASE_URL", None)
@@ -60,6 +63,24 @@ def anon_client(app):
         yield c
 
 
+def _run(coro):
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    return loop.run_until_complete(coro)
+
+
+@pytest.fixture(autouse=True)
+def _reset_oauth_store():
+    oauth_token_store._tokens.clear()
+    oauth_token_store._states.clear()
+    yield
+    oauth_token_store._tokens.clear()
+    oauth_token_store._states.clear()
+
+
 def test_get_checklist(authed_client):
     resp = authed_client.get("/dashboard/api/onboarding/checklist")
     assert resp.status_code == 200
@@ -90,6 +111,152 @@ def test_onboarding_status(authed_client):
 def test_test_integration_not_connected(authed_client):
     resp = authed_client.post("/dashboard/api/onboarding/test-integration/pagerduty")
     assert resp.status_code in (404, 500)
+
+
+def test_test_integration_pagerduty_users_me_success(authed_client, monkeypatch):
+    calls: list[str] = []
+
+    class _Resp:
+        def __init__(self, status_code, payload):
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    async def _mock_get(self, url, headers=None):
+        calls.append(url)
+        return _Resp(200, {"user": {"name": "SRE User", "email": "sre@example.com"}})
+
+    monkeypatch.setattr("httpx.AsyncClient.get", _mock_get)
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id="test-tenant-id",
+            provider="pagerduty",
+            access_token="valid-token",
+            refresh_token="refresh-token",
+        )
+    )
+
+    resp = authed_client.post("/dashboard/api/onboarding/test-integration/pagerduty")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ok"] is True
+    assert "authenticated as SRE User" in data["details"]
+    assert calls == ["https://api.pagerduty.com/users/me"]
+
+
+def test_test_integration_pagerduty_users_me_forbidden(authed_client, monkeypatch):
+    class _Resp:
+        def __init__(self, status_code, payload):
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    async def _mock_get(self, url, headers=None):
+        return _Resp(403, {"error": {"message": "forbidden"}})
+
+    monkeypatch.setattr("httpx.AsyncClient.get", _mock_get)
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id="test-tenant-id",
+            provider="pagerduty",
+            access_token="valid-token",
+            refresh_token="refresh-token",
+        )
+    )
+
+    resp = authed_client.post("/dashboard/api/onboarding/test-integration/pagerduty")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ok"] is False
+    assert "403" in data["details"]
+
+
+def test_test_integration_pagerduty_refresh_retries_inside_client_scope(authed_client, monkeypatch):
+    monkeypatch.setenv("PAGERDUTY_CLIENT_ID", "pd-client")
+    monkeypatch.setenv("PAGERDUTY_CLIENT_SECRET", "pd-secret")
+
+    class _Resp:
+        def __init__(self, status_code, payload):
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    class _ScopedAsyncClient:
+        instances: list["_ScopedAsyncClient"] = []
+
+        def __init__(self, timeout=10):
+            self.timeout = timeout
+            self.closed = False
+            self.calls: list[tuple[str, str, dict | None]] = []
+            _ScopedAsyncClient.instances.append(self)
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            self.closed = True
+
+        async def get(self, url, headers=None):
+            if self.closed:
+                raise RuntimeError("client is closed")
+            self.calls.append(("get", url, headers))
+            auth = (headers or {}).get("Authorization")
+            if url == "https://api.pagerduty.com/users/me" and auth == "Bearer old-token":
+                return _Resp(401, {})
+            if url == "https://api.pagerduty.com/users/me" and auth == "Bearer new-token":
+                return _Resp(200, {"user": {"name": "Refreshed User"}})
+            return _Resp(500, {})
+
+        async def post(self, url, data=None, headers=None):
+            if self.closed:
+                raise RuntimeError("client is closed")
+            self.calls.append(("post", url, data))
+            if url == "https://app.pagerduty.com/oauth/token":
+                return _Resp(
+                    200,
+                    {
+                        "access_token": "new-token",
+                        "refresh_token": "new-refresh-token",
+                        "expires_in": 3600,
+                    },
+                )
+            return _Resp(500, {})
+
+    monkeypatch.setattr("httpx.AsyncClient", _ScopedAsyncClient)
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id="test-tenant-id",
+            provider="pagerduty",
+            access_token="old-token",
+            refresh_token="old-refresh-token",
+            scopes=["read"],
+        )
+    )
+
+    resp = authed_client.post("/dashboard/api/onboarding/test-integration/pagerduty")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ok"] is True
+    assert "token refreshed" in data["details"]
+
+    stored = _run(oauth_token_store.get_token("test-tenant-id", "pagerduty"))
+    assert stored is not None
+    assert stored.access_token == "new-token"
+    assert stored.refresh_token == "new-refresh-token"
+
+    client = _ScopedAsyncClient.instances[-1]
+    assert ("post", "https://app.pagerduty.com/oauth/token", {
+        "grant_type": "refresh_token",
+        "refresh_token": "old-refresh-token",
+        "client_id": "pd-client",
+        "client_secret": "pd-secret",
+    }) in client.calls
 
 
 def test_service_api_list_empty(anon_client):

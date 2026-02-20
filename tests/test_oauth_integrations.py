@@ -34,6 +34,11 @@ def _run(coro):
 
 
 async def _create_headers() -> dict[str, str]:
+    headers, _ = await _create_headers_and_tenant()
+    return headers
+
+
+async def _create_headers_and_tenant() -> tuple[dict[str, str], str]:
     tenant = await auth_service.create_tenant(
         name="OAuth Tenant",
         slug=f"oauth-test-{asyncio.get_running_loop().time()}".replace(".", "-"),
@@ -45,7 +50,7 @@ async def _create_headers() -> dict[str, str]:
         role=UserRole.OWNER,
     )
     session = await auth_service.create_session(user.id)
-    return {"Authorization": f"Bearer {session.access_token}"}
+    return {"Authorization": f"Bearer {session.access_token}"}, tenant.id
 
 
 @pytest.fixture(autouse=True)
@@ -186,3 +191,64 @@ def test_provider_test_slack_success(monkeypatch):
     data = response.json()
     assert data["ok"] is True
     assert isinstance(data["details"], str)
+
+
+@pytest.mark.unit
+def test_provider_test_pagerduty_users_me_success(monkeypatch):
+    seen: list[tuple[str, dict | None]] = []
+
+    async def _mock_get(self, url, headers=None):
+        seen.append((url, headers))
+        return _DummyResponse(200, {"user": {"name": "Jane PD", "email": "jane@example.com"}})
+
+    monkeypatch.setattr("src.api.oauth_integrations.httpx.AsyncClient.get", _mock_get)
+
+    app = create_app()
+    client = TestClient(app)
+    headers, tenant_id = _run(_create_headers_and_tenant())
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id=tenant_id,
+            provider="pagerduty",
+            access_token="pd-access-token",
+        )
+    )
+
+    response = client.post("/api/integrations/pagerduty/test", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "pagerduty"
+    assert data["ok"] is True
+    assert "Jane PD" in data["details"]
+    assert seen and seen[0][0] == "https://api.pagerduty.com/users/me"
+    assert "version=2" in (seen[0][1] or {}).get("Accept", "")
+
+
+@pytest.mark.unit
+def test_provider_test_pagerduty_users_me_forbidden(monkeypatch):
+    seen_urls: list[str] = []
+
+    async def _mock_get(self, url, headers=None):
+        seen_urls.append(url)
+        return _DummyResponse(403, {"error": {"message": "forbidden"}})
+
+    monkeypatch.setattr("src.api.oauth_integrations.httpx.AsyncClient.get", _mock_get)
+
+    app = create_app()
+    client = TestClient(app)
+    headers, tenant_id = _run(_create_headers_and_tenant())
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id=tenant_id,
+            provider="pagerduty",
+            access_token="pd-access-token",
+        )
+    )
+
+    response = client.post("/api/integrations/pagerduty/test", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "pagerduty"
+    assert data["ok"] is False
+    assert "403" in data["details"]
+    assert seen_urls == ["https://api.pagerduty.com/users/me"]
