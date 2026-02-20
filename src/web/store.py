@@ -193,7 +193,13 @@ class SupabaseIncidentStore(_BaseIncidentStore):
         if card_row and card_row.get("data"):
             try:
                 ctx = ContextCard.model_validate(card_row["data"])
-            except Exception:
+            except Exception as e:
+                logger.warning(
+                    "context_card_validation_failed",
+                    error=str(e),
+                    error_type=type(e).__name__,
+                    incident_id=row.get("id"),
+                )
                 ctx = None
 
         triggered_at = row.get("triggered_at")
@@ -207,7 +213,14 @@ class SupabaseIncidentStore(_BaseIncidentStore):
         sev = row.get("severity") or "medium"
         try:
             severity = Severity(sev)
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "incident_severity_parse_failed",
+                error=str(e),
+                error_type=type(e).__name__,
+                severity=sev,
+                incident_id=row.get("id"),
+            )
             severity = Severity.MEDIUM
 
         return StoredIncident(
@@ -377,7 +390,13 @@ class SupabaseIncidentStore(_BaseIncidentStore):
         card_row = None
         try:
             card_row = await db.get_context_card(incident_id)
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "context_card_fetch_failed",
+                error=str(e),
+                error_type=type(e).__name__,
+                incident_id=incident_id,
+            )
             card_row = None
 
         return self._row_to_stored(row, card_row)

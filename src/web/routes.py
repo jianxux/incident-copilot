@@ -1,4 +1,7 @@
-"""Web routes for the Incident Copilot dashboard."""
+"""Web routes for the Incident Copilot dashboard.
+
+TODO: This file is a monolith and should be refactored into focused route modules.
+"""
 
 import asyncio
 import json
@@ -39,10 +42,21 @@ landing_router = APIRouter(tags=["landing"])
 async def require_dashboard_auth(request: Request) -> dict[str, str]:
     """Require a valid Supabase bearer token for dashboard routes.
 
+    In production, this enforces Supabase authentication.
+
+    In tests (and local dev setups) where Supabase Auth is disabled via
+    `SUPABASE_AUTH_ENABLED=false`, we allow dashboard access with a
+    deterministic "default" tenant and synthetic user id.
+
     Uses Authorization header or ic_access_token cookie.
     Browser requests (Accept: text/html) are redirected to /login instead
     of receiving a raw JSON 401.
     """
+
+    from ..supabase_client import is_supabase_auth_enabled
+
+    if not is_supabase_auth_enabled():
+        return {"tenant_id": "default", "user_id": "test-user"}
 
     tenant_id, user_id = await _get_tenant_id_from_request(request)
     if not tenant_id or not user_id:
@@ -208,13 +222,12 @@ async def health_check():
 
 
 @landing_router.get("/api/incidents")
-async def api_incidents(request: Request):
+async def api_incidents(
+    request: Request,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
     """Tenant-scoped JSON API endpoint for incidents list."""
-
-    tenant_id, _user_id = await _get_tenant_id_from_request(request)
-    if not tenant_id:
-        # Keep response shape stable; frontend will redirect to login.
-        return {"incidents": []}
+    tenant_id = auth_data["tenant_id"]
 
     # When Supabase DB is disabled, fall back to in-memory store.
     from ..supabase_client import is_supabase_db_enabled
@@ -251,8 +264,13 @@ async def api_incidents(request: Request):
                 t0 = datetime.fromisoformat(str(triggered).replace("Z", "+00:00"))
                 t1 = datetime.fromisoformat(str(processed).replace("Z", "+00:00"))
                 duration_seconds = int((t1 - t0).total_seconds())
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(
+                    "incident_duration_parse_failed",
+                    error=str(e),
+                    error_type=type(e).__name__,
+                    incident_id=r.get("id"),
+                )
 
         # Extract verdict summary from metadata if available
         meta = r.get("metadata") or {}
@@ -289,22 +307,12 @@ async def api_incidents(request: Request):
 
 
 @landing_router.get("/api/dashboard/stats")
-async def api_dashboard_stats(request: Request):
+async def api_dashboard_stats(
+    request: Request,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
     """Tenant-scoped JSON API endpoint for dashboard stats."""
-
-    tenant_id, _user_id = await _get_tenant_id_from_request(request)
-    if not tenant_id:
-        return {
-            "total": 0,
-            "by_status": {"processing": 0, "completed": 0, "error": 0},
-            "by_severity": {
-                "critical": 0,
-                "high": 0,
-                "medium": 0,
-                "low": 0,
-                "info": 0,
-            },
-        }
+    tenant_id = auth_data["tenant_id"]
 
     from ..supabase_client import is_supabase_db_enabled
 
@@ -1056,8 +1064,13 @@ async def get_onboarding_checklist(
                 await checklist_store.set_step(tenant_id, "connect_github", True)
             if "datadog" in providers:
                 await checklist_store.set_step(tenant_id, "connect_datadog", True)
-    except Exception:
-        pass  # Supabase unavailable — use local checklist only
+    except Exception as e:
+        logger.warning(
+            "onboarding_integration_sync_failed",
+            error=str(e),
+            error_type=type(e).__name__,
+            tenant_id=tenant_id,
+        )
 
     # Also sync services
     try:
@@ -1068,8 +1081,13 @@ async def get_onboarding_checklist(
         services = await store.list_services(tenant_slug=tenant_slug)
         if services:
             await checklist_store.set_step(tenant_id, "add_services", True)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(
+            "onboarding_service_sync_failed",
+            error=str(e),
+            error_type=type(e).__name__,
+            tenant_id=tenant_id,
+        )
 
     # Mark create_account done if authenticated
     if auth.user:
@@ -1154,8 +1172,13 @@ async def get_onboarding_status(
                             details[provider] = detail
                     except Exception:
                         details[provider] = {}
-    except Exception:
-        pass  # Supabase unavailable — fall back to in-memory only
+    except Exception as e:
+        logger.warning(
+            "onboarding_status_sync_failed",
+            error=str(e),
+            error_type=type(e).__name__,
+            tenant_id=tenant_id,
+        )
 
     return {
         "authenticated": True,
@@ -1273,6 +1296,7 @@ async def test_integration(
                     logger.warning("pagerduty_refresh_error", error=str(exc))
 
                 return {"ok": False, "details": "PagerDuty OAuth token expired. Please disconnect and reconnect PagerDuty."}
+            return {"ok": False, "details": f"PagerDuty API returned {resp.status_code}"}
 
         elif provider == "slack":
             import httpx
