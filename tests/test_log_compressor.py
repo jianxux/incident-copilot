@@ -26,7 +26,7 @@ class TestLogCompressorAdapter:
         assert result.kept == 50
         assert len(result.compressed) == 50
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_compress_async_stub(self):
         compressor = LogCompressor()
         logs = [{"message": f"line {i}", "level": "error"} for i in range(3)]

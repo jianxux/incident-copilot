@@ -56,7 +56,7 @@ def _app() -> FastAPI:
     return app
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_pagerduty_webhook_realistic_v3_payload_returns_200(monkeypatch):
     import src.api.webhooks as webhooks
 
@@ -80,7 +80,7 @@ async def test_pagerduty_webhook_realistic_v3_payload_returns_200(monkeypatch):
     payload = _pd_v3_payload(event_type="incident.triggered", urgency="high")
     body = json.dumps(payload).encode("utf-8")
 
-    transport = httpx.ASGITransport(app=_app(), lifespan="off")
+    transport = httpx.ASGITransport(app=_app())
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post(
             "/webhooks/pagerduty",
@@ -97,7 +97,7 @@ async def test_pagerduty_webhook_realistic_v3_payload_returns_200(monkeypatch):
     assert captured["incident"].incident_id == "P1234567"
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_pagerduty_webhook_invalid_json_returns_400(monkeypatch):
     import src.api.webhooks as webhooks
 
@@ -113,7 +113,7 @@ async def test_pagerduty_webhook_invalid_json_returns_400(monkeypatch):
 
     body = b"{not-json"
 
-    transport = httpx.ASGITransport(app=_app(), lifespan="off")
+    transport = httpx.ASGITransport(app=_app())
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post(
             "/webhooks/pagerduty",
@@ -128,7 +128,7 @@ async def test_pagerduty_webhook_invalid_json_returns_400(monkeypatch):
     assert resp.json()["detail"] == "Invalid JSON"
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_pagerduty_webhook_non_incident_event_is_ignored(monkeypatch):
     import src.api.webhooks as webhooks
 
@@ -153,7 +153,7 @@ async def test_pagerduty_webhook_non_incident_event_is_ignored(monkeypatch):
     payload = _pd_v3_payload(event_type="incident.acknowledged")
     body = json.dumps(payload).encode("utf-8")
 
-    transport = httpx.ASGITransport(app=_app(), lifespan="off")
+    transport = httpx.ASGITransport(app=_app())
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post(
             "/webhooks/pagerduty",
@@ -170,7 +170,7 @@ async def test_pagerduty_webhook_non_incident_event_is_ignored(monkeypatch):
     assert called["count"] == 0
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "urgency,expected",
     [("high", "high"), ("low", "low"), ("unknown", "medium")],
@@ -198,7 +198,7 @@ async def test_pagerduty_webhook_severity_mapping(monkeypatch, urgency, expected
     payload = _pd_v3_payload(event_type="incident.triggered", urgency=urgency)
     body = json.dumps(payload).encode("utf-8")
 
-    transport = httpx.ASGITransport(app=_app(), lifespan="off")
+    transport = httpx.ASGITransport(app=_app())
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post(
             "/webhooks/pagerduty",

@@ -34,7 +34,7 @@ PAGERDUTY_RESOLVE_PAYLOAD = {
 class TestPagerDutyWebhook:
     """Test PagerDuty webhook endpoint."""
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_valid_incident_trigger(self):
         """Valid PD incident should return 200 with accepted status."""
         from httpx import ASGITransport, AsyncClient
@@ -49,7 +49,7 @@ class TestPagerDutyWebhook:
             assert data["incident_id"] == "TEST001"
             assert data["service"] == "web-api"
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_non_trigger_event_ignored(self):
         """Non-trigger events should be ignored."""
         from httpx import ASGITransport, AsyncClient
@@ -63,7 +63,7 @@ class TestPagerDutyWebhook:
             assert resp.status_code == 200
             assert resp.json()["status"] == "ignored"
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_invalid_json(self):
         """Invalid JSON should return 400."""
         from httpx import ASGITransport, AsyncClient
@@ -78,7 +78,7 @@ class TestPagerDutyWebhook:
             )
             assert resp.status_code in (400, 422)
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_health_endpoint(self):
         """Health check should return 200."""
         from httpx import ASGITransport, AsyncClient

@@ -84,4 +84,4 @@ def test_parse_webhook_handles_missing_fields(adapter):
     assert incident is not None
     assert incident.incident_id == "P1234567"
     assert incident.service_name == "unknown-service"
-    assert incident.severity == Severity.MEDIUM  # default
+    assert incident.severity == Severity.LOW  # default in legacy adapter

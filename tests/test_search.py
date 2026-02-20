@@ -310,6 +310,7 @@ class TestSearchAPI:
         """Test POST /api/search/saved endpoint."""
         response = client.post(
             "/api/search/saved",
+            params={"user_id": "test-user"},
             json={
                 "name": "My Saved Search",
                 "query": {"query": "test incidents"},
@@ -319,14 +320,14 @@ class TestSearchAPI:
 
     def test_list_saved_searches(self, client):
         """Test GET /api/search/saved endpoint."""
-        response = client.get("/api/search/saved")
+        response = client.get("/api/search/saved", params={"user_id": "test-user"})
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
 
     def test_reindex(self, client):
         """Test POST /api/search/reindex endpoint."""
-        response = client.post("/api/search/reindex")
+        response = client.post("/api/search/reindex", json={"batch_size": 100})
         assert response.status_code in (200, 202)
 
     def test_search_analytics(self, client):
