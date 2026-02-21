@@ -269,6 +269,241 @@ async def provider_disconnect(
     }
 
 
+@router.post("/{provider}/test")
+async def provider_test(
+    provider: str,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Test OAuth integration connectivity for current tenant."""
+    if not auth.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
+    resolved = normalize_provider(provider)
+    config = get_provider_config(resolved)
+    if not config:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Unknown provider: {provider}",
+        )
+
+    token = await oauth_token_store.get_token(auth.tenant_id, resolved)
+    if not token or not token.access_token:
+        return {
+            "provider": resolved,
+            "ok": False,
+            "details": "Integration is not connected",
+        }
+
+    if resolved == "pagerduty":
+        details = {
+            "subdomain": None,
+            "scopes": token.scopes,
+            "connected_at": token.created_at.isoformat() if token.created_at else None,
+        }
+        details.update(await _load_pagerduty_stored_details(auth.tenant_id))
+
+        now = datetime.now(UTC)
+        if not token.token_expiry or token.token_expiry > now:
+            return {
+                "provider": resolved,
+                "ok": True,
+                "details": details,
+            }
+
+        refreshed = await _refresh_provider_token(auth.tenant_id, resolved, token)
+        if refreshed:
+            refreshed_details = {
+                "subdomain": details.get("subdomain"),
+                "scopes": refreshed.scopes,
+                "connected_at": details.get("connected_at")
+                or (refreshed.created_at.isoformat() if refreshed.created_at else None),
+                "refreshed_at": datetime.now(UTC).isoformat(),
+            }
+            return {
+                "provider": resolved,
+                "ok": True,
+                "details": refreshed_details,
+            }
+
+        return {
+            "provider": resolved,
+            "ok": False,
+            "details": "PagerDuty token is expired and refresh failed",
+        }
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            if resolved == "slack":
+                resp = await client.post(
+                    "https://slack.com/api/auth.test",
+                    headers={"Authorization": f"Bearer {token.access_token}"},
+                )
+                data = resp.json() if resp.content else {}
+                if data.get("ok"):
+                    return {
+                        "provider": resolved,
+                        "ok": True,
+                        "details": "Slack API reachable",
+                    }
+                return {
+                    "provider": resolved,
+                    "ok": False,
+                    "details": f"Slack auth failed: {data.get('error', 'unknown')}",
+                }
+
+            if resolved == "github":
+                resp = await client.get(
+                    "https://api.github.com/user",
+                    headers={
+                        "Authorization": f"Bearer {token.access_token}",
+                        "Accept": "application/vnd.github+json",
+                    },
+                )
+                if resp.status_code == 200:
+                    return {
+                        "provider": resolved,
+                        "ok": True,
+                        "details": "GitHub API reachable",
+                    }
+                return {
+                    "provider": resolved,
+                    "ok": False,
+                    "details": f"GitHub API returned {resp.status_code}",
+                }
+
+            if resolved == "datadog":
+                return {
+                    "provider": resolved,
+                    "ok": True,
+                    "details": "Datadog token stored",
+                }
+    except Exception as e:
+        logger.warning(
+            "integration_test_failed",
+            provider=resolved,
+            tenant_id=auth.tenant_id,
+            error=str(e),
+        )
+        return {
+            "provider": resolved,
+            "ok": False,
+            "details": f"Connection test failed: {type(e).__name__}",
+        }
+
+    return {
+        "provider": resolved,
+        "ok": False,
+        "details": "Unsupported integration provider for test",
+    }
+
+
+async def _load_pagerduty_stored_details(tenant_id: str) -> dict:
+    """Best-effort retrieval of PagerDuty metadata stored in legacy configs."""
+    try:
+        from ..db.supabase_db import get_db
+        from ..security.crypto import decrypt_json
+
+        db = get_db(use_admin=True)
+        rows = (
+            db.client.table("integration_configs")
+            .select("config")
+            .eq("tenant_id", tenant_id)
+            .eq("type", "pagerduty")
+            .eq("is_active", True)
+            .limit(1)
+            .execute()
+        )
+        if not rows.data:
+            return {}
+
+        config = rows.data[0].get("config", {})
+        encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
+        if not encrypted:
+            return {}
+
+        decrypted = decrypt_json(encrypted)
+        oauth = decrypted.get("oauth", {}) if isinstance(decrypted, dict) else {}
+        scopes = oauth.get("scope")
+        if isinstance(scopes, str):
+            scopes = [s.strip() for s in scopes.replace(",", " ").split(" ") if s.strip()]
+        elif not isinstance(scopes, list):
+            scopes = None
+        return {
+            "subdomain": decrypted.get("subdomain"),
+            "scopes": scopes,
+            "connected_at": decrypted.get("connected_at"),
+        }
+    except Exception:
+        return {}
+
+
+async def _refresh_provider_token(
+    tenant_id: str,
+    provider: str,
+    token,
+):
+    """Attempt OAuth refresh and persist new credentials."""
+    if not token.refresh_token:
+        return None
+
+    config = get_provider_config(provider)
+    client_id, client_secret = get_provider_credentials(provider)
+    if not config or not client_id or not client_secret:
+        return None
+
+    payload = {
+        "grant_type": "refresh_token",
+        "refresh_token": token.refresh_token,
+        "client_id": client_id,
+        "client_secret": client_secret,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.post(
+                config.token_url,
+                data=payload,
+                headers={"Accept": "application/json"},
+            )
+    except Exception:
+        return None
+
+    if response.status_code != 200:
+        return None
+
+    body = response.json()
+    access_token = body.get("access_token")
+    if not access_token:
+        return None
+
+    expires_in = body.get("expires_in")
+    expiry = None
+    try:
+        expires_in_value = int(expires_in) if expires_in is not None else None
+    except (TypeError, ValueError):
+        expires_in_value = None
+    if expires_in_value and expires_in_value > 0:
+        expiry = datetime.now(UTC) + timedelta(seconds=expires_in_value)
+
+    scopes_raw = body.get("scope")
+    if isinstance(scopes_raw, str):
+        scopes = _parse_scopes(scopes_raw, provider)
+    else:
+        scopes = token.scopes
+
+    return await oauth_token_store.upsert_token(
+        tenant_id=tenant_id,
+        provider=provider,
+        access_token=access_token,
+        refresh_token=body.get("refresh_token") or token.refresh_token,
+        token_expiry=expiry,
+        scopes=scopes,
+    )
+
+
 async def _exchange_code_for_token(
     provider: str,
     code: str,

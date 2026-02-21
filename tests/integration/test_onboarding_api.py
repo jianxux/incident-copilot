@@ -6,10 +6,13 @@ Run separately: uv run pytest tests/integration/test_onboarding_api.py -v
 
 from __future__ import annotations
 
+import asyncio
 import os
 from unittest.mock import MagicMock
 
 import pytest
+
+from src.integrations.oauth_tokens import oauth_token_store
 
 os.environ["SUPABASE_DB_ENABLED"] = "false"
 os.environ.pop("SUPABASE_URL", None)
@@ -60,6 +63,24 @@ def anon_client(app):
         yield c
 
 
+def _run(coro):
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    return loop.run_until_complete(coro)
+
+
+@pytest.fixture(autouse=True)
+def _reset_oauth_store():
+    oauth_token_store._tokens.clear()
+    oauth_token_store._states.clear()
+    yield
+    oauth_token_store._tokens.clear()
+    oauth_token_store._states.clear()
+
+
 def test_get_checklist(authed_client):
     resp = authed_client.get("/dashboard/api/onboarding/checklist")
     assert resp.status_code == 200
@@ -87,9 +108,284 @@ def test_onboarding_status(authed_client):
     assert "details" in data
 
 
+def test_onboarding_status_reflects_oauth_token_store(authed_client):
+    """Status endpoint should show connected when token exists in oauth_token_store."""
+    # Before storing token, github should be not connected
+    resp = authed_client.get("/dashboard/api/onboarding/status")
+    assert resp.json()["integrations"]["github"] is False
+
+    # Store a GitHub token
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id="test-tenant-id",
+            provider="github",
+            access_token="ghp_test123",
+            refresh_token=None,
+            scopes=["repo", "read:org"],
+        )
+    )
+
+    resp = authed_client.get("/dashboard/api/onboarding/status")
+    data = resp.json()
+    assert data["integrations"]["github"] is True
+    assert "github" in data["details"]
+    assert data["details"]["github"]["scopes"] == ["repo", "read:org"]
+
+
 def test_test_integration_not_connected(authed_client):
     resp = authed_client.post("/dashboard/api/onboarding/test-integration/pagerduty")
-    assert resp.status_code in (404, 500)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ok"] is False
+    assert "not connected" in data["details"].lower()
+
+
+def test_test_integration_pagerduty_stored_token_success(authed_client, monkeypatch):
+    """Valid stored token should return ok:true with subdomain from /services."""
+
+    class _Resp:
+        def __init__(self, status_code, payload):
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    async def _unexpected_post(self, url, data=None, headers=None):
+        raise AssertionError(f"unexpected POST call: {url}")
+
+    async def _mock_get(self, url, headers=None):
+        if "/services" in url:
+            return _Resp(200, {
+                "services": [{"html_url": "https://acme-corp.pagerduty.com/services/P123"}],
+                "total": 1,
+            })
+        raise AssertionError(f"unexpected GET call: {url}")
+
+    monkeypatch.setattr("httpx.AsyncClient.post", _unexpected_post)
+    monkeypatch.setattr("httpx.AsyncClient.get", _mock_get)
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id="test-tenant-id",
+            provider="pagerduty",
+            access_token="valid-token",
+            refresh_token="refresh-token",
+            scopes=["read", "write"],
+        )
+    )
+
+    resp = authed_client.post("/dashboard/api/onboarding/test-integration/pagerduty")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ok"] is True
+    assert isinstance(data["details"], dict)
+    assert data["details"]["subdomain"] == "acme-corp"
+    assert data["details"]["scopes"] == ["read", "write"]
+    assert data["details"]["connected_at"]
+
+
+def test_test_integration_pagerduty_token_info_fails_gracefully(authed_client, monkeypatch):
+    """If /services call fails, should still return ok:true without subdomain."""
+
+    class _Resp:
+        def __init__(self, status_code, payload):
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    async def _unexpected_post(self, url, data=None, headers=None):
+        raise AssertionError(f"unexpected POST call: {url}")
+
+    async def _mock_get(self, url, headers=None):
+        if "/services" in url:
+            return _Resp(403, {"error": {"message": "Forbidden"}})
+        raise AssertionError(f"unexpected GET call: {url}")
+
+    monkeypatch.setattr("httpx.AsyncClient.post", _unexpected_post)
+    monkeypatch.setattr("httpx.AsyncClient.get", _mock_get)
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id="test-tenant-id",
+            provider="pagerduty",
+            access_token="valid-token",
+            refresh_token="refresh-token",
+            scopes=["incidents.read"],
+        )
+    )
+
+    resp = authed_client.post("/dashboard/api/onboarding/test-integration/pagerduty")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ok"] is True
+    assert isinstance(data["details"], dict)
+    # subdomain should be None since token_info returned 401
+    assert data["details"].get("subdomain") is None
+    assert data["details"]["scopes"] == ["incidents.read"]
+
+
+def test_test_integration_pagerduty_expired_refresh_failed(authed_client, monkeypatch):
+    from datetime import UTC, datetime, timedelta
+
+    monkeypatch.setenv("PAGERDUTY_CLIENT_ID", "pd-client")
+    monkeypatch.setenv("PAGERDUTY_CLIENT_SECRET", "pd-secret")
+
+    class _Resp:
+        def __init__(self, status_code, payload):
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    async def _mock_post(self, url, data=None, headers=None):
+        return _Resp(401, {"error": "invalid_grant"})
+
+    monkeypatch.setattr("httpx.AsyncClient.post", _mock_post)
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id="test-tenant-id",
+            provider="pagerduty",
+            access_token="expired-token",
+            refresh_token="old-refresh-token",
+            token_expiry=datetime.now(UTC) - timedelta(minutes=5),
+        )
+    )
+
+    resp = authed_client.post("/dashboard/api/onboarding/test-integration/pagerduty")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ok"] is False
+    assert "refresh failed" in data["details"].lower()
+
+
+def test_test_integration_pagerduty_refresh_retries_inside_client_scope(authed_client, monkeypatch):
+    from datetime import UTC, datetime, timedelta
+
+    monkeypatch.setenv("PAGERDUTY_CLIENT_ID", "pd-client")
+    monkeypatch.setenv("PAGERDUTY_CLIENT_SECRET", "pd-secret")
+
+    class _Resp:
+        def __init__(self, status_code, payload):
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    class _ScopedAsyncClient:
+        instances: list["_ScopedAsyncClient"] = []
+
+        def __init__(self, timeout=10):
+            self.timeout = timeout
+            self.closed = False
+            self.calls: list[tuple[str, str, dict | None]] = []
+            _ScopedAsyncClient.instances.append(self)
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            self.closed = True
+
+        async def get(self, url, headers=None):
+            if self.closed:
+                raise RuntimeError("client is closed")
+            self.calls.append(("get", url, headers))
+            return _Resp(500, {})
+
+        async def post(self, url, data=None, headers=None):
+            if self.closed:
+                raise RuntimeError("client is closed")
+            self.calls.append(("post", url, data))
+            if url == "https://app.pagerduty.com/oauth/token":
+                return _Resp(
+                    200,
+                    {
+                        "access_token": "new-token",
+                        "refresh_token": "new-refresh-token",
+                        "expires_in": 3600,
+                    },
+                )
+            return _Resp(500, {})
+
+    monkeypatch.setattr("httpx.AsyncClient", _ScopedAsyncClient)
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id="test-tenant-id",
+            provider="pagerduty",
+            access_token="old-token",
+            refresh_token="old-refresh-token",
+            token_expiry=datetime.now(UTC) - timedelta(minutes=5),
+            scopes=["read"],
+        )
+    )
+
+    resp = authed_client.post("/dashboard/api/onboarding/test-integration/pagerduty")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ok"] is True
+    assert data["details"]["refreshed_at"]
+
+    stored = _run(oauth_token_store.get_token("test-tenant-id", "pagerduty"))
+    assert stored is not None
+    assert stored.access_token == "new-token"
+    assert stored.refresh_token == "new-refresh-token"
+
+    client = _ScopedAsyncClient.instances[-1]
+    assert ("post", "https://app.pagerduty.com/oauth/token", {
+        "grant_type": "refresh_token",
+        "refresh_token": "old-refresh-token",
+        "client_id": "pd-client",
+        "client_secret": "pd-secret",
+    }) in client.calls
+
+
+def test_import_pagerduty_services_uses_oauth_token_store(authed_client, monkeypatch):
+    """Import services should read token from oauth_token_store."""
+
+    class _Resp:
+        def __init__(self, status_code, payload):
+            self.status_code = status_code
+            self._payload = payload
+            self.text = str(payload)
+
+        def json(self):
+            return self._payload
+
+    async def _mock_get(self, url, headers=None, params=None):
+        if "/services" in url:
+            return _Resp(200, {
+                "services": [
+                    {"id": "P1", "name": "Web App", "html_url": "https://acme.pagerduty.com/services/P1",
+                     "description": "Main web app", "status": "active"},
+                ],
+            })
+        raise AssertionError(f"unexpected GET: {url}")
+
+    monkeypatch.setattr("httpx.AsyncClient.get", _mock_get)
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id="test-tenant-id",
+            provider="pagerduty",
+            access_token="valid-pd-token",
+            refresh_token=None,
+            scopes=["services_read"],
+        )
+    )
+
+    resp = authed_client.post("/dashboard/api/onboarding/integrations/pagerduty/import-services")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ok"] is True
+    assert data["imported"] >= 1
+
+
+def test_import_pagerduty_services_not_connected(authed_client):
+    """Import should fail when no PagerDuty token exists."""
+    resp = authed_client.post("/dashboard/api/onboarding/integrations/pagerduty/import-services")
+    assert resp.status_code in (404, 502)
 
 
 def test_service_api_list_empty(anon_client):

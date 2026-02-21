@@ -2,7 +2,7 @@
 
 import asyncio
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 from .engine import SearchEngine
 from .models import IndexedDocument, SearchableType
@@ -219,7 +219,7 @@ class IndexingService:
         self,
         doc_type: SearchableType,
         batch_size: int = 100,
-        progress_callback: callable | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
     ) -> dict[str, int]:
         """Reindex all documents of a specific type."""
         if doc_type not in self._sources:
@@ -261,7 +261,7 @@ class IndexingService:
     async def reindex_all(
         self,
         batch_size: int = 100,
-        progress_callback: callable | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
     ) -> dict[str, Any]:
         """Reindex all registered document types."""
         results = {}

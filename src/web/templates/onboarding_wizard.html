@@ -79,7 +79,7 @@
             <span id="status-slack" class="status-chip">Checking…</span>
           </div>
           <div class="mt-4 flex flex-wrap gap-2">
-            <button id="btn-connect-slack" class="px-4 py-2 rounded-lg text-white font-semibold" style="background: #0f172a;" onclick="startOAuth('slack')">Connect Slack</button>
+            <button id="btn-connect-slack" class="px-4 py-2 rounded-lg text-white font-semibold" style="background: var(--brand);" onclick="startOAuth('slack')">Connect Slack</button>
             <button class="px-4 py-2 rounded-lg border border-slate-300" onclick="verifyIntegration('slack')">Test Connection</button>
           </div>
           <div id="verify-slack" class="verify-line"></div>
@@ -94,7 +94,7 @@
             <span id="status-github" class="status-chip">Checking…</span>
           </div>
           <div class="mt-4 flex flex-wrap gap-2">
-            <button id="btn-connect-github" class="px-4 py-2 rounded-lg text-white font-semibold" style="background: #1f2937;" onclick="startOAuth('github')">Connect GitHub</button>
+            <button id="btn-connect-github" class="px-4 py-2 rounded-lg text-white font-semibold" style="background: var(--brand);" onclick="startOAuth('github')">Connect GitHub</button>
             <button class="px-4 py-2 rounded-lg border border-slate-300" onclick="verifyIntegration('github')">Test Connection</button>
           </div>
           <div id="verify-github" class="verify-line"></div>
@@ -114,7 +114,7 @@
             <input id="datadog-site" class="px-3 py-2 rounded-lg border border-slate-300" placeholder="datadoghq.com" value="datadoghq.com" />
           </div>
           <div class="mt-3 flex flex-wrap gap-2">
-            <button class="px-4 py-2 rounded-lg text-white font-semibold" style="background: #0f766e;" onclick="saveDatadog()">Save Datadog</button>
+            <button class="px-4 py-2 rounded-lg text-white font-semibold" style="background: var(--brand);" onclick="saveDatadog()">Save Datadog</button>
             <button class="px-4 py-2 rounded-lg border border-slate-300" onclick="verifyIntegration('datadog')">Test Connection</button>
           </div>
           <div id="verify-datadog" class="verify-line"></div>
@@ -230,7 +230,21 @@ async function verifyIntegration(name) {
   try {
     setVerify(name, true, 'Testing...');
     const res = await api(`/dashboard/api/onboarding/test-integration/${name}`, {method: 'POST'});
-    setVerify(name, res && res.ok, res ? (res.details || 'Connection verified') : 'No response from server');
+    const details = res ? res.details : null;
+    let detailText = 'No response from server';
+    if (res) {
+      if (!details) detailText = 'Connection verified';
+      else if (typeof details === 'string') detailText = details;
+      else {
+        const parts = [];
+        if (details.subdomain) parts.push(details.subdomain + '.pagerduty.com');
+        else if (details.account_name) parts.push(details.account_name);
+        else if (name === 'slack' && details.team) parts.push(details.team);
+        if (details.scopes && details.scopes.length) parts.push(details.scopes.length + ' scope' + (details.scopes.length > 1 ? 's' : ''));
+        detailText = parts.length ? 'Connected → ' + parts.join(' · ') : 'Connected';
+      }
+    }
+    setVerify(name, res && res.ok, detailText);
     setChip(`status-${name}`, true, 'Verified');
     await loadChecklist();
   } catch (e) {

@@ -904,9 +904,12 @@ async def sse_events(request: Request):
 
 
 @router.get("/api/incidents")
-async def api_incidents_dashboard_scope(request: Request):
+async def api_incidents_dashboard_scope(
+    request: Request,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
     """Backward-compatible tenant-scoped incidents endpoint under /dashboard."""
-    return await api_incidents(request)
+    return await api_incidents(request, auth_data)
 
 
 @router.patch("/api/incidents/{incident_id}/status")
@@ -944,9 +947,12 @@ async def update_incident_status(
 
 
 @router.get("/api/stats")
-async def api_stats_dashboard_scope(request: Request):
+async def api_stats_dashboard_scope(
+    request: Request,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
     """Backward-compatible tenant-scoped stats endpoint under /dashboard."""
-    return await api_dashboard_stats(request)
+    return await api_dashboard_stats(request, auth_data)
 
 
 # =========================================================================
@@ -1046,7 +1052,16 @@ async def get_onboarding_checklist(
 
     tenant_id = auth.tenant_id or "default"
 
-    # Auto-sync: check integration_configs and mark steps done if connected
+    # Auto-sync: check oauth_token_store + integration_configs and mark steps done
+    providers: set[str] = set()
+    try:
+        from ..integrations.oauth_tokens import oauth_token_store
+        for p in ("pagerduty", "slack", "github", "datadog"):
+            tok = await oauth_token_store.get_token(tenant_id, p)
+            if tok and tok.access_token:
+                providers.add(p)
+    except Exception:
+        pass
     try:
         from ..db.supabase_db import get_db
 
@@ -1055,15 +1070,18 @@ async def get_onboarding_checklist(
             "tenant_id", tenant_id
         ).eq("is_active", True).execute()
         if rows.data:
-            providers = {r["type"] for r in rows.data}
-            if "pagerduty" in providers or "opsgenie" in providers:
-                await checklist_store.set_step(tenant_id, "connect_alerting", True)
-            if "slack" in providers:
-                await checklist_store.set_step(tenant_id, "connect_slack", True)
-            if "github" in providers:
-                await checklist_store.set_step(tenant_id, "connect_github", True)
-            if "datadog" in providers:
-                await checklist_store.set_step(tenant_id, "connect_datadog", True)
+            providers.update(r["type"] for r in rows.data if r.get("type"))
+    except Exception:
+        pass
+    try:
+        if "pagerduty" in providers or "opsgenie" in providers:
+            await checklist_store.set_step(tenant_id, "connect_alerting", True)
+        if "slack" in providers:
+            await checklist_store.set_step(tenant_id, "connect_slack", True)
+        if "github" in providers:
+            await checklist_store.set_step(tenant_id, "connect_github", True)
+        if "datadog" in providers:
+            await checklist_store.set_step(tenant_id, "connect_datadog", True)
     except Exception as e:
         logger.warning(
             "onboarding_integration_sync_failed",
@@ -1135,8 +1153,23 @@ async def get_onboarding_status(
         "datadog": connected("datadog"),
     }
 
-    # Also check Supabase integration_configs for OAuth connections
+    # Check oauth_token_store (new normalized store used by generic OAuth flow)
     details: dict[str, dict] = {}
+    try:
+        from ..integrations.oauth_tokens import oauth_token_store
+        for provider_name in result:
+            if not result[provider_name]:
+                token_rec = await oauth_token_store.get_token(tenant_id, provider_name)
+                if token_rec and token_rec.access_token:
+                    result[provider_name] = True
+                    details[provider_name] = {
+                        "scopes": token_rec.scopes,
+                        "connected_at": token_rec.created_at.isoformat() if token_rec.created_at else "",
+                    }
+    except Exception as e:
+        logger.warning("oauth_token_store_check_failed", error=str(e))
+
+    # Also check Supabase integration_configs for OAuth connections
     try:
         from ..db.supabase_db import get_db
         from ..security.crypto import decrypt_json
@@ -1197,10 +1230,7 @@ async def test_integration(
     tenant_id = auth.tenant_id or "default"
 
     try:
-        from ..db.supabase_db import get_db
         from ..security.crypto import decrypt_json
-
-        db = get_db(use_admin=True)
 
         # Check integration_tokens first (generic OAuth flow), then integration_configs (legacy)
         oauth = {}
@@ -1212,91 +1242,149 @@ async def test_integration(
             oauth = {"access_token": token_rec.access_token}
             decrypted = {"oauth": oauth}
         else:
-            rows = db.client.table("integration_configs").select("config").eq(
-                "tenant_id", tenant_id
-            ).eq("type", provider).eq("is_active", True).limit(1).execute()
+            rows = None
+            try:
+                from ..db.supabase_db import get_db
 
-            if not rows.data:
+                db = get_db(use_admin=True)
+                rows = db.client.table("integration_configs").select("config").eq(
+                    "tenant_id", tenant_id
+                ).eq("type", provider).eq("is_active", True).limit(1).execute()
+            except Exception as exc:
+                logger.warning("integration_config_lookup_failed", provider=provider, error=str(exc))
+
+            if rows and rows.data:
+                config = rows.data[0].get("config", {})
+                encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
+                if encrypted:
+                    decrypted = decrypt_json(encrypted)
+                oauth = decrypted.get("oauth", {})
+            elif provider != "pagerduty":
                 raise HTTPException(status_code=404, detail=f"{provider} not connected")
-
-            config = rows.data[0].get("config", {})
-            encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
-            if encrypted:
-                decrypted = decrypt_json(encrypted)
-            oauth = decrypted.get("oauth", {})
 
         if provider == "pagerduty":
             import httpx
 
             oauth_token = oauth.get("access_token", "")
             api_key = decrypted.get("api_key", "")
-            token = oauth_token or api_key
-            subdomain = decrypted.get("subdomain", "unknown")
-            if not token:
-                return {"ok": True, "details": f"Connected to {subdomain}.pagerduty.com (no token to verify)"}
-            # PagerDuty uses "Bearer" for OAuth tokens, "Token token=" for API keys
-            if oauth_token:
-                auth_header = f"Bearer {oauth_token}"
-            else:
-                auth_header = f"Token token={api_key}"
-            async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.get(
-                    "https://api.pagerduty.com/abilities",
-                    headers={"Authorization": auth_header, "Content-Type": "application/json"},
-                )
-            if resp.status_code == 200:
-                return {"ok": True, "details": f"PagerDuty ({subdomain}) — API responding, {len(resp.json().get('abilities', []))} abilities"}
+            subdomain = decrypted.get("subdomain")
 
-            # If 401 with OAuth token, try refreshing
-            if resp.status_code == 401 and oauth_token:
+            def _legacy_scopes() -> list[str]:
+                raw = oauth.get("scope")
+                if isinstance(raw, str):
+                    return [s.strip() for s in raw.replace(",", " ").split(" ") if s.strip()]
+                if isinstance(raw, list):
+                    return [str(s).strip() for s in raw if str(s).strip()]
+                return []
+
+            details = {
+                "subdomain": subdomain,
+                "scopes": token_rec.scopes if token_rec else _legacy_scopes(),
+                "connected_at": decrypted.get("connected_at") or (token_rec.created_at.isoformat() if token_rec else None),
+            }
+
+            async def _fetch_pd_subdomain(access_token: str) -> str | None:
+                """Fetch PagerDuty account subdomain via /services (we have services_read scope)."""
                 try:
-                    from ..integrations.oauth_tokens import oauth_token_store
-                    from ..integrations.oauth_providers import get_provider_credentials
-                    stored = await oauth_token_store.get_token(tenant_id, "pagerduty")
-                    if stored and stored.refresh_token:
-                        client_id, client_secret = get_provider_credentials("pagerduty")
-                        if client_id and client_secret:
-                            refresh_resp = await client.post(
-                                "https://app.pagerduty.com/oauth/token",
-                                data={
-                                    "grant_type": "refresh_token",
-                                    "refresh_token": stored.refresh_token,
-                                    "client_id": client_id,
-                                    "client_secret": client_secret,
-                                },
-                                headers={"Accept": "application/json"},
-                            )
-                            if refresh_resp.status_code == 200:
-                                new_tokens = refresh_resp.json()
-                                new_at = new_tokens.get("access_token", "")
-                                if new_at:
-                                    from datetime import timedelta
-                                    new_expiry = None
-                                    if new_tokens.get("expires_in"):
-                                        new_expiry = datetime.now(UTC) + timedelta(seconds=int(new_tokens["expires_in"]))
-                                    await oauth_token_store.upsert_token(
-                                        tenant_id=tenant_id,
-                                        provider="pagerduty",
-                                        access_token=new_at,
-                                        refresh_token=new_tokens.get("refresh_token", stored.refresh_token),
-                                        token_expiry=new_expiry,
-                                        scopes=stored.scopes,
-                                    )
-                                    # Retry with new token
-                                    retry_resp = await client.get(
-                                        "https://api.pagerduty.com/abilities",
-                                        headers={"Authorization": f"Bearer {new_at}", "Content-Type": "application/json"},
-                                    )
-                                    if retry_resp.status_code == 200:
-                                        return {"ok": True, "details": f"PagerDuty ({subdomain}) — token refreshed, API responding"}
-                                    return {"ok": False, "details": f"PagerDuty API returned {retry_resp.status_code} after token refresh"}
-                            else:
-                                logger.warning("pagerduty_refresh_failed", status=refresh_resp.status_code)
+                    async with httpx.AsyncClient(timeout=10) as hc:
+                        resp = await hc.get(
+                            "https://api.pagerduty.com/services?limit=1",
+                            headers={
+                                "Authorization": f"Bearer {access_token}",
+                                "Accept": "application/vnd.pagerduty+json;version=2",
+                            },
+                        )
+                        if resp.status_code == 200:
+                            services = resp.json().get("services", [])
+                            if services:
+                                html_url = services[0].get("html_url", "")
+                                # html_url: https://acme.pagerduty.com/services/PXXXXXX
+                                if "pagerduty.com" in html_url:
+                                    from urllib.parse import urlparse
+                                    host = urlparse(html_url).hostname or ""
+                                    sub = host.replace(".pagerduty.com", "")
+                                    if sub and sub != "app":
+                                        return sub
+                        else:
+                            logger.warning("pagerduty_services_status", status=resp.status_code, body=resp.text[:200])
+                except Exception as exc:
+                    logger.warning("pagerduty_subdomain_fetch_failed", error=str(exc))
+                return None
+
+            # Prefer normalized OAuth token store record.
+            if token_rec and token_rec.access_token:
+                now = datetime.now(UTC)
+                if not token_rec.token_expiry or token_rec.token_expiry > now:
+                    if not details.get("subdomain"):
+                        details["subdomain"] = await _fetch_pd_subdomain(token_rec.access_token)
+                    return {"ok": True, "details": details}
+
+                # Expired token: attempt refresh.
+                from ..integrations.oauth_providers import get_provider_credentials
+
+                if not token_rec.refresh_token:
+                    return {"ok": False, "details": "PagerDuty token is expired and refresh failed"}
+
+                client_id, client_secret = get_provider_credentials("pagerduty")
+                if not client_id or not client_secret:
+                    return {"ok": False, "details": "PagerDuty token is expired and refresh failed"}
+
+                try:
+                    async with httpx.AsyncClient(timeout=10) as client:
+                        refresh_resp = await client.post(
+                            "https://app.pagerduty.com/oauth/token",
+                            data={
+                                "grant_type": "refresh_token",
+                                "refresh_token": token_rec.refresh_token,
+                                "client_id": client_id,
+                                "client_secret": client_secret,
+                            },
+                            headers={"Accept": "application/json"},
+                        )
                 except Exception as exc:
                     logger.warning("pagerduty_refresh_error", error=str(exc))
+                    return {"ok": False, "details": "PagerDuty token is expired and refresh failed"}
 
-                return {"ok": False, "details": "PagerDuty OAuth token expired. Please disconnect and reconnect PagerDuty."}
-            return {"ok": False, "details": f"PagerDuty API returned {resp.status_code}"}
+                if refresh_resp.status_code != 200:
+                    return {"ok": False, "details": "PagerDuty token is expired and refresh failed"}
+
+                new_tokens = refresh_resp.json()
+                new_access_token = new_tokens.get("access_token", "")
+                if not new_access_token:
+                    return {"ok": False, "details": "PagerDuty token is expired and refresh failed"}
+
+                new_expiry = None
+                try:
+                    expires_in = new_tokens.get("expires_in")
+                    expires_in_value = int(expires_in) if expires_in is not None else None
+                except (TypeError, ValueError):
+                    expires_in_value = None
+                if expires_in_value and expires_in_value > 0:
+                    new_expiry = datetime.now(UTC) + timedelta(seconds=expires_in_value)
+
+                new_scope = new_tokens.get("scope")
+                if isinstance(new_scope, str):
+                    new_scopes = [s.strip() for s in new_scope.replace(",", " ").split(" ") if s.strip()]
+                else:
+                    new_scopes = token_rec.scopes
+
+                updated = await oauth_token_store.upsert_token(
+                    tenant_id=tenant_id,
+                    provider="pagerduty",
+                    access_token=new_access_token,
+                    refresh_token=new_tokens.get("refresh_token", token_rec.refresh_token),
+                    token_expiry=new_expiry,
+                    scopes=new_scopes,
+                )
+                details["scopes"] = updated.scopes
+                details["refreshed_at"] = datetime.now(UTC).isoformat()
+                return {"ok": True, "details": details}
+
+            # Legacy config path: accept configured OAuth/API key as connected.
+            if oauth_token or api_key:
+                return {"ok": True, "details": details}
+
+            return {"ok": False, "details": "PagerDuty is not connected"}
 
         elif provider == "slack":
             import httpx
@@ -1366,29 +1454,39 @@ async def import_pagerduty_services(
     tenant_id = auth.tenant_id or "default"
 
     try:
-        from ..db.supabase_db import get_db
-        from ..security.crypto import decrypt_json
+        # Try oauth_token_store first (new normalized store), then legacy integration_configs
+        from ..integrations.oauth_tokens import oauth_token_store
 
-        db = get_db(use_admin=True)
-        rows = db.client.table("integration_configs").select("config").eq(
-            "tenant_id", tenant_id
-        ).eq("type", "pagerduty").eq("is_active", True).limit(1).execute()
+        token_rec = await oauth_token_store.get_token(tenant_id, "pagerduty")
+        oauth_token = ""
+        api_key = ""
 
-        if not rows.data:
-            raise HTTPException(status_code=404, detail="PagerDuty not connected")
+        if token_rec and token_rec.access_token:
+            oauth_token = token_rec.access_token
+        else:
+            try:
+                from ..db.supabase_db import get_db
+                from ..security.crypto import decrypt_json
 
-        config = rows.data[0].get("config", {})
-        encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
-        if not encrypted:
-            raise HTTPException(status_code=400, detail="No PagerDuty credentials found")
+                db = get_db(use_admin=True)
+                rows = db.client.table("integration_configs").select("config").eq(
+                    "tenant_id", tenant_id
+                ).eq("type", "pagerduty").eq("is_active", True).limit(1).execute()
 
-        decrypted = decrypt_json(encrypted)
-        oauth = decrypted.get("oauth", {})
-        oauth_token = oauth.get("access_token", "")
-        api_key = decrypted.get("api_key", "")
+                if rows.data:
+                    config = rows.data[0].get("config", {})
+                    encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
+                    if encrypted:
+                        decrypted = decrypt_json(encrypted)
+                        oauth = decrypted.get("oauth", {})
+                        oauth_token = oauth.get("access_token", "")
+                        api_key = decrypted.get("api_key", "")
+            except Exception as exc:
+                logger.warning("import_services_legacy_lookup_failed", error=str(exc))
+
         token = oauth_token or api_key
         if not token:
-            raise HTTPException(status_code=400, detail="No PagerDuty API token found")
+            raise HTTPException(status_code=404, detail="PagerDuty not connected")
 
         # PagerDuty uses "Bearer" for OAuth tokens, "Token token=" for API keys
         if oauth_token:
@@ -1559,11 +1657,23 @@ async def disconnect_integration(
     """Disconnect an OAuth integration."""
     tenant_id = auth.tenant_id or "default"
     try:
-        from ..db.supabase_db import get_db
-        db = get_db(use_admin=True)
-        db.client.table("integration_configs").delete().eq(
-            "tenant_id", tenant_id
-        ).eq("type", provider).execute()
+        # Remove from oauth_token_store
+        try:
+            from ..integrations.oauth_tokens import oauth_token_store
+            await oauth_token_store.delete_token(tenant_id, provider)
+        except Exception:
+            pass  # store may not have this token
+
+        # Remove from legacy integration_configs
+        try:
+            from ..db.supabase_db import get_db
+            db = get_db(use_admin=True)
+            db.client.table("integration_configs").delete().eq(
+                "tenant_id", tenant_id
+            ).eq("type", provider).execute()
+        except Exception:
+            pass
+
         return {"ok": True, "provider": provider}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

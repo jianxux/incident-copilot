@@ -34,6 +34,11 @@ def _run(coro):
 
 
 async def _create_headers() -> dict[str, str]:
+    headers, _ = await _create_headers_and_tenant()
+    return headers
+
+
+async def _create_headers_and_tenant() -> tuple[dict[str, str], str]:
     tenant = await auth_service.create_tenant(
         name="OAuth Tenant",
         slug=f"oauth-test-{asyncio.get_running_loop().time()}".replace(".", "-"),
@@ -45,7 +50,7 @@ async def _create_headers() -> dict[str, str]:
         role=UserRole.OWNER,
     )
     session = await auth_service.create_session(user.id)
-    return {"Authorization": f"Bearer {session.access_token}"}
+    return {"Authorization": f"Bearer {session.access_token}"}, tenant.id
 
 
 @pytest.fixture(autouse=True)
@@ -125,3 +130,174 @@ def test_oauth_callback_rejects_invalid_state(monkeypatch):
     assert response.status_code in (302, 307)
     assert "oauth_result=error" in response.headers["location"]
     assert "invalid_or_expired_state" in response.headers["location"]
+
+
+@pytest.mark.unit
+def test_provider_test_returns_structured_result_when_disconnected():
+    app = create_app()
+    client = TestClient(app)
+    headers = _run(_create_headers())
+
+    response = client.post("/api/integrations/slack/test", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "slack"
+    assert data["ok"] is False
+    assert isinstance(data["details"], str)
+
+
+@pytest.mark.unit
+def test_provider_test_slack_success(monkeypatch):
+    class _SlackResponse:
+        status_code = 200
+        content = b'{"ok": true}'
+
+        @staticmethod
+        def json():
+            return {"ok": True}
+
+    async def _mock_post(self, url, data=None, headers=None):
+        if "oauth.v2.access" in url:
+            return _DummyResponse(
+                200,
+                {
+                    "ok": True,
+                    "access_token": "xoxb-test-token",
+                    "refresh_token": "refresh-token",
+                    "expires_in": 3600,
+                    "scope": "channels:read",
+                },
+            )
+        return _SlackResponse()
+
+    monkeypatch.setenv("SLACK_CLIENT_ID", "client-id")
+    monkeypatch.setenv("SLACK_CLIENT_SECRET", "client-secret")
+    monkeypatch.setattr("src.api.oauth_integrations.httpx.AsyncClient.post", _mock_post)
+
+    app = create_app()
+    client = TestClient(app)
+    headers = _run(_create_headers())
+
+    connect = client.get("/api/integrations/slack/connect", headers=headers, follow_redirects=False)
+    parsed = urlparse(connect.headers["location"])
+    state = parse_qs(parsed.query)["state"][0]
+    client.get(
+        f"/api/integrations/slack/callback?code=test-code&state={state}",
+        follow_redirects=False,
+    )
+
+    response = client.post("/api/integrations/slack/test", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+    assert isinstance(data["details"], str)
+
+
+@pytest.mark.unit
+def test_provider_test_pagerduty_uses_stored_token_without_api_calls(monkeypatch):
+    async def _unexpected_post(self, url, data=None, headers=None):
+        raise AssertionError(f"unexpected network call: {url}")
+
+    monkeypatch.setattr("src.api.oauth_integrations.httpx.AsyncClient.post", _unexpected_post)
+    app = create_app()
+    client = TestClient(app)
+    headers, tenant_id = _run(_create_headers_and_tenant())
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id=tenant_id,
+            provider="pagerduty",
+            access_token="pd-access-token",
+            scopes=["read", "write"],
+        )
+    )
+
+    response = client.post("/api/integrations/pagerduty/test", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "pagerduty"
+    assert data["ok"] is True
+    assert data["details"]["scopes"] == ["read", "write"]
+    assert data["details"]["connected_at"]
+
+
+@pytest.mark.unit
+def test_provider_test_pagerduty_expired_refresh_success(monkeypatch):
+    from datetime import UTC, datetime, timedelta
+
+    monkeypatch.setenv("PAGERDUTY_CLIENT_ID", "pd-client")
+    monkeypatch.setenv("PAGERDUTY_CLIENT_SECRET", "pd-secret")
+    seen_urls: list[str] = []
+
+    async def _mock_post(self, url, data=None, headers=None):
+        seen_urls.append(url)
+        if url == "https://app.pagerduty.com/oauth/token":
+            return _DummyResponse(
+                200,
+                {
+                    "access_token": "new-access-token",
+                    "refresh_token": "new-refresh-token",
+                    "expires_in": 3600,
+                    "scope": "read write",
+                },
+            )
+        return _DummyResponse(500, {})
+
+    monkeypatch.setattr("src.api.oauth_integrations.httpx.AsyncClient.post", _mock_post)
+    app = create_app()
+    client = TestClient(app)
+    headers, tenant_id = _run(_create_headers_and_tenant())
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id=tenant_id,
+            provider="pagerduty",
+            access_token="expired-access-token",
+            refresh_token="old-refresh-token",
+            token_expiry=datetime.now(UTC) - timedelta(minutes=1),
+        )
+    )
+
+    response = client.post("/api/integrations/pagerduty/test", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "pagerduty"
+    assert data["ok"] is True
+    assert data["details"]["refreshed_at"]
+    assert "https://app.pagerduty.com/oauth/token" in seen_urls
+
+    stored = _run(oauth_token_store.get_token(tenant_id, "pagerduty"))
+    assert stored is not None
+    assert stored.access_token == "new-access-token"
+    assert stored.refresh_token == "new-refresh-token"
+
+
+@pytest.mark.unit
+def test_provider_test_pagerduty_expired_refresh_failed(monkeypatch):
+    from datetime import UTC, datetime, timedelta
+
+    monkeypatch.setenv("PAGERDUTY_CLIENT_ID", "pd-client")
+    monkeypatch.setenv("PAGERDUTY_CLIENT_SECRET", "pd-secret")
+
+    async def _mock_post(self, url, data=None, headers=None):
+        return _DummyResponse(401, {"error": "invalid_grant"})
+
+    monkeypatch.setattr("src.api.oauth_integrations.httpx.AsyncClient.post", _mock_post)
+
+    app = create_app()
+    client = TestClient(app)
+    headers, tenant_id = _run(_create_headers_and_tenant())
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id=tenant_id,
+            provider="pagerduty",
+            access_token="expired-access-token",
+            refresh_token="old-refresh-token",
+            token_expiry=datetime.now(UTC) - timedelta(minutes=1),
+        )
+    )
+
+    response = client.post("/api/integrations/pagerduty/test", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "pagerduty"
+    assert data["ok"] is False
+    assert "refresh failed" in data["details"].lower()

@@ -29,9 +29,6 @@ os.environ.pop("SUPABASE_SERVICE_ROLE_KEY", None)
 collect_ignore = [
     # Broken imports - need refactoring
     "test_oncall.py",  # Uses old OnCallAdapter import
-    "test_pagerduty.py",  # Uses old model imports
-    "test_search.py",  # Python 3.9 union syntax issue
-    "test_tagging.py",  # Uses old model imports
     "test_timeline.py",  # Import errors
     # Routes not registered / feature incomplete
     "test_sla.py",  # SLA routes not in main app
@@ -67,11 +64,7 @@ def pytest_collection_modifyitems(config, items):
     """Auto-skip tests that import from broken modules."""
     skip_broken = pytest.mark.skip(reason="Module imports broken - needs refactor")
 
-    broken_modules = [
-        "test_pagerduty",
-        "test_search",
-        "test_tagging",
-    ]
+    broken_modules: list[str] = []
 
     for item in items:
         # Skip tests from broken modules

@@ -44,6 +44,7 @@ from .config import get_settings
 from .copilot.adapters.slack_adapter import router as slack_copilot_router
 from .copilot.adapters.web_adapter import router as web_copilot_router
 from .api.oauth_integrations import router as oauth_integrations_router
+from .search.routes import router as search_router
 _oauth_refresh_available = False
 try:
     from .integrations.oauth_refresh import (
@@ -264,6 +265,7 @@ def create_app() -> FastAPI:
     app.include_router(web_copilot_router)
     app.include_router(memory_advanced_router)
     app.include_router(service_catalog_router)
+    app.include_router(search_router, prefix="/api")
     app.include_router(landing_router)
     app.include_router(web_router)
 
