@@ -229,25 +229,45 @@ async def api_incidents(
     """Tenant-scoped JSON API endpoint for incidents list."""
     tenant_id = auth_data["tenant_id"]
 
+    def _map_status(raw_status: str | None) -> str:
+        status_map = {
+            "processing": "triggered",
+            "completed": "resolved",
+            "error": "triggered",
+        }
+        normalized = str(raw_status or "processing").strip().lower()
+        return status_map.get(normalized, normalized)
+
     # When Supabase DB is disabled, fall back to in-memory store.
     from ..supabase_client import is_supabase_db_enabled
 
     if not is_supabase_db_enabled():
         incidents = await incident_store.get_all_incidents()
-        return {
-            "incidents": [
+        serialized = []
+        for i in incidents:
+            triggered_at = i.triggered_at.isoformat()
+            processed_at = i.processed_at.isoformat() if i.processed_at else None
+            created_at = triggered_at
+            updated_at = processed_at or triggered_at
+            status = _map_status(i.status)
+
+            serialized.append(
                 {
+                    "id": i.incident_id,
                     "incident_id": i.incident_id,
                     "title": i.title,
+                    "service": i.service_name,
                     "service_name": i.service_name,
                     "severity": i.severity.value,
-                    "status": i.status,
-                    "triggered_at": i.triggered_at.isoformat(),
-                    "processed_at": i.processed_at.isoformat() if i.processed_at else None,
+                    "status": status,
+                    "created_at": created_at,
+                    "updated_at": updated_at,
+                    "triggered_at": triggered_at,
+                    "processed_at": processed_at,
                 }
-                for i in incidents
-            ]
-        }
+            )
+
+        return {"incidents": serialized, "total": len(serialized)}
 
     from ..db.supabase_db import get_db
 
@@ -257,6 +277,8 @@ async def api_incidents(
     def _format_incident(r: dict) -> dict:
         triggered = r.get("triggered_at")
         processed = r.get("processed_at")
+        created_at = r.get("created_at") or triggered
+        updated_at = r.get("updated_at") or processed or created_at
         duration_seconds = None
         if triggered and processed:
             try:
@@ -283,26 +305,29 @@ async def api_incidents(
                 verdict_summary = verdict[:200]
 
         return {
+            "id": r["id"],
             "incident_id": r["id"],
             "title": r.get("title") or "",
             "description": r.get("description") or "",
             "service": r.get("service") or "",
             "service_name": r.get("service") or "",  # backward compat
             "severity": r.get("severity") or "medium",
-            "status": r.get("status") or "processing",
+            "status": _map_status(r.get("status")),
             "source": r.get("source") or "",
             "source_url": r.get("source_url") or "",
             "source_id": r.get("source_id") or "",
             "triggered_at": triggered,
             "processed_at": processed,
-            "created_at": r.get("created_at"),
+            "created_at": created_at,
+            "updated_at": updated_at,
             "duration_seconds": duration_seconds,
             "verdict_summary": verdict_summary,
             "error_message": r.get("error_message"),
         }
 
     return {
-        "incidents": [_format_incident(r) for r in rows]
+        "incidents": [_format_incident(r) for r in rows],
+        "total": len(rows),
     }
 
 
