@@ -11,6 +11,7 @@ from ..integrations.opsgenie import OpsgenieAdapter
 from ..integrations.pagerduty_legacy import PagerDutyAdapter
 from ..metrics import WEBHOOK_PROCESSING_SECONDS, WEBHOOK_REQUESTS_TOTAL
 from ..orchestrator import ContextOrchestrator
+from ..web.store import incident_store
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -153,9 +154,18 @@ async def process_pagerduty_incident_background(incident, settings):
                 correlated=result.correlated,
                 new_group=result.new_group,
             )
+        await incident_store.add_incident(
+            incident_id=incident.incident_id,
+            title=incident.title,
+            service_name=incident.service_name,
+            severity=incident.severity,
+            triggered_at=incident.triggered_at,
+        )
         orchestrator = ContextOrchestrator(settings)
-        await orchestrator.process_incident(incident)
+        card = await orchestrator.process_incident(incident)
+        await incident_store.complete_incident(incident.incident_id, card)
     except Exception as e:
+        await incident_store.fail_incident(incident.incident_id, str(e))
         logger.error(
             "pagerduty_background_processing_failed",
             incident_id=incident.incident_id,
@@ -165,6 +175,7 @@ async def process_pagerduty_incident_background(incident, settings):
 
 async def process_opsgenie_alert_background(alert, settings):
     """Background task to correlate and process Opsgenie alert."""
+    incident_id = alert.alert_id
     try:
         if getattr(settings, "correlation_enabled", True):
             engine = await get_correlation_engine(settings)
@@ -186,7 +197,7 @@ async def process_opsgenie_alert_background(alert, settings):
         from ..models import PagerDutyIncident
 
         pd_incident = PagerDutyIncident(
-            incident_id=alert.alert_id,
+            incident_id=incident_id,
             title=alert.title,
             description=alert.description,
             severity=alert.severity,
@@ -194,9 +205,18 @@ async def process_opsgenie_alert_background(alert, settings):
             triggered_at=alert.triggered_at,
             html_url=alert.url,
         )
+        await incident_store.add_incident(
+            incident_id=incident_id,
+            title=pd_incident.title,
+            service_name=pd_incident.service_name,
+            severity=pd_incident.severity,
+            triggered_at=pd_incident.triggered_at,
+        )
         orchestrator = ContextOrchestrator(settings)
-        await orchestrator.process_incident(pd_incident)
+        card = await orchestrator.process_incident(pd_incident)
+        await incident_store.complete_incident(incident_id, card)
     except Exception as e:
+        await incident_store.fail_incident(incident_id, str(e))
         logger.error(
             "opsgenie_background_processing_failed",
             alert_id=alert.alert_id,
