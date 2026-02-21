@@ -331,6 +331,119 @@ async def api_incidents(
     }
 
 
+@landing_router.get("/api/incidents/stats")
+async def api_incident_stats(
+    request: Request,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
+    """Return incident statistics: total, open, resolved today, avg MTTR."""
+    tenant_id = auth_data["tenant_id"]
+
+    from ..supabase_client import is_supabase_db_enabled
+
+    if not is_supabase_db_enabled():
+        incidents = await incident_store.get_all_incidents()
+    else:
+        from ..db.supabase_db import get_db
+
+        db = get_db(use_admin=True)
+        rows = await db.list_processing_incidents(
+            tenant_id=tenant_id, limit=500, offset=0
+        )
+        incidents = [
+            type(
+                "Inc",
+                (),
+                {
+                    "status": r.get("status") or "processing",
+                    "processed_at": (
+                        datetime.fromisoformat(
+                            str(r["processed_at"]).replace("Z", "+00:00")
+                        )
+                        if r.get("processed_at")
+                        else None
+                    ),
+                    "triggered_at": (
+                        datetime.fromisoformat(
+                            str(r["triggered_at"]).replace("Z", "+00:00")
+                        )
+                        if r.get("triggered_at")
+                        else None
+                    ),
+                },
+            )()
+            for r in rows
+        ]
+
+    total = len(incidents)
+    open_count = sum(
+        1 for i in incidents if getattr(i, "status", "processing") != "completed"
+    )
+
+    today = datetime.now(UTC).date()
+    resolved_today = 0
+    mttr_values: list[float] = []
+
+    for i in incidents:
+        p = getattr(i, "processed_at", None)
+        t = getattr(i, "triggered_at", None)
+        st = getattr(i, "status", "processing")
+        if st == "completed" and p:
+            if hasattr(p, "date") and p.date() == today:
+                resolved_today += 1
+            if t and p:
+                mttr_values.append((p - t).total_seconds() / 60.0)
+
+    avg_mttr_minutes = round(sum(mttr_values) / len(mttr_values), 1) if mttr_values else None
+
+    return {
+        "total": total,
+        "open": open_count,
+        "resolved_today": resolved_today,
+        "avg_mttr_minutes": avg_mttr_minutes,
+    }
+
+
+@landing_router.get("/api/incidents/{incident_id}/context")
+async def api_incident_context(
+    incident_id: str,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
+    """Return the context card JSON for a specific incident."""
+    incident = await incident_store.get_incident(incident_id)
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    if not incident.context_card:
+        return {}
+    return incident.context_card.model_dump(mode="json")
+
+
+@landing_router.get("/api/incidents/{incident_id}")
+async def api_incident_detail(
+    incident_id: str,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
+    """Return a single incident by ID."""
+    incident = await incident_store.get_incident(incident_id)
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    return {
+        "id": incident.incident_id,
+        "title": incident.title,
+        "service": incident.service_name,
+        "severity": incident.severity.value,
+        "status": incident.status,
+        "created_at": incident.triggered_at.isoformat(),
+        "updated_at": (
+            incident.processed_at.isoformat()
+            if incident.processed_at
+            else incident.triggered_at.isoformat()
+        ),
+        "source": incident.source,
+        "source_url": incident.source_url,
+    }
+
+
 @landing_router.get("/api/dashboard/stats")
 async def api_dashboard_stats(
     request: Request,
