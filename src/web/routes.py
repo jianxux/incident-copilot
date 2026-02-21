@@ -994,6 +994,8 @@ async def dashboard_list_services(
             {
                 "id": service.id,
                 "name": service.name,
+                "description": service.description,
+                "team": service.team,
                 "source": (service.metadata or {}).get("source", "manual"),
                 "metadata": service.metadata or {},
                 "created_at": service.created_at.isoformat()
@@ -1544,7 +1546,11 @@ async def import_pagerduty_services(
                 description=pd_svc.get("description") or f"Imported from PagerDuty",
                 team=pd_svc.get("teams", [{}])[0].get("summary") if pd_svc.get("teams") else None,
                 criticality=ServiceCriticality.CRITICAL if pd_svc.get("alert_creation") == "create_alerts_and_incidents" else ServiceCriticality.MEDIUM,
-                metadata={"pagerduty_id": pd_svc.get("id"), "pagerduty_url": pd_svc.get("html_url")},
+                metadata={
+                    "source": "pagerduty",
+                    "pagerduty_id": pd_svc.get("id"),
+                    "pagerduty_url": pd_svc.get("html_url"),
+                },
             )
             await store.create_service(req, tenant_slug=tenant_slug)
             imported += 1
