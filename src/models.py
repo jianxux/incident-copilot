@@ -131,12 +131,37 @@ class Deployment(BaseModel):
     url: str | None = None
 
 
+class GitHubPullRequest(BaseModel):
+    """A merged pull request from GitHub."""
+
+    number: int
+    title: str
+    author: str
+    merged_at: datetime
+    url: str | None = None
+    additions: int = 0
+    deletions: int = 0
+
+
+class GitHubDeployment(BaseModel):
+    """A deployment from GitHub Deployments API."""
+
+    id: str
+    environment: str
+    status: str
+    created_at: datetime
+    url: str | None = None
+    creator: str
+
+
 class GitHubContext(BaseModel):
     """GitHub context for a service."""
 
     repo: str
     recent_deploys: list[Deployment] = Field(default_factory=list)
     codeowners: list[str] = Field(default_factory=list)
+    recent_prs: list[GitHubPullRequest] = Field(default_factory=list)
+    recent_deployments: list[GitHubDeployment] = Field(default_factory=list)
 
 
 # --- GitLab Models ---
