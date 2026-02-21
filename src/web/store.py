@@ -8,7 +8,7 @@ Postgres while keeping the same in-process SSE subscriber behavior.
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 import structlog
@@ -32,6 +32,10 @@ class StoredIncident:
     processed_at: datetime | None = None
     context_card: ContextCard | None = None
     error_message: str | None = None
+    source: str = "manual"
+    source_url: str | None = None
+    source_id: str | None = None
+    metadata: dict = field(default_factory=dict)
 
 
 class _BaseIncidentStore:
@@ -57,6 +61,55 @@ class _BaseIncidentStore:
             except asyncio.QueueFull:
                 pass
 
+    async def add_incident(
+        self,
+        incident_id: str,
+        title: str,
+        service_name: str,
+        severity: Severity,
+        triggered_at: datetime,
+        source: str = "manual",
+        source_url: str | None = None,
+        source_id: str | None = None,
+        metadata: dict | None = None,
+        tenant_id: str | None = None,
+    ) -> StoredIncident:
+        raise NotImplementedError
+
+    async def complete_incident(
+        self,
+        incident_id: str,
+        context_card: ContextCard,
+        metadata: dict | None = None,
+        tenant_id: str | None = None,
+    ) -> StoredIncident | None:
+        raise NotImplementedError
+
+    async def fail_incident(
+        self,
+        incident_id: str,
+        error_message: str,
+        metadata: dict | None = None,
+        tenant_id: str | None = None,
+    ) -> StoredIncident | None:
+        raise NotImplementedError
+
+    async def get_incident(
+        self,
+        incident_id: str,
+        tenant_id: str | None = None,
+    ) -> StoredIncident | None:
+        raise NotImplementedError
+
+    async def get_all_incidents(
+        self,
+        tenant_id: str | None = None,
+    ) -> list[StoredIncident]:
+        raise NotImplementedError
+
+    async def get_stats(self) -> dict:
+        raise NotImplementedError
+
 
 class InMemoryIncidentStore(_BaseIncidentStore):
     """Thread-safe in-memory store for incidents."""
@@ -74,6 +127,10 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         service_name: str,
         severity: Severity,
         triggered_at: datetime,
+        source: str = "manual",
+        source_url: str | None = None,
+        source_id: str | None = None,
+        metadata: dict | None = None,
         tenant_id: str | None = None,
     ) -> StoredIncident:
         _ = tenant_id
@@ -85,6 +142,10 @@ class InMemoryIncidentStore(_BaseIncidentStore):
                 severity=severity,
                 status="processing",
                 triggered_at=triggered_at,
+                source=source,
+                source_url=source_url,
+                source_id=source_id or incident_id,
+                metadata=metadata or {},
             )
             self._incidents[incident_id] = incident
             self._order.insert(0, incident_id)
@@ -101,12 +162,21 @@ class InMemoryIncidentStore(_BaseIncidentStore):
                     "service": service_name,
                     "severity": severity.value,
                     "status": "processing",
+                    "source": source,
+                    "source_url": source_url,
                 }
             )
 
             return incident
 
-    async def complete_incident(self, incident_id: str, context_card: ContextCard):
+    async def complete_incident(
+        self,
+        incident_id: str,
+        context_card: ContextCard,
+        metadata: dict | None = None,
+        tenant_id: str | None = None,
+    ) -> StoredIncident | None:
+        _ = tenant_id
         async with self._lock:
             incident = self._incidents.get(incident_id)
             if not incident:
@@ -115,6 +185,8 @@ class InMemoryIncidentStore(_BaseIncidentStore):
             incident.status = "completed"
             incident.processed_at = datetime.now(UTC)
             incident.context_card = context_card
+            if metadata:
+                incident.metadata = {**incident.metadata, **metadata}
 
             await self._notify_subscribers(
                 {
@@ -126,7 +198,14 @@ class InMemoryIncidentStore(_BaseIncidentStore):
             )
             return incident
 
-    async def fail_incident(self, incident_id: str, error_message: str):
+    async def fail_incident(
+        self,
+        incident_id: str,
+        error_message: str,
+        metadata: dict | None = None,
+        tenant_id: str | None = None,
+    ) -> StoredIncident | None:
+        _ = tenant_id
         async with self._lock:
             incident = self._incidents.get(incident_id)
             if not incident:
@@ -135,6 +214,12 @@ class InMemoryIncidentStore(_BaseIncidentStore):
             incident.status = "error"
             incident.processed_at = datetime.now(UTC)
             incident.error_message = error_message
+            merged_metadata = dict(incident.metadata)
+            if metadata:
+                merged_metadata.update(metadata)
+            if "error" not in merged_metadata:
+                merged_metadata["error"] = error_message
+            incident.metadata = merged_metadata
 
             await self._notify_subscribers(
                 {
@@ -146,10 +231,19 @@ class InMemoryIncidentStore(_BaseIncidentStore):
             )
             return incident
 
-    async def get_incident(self, incident_id: str) -> StoredIncident | None:
+    async def get_incident(
+        self,
+        incident_id: str,
+        tenant_id: str | None = None,
+    ) -> StoredIncident | None:
+        _ = tenant_id
         return self._incidents.get(incident_id)
 
-    async def get_all_incidents(self) -> list[StoredIncident]:
+    async def get_all_incidents(
+        self,
+        tenant_id: str | None = None,
+    ) -> list[StoredIncident]:
+        _ = tenant_id
         return [self._incidents[iid] for iid in self._order if iid in self._incidents]
 
     async def get_stats(self) -> dict:
@@ -182,7 +276,6 @@ class SupabaseIncidentStore(_BaseIncidentStore):
         if self._tenant_id:
             return self._tenant_id
 
-        # Server-side usage: use admin client and a default tenant.
         from ..db.supabase_db import get_db
 
         db = get_db(use_admin=True)
@@ -238,6 +331,10 @@ class SupabaseIncidentStore(_BaseIncidentStore):
             )
             severity = Severity.MEDIUM
 
+        metadata = row.get("metadata") or {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+
         return StoredIncident(
             incident_id=row["id"],
             title=row.get("title") or "",
@@ -248,6 +345,10 @@ class SupabaseIncidentStore(_BaseIncidentStore):
             processed_at=processed_at,
             context_card=ctx,
             error_message=row.get("error_message"),
+            source=row.get("source") or "manual",
+            source_url=row.get("source_url"),
+            source_id=row.get("source_id"),
+            metadata=metadata,
         )
 
     async def add_incident(
@@ -257,25 +358,33 @@ class SupabaseIncidentStore(_BaseIncidentStore):
         service_name: str,
         severity: Severity,
         triggered_at: datetime,
+        source: str = "manual",
+        source_url: str | None = None,
+        source_id: str | None = None,
+        metadata: dict | None = None,
         tenant_id: str | None = None,
     ) -> StoredIncident:
         from ..db.supabase_db import get_db
 
         async with self._lock:
-            tenant_id = await self._resolve_tenant(
+            resolved_tenant_id = await self._resolve_tenant(
                 incident_id=incident_id, tenant_id=tenant_id
             )
-            self._incident_tenants[incident_id] = tenant_id
+            self._incident_tenants[incident_id] = resolved_tenant_id
             db = get_db(use_admin=True)
 
             await db.upsert_processing_incident(
-                tenant_id=tenant_id,
+                tenant_id=resolved_tenant_id,
                 incident_id=incident_id,
                 title=title,
                 service_name=service_name,
                 severity=severity.value,
                 status="processing",
                 triggered_at=triggered_at.astimezone(UTC).isoformat(),
+                source=source,
+                source_url=source_url,
+                source_id=source_id or incident_id,
+                metadata=metadata or {},
             )
 
             await self._notify_subscribers(
@@ -286,6 +395,8 @@ class SupabaseIncidentStore(_BaseIncidentStore):
                     "service": service_name,
                     "severity": severity.value,
                     "status": "processing",
+                    "source": source,
+                    "source_url": source_url,
                 }
             )
 
@@ -296,24 +407,35 @@ class SupabaseIncidentStore(_BaseIncidentStore):
                 severity=severity,
                 status="processing",
                 triggered_at=triggered_at,
+                source=source,
+                source_url=source_url,
+                source_id=source_id or incident_id,
+                metadata=metadata or {},
             )
 
-    async def complete_incident(self, incident_id: str, context_card: ContextCard):
+    async def complete_incident(
+        self,
+        incident_id: str,
+        context_card: ContextCard,
+        metadata: dict | None = None,
+        tenant_id: str | None = None,
+    ) -> StoredIncident | None:
         from ..db.supabase_db import get_db
 
         async with self._lock:
-            tenant_id = await self._resolve_tenant(incident_id=incident_id)
+            resolved_tenant_id = await self._resolve_tenant(
+                incident_id=incident_id, tenant_id=tenant_id
+            )
             db = get_db(use_admin=True)
 
             now = datetime.now(UTC)
-            # Update incident row
             row = await db.get_processing_incident(
-                tenant_id=tenant_id, incident_id=incident_id
+                tenant_id=resolved_tenant_id,
+                incident_id=incident_id,
             )
             if not row:
-                # Create minimal row if missing
-                row = await db.upsert_processing_incident(
-                    tenant_id=tenant_id,
+                await db.upsert_processing_incident(
+                    tenant_id=resolved_tenant_id,
                     incident_id=incident_id,
                     title=context_card.title,
                     service_name=context_card.service_name,
@@ -321,10 +443,20 @@ class SupabaseIncidentStore(_BaseIncidentStore):
                     status="completed",
                     processed_at=now.isoformat(),
                     triggered_at=context_card.triggered_at.astimezone(UTC).isoformat(),
+                    source="manual",
+                    source_id=incident_id,
+                    metadata=metadata or {},
                 )
             else:
+                existing_metadata = row.get("metadata") or {}
+                if not isinstance(existing_metadata, dict):
+                    existing_metadata = {}
+                merged_metadata = {**existing_metadata}
+                if metadata:
+                    merged_metadata.update(metadata)
+
                 await db.upsert_processing_incident(
-                    tenant_id=tenant_id,
+                    tenant_id=resolved_tenant_id,
                     incident_id=incident_id,
                     title=row.get("title") or context_card.title,
                     service_name=row.get("service") or context_card.service_name,
@@ -335,13 +467,16 @@ class SupabaseIncidentStore(_BaseIncidentStore):
                         or context_card.triggered_at.astimezone(UTC).isoformat()
                     ),
                     processed_at=now.isoformat(),
+                    source=row.get("source") or "manual",
+                    source_url=row.get("source_url"),
+                    source_id=row.get("source_id") or incident_id,
+                    metadata=merged_metadata,
                 )
 
-            # Insert context card row
             card_payload = context_card.model_dump(mode="json")
             await db.create_context_card(
                 incident_id=incident_id,
-                tenant_id=tenant_id,
+                tenant_id=resolved_tenant_id,
                 data=card_payload,
                 assembly_time_ms=context_card.assembly_time_ms,
             )
@@ -355,24 +490,42 @@ class SupabaseIncidentStore(_BaseIncidentStore):
                 }
             )
 
-            return await self.get_incident(incident_id)
+            return await self.get_incident(incident_id, tenant_id=resolved_tenant_id)
 
-    async def fail_incident(self, incident_id: str, error_message: str):
+    async def fail_incident(
+        self,
+        incident_id: str,
+        error_message: str,
+        metadata: dict | None = None,
+        tenant_id: str | None = None,
+    ) -> StoredIncident | None:
         from ..db.supabase_db import get_db
 
         async with self._lock:
-            tenant_id = await self._resolve_tenant(incident_id=incident_id)
+            resolved_tenant_id = await self._resolve_tenant(
+                incident_id=incident_id, tenant_id=tenant_id
+            )
             db = get_db(use_admin=True)
 
             row = await db.get_processing_incident(
-                tenant_id=tenant_id, incident_id=incident_id
+                tenant_id=resolved_tenant_id,
+                incident_id=incident_id,
             )
             title = row.get("title") if row else incident_id
             service = row.get("service") if row else "unknown"
             sev = row.get("severity") if row else Severity.MEDIUM.value
 
+            existing_metadata = row.get("metadata") if row else {}
+            if not isinstance(existing_metadata, dict):
+                existing_metadata = {}
+            merged_metadata = {**existing_metadata}
+            if metadata:
+                merged_metadata.update(metadata)
+            if "error" not in merged_metadata:
+                merged_metadata["error"] = error_message
+
             await db.upsert_processing_incident(
-                tenant_id=tenant_id,
+                tenant_id=resolved_tenant_id,
                 incident_id=incident_id,
                 title=title,
                 service_name=service,
@@ -381,6 +534,10 @@ class SupabaseIncidentStore(_BaseIncidentStore):
                 triggered_at=row.get("triggered_at") if row else None,
                 processed_at=datetime.now(UTC).isoformat(),
                 error_message=error_message,
+                source=row.get("source") if row else "manual",
+                source_url=row.get("source_url") if row else None,
+                source_id=row.get("source_id") if row else incident_id,
+                metadata=merged_metadata,
             )
 
             await self._notify_subscribers(
@@ -392,16 +549,23 @@ class SupabaseIncidentStore(_BaseIncidentStore):
                 }
             )
 
-            return await self.get_incident(incident_id)
+            return await self.get_incident(incident_id, tenant_id=resolved_tenant_id)
 
-    async def get_incident(self, incident_id: str) -> StoredIncident | None:
+    async def get_incident(
+        self,
+        incident_id: str,
+        tenant_id: str | None = None,
+    ) -> StoredIncident | None:
         from ..db.supabase_db import get_db
 
-        tenant_id = await self._resolve_tenant(incident_id=incident_id)
+        resolved_tenant_id = await self._resolve_tenant(
+            incident_id=incident_id, tenant_id=tenant_id
+        )
         db = get_db(use_admin=True)
 
         row = await db.get_processing_incident(
-            tenant_id=tenant_id, incident_id=incident_id
+            tenant_id=resolved_tenant_id,
+            incident_id=incident_id,
         )
         if not row:
             return None
@@ -420,17 +584,20 @@ class SupabaseIncidentStore(_BaseIncidentStore):
 
         return self._row_to_stored(row, card_row)
 
-    async def get_all_incidents(self, tenant_id: str | None = None) -> list[StoredIncident]:
+    async def get_all_incidents(
+        self,
+        tenant_id: str | None = None,
+    ) -> list[StoredIncident]:
         from ..db.supabase_db import get_db
 
-        tenant_id = await self._resolve_tenant(tenant_id=tenant_id)
+        resolved_tenant_id = await self._resolve_tenant(tenant_id=tenant_id)
         db = get_db(use_admin=True)
 
         rows = await db.list_processing_incidents(
-            tenant_id=tenant_id, limit=self._max_incidents, offset=0
+            tenant_id=resolved_tenant_id,
+            limit=self._max_incidents,
+            offset=0,
         )
-
-        # Avoid N+1 for context cards for now; dashboard list doesn’t render full card.
         return [self._row_to_stored(r, None) for r in rows]
 
     async def get_stats(self) -> dict:
@@ -449,7 +616,6 @@ class SupabaseIncidentStore(_BaseIncidentStore):
 
 
 def get_incident_store() -> _BaseIncidentStore:
-
     if is_supabase_db_enabled():
         logger.info("incident_store_backend", backend="supabase")
         return SupabaseIncidentStore(max_incidents=100)
@@ -458,5 +624,4 @@ def get_incident_store() -> _BaseIncidentStore:
     return InMemoryIncidentStore(max_incidents=100)
 
 
-# Global incident store instance
 incident_store = get_incident_store()
