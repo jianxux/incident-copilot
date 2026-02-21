@@ -60,9 +60,9 @@ class PagerDutyOAuth:
             "client_id": self.client_id,
             "redirect_uri": redirect_uri,
             "response_type": "code",
-            # Classic User OAuth scopes — full REST API v2 access.
-            # Scoped OAuth restricts most endpoints; classic is more compatible.
-            "scope": "read write",
+            # Scoped OAuth — must match scopes configured in PagerDuty App Registration.
+            # Add these in PagerDuty UI: Services(Read), Incidents(Read), Users(Read), Webhooks(Read+Write)
+            "scope": "openid services.read incidents.read users.read webhook_subscriptions.read webhook_subscriptions.write",
             "state": state,
         }
         return f"{self.AUTHORIZE_URL}?{urlencode(params)}"
