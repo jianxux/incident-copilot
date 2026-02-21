@@ -15,6 +15,7 @@ from .api import (
     demo_router,
     email_router,
     health_router,
+    incidents_router,
     insights_router,
     latency_router,
     memory_advanced_router,
@@ -250,6 +251,7 @@ def create_app() -> FastAPI:
     app.include_router(demo_router)
     app.include_router(demo_trigger_router)
     app.include_router(analytics_router)
+    app.include_router(incidents_router)
     app.include_router(correlation_router)
     app.include_router(insights_router)
     app.include_router(latency_router)
