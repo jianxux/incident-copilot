@@ -207,7 +207,7 @@ function severityBadge(severity) {
 
 async function fetchStats() {
     try {
-        const response = await fetch(`/api/analytics/mttr?days=${currentPeriod}`);
+        const response = await window.icFetch(`/api/analytics/mttr?days=${currentPeriod}`);
         const stats = await response.json();
         
         document.getElementById('stat-mean-mttr').textContent = formatMinutes(stats.mean_mttr_seconds);
@@ -222,7 +222,7 @@ async function fetchStats() {
 
 async function fetchComparison() {
     try {
-        const response = await fetch(`/api/analytics/comparison?days=${currentPeriod}`);
+        const response = await window.icFetch(`/api/analytics/comparison?days=${currentPeriod}`);
         const comparison = await response.json();
         
         const trendIcon = document.getElementById('trend-icon');
@@ -267,7 +267,7 @@ async function fetchComparison() {
 
 async function fetchIncidents() {
     try {
-        const response = await fetch(`/api/analytics/incidents?days=${currentPeriod}&limit=50`);
+        const response = await window.icFetch(`/api/analytics/incidents?days=${currentPeriod}&limit=50`);
         const incidents = await response.json();
         
         const tbody = document.getElementById('incidents-table-body');
@@ -304,7 +304,7 @@ async function fetchIncidents() {
 
 async function updateChart() {
     try {
-        const response = await fetch(`/api/analytics/incidents?days=${currentPeriod}&limit=100`);
+        const response = await window.icFetch(`/api/analytics/incidents?days=${currentPeriod}&limit=100`);
         const incidents = await response.json();
         
         const dailyData = {};
