@@ -918,29 +918,43 @@ async def update_incident_status(
     request: Request,
     auth: AuthContext = Depends(get_auth_context),
 ):
-    """Update incident status (acknowledge/resolve) from dashboard."""
+    """Update incident status from dashboard."""
     tenant_id = auth.tenant_id or "default"
     body = await request.json()
     new_status = body.get("status", "").strip()
 
-    if new_status not in ("acknowledged", "resolved", "triggered"):
-        raise HTTPException(status_code=400, detail="Invalid status. Use: triggered, acknowledged, resolved")
+    status_aliases = {
+        "triggered": "processing",
+        "acknowledged": "processing",
+        "resolved": "completed",
+        "processing": "processing",
+        "completed": "completed",
+        "error": "error",
+    }
+    canonical_status = status_aliases.get(new_status)
+    if canonical_status is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid status. Use: processing, completed, error",
+        )
 
     try:
         from ..db.supabase_db import get_db
 
         db = get_db(use_admin=True)
-        update_data: dict = {"status": new_status}
-        if new_status == "resolved":
+        update_data: dict = {"status": canonical_status}
+        if canonical_status == "completed":
             from datetime import datetime, timezone
             update_data["processed_at"] = datetime.now(timezone.utc).isoformat()
+        elif canonical_status == "processing":
+            update_data["processed_at"] = None
 
         await db._to_thread(
             lambda: db.client.table("incidents").update(update_data).eq(
                 "id", incident_id
             ).eq("tenant_id", tenant_id).execute()
         )
-        return {"ok": True, "incident_id": incident_id, "status": new_status}
+        return {"ok": True, "incident_id": incident_id, "status": canonical_status}
     except Exception as exc:
         logger.warning("update_incident_status_failed", error=str(exc))
         raise HTTPException(status_code=500, detail=str(exc))

@@ -156,9 +156,7 @@
     // ---------------- Demo mode ----------------
     async function loadDemoScenarios() {
         try {
-            const r = await fetch('/api/demo/scenarios', {
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
+            const r = await window.icFetch('/api/demo/scenarios');
             if (!r.ok) return;
             const data = await r.json();
             const scenarios = (data && data.scenarios) ? data.scenarios : [];
@@ -276,9 +274,7 @@
     async function pollDemoIncident(incidentId) {
         const start = Date.now();
         while (Date.now() - start < 60000) {
-            const r = await fetch(`/api/incidents/${encodeURIComponent(incidentId)}`, {
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
+            const r = await window.icFetch(`/api/incidents/${encodeURIComponent(incidentId)}`);
             if (!r.ok) throw new Error('Failed to fetch incident status');
             const data = await r.json();
             if (data.status === 'completed' && data.context_card) {
@@ -308,10 +304,7 @@
 
         try {
             const qs = scenarioId ? ('?scenario_id=' + encodeURIComponent(scenarioId)) : '';
-            const r = await fetch('/api/demo/trigger' + qs, {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
+            const r = await window.icFetch('/api/demo/trigger' + qs, { method: 'POST' });
             if (!r.ok) throw new Error('Failed to trigger demo incident');
             const data = await r.json();
             setDemoStatus('Demo incident created. Assembling context…');
@@ -365,9 +358,7 @@
     }
 
     async function loadStats() {
-        const r = await fetch('/api/dashboard/stats', {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
+        const r = await window.icFetch('/api/dashboard/stats');
         const data = await r.json();
 
         document.getElementById('stat-total').textContent = data.total;
@@ -429,9 +420,7 @@
     }
 
     async function loadIncidents() {
-        const r = await fetch('/api/incidents', {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
+        const r = await window.icFetch('/api/incidents');
         const data = await r.json();
 
         const list = document.getElementById('incidents-list');

@@ -238,7 +238,7 @@
 
                 <div class="nav-section-title">Admin</div>
 
-                <a href="/dashboard/config" class="nav-item {% if page_title == 'Config' %}active{% endif %}">
+                <a href="/dashboard/config" class="nav-item {% if page_title in ['Config', 'Configuration', 'Settings'] %}active{% endif %}">
                     <span class="nav-icon"><i class="fas fa-gear text-sm"></i></span>
                     <span class="nav-label">Settings</span>
                 </a>
@@ -344,6 +344,25 @@
 
     <script src="/dashboard/static/app.js"></script>
     <script>
+        window.icFetch = async function(url, options) {
+            const opts = options ? { ...options } : {};
+            const headers = new Headers(opts.headers || {});
+            const token = localStorage.getItem('access_token');
+
+            if (token && !headers.has('Authorization')) {
+                headers.set('Authorization', 'Bearer ' + token);
+            }
+
+            opts.headers = headers;
+            const response = await fetch(url, opts);
+            if (response.status === 401) {
+                window.location.href = '/login?session_expired=1';
+                throw new Error('Unauthorized');
+            }
+
+            return response;
+        };
+
         function toggleTheme() {
             const root = document.documentElement;
             const isDark = root.classList.toggle('dark');
@@ -446,9 +465,7 @@
             } else {
                 const token = localStorage.getItem('access_token');
                 if (token) {
-                    fetch('/api/auth/supabase/user', {
-                        headers: { 'Authorization': 'Bearer ' + token }
-                    })
+                    window.icFetch('/api/auth/supabase/user')
                     .then(r => r.ok ? r.json() : null)
                     .then(data => {
                         if (data && data.user) {
