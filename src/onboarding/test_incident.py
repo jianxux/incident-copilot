@@ -29,6 +29,7 @@ async def start_test_incident(
     severity: Severity = Severity.HIGH,
     title: str | None = None,
     slack_channel: str | None = None,
+    tenant_id: str | None = None,
 ) -> str:
     """Create and start processing a synthetic incident.
 
@@ -45,6 +46,7 @@ async def start_test_incident(
         service_name=service_name,
         severity=severity,
         triggered_at=triggered_at,
+        tenant_id=tenant_id,
     )
 
     settings = get_settings()
@@ -58,22 +60,30 @@ async def start_test_incident(
         html_url=f"{settings.app_url}/dashboard/incident/{incident_id}",
     )
 
-    asyncio.create_task(_process(incident, slack_channel))
+    asyncio.create_task(_process(incident, slack_channel, tenant_id))
 
     return incident_id
 
 
-async def _process(incident: PagerDutyIncident, slack_channel: str | None) -> None:
+async def _process(
+    incident: PagerDutyIncident,
+    slack_channel: str | None,
+    tenant_id: str | None,
+) -> None:
     settings = get_settings()
     try:
         orchestrator = ContextOrchestrator(settings)
         card = await orchestrator.process_incident(
             incident, slack_channel=slack_channel
         )
-        await incident_store.complete_incident(incident.incident_id, card)
+        await incident_store.complete_incident(
+            incident.incident_id, card, tenant_id=tenant_id
+        )
         logger.info("test_incident_completed", incident_id=incident.incident_id)
     except Exception as e:
         logger.error(
             "test_incident_failed", incident_id=incident.incident_id, error=str(e)
         )
-        await incident_store.fail_incident(incident.incident_id, str(e))
+        await incident_store.fail_incident(
+            incident.incident_id, str(e), tenant_id=tenant_id
+        )

@@ -1745,6 +1745,7 @@ async def run_onboarding_test_incident(
     incident_id = await start_test_incident(
         service_name=service_name,
         severity=Severity.HIGH,
+        tenant_id=tenant_id,
     )
 
     await checklist_store.set_step(tenant_id, "run_test", True)
