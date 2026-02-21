@@ -15,11 +15,22 @@ os.environ.pop("SUPABASE_URL", None)
 class TestIncidentFormatting:
     """Test the _format_incident helper in the API."""
 
+    def _map_status(self, value: str | None) -> str:
+        status_map = {
+            "processing": "triggered",
+            "completed": "resolved",
+            "error": "triggered",
+        }
+        normalized = str(value or "processing").strip().lower()
+        return status_map.get(normalized, normalized)
+
     def _format(self, row: dict) -> dict:
         """Import and call the format function from routes."""
         # We test the formatting logic directly
         triggered = row.get("triggered_at")
         processed = row.get("processed_at")
+        created_at = row.get("created_at") or triggered
+        updated_at = row.get("updated_at") or processed or created_at
         duration_seconds = None
         if triggered and processed:
             try:
@@ -39,19 +50,21 @@ class TestIncidentFormatting:
                 verdict_summary = verdict[:200]
 
         return {
+            "id": row["id"],
             "incident_id": row["id"],
             "title": row.get("title") or "",
             "description": row.get("description") or "",
             "service": row.get("service") or "",
             "service_name": row.get("service") or "",
             "severity": row.get("severity") or "medium",
-            "status": row.get("status") or "processing",
+            "status": self._map_status(row.get("status")),
             "source": row.get("source") or "",
             "source_url": row.get("source_url") or "",
             "source_id": row.get("source_id") or "",
             "triggered_at": triggered,
             "processed_at": processed,
-            "created_at": row.get("created_at"),
+            "created_at": created_at,
+            "updated_at": updated_at,
             "duration_seconds": duration_seconds,
             "verdict_summary": verdict_summary,
             "error_message": row.get("error_message"),
@@ -72,10 +85,14 @@ class TestIncidentFormatting:
             "metadata": {},
         }
         result = self._format(row)
+        assert result["id"] == "inc-1"
         assert result["incident_id"] == "inc-1"
         assert result["service"] == "api-gateway"
+        assert result["service_name"] == "api-gateway"
         assert result["source"] == "pagerduty"
         assert result["source_url"] == "https://pd.com/inc/1"
+        assert result["created_at"] == "2026-02-18T10:00:00Z"
+        assert result["updated_at"] == "2026-02-18T10:00:00Z"
         assert result["duration_seconds"] is None  # not resolved
         assert result["verdict_summary"] is None
 
@@ -94,6 +111,21 @@ class TestIncidentFormatting:
         result = self._format(row)
         assert result["duration_seconds"] == 2700  # 45 minutes
         assert result["status"] == "resolved"
+
+    def test_processing_status_maps_to_triggered(self):
+        row = {"id": "inc-map-1", "status": "processing"}
+        result = self._format(row)
+        assert result["status"] == "triggered"
+
+    def test_completed_status_maps_to_resolved(self):
+        row = {"id": "inc-map-2", "status": "completed"}
+        result = self._format(row)
+        assert result["status"] == "resolved"
+
+    def test_error_status_maps_to_triggered(self):
+        row = {"id": "inc-map-3", "status": "error"}
+        result = self._format(row)
+        assert result["status"] == "triggered"
 
     def test_verdict_from_metadata_dict(self):
         row = {
@@ -143,7 +175,7 @@ class TestIncidentFormatting:
         assert result["title"] == ""
         assert result["service"] == ""
         assert result["severity"] == "medium"
-        assert result["status"] == "processing"
+        assert result["status"] == "triggered"
         assert result["source"] == ""
 
     def test_backward_compat_service_name(self):
@@ -244,13 +276,16 @@ class TestIncidentsListAPI:
         assert resp.status_code == 200
         data = resp.json()
         assert "incidents" in data
+        assert "total" in data
         assert isinstance(data["incidents"], list)
+        assert isinstance(data["total"], int)
 
     def test_incidents_response_shape(self, client):
         """Verify response has expected top-level keys."""
         resp = client.get("/api/incidents")
         data = resp.json()
         assert "incidents" in data
+        assert "total" in data
 
 
 class TestDashboardWrapperEndpoints:
@@ -295,6 +330,7 @@ class TestDashboardWrapperEndpoints:
         assert resp.status_code == 200
         data = resp.json()
         assert "incidents" in data
+        assert "total" in data
         assert isinstance(data["incidents"], list)
 
     def test_dashboard_stats_wrapper_returns_401_without_auth(self, monkeypatch):
