@@ -223,7 +223,7 @@ async function refreshData() {
 
 async function loadSummary() {
     try {
-        const response = await fetch(`/api/insights/summary?days=${currentDays}`);
+        const response = await window.icFetch(`/api/insights/summary?days=${currentDays}`);
         const data = await response.json();
         
         document.getElementById('stat-total-insights').textContent = data.total_insights || 0;
@@ -238,7 +238,7 @@ async function loadInsights() {
     const countEl = document.getElementById('insights-count');
     
     try {
-        const response = await fetch(`/api/insights?limit=10`);
+        const response = await window.icFetch(`/api/insights?limit=10`);
         const data = await response.json();
         
         countEl.textContent = `${data.total} total`;
@@ -293,7 +293,7 @@ async function loadPatterns() {
     const countEl = document.getElementById('patterns-count');
     
     try {
-        const response = await fetch(`/api/insights/patterns?limit=10`);
+        const response = await window.icFetch(`/api/insights/patterns?limit=10`);
         const data = await response.json();
         
         countEl.textContent = `${data.total} total`;
@@ -339,7 +339,7 @@ async function loadAnomalies() {
     const countEl = document.getElementById('anomalies-count');
     
     try {
-        const response = await fetch(`/api/insights/anomalies?limit=10`);
+        const response = await window.icFetch(`/api/insights/anomalies?limit=10`);
         const data = await response.json();
         
         countEl.textContent = `${data.total} total`;
@@ -383,7 +383,7 @@ async function loadDependencies() {
     const countEl = document.getElementById('dependencies-count');
     
     try {
-        const response = await fetch(`/api/insights/dependencies`);
+        const response = await window.icFetch(`/api/insights/dependencies`);
         const data = await response.json();
         
         countEl.textContent = `${data.total} total`;
@@ -425,7 +425,7 @@ async function loadDigest() {
     const container = document.getElementById('digest-content');
     
     try {
-        const response = await fetch(`/api/insights/digest?period=weekly`);
+        const response = await window.icFetch(`/api/insights/digest?period=weekly`);
         const data = await response.json();
         
         if (!data) {
@@ -504,7 +504,7 @@ async function runAnalysis() {
     `;
     
     try {
-        const response = await fetch(`/api/insights/analyze?days=${currentDays}`, { method: 'POST' });
+        const response = await window.icFetch(`/api/insights/analyze?days=${currentDays}`, { method: 'POST' });
         const data = await response.json();
         
         results.innerHTML = `
@@ -564,7 +564,7 @@ async function generateDigest() {
     `;
     
     try {
-        await fetch(`/api/insights/digest/generate?period=weekly`, { method: 'POST' });
+        await window.icFetch(`/api/insights/digest/generate?period=weekly`, { method: 'POST' });
         await loadDigest();
     } catch (error) {
         container.innerHTML = `<div class="text-red-400 text-center py-4">Failed to generate digest</div>`;
@@ -573,7 +573,7 @@ async function generateDigest() {
 
 async function acknowledgeInsight(insightId) {
     try {
-        await fetch(`/api/insights/${insightId}/acknowledge`, {
+        await window.icFetch(`/api/insights/${insightId}/acknowledge`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ acknowledged_by: 'dashboard-user' })
