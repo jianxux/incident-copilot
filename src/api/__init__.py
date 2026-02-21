@@ -7,6 +7,7 @@ from .correlation import router as correlation_router
 from .demo import router as demo_router
 from .email import router as email_router
 from .health import router as health_router
+from .incidents import router as incidents_router
 from .insights import router as insights_router
 from .latency import router as latency_router
 from .memory_advanced import router as memory_advanced_router
@@ -29,6 +30,7 @@ __all__ = [
     "plugins_router",
     "email_router",
     "insights_router",
+    "incidents_router",
     "metrics_router",
     "memory_feedback_router",
     "memory_stats_router",
