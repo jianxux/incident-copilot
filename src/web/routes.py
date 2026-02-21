@@ -1524,7 +1524,7 @@ async def import_pagerduty_services(
             )
             if resp.status_code != 200:
                 logger.warning("import_pd_services_api_error", status=resp.status_code, body=resp.text[:500])
-                raise HTTPException(status_code=502, detail=f"PagerDuty API returned {resp.status_code}")
+                return {"ok": False, "error": f"PagerDuty API returned {resp.status_code}", "details": resp.text[:200]}
 
             pd_services = resp.json().get("services", [])
 
@@ -1555,11 +1555,12 @@ async def import_pagerduty_services(
 
         return {"ok": True, "imported": imported, "total_pd_services": len(pd_services)}
 
-    except HTTPException:
-        raise
+    except HTTPException as he:
+        logger.warning("import_pagerduty_services_http_error", status=he.status_code, detail=he.detail)
+        return {"ok": False, "error": he.detail}
     except Exception as exc:
-        logger.warning("import_pagerduty_services_failed", error=str(exc))
-        raise HTTPException(status_code=500, detail=str(exc))
+        logger.warning("import_pagerduty_services_failed", error=str(exc), error_type=type(exc).__name__)
+        return {"ok": False, "error": str(exc)}
 
 
 @router.post("/api/onboarding/integrations/github")

@@ -259,6 +259,12 @@ async function importPagerDutyServices() {
   try {
     if (statusEl) statusEl.textContent = 'Importing services from PagerDuty…';
     const res = await api('/dashboard/api/onboarding/integrations/pagerduty/import-services', {method: 'POST'});
+    if (res.ok === false) {
+      const detail = res.details || res.error || 'Unknown error';
+      if (statusEl) statusEl.textContent = '';
+      showToast(`Service import failed: ${detail}`, 'error');
+      return;
+    }
     if (statusEl) statusEl.textContent = `Imported ${res.imported} services from PagerDuty.`;
     await loadServices();
     await loadChecklist();
