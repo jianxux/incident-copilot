@@ -1710,6 +1710,204 @@ async def import_pagerduty_services(
         return {"ok": False, "error": str(exc)}
 
 
+@router.post("/api/integrations/pagerduty/sync")
+async def sync_pagerduty_incidents(
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Pull recent incidents from PagerDuty and persist to incident store."""
+    tenant_id = auth.tenant_id or "default"
+
+    try:
+        # Resolve PagerDuty token — same pattern as import_pagerduty_services
+        from ..integrations.oauth_tokens import oauth_token_store
+
+        token_rec = await oauth_token_store.get_token(tenant_id, "pagerduty")
+        oauth_token = ""
+        api_key = ""
+
+        if token_rec and token_rec.access_token:
+            oauth_token = token_rec.access_token
+        else:
+            try:
+                from ..db.supabase_db import get_db
+                from ..security.crypto import decrypt_json
+
+                db = get_db(use_admin=True)
+                rows = db.client.table("integration_configs").select("config").eq(
+                    "tenant_id", tenant_id
+                ).eq("type", "pagerduty").eq("is_active", True).limit(1).execute()
+
+                if rows.data:
+                    config = rows.data[0].get("config", {})
+                    encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
+                    if encrypted:
+                        decrypted = decrypt_json(encrypted)
+                        oauth = decrypted.get("oauth", {})
+                        oauth_token = oauth.get("access_token", "")
+                        api_key = decrypted.get("api_key", "")
+            except Exception as exc:
+                logger.warning("sync_incidents_legacy_lookup_failed", error=str(exc))
+
+        token = oauth_token or api_key
+        if not token:
+            raise HTTPException(status_code=404, detail="PagerDuty not connected")
+
+        if oauth_token:
+            pd_auth = f"Bearer {oauth_token}"
+        else:
+            pd_auth = f"Token token={api_key}"
+
+        # Fetch recent incidents from PagerDuty API
+        import httpx
+
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                "https://api.pagerduty.com/incidents",
+                headers={
+                    "Authorization": pd_auth,
+                    "Content-Type": "application/json",
+                    "Accept": "application/vnd.pagerduty+json;version=2",
+                },
+                params={
+                    "statuses[]": ["triggered", "acknowledged", "resolved"],
+                    "sort_by": "created_at:desc",
+                    "limit": 25,
+                },
+            )
+            if resp.status_code != 200:
+                logger.warning("sync_pd_incidents_api_error", status=resp.status_code, body=resp.text[:500])
+                return {"ok": False, "error": f"PagerDuty API returned {resp.status_code}", "details": resp.text[:200]}
+
+            pd_incidents = resp.json().get("incidents", [])
+
+        synced = 0
+        incident_summaries = []
+
+        for inc in pd_incidents:
+            inc_id = inc.get("id", "")
+            if not inc_id:
+                continue
+
+            urgency = inc.get("urgency", "low")
+            severity = Severity.HIGH if urgency == "high" else Severity.LOW
+
+            service_summary = ""
+            svc = inc.get("service")
+            if isinstance(svc, dict):
+                service_summary = svc.get("summary", "")
+
+            created_at_str = inc.get("created_at", "")
+            try:
+                triggered_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+            except (ValueError, AttributeError):
+                triggered_at = datetime.now(UTC)
+
+            # Build assigned_to list
+            assigned_to = []
+            for assignment in inc.get("assignments", []):
+                assignee = assignment.get("assignee", {})
+                if isinstance(assignee, dict) and assignee.get("summary"):
+                    assigned_to.append(assignee["summary"])
+
+            # Escalation policy
+            ep = inc.get("escalation_policy", {})
+            ep_summary = ep.get("summary", "") if isinstance(ep, dict) else ""
+
+            metadata = {
+                "provider": "pagerduty",
+                "status": inc.get("status", ""),
+                "urgency": urgency,
+                "assigned_to": assigned_to,
+                "escalation_policy": ep_summary,
+            }
+
+            await incident_store.add_incident(
+                incident_id=inc_id,
+                title=inc.get("title", ""),
+                service_name=service_summary,
+                severity=severity,
+                triggered_at=triggered_at,
+                source="pagerduty",
+                source_url=inc.get("html_url", ""),
+                source_id=str(inc.get("incident_number", "")),
+                metadata=metadata,
+                tenant_id=tenant_id,
+            )
+
+            # If resolved, mark as completed
+            if inc.get("status") == "resolved":
+                await incident_store.complete_incident(
+                    inc_id,
+                    ContextCard(
+                        incident_id=inc_id,
+                        title=inc.get("title", ""),
+                        severity=severity,
+                        service_name=service_summary,
+                        triggered_at=triggered_at,
+                        assembled_at=datetime.now(UTC),
+                        assembly_time_ms=0,
+                    ),
+                    metadata={"resolved_via_sync": True},
+                    tenant_id=tenant_id,
+                )
+
+            synced += 1
+            incident_summaries.append({
+                "id": inc_id,
+                "title": inc.get("title", ""),
+                "status": inc.get("status", ""),
+            })
+
+        return {"ok": True, "synced": synced, "incidents": incident_summaries}
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("sync_pagerduty_incidents_failed", error=str(exc), error_type=type(exc).__name__)
+        return {"ok": False, "error": str(exc)}
+
+
+@router.get("/api/integrations/pagerduty/sync/status")
+async def pagerduty_sync_status(
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Return PagerDuty sync connection status."""
+    tenant_id = auth.tenant_id or "default"
+
+    connected = False
+    try:
+        from ..integrations.oauth_tokens import oauth_token_store
+
+        token_rec = await oauth_token_store.get_token(tenant_id, "pagerduty")
+        if token_rec and token_rec.access_token:
+            connected = True
+    except Exception:
+        pass
+
+    if not connected:
+        try:
+            from ..db.supabase_db import get_db
+            from ..security.crypto import decrypt_json
+
+            db = get_db(use_admin=True)
+            rows = db.client.table("integration_configs").select("config").eq(
+                "tenant_id", tenant_id
+            ).eq("type", "pagerduty").eq("is_active", True).limit(1).execute()
+
+            if rows.data:
+                config = rows.data[0].get("config", {})
+                encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
+                if encrypted:
+                    decrypted = decrypt_json(encrypted)
+                    oauth = decrypted.get("oauth", {})
+                    if oauth.get("access_token") or decrypted.get("api_key"):
+                        connected = True
+        except Exception:
+            pass
+
+    return {"connected": connected, "last_sync": None}
+
+
 @router.post("/api/onboarding/integrations/github")
 async def save_github_integration(
     request: Request,
