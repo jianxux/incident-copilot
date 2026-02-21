@@ -344,6 +344,7 @@ def test_test_integration_pagerduty_refresh_retries_inside_client_scope(authed_c
 
 def test_import_pagerduty_services_uses_oauth_token_store(authed_client, monkeypatch):
     """Import services should read token from oauth_token_store."""
+    import httpx
 
     class _Resp:
         def __init__(self, status_code, payload):
@@ -354,15 +355,18 @@ def test_import_pagerduty_services_uses_oauth_token_store(authed_client, monkeyp
         def json(self):
             return self._payload
 
-    async def _mock_get(self, url, headers=None, params=None):
-        if "/services" in url:
+    original_get = httpx.AsyncClient.get
+
+    async def _mock_get(self, url, *args, **kwargs):
+        url_str = str(url)
+        if "api.pagerduty.com" in url_str and "/services" in url_str:
             return _Resp(200, {
                 "services": [
                     {"id": "P1", "name": "Web App", "html_url": "https://acme.pagerduty.com/services/P1",
                      "description": "Main web app", "status": "active"},
                 ],
             })
-        raise AssertionError(f"unexpected GET: {url}")
+        return await original_get(self, url, *args, **kwargs)
 
     monkeypatch.setattr("httpx.AsyncClient.get", _mock_get)
     _run(
@@ -399,6 +403,16 @@ def test_service_api_create(anon_client):
     resp = anon_client.post("/api/services", json={"name": "test-svc", "description": "Test"})
     assert resp.status_code == 201
     assert resp.json()["name"] == "test-svc"
+
+
+def test_service_api_list_returns_description_and_team(authed_client):
+    list_resp = authed_client.get("/dashboard/api/services")
+    assert list_resp.status_code == 200
+    services = list_resp.json()["services"]
+    assert isinstance(services, list)
+    for service in services:
+        assert "description" in service
+        assert "team" in service
 
 
 def test_service_api_missing_name(anon_client):
