@@ -1515,10 +1515,15 @@ async def import_pagerduty_services(
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.get(
                 "https://api.pagerduty.com/services",
-                headers={"Authorization": pd_auth, "Content-Type": "application/json"},
+                headers={
+                    "Authorization": pd_auth,
+                    "Content-Type": "application/json",
+                    "Accept": "application/vnd.pagerduty+json;version=2",
+                },
                 params={"limit": 100},
             )
             if resp.status_code != 200:
+                logger.warning("import_pd_services_api_error", status=resp.status_code, body=resp.text[:500])
                 raise HTTPException(status_code=502, detail=f"PagerDuty API returned {resp.status_code}")
 
             pd_services = resp.json().get("services", [])
