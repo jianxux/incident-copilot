@@ -74,7 +74,9 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         service_name: str,
         severity: Severity,
         triggered_at: datetime,
+        tenant_id: str | None = None,
     ) -> StoredIncident:
+        _ = tenant_id
         async with self._lock:
             incident = StoredIncident(
                 incident_id=incident_id,
@@ -174,6 +176,7 @@ class SupabaseIncidentStore(_BaseIncidentStore):
         super().__init__(max_incidents=max_incidents)
         self._lock = asyncio.Lock()
         self._tenant_id: str | None = None
+        self._incident_tenants: dict[str, str] = {}
 
     async def _ensure_tenant(self) -> str:
         if self._tenant_id:
@@ -186,6 +189,18 @@ class SupabaseIncidentStore(_BaseIncidentStore):
         tenant = await db.ensure_tenant(slug="default", name="Default Tenant")
         self._tenant_id = tenant["id"]
         return self._tenant_id
+
+    async def _resolve_tenant(
+        self,
+        *,
+        incident_id: str | None = None,
+        tenant_id: str | None = None,
+    ) -> str:
+        if tenant_id:
+            return tenant_id
+        if incident_id and incident_id in self._incident_tenants:
+            return self._incident_tenants[incident_id]
+        return await self._ensure_tenant()
 
     @staticmethod
     def _row_to_stored(row: dict, card_row: dict | None = None) -> StoredIncident:
@@ -242,11 +257,15 @@ class SupabaseIncidentStore(_BaseIncidentStore):
         service_name: str,
         severity: Severity,
         triggered_at: datetime,
+        tenant_id: str | None = None,
     ) -> StoredIncident:
         from ..db.supabase_db import get_db
 
         async with self._lock:
-            tenant_id = await self._ensure_tenant()
+            tenant_id = await self._resolve_tenant(
+                incident_id=incident_id, tenant_id=tenant_id
+            )
+            self._incident_tenants[incident_id] = tenant_id
             db = get_db(use_admin=True)
 
             await db.upsert_processing_incident(
@@ -283,7 +302,7 @@ class SupabaseIncidentStore(_BaseIncidentStore):
         from ..db.supabase_db import get_db
 
         async with self._lock:
-            tenant_id = await self._ensure_tenant()
+            tenant_id = await self._resolve_tenant(incident_id=incident_id)
             db = get_db(use_admin=True)
 
             now = datetime.now(UTC)
@@ -342,7 +361,7 @@ class SupabaseIncidentStore(_BaseIncidentStore):
         from ..db.supabase_db import get_db
 
         async with self._lock:
-            tenant_id = await self._ensure_tenant()
+            tenant_id = await self._resolve_tenant(incident_id=incident_id)
             db = get_db(use_admin=True)
 
             row = await db.get_processing_incident(
@@ -378,7 +397,7 @@ class SupabaseIncidentStore(_BaseIncidentStore):
     async def get_incident(self, incident_id: str) -> StoredIncident | None:
         from ..db.supabase_db import get_db
 
-        tenant_id = await self._ensure_tenant()
+        tenant_id = await self._resolve_tenant(incident_id=incident_id)
         db = get_db(use_admin=True)
 
         row = await db.get_processing_incident(
@@ -401,10 +420,10 @@ class SupabaseIncidentStore(_BaseIncidentStore):
 
         return self._row_to_stored(row, card_row)
 
-    async def get_all_incidents(self) -> list[StoredIncident]:
+    async def get_all_incidents(self, tenant_id: str | None = None) -> list[StoredIncident]:
         from ..db.supabase_db import get_db
 
-        tenant_id = await self._ensure_tenant()
+        tenant_id = await self._resolve_tenant(tenant_id=tenant_id)
         db = get_db(use_admin=True)
 
         rows = await db.list_processing_incidents(
