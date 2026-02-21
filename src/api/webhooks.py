@@ -160,6 +160,10 @@ async def process_pagerduty_incident_background(incident, settings):
             service_name=incident.service_name,
             severity=incident.severity,
             triggered_at=incident.triggered_at,
+            source="pagerduty",
+            source_url=incident.html_url,
+            source_id=incident.incident_id,
+            metadata={"provider": "pagerduty"},
         )
         orchestrator = ContextOrchestrator(settings)
         card = await orchestrator.process_incident(incident)
@@ -211,6 +215,10 @@ async def process_opsgenie_alert_background(alert, settings):
             service_name=pd_incident.service_name,
             severity=pd_incident.severity,
             triggered_at=pd_incident.triggered_at,
+            source="opsgenie",
+            source_url=alert.url,
+            source_id=alert.alert_id,
+            metadata={"provider": "opsgenie"},
         )
         orchestrator = ContextOrchestrator(settings)
         card = await orchestrator.process_incident(pd_incident)
