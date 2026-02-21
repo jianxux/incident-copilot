@@ -283,13 +283,25 @@ async function loadServices() {
   for (const svc of services) {
     const li = document.createElement('li');
     li.className = 'flex items-center justify-between px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm';
-    const source = svc.source ? ` · ${svc.source}` : '';
-    li.innerHTML = `<span>${svc.name}${source}</span><button class="text-xs text-red-700" data-id="${svc.id}">Remove</button>`;
-    li.querySelector('button').addEventListener('click', async () => {
+    const description = (svc.description || '').trim();
+    const truncatedDescription = description.length > 60 ? `${description.slice(0, 57)}...` : description;
+    const detail = truncatedDescription || (svc.team || '').trim() || (svc.source || '').trim();
+
+    const nameEl = document.createElement('span');
+    nameEl.textContent = detail ? `${svc.name} · ${detail}` : svc.name;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'text-xs text-red-700';
+    removeBtn.dataset.id = svc.id;
+    removeBtn.textContent = 'Remove';
+    removeBtn.addEventListener('click', async () => {
       await api(`/dashboard/api/services/${encodeURIComponent(svc.id)}`, {method: 'DELETE'});
       await loadServices();
       await loadChecklist();
     });
+
+    li.appendChild(nameEl);
+    li.appendChild(removeBtn);
     list.appendChild(li);
   }
   setChip('status-services', services.length > 0, `${services.length} services`);
