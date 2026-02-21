@@ -34,8 +34,8 @@ PROVIDER_CONFIGS: dict[str, OAuthProviderConfig] = {
         name="pagerduty",
         client_id_env="PAGERDUTY_CLIENT_ID",
         client_secret_env="PAGERDUTY_CLIENT_SECRET",
-        authorize_url="https://app.pagerduty.com/oauth/authorize",
-        token_url="https://app.pagerduty.com/oauth/token",
+        authorize_url="https://identity.pagerduty.com/oauth/authorize",
+        token_url="https://identity.pagerduty.com/oauth/token",
         default_scopes=["read", "write"],
     ),
     "github": OAuthProviderConfig(

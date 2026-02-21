@@ -43,8 +43,9 @@ class PagerDutyToken(BaseModel):
 
 
 class PagerDutyOAuth:
-    AUTHORIZE_URL = "https://app.pagerduty.com/oauth/authorize"
-    TOKEN_URL = "https://app.pagerduty.com/oauth/token"
+    # Scoped OAuth requires identity.pagerduty.com (not app.pagerduty.com)
+    AUTHORIZE_URL = "https://identity.pagerduty.com/oauth/authorize"
+    TOKEN_URL = "https://identity.pagerduty.com/oauth/token"
 
     def __init__(self):
         settings = get_settings()
