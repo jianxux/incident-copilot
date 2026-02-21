@@ -299,7 +299,7 @@ def test_test_integration_pagerduty_refresh_retries_inside_client_scope(authed_c
             if self.closed:
                 raise RuntimeError("client is closed")
             self.calls.append(("post", url, data))
-            if url == "https://app.pagerduty.com/oauth/token":
+            if url == "https://identity.pagerduty.com/oauth/token":
                 return _Resp(
                     200,
                     {
@@ -334,7 +334,7 @@ def test_test_integration_pagerduty_refresh_retries_inside_client_scope(authed_c
     assert stored.refresh_token == "new-refresh-token"
 
     client = _ScopedAsyncClient.instances[-1]
-    assert ("post", "https://app.pagerduty.com/oauth/token", {
+    assert ("post", "https://identity.pagerduty.com/oauth/token", {
         "grant_type": "refresh_token",
         "refresh_token": "old-refresh-token",
         "client_id": "pd-client",

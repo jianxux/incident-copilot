@@ -1346,7 +1346,7 @@ async def test_integration(
                 try:
                     async with httpx.AsyncClient(timeout=10) as client:
                         refresh_resp = await client.post(
-                            "https://app.pagerduty.com/oauth/token",
+                            "https://identity.pagerduty.com/oauth/token",
                             data={
                                 "grant_type": "refresh_token",
                                 "refresh_token": token_rec.refresh_token,

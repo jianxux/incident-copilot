@@ -230,7 +230,7 @@ def test_provider_test_pagerduty_expired_refresh_success(monkeypatch):
 
     async def _mock_post(self, url, data=None, headers=None):
         seen_urls.append(url)
-        if url == "https://app.pagerduty.com/oauth/token":
+        if url == "https://identity.pagerduty.com/oauth/token":
             return _DummyResponse(
                 200,
                 {
@@ -262,7 +262,7 @@ def test_provider_test_pagerduty_expired_refresh_success(monkeypatch):
     assert data["provider"] == "pagerduty"
     assert data["ok"] is True
     assert data["details"]["refreshed_at"]
-    assert "https://app.pagerduty.com/oauth/token" in seen_urls
+    assert "https://identity.pagerduty.com/oauth/token" in seen_urls
 
     stored = _run(oauth_token_store.get_token(tenant_id, "pagerduty"))
     assert stored is not None
