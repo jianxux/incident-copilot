@@ -24,6 +24,11 @@ interface AppState {
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
+
+  // Mobile sidebar
+  mobileSidebarOpen: boolean;
+  setMobileSidebarOpen: (open: boolean) => void;
+  toggleMobileSidebar: () => void;
   
   // Filters
   incidentFilters: IncidentFilter;
@@ -67,6 +72,11 @@ export const useAppStore = create<AppState>()(
       sidebarOpen: true,
       setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+
+      // Mobile sidebar
+      mobileSidebarOpen: false,
+      setMobileSidebarOpen: (mobileSidebarOpen) => set({ mobileSidebarOpen }),
+      toggleMobileSidebar: () => set((state) => ({ mobileSidebarOpen: !state.mobileSidebarOpen })),
       
       // Filters
       incidentFilters: defaultFilters,

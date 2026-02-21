@@ -16,6 +16,7 @@ import {
 import {
   Bell,
   LogOut,
+  Menu,
   Moon,
   Search,
   Settings,
@@ -27,21 +28,41 @@ import {
 
 export function Header() {
   const { theme, setTheme } = useTheme();
-  const { user, realTimeEnabled, setRealTimeEnabled } = useAppStore();
+  const { user, realTimeEnabled, setRealTimeEnabled, toggleMobileSidebar } = useAppStore();
 
   return (
-    <header className="flex h-16 items-center justify-between border-b bg-card px-6">
-      {/* Search */}
-      <div className="relative w-96">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search incidents, services, runbooks..."
-          className="pl-10"
-        />
+    <header className="flex h-16 items-center justify-between border-b bg-card px-4 md:px-6">
+      {/* Left side: hamburger + search */}
+      <div className="flex items-center gap-3">
+        {/* Mobile hamburger */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden"
+          onClick={toggleMobileSidebar}
+        >
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Toggle menu</span>
+        </Button>
+
+        {/* Search */}
+        <div className="relative hidden w-96 sm:block">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search incidents, services, runbooks..."
+            className="pl-10"
+          />
+        </div>
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4">
+        {/* Mobile search button */}
+        <Button variant="ghost" size="icon" className="sm:hidden">
+          <Search className="h-5 w-5" />
+          <span className="sr-only">Search</span>
+        </Button>
+
         {/* Real-time toggle */}
         <Button
           variant="ghost"
