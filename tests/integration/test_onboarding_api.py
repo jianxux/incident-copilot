@@ -383,9 +383,10 @@ def test_import_pagerduty_services_uses_oauth_token_store(authed_client, monkeyp
 
 
 def test_import_pagerduty_services_not_connected(authed_client):
-    """Import should fail when no PagerDuty token exists."""
+    """Import should return ok:false when no PagerDuty token exists."""
     resp = authed_client.post("/dashboard/api/onboarding/integrations/pagerduty/import-services")
-    assert resp.status_code in (404, 502)
+    assert resp.status_code == 200
+    assert resp.json()["ok"] is False
 
 
 def test_service_api_list_empty(anon_client):
