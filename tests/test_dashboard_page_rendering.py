@@ -25,3 +25,23 @@ def test_dashboard_incidents_page_renders_without_template_errors():
 
     assert response.status_code == 200
     assert "Incidents" in response.text
+
+
+def test_dashboard_analytics_page_renders_without_template_errors():
+    """Ensure /dashboard/analytics renders successfully."""
+    app = create_app()
+    with TestClient(app) as client:
+        response = client.get("/dashboard/analytics")
+
+    assert response.status_code == 200
+    assert "Analytics" in response.text
+
+
+def test_dashboard_insights_page_renders_without_template_errors():
+    """Ensure /dashboard/insights renders successfully."""
+    app = create_app()
+    with TestClient(app) as client:
+        response = client.get("/dashboard/insights")
+
+    assert response.status_code == 200
+    assert "Insights" in response.text
