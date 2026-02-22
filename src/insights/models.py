@@ -170,6 +170,7 @@ class InsightSummary(BaseModel):
     info_count: int = 0
     top_affected_services: list[str] = Field(default_factory=list)
     insights: list[Insight] = Field(default_factory=list)
+    analysis_pending: bool = False
 
 
 # --- Service Dependency Models ---
