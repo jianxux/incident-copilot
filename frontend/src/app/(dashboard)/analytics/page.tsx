@@ -5,8 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAnalyticsSummary, useTeamPerformance, useServiceHealth } from '@/hooks/use-analytics';
-import { cn, formatDuration } from '@/lib/utils';
+import { useAnalyticsSummary, useHeatmap } from '@/hooks/use-analytics';
+import { cn } from '@/lib/utils';
+import type { HeatmapData } from '@/types/analytics';
 import {
   ArrowDown,
   ArrowUp,
@@ -24,7 +25,6 @@ import {
   Area,
   BarChart,
   Bar,
-  LineChart,
   Line,
   XAxis,
   YAxis,
@@ -39,49 +39,39 @@ import {
 
 const periodOptions = ['day', 'week', 'month', 'quarter'] as const;
 
-// Mock data
-const mockTrendData = [
-  { date: '2026-02-01', incidents: 24, mttr: 2.1 },
-  { date: '2026-02-02', incidents: 18, mttr: 1.8 },
-  { date: '2026-02-03', incidents: 31, mttr: 2.5 },
-  { date: '2026-02-04', incidents: 15, mttr: 1.5 },
-  { date: '2026-02-05', incidents: 22, mttr: 2.0 },
-  { date: '2026-02-06', incidents: 28, mttr: 2.3 },
-  { date: '2026-02-07', incidents: 12, mttr: 1.2 },
-];
-
-const mockSeverityData = [
-  { name: 'Critical', value: 8, color: '#dc2626' },
-  { name: 'High', value: 22, color: '#ea580c' },
-  { name: 'Medium', value: 45, color: '#ca8a04' },
-  { name: 'Low', value: 67, color: '#2563eb' },
-  { name: 'Info', value: 23, color: '#6b7280' },
-];
-
-const mockSourceData = [
-  { source: 'PagerDuty', count: 85 },
-  { source: 'Datadog', count: 42 },
-  { source: 'Opsgenie', count: 23 },
-  { source: 'Manual', count: 15 },
-];
-
-const mockTeamData = [
-  { team: 'Platform', incidents: 45, mttr: 1.8, mtta: 3.2 },
-  { team: 'Backend', incidents: 38, mttr: 2.1, mtta: 4.5 },
-  { team: 'Frontend', incidents: 22, mttr: 1.2, mtta: 2.8 },
-  { team: 'Data', incidents: 28, mttr: 3.5, mtta: 5.1 },
-  { team: 'DevOps', incidents: 32, mttr: 1.5, mtta: 2.1 },
-];
-
-const mockHeatmapData = Array.from({ length: 7 * 24 }, (_, i) => ({
-  day: Math.floor(i / 24),
-  hour: i % 24,
-  value: Math.floor(Math.random() * 10),
-}));
-
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState<'day' | 'week' | 'month' | 'quarter'>('week');
   const { data: summary, isLoading } = useAnalyticsSummary(period);
+  const { data: heatmap, isLoading: isHeatmapLoading } = useHeatmap();
+
+  const trendData = summary?.trends ?? [];
+  const severityData = summary
+    ? [
+        { name: 'Critical', value: summary.incidents.by_severity.critical, color: '#dc2626' },
+        { name: 'High', value: summary.incidents.by_severity.high, color: '#ea580c' },
+        { name: 'Medium', value: summary.incidents.by_severity.medium, color: '#ca8a04' },
+        { name: 'Low', value: summary.incidents.by_severity.low, color: '#2563eb' },
+        { name: 'Info', value: summary.incidents.by_severity.info, color: '#6b7280' },
+      ]
+    : [];
+  const sourceData = Object.entries(summary?.incidents.by_source ?? {}).map(([source, count]) => ({
+    source,
+    count,
+  }));
+  const teamData = (summary?.team_performance ?? []).map((team) => ({
+    team: team.team_name,
+    incidents: team.incidents_handled,
+    mttr: team.avg_resolution_time_hours,
+    mtta: team.avg_response_time_minutes,
+  }));
+  const serviceHealth = summary?.service_health ?? [];
+  const heatmapData: Array<{ day: number; hour: number; value: number }> = (
+    Array.isArray(heatmap) ? (heatmap as HeatmapData[]) : []
+  ).map((item: HeatmapData) => ({
+    day: item.day_of_week,
+    hour: item.hour_of_day,
+    value: item.incident_count,
+  }));
 
   return (
     <div className="space-y-6">
@@ -118,31 +108,31 @@ export default function AnalyticsPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title="Total Incidents"
-          value={summary?.incidents?.total_incidents ?? 165}
-          change={summary?.incidents?.change_from_previous?.incidents ?? -12}
+          value={summary?.incidents.total_incidents ?? 0}
+          change={summary?.incidents.change_from_previous.incidents ?? 0}
           icon={<Flame className="h-5 w-5" />}
           loading={isLoading}
         />
         <MetricCard
           title="MTTR"
-          value={`${summary?.incidents?.mttr_hours?.toFixed(1) ?? 2.1}h`}
-          change={summary?.incidents?.change_from_previous?.mttr ?? -18}
+          value={`${(summary?.incidents.mttr_hours ?? 0).toFixed(1)}h`}
+          change={summary?.incidents.change_from_previous.mttr ?? 0}
           icon={<Clock className="h-5 w-5" />}
           loading={isLoading}
           inverse
         />
         <MetricCard
           title="MTTA"
-          value={`${summary?.incidents?.mtta_minutes?.toFixed(0) ?? 4}m`}
-          change={summary?.incidents?.change_from_previous?.mtta ?? -8}
+          value={`${(summary?.incidents.mtta_minutes ?? 0).toFixed(0)}m`}
+          change={summary?.incidents.change_from_previous.mtta ?? 0}
           icon={<TrendingDown className="h-5 w-5" />}
           loading={isLoading}
           inverse
         />
         <MetricCard
           title="Resolution Rate"
-          value={`${((summary?.incidents?.resolved_incidents ?? 145) / (summary?.incidents?.total_incidents ?? 165) * 100).toFixed(0)}%`}
-          change={5}
+          value={`${(((summary?.incidents.resolved_incidents ?? 0) / Math.max(summary?.incidents.total_incidents ?? 0, 1)) * 100).toFixed(0)}%`}
+          change={0}
           icon={<BarChart3 className="h-5 w-5" />}
           loading={isLoading}
         />
@@ -157,51 +147,59 @@ export default function AnalyticsPage() {
             <CardDescription>Incidents over time with MTTR overlay</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[350px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={mockTrendData}>
-                  <defs>
-                    <linearGradient id="colorIncidents" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis
-                    dataKey="date"
-                    className="text-xs"
-                    tickFormatter={(v) => new Date(v).toLocaleDateString('en-US', { weekday: 'short' })}
-                  />
-                  <YAxis className="text-xs" yAxisId="left" />
-                  <YAxis className="text-xs" yAxisId="right" orientation="right" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                  />
-                  <Area
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey="incidents"
-                    stroke="#3b82f6"
-                    fillOpacity={1}
-                    fill="url(#colorIncidents)"
-                    name="Incidents"
-                  />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="mttr"
-                    stroke="#f59e0b"
-                    strokeWidth={2}
-                    dot={false}
-                    name="MTTR (hours)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+            {isLoading ? (
+              <Skeleton className="h-[350px] w-full" />
+            ) : trendData.length === 0 ? (
+              <EmptyChartState message="No trend data available for this period." />
+            ) : (
+              <div className="h-[350px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={trendData}>
+                    <defs>
+                      <linearGradient id="colorIncidents" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis
+                      dataKey="date"
+                      className="text-xs"
+                      tickFormatter={(v) =>
+                        new Date(v).toLocaleDateString('en-US', { weekday: 'short' })
+                      }
+                    />
+                    <YAxis className="text-xs" yAxisId="left" />
+                    <YAxis className="text-xs" yAxisId="right" orientation="right" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Area
+                      yAxisId="left"
+                      type="monotone"
+                      dataKey="incidents"
+                      stroke="#3b82f6"
+                      fillOpacity={1}
+                      fill="url(#colorIncidents)"
+                      name="Incidents"
+                    />
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="mttr_hours"
+                      stroke="#f59e0b"
+                      strokeWidth={2}
+                      dot={false}
+                      name="MTTR (hours)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -212,33 +210,39 @@ export default function AnalyticsPage() {
             <CardDescription>Incidents by severity level</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[350px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={mockSeverityData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {mockSeverityData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+            {isLoading ? (
+              <Skeleton className="h-[350px] w-full" />
+            ) : severityData.length === 0 ? (
+              <EmptyChartState message="No severity data available for this period." />
+            ) : (
+              <div className="h-[350px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={severityData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {severityData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -252,23 +256,29 @@ export default function AnalyticsPage() {
             <CardDescription>Alert sources breakdown</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockSourceData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis type="number" className="text-xs" />
-                  <YAxis dataKey="source" type="category" className="text-xs" width={80} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                  />
-                  <Bar dataKey="count" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {isLoading ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : sourceData.length === 0 ? (
+              <EmptyChartState message="No source data available for this period." />
+            ) : (
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={sourceData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis type="number" className="text-xs" />
+                    <YAxis dataKey="source" type="category" className="text-xs" width={80} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Bar dataKey="count" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -282,23 +292,34 @@ export default function AnalyticsPage() {
             <CardDescription>MTTR by team</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockTeamData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="team" className="text-xs" />
-                  <YAxis className="text-xs" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                  />
-                  <Bar dataKey="mttr" fill="#22c55e" name="MTTR (hours)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {isLoading ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : teamData.length === 0 ? (
+              <EmptyChartState message="No team performance data available for this period." />
+            ) : (
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={teamData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="team" className="text-xs" />
+                    <YAxis className="text-xs" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Bar
+                      dataKey="mttr"
+                      fill="#22c55e"
+                      name="MTTR (hours)"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -310,41 +331,47 @@ export default function AnalyticsPage() {
           <CardDescription>When incidents occur throughout the week</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <div className="min-w-[800px]">
-              <div className="flex gap-1">
-                <div className="w-16 flex-shrink-0" />
-                {Array.from({ length: 24 }, (_, i) => (
-                  <div key={i} className="flex-1 text-center text-xs text-muted-foreground">
-                    {i === 0 ? '12a' : i === 12 ? '12p' : i < 12 ? `${i}a` : `${i - 12}p`}
+          {isHeatmapLoading ? (
+            <Skeleton className="h-[240px] w-full" />
+          ) : heatmapData.length === 0 ? (
+            <EmptyChartState message="No heatmap data available for this period." />
+          ) : (
+            <div className="overflow-x-auto">
+              <div className="min-w-[800px]">
+                <div className="flex gap-1">
+                  <div className="w-16 flex-shrink-0" />
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <div key={i} className="flex-1 text-center text-xs text-muted-foreground">
+                      {i === 0 ? '12a' : i === 12 ? '12p' : i < 12 ? `${i}a` : `${i - 12}p`}
+                    </div>
+                  ))}
+                </div>
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, dayIndex) => (
+                  <div key={day} className="flex gap-1 mt-1">
+                    <div className="w-16 flex-shrink-0 text-xs text-muted-foreground flex items-center">
+                      {day}
+                    </div>
+                    {Array.from({ length: 24 }, (_, hourIndex) => {
+                      const data = heatmapData.find(
+                        (d) => d.day === dayIndex && d.hour === hourIndex
+                      );
+                      const intensity = Math.min((data?.value ?? 0) / 10, 1);
+                      return (
+                        <div
+                          key={hourIndex}
+                          className="flex-1 h-6 rounded"
+                          style={{
+                            backgroundColor: `rgba(239, 68, 68, ${intensity})`,
+                          }}
+                          title={`${day} ${hourIndex}:00 - ${data?.value ?? 0} incidents`}
+                        />
+                      );
+                    })}
                   </div>
                 ))}
               </div>
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, dayIndex) => (
-                <div key={day} className="flex gap-1 mt-1">
-                  <div className="w-16 flex-shrink-0 text-xs text-muted-foreground flex items-center">
-                    {day}
-                  </div>
-                  {Array.from({ length: 24 }, (_, hourIndex) => {
-                    const data = mockHeatmapData.find(
-                      (d) => d.day === dayIndex && d.hour === hourIndex
-                    );
-                    const intensity = (data?.value ?? 0) / 10;
-                    return (
-                      <div
-                        key={hourIndex}
-                        className="flex-1 h-6 rounded"
-                        style={{
-                          backgroundColor: `rgba(239, 68, 68, ${intensity})`,
-                        }}
-                        title={`${day} ${hourIndex}:00 - ${data?.value ?? 0} incidents`}
-                      />
-                    );
-                  })}
-                </div>
-              ))}
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -358,50 +385,54 @@ export default function AnalyticsPage() {
           <CardDescription>Incident count and trend by service</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {[
-              { name: 'payment-service', incidents: 23, critical: 5, trend: 'degrading' },
-              { name: 'api-gateway', incidents: 18, critical: 2, trend: 'stable' },
-              { name: 'user-service', incidents: 12, critical: 1, trend: 'improving' },
-              { name: 'notification-service', incidents: 8, critical: 0, trend: 'improving' },
-              { name: 'search-service', incidents: 15, critical: 3, trend: 'degrading' },
-            ].map((service) => (
-              <div
-                key={service.name}
-                className="flex items-center justify-between rounded-lg border p-4"
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className={cn(
-                      'h-3 w-3 rounded-full',
-                      service.trend === 'improving' && 'bg-green-500',
-                      service.trend === 'stable' && 'bg-yellow-500',
-                      service.trend === 'degrading' && 'bg-red-500'
-                    )}
-                  />
-                  <div>
-                    <p className="font-medium">{service.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {service.incidents} incidents • {service.critical} critical
-                    </p>
-                  </div>
-                </div>
-                <Badge
-                  variant={
-                    service.trend === 'improving'
-                      ? 'success'
-                      : service.trend === 'degrading'
-                      ? 'destructive'
-                      : 'secondary'
-                  }
+          {isLoading ? (
+            <div className="space-y-4">
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <Skeleton key={idx} className="h-20 w-full" />
+              ))}
+            </div>
+          ) : serviceHealth.length === 0 ? (
+            <EmptyChartState message="No service health data available for this period." />
+          ) : (
+            <div className="space-y-4">
+              {serviceHealth.map((service) => (
+                <div
+                  key={service.service_id}
+                  className="flex items-center justify-between rounded-lg border p-4"
                 >
-                  {service.trend === 'improving' && <TrendingUp className="mr-1 h-3 w-3" />}
-                  {service.trend === 'degrading' && <TrendingDown className="mr-1 h-3 w-3" />}
-                  {service.trend}
-                </Badge>
-              </div>
-            ))}
-          </div>
+                  <div className="flex items-center gap-4">
+                    <div
+                      className={cn(
+                        'h-3 w-3 rounded-full',
+                        service.trend === 'improving' && 'bg-green-500',
+                        service.trend === 'stable' && 'bg-yellow-500',
+                        service.trend === 'degrading' && 'bg-red-500'
+                      )}
+                    />
+                    <div>
+                      <p className="font-medium">{service.service_name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {service.incident_count} incidents • {service.critical_count} critical
+                      </p>
+                    </div>
+                  </div>
+                  <Badge
+                    variant={
+                      service.trend === 'improving'
+                        ? 'success'
+                        : service.trend === 'degrading'
+                          ? 'destructive'
+                          : 'secondary'
+                    }
+                  >
+                    {service.trend === 'improving' && <TrendingUp className="mr-1 h-3 w-3" />}
+                    {service.trend === 'degrading' && <TrendingDown className="mr-1 h-3 w-3" />}
+                    {service.trend}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -419,7 +450,7 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, change, icon, loading, inverse }: MetricCardProps) {
   const isPositive = inverse ? change < 0 : change > 0;
-  
+
   return (
     <Card>
       <CardContent className="p-6">
@@ -451,5 +482,13 @@ function MetricCard({ title, value, change, icon, loading, inverse }: MetricCard
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function EmptyChartState({ message }: { message: string }) {
+  return (
+    <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
+      {message}
+    </div>
   );
 }
