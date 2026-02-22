@@ -91,7 +91,7 @@ class TestOnboardingChecklist:
         assert "connect_slack" in CHECKLIST_STEPS
         assert "add_services" in CHECKLIST_STEPS
         assert "run_test" in CHECKLIST_STEPS
-        assert "go_live" in CHECKLIST_STEPS
+        assert "go_live" not in CHECKLIST_STEPS
 
 
 # ── ChecklistStore (SQLite) Tests ──────────────────────────────────
