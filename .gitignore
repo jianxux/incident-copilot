@@ -2,6 +2,8 @@
 .venv311/
 .env
 eval_results/
+node_modules/
+.next/
 
 data/.local/
 data/*.db
@@ -9,3 +11,7 @@ data/*.db
 .mypy_cache/
 .ruff_cache/
 .pycache/
+frontend/node_modules/
+frontend/.next/
+frontend/package-lock.json
+frontend/tsconfig.tsbuildinfo
