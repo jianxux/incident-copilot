@@ -90,7 +90,7 @@ class TestOnboardingChecklist:
         assert "connect_alerting" in CHECKLIST_STEPS
         assert "connect_slack" in CHECKLIST_STEPS
         assert "add_services" in CHECKLIST_STEPS
-        assert "run_test" in CHECKLIST_STEPS
+        assert "run_test" not in CHECKLIST_STEPS
         assert "go_live" not in CHECKLIST_STEPS
 
 
