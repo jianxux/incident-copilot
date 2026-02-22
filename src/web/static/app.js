@@ -150,7 +150,7 @@ async function updateStats() {
     if (!document.getElementById('stat-total')) return;
 
     try {
-        const response = await fetch('/dashboard/api/stats');
+        const response = await window.icFetch('/dashboard/api/stats');
         const stats = await response.json();
         
         document.getElementById('stat-total').textContent = stats.total;
@@ -252,7 +252,7 @@ function escapeHtml(text) {
 // Demo incident creation
 async function createDemoIncident() {
     try {
-        const response = await fetch('/dashboard/api/demo', { method: 'POST' });
+        const response = await window.icFetch('/dashboard/api/demo', { method: 'POST' });
         const data = await response.json();
         showToast('Demo incident created!', 'success');
     } catch (e) {

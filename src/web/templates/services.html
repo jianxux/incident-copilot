@@ -71,7 +71,7 @@ let services = [];
 let selected = null;
 
 async function api(path, options = {}) {
-  const res = await fetch(path, {
+  const res = await window.icFetch(path, {
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     ...options,
   });
@@ -215,7 +215,7 @@ async function importCsv() {
   if (!input.files.length) return;
   const form = new FormData();
   form.append('file', input.files[0]);
-  const res = await fetch('/api/services/import/csv', { method: 'POST', body: form });
+  const res = await window.icFetch('/api/services/import/csv', { method: 'POST', body: form });
   const result = await res.json();
   document.getElementById('import-result').textContent = `CSV import: ${result.created} created, ${result.failed} failed.`;
   await loadServices();
