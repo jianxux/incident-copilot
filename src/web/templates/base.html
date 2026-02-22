@@ -188,7 +188,7 @@
         <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
 
         <!-- Sidebar -->
-        <aside id="sidebar" class="sidebar hidden md:flex flex-col bg-white/70 dark:bg-slate-900/60 backdrop-blur border-r border-stone-200 dark:border-slate-800 h-screen md:sticky top-0 overflow-y-auto">
+        <aside id="sidebar" class="sidebar flex flex-col bg-white/70 dark:bg-slate-900/60 backdrop-blur border-r border-stone-200 dark:border-slate-800 h-screen md:sticky md:relative top-0 overflow-y-auto">
             <!-- Logo area -->
             <div class="flex items-center h-16 px-4 border-b border-stone-200 dark:border-slate-800 flex-shrink-0">
                 <a href="/dashboard" class="flex items-center space-x-3 min-w-0">
@@ -401,16 +401,7 @@
             if (isOpen) {
                 sidebar.classList.remove('mobile-open');
                 overlay.classList.remove('mobile-open');
-                setTimeout(() => {
-                    if (!sidebar.classList.contains('mobile-open')) {
-                        sidebar.classList.add('hidden');
-                        sidebar.classList.remove('flex');
-                    }
-                }, 200);
             } else {
-                sidebar.classList.remove('hidden');
-                sidebar.classList.add('flex');
-                sidebar.offsetHeight;
                 sidebar.classList.add('mobile-open');
                 overlay.classList.add('mobile-open');
             }
