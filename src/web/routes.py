@@ -225,6 +225,16 @@ async def health_check():
     return {"status": "ok", "service": "incident-copilot"}
 
 
+def _pd_id_to_uuid(pd_id: str) -> str:
+    """Convert a PagerDuty incident ID to a deterministic UUID5.
+
+    Same PD ID always produces the same UUID, so upserts work correctly.
+    """
+    import uuid
+    PD_NAMESPACE = uuid.UUID("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+    return str(uuid.uuid5(PD_NAMESPACE, pd_id))
+
+
 def _build_pd_upsert_rows(
     pd_incidents: list[dict], tenant_id: str
 ) -> tuple[list[dict], list[dict]]:
@@ -281,7 +291,7 @@ def _build_pd_upsert_rows(
         }
 
         rows.append({
-            "id": inc_id,
+            "id": _pd_id_to_uuid(inc_id),
             "tenant_id": tenant_id,
             "title": inc.get("title", ""),
             "service": service_summary,
@@ -290,7 +300,7 @@ def _build_pd_upsert_rows(
             "triggered_at": triggered_at.isoformat(),
             "source": "pagerduty",
             "source_url": inc.get("html_url", ""),
-            "source_id": str(inc.get("incident_number", "")),
+            "source_id": inc_id,
             "metadata": metadata,
             "created_at": triggered_at.isoformat(),
             "updated_at": now_iso,
