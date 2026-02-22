@@ -51,13 +51,15 @@ class TestBuildPdUpsertRows:
         assert len(rows) == 1
         assert len(summaries) == 1
         row = rows[0]
-        assert row["id"] == "P123"
+        # id is a deterministic UUID5 derived from the PD incident ID
+        from src.web.routes import _pd_id_to_uuid
+        assert row["id"] == _pd_id_to_uuid("P123")
         assert row["tenant_id"] == "tenant-1"
         assert row["service"] == "web-service"
         assert row["severity"] == "high"
         assert row["status"] == "triggered"
         assert row["source"] == "pagerduty"
-        assert row["source_id"] == "42"
+        assert row["source_id"] == "P123"
 
     def test_resolved_status_mapping(self):
         pd_incidents = [
