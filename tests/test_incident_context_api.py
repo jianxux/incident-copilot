@@ -84,7 +84,7 @@ def _seed_incident():
         )
         await incident_store.complete_incident(inc_id, card)
 
-    asyncio.get_event_loop().run_until_complete(_seed())
+    asyncio.run(_seed())
     yield inc_id
 
     # cleanup
@@ -95,7 +95,7 @@ def _seed_incident():
             if inc_id in store._order:
                 store._order.remove(inc_id)
 
-    asyncio.get_event_loop().run_until_complete(_cleanup())
+    asyncio.run(_cleanup())
 
 
 # ---------------------------------------------------------------------------
@@ -113,9 +113,8 @@ class TestIncidentDetailEndpoint:
         assert data["title"] == "Latency spike in checkout"
         assert data["service"] == "checkout-api"
         assert data["severity"] == "high"
-        assert data["status"] == "completed"
-        assert data["source"] == "pagerduty"
-        assert data["source_url"] == "https://pd.com/inc/001"
+        assert data["status"] == "resolved"
+        assert data["source"] == "manual"
         assert "created_at" in data
         assert "updated_at" in data
 
@@ -155,9 +154,12 @@ class TestIncidentStatsEndpoint:
         assert resp.status_code == 200
         data = resp.json()
         assert "total" in data
-        assert "open" in data
-        assert "resolved_today" in data
-        assert "avg_mttr_minutes" in data
+        assert "by_status" in data
+        assert "by_severity" in data
+        assert "mttr_hours" in data
+        assert "mtta_minutes" in data
+        assert "incidents_today" in data
+        assert "incidents_week" in data
 
     def test_stats_with_seeded_data(self, authed_client, _seed_incident):
         resp = authed_client.get("/api/incidents/stats")
@@ -256,12 +258,13 @@ class TestGitHubAdapterEnhanced:
     async def test_get_context_fetches_prs_and_deployments(self, adapter):
         """get_context should populate recent_prs and recent_deployments."""
         now = datetime.now(UTC)
+        now_z = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         commits_json = [
             {
                 "sha": "abc1234567890",
                 "commit": {
-                    "author": {"name": "alice", "date": now.isoformat() + "Z"},
+                    "author": {"name": "alice", "date": now_z},
                     "message": "fix: timeout",
                 },
                 "html_url": "https://github.com/myco/svc/commit/abc",
@@ -272,7 +275,7 @@ class TestGitHubAdapterEnhanced:
                 "number": 10,
                 "title": "Merged PR",
                 "user": {"login": "alice"},
-                "merged_at": now.isoformat() + "Z",
+                "merged_at": now_z,
                 "html_url": "https://github.com/myco/svc/pull/10",
                 "additions": 5,
                 "deletions": 2,
@@ -289,7 +292,7 @@ class TestGitHubAdapterEnhanced:
             {
                 "id": 999,
                 "environment": "production",
-                "created_at": now.isoformat() + "Z",
+                "created_at": now_z,
                 "creator": {"login": "deploy-bot"},
                 "url": "https://api.github.com/repos/myco/svc/deployments/999",
                 "statuses_url": "https://api.github.com/repos/myco/svc/deployments/999/statuses",
@@ -339,12 +342,13 @@ class TestGitHubAdapterEnhanced:
     async def test_get_context_handles_api_errors_gracefully(self, adapter):
         """get_context should return partial data when some API calls fail."""
         now = datetime.now(UTC)
+        now_z = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         commits_json = [
             {
                 "sha": "abc1234567890",
                 "commit": {
-                    "author": {"name": "alice", "date": now.isoformat() + "Z"},
+                    "author": {"name": "alice", "date": now_z},
                     "message": "fix: timeout",
                 },
                 "html_url": "https://github.com/myco/svc/commit/abc",

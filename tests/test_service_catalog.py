@@ -90,6 +90,10 @@ class TestServiceModels:
 class TestServiceCatalogStoreDisabled:
     """Tests for store behavior when Supabase is not configured."""
 
+    @pytest.fixture(autouse=True)
+    def _disable_supabase(self, monkeypatch):
+        monkeypatch.setattr("src.services.store.is_supabase_db_enabled", lambda: False)
+
     def test_store_not_enabled_without_supabase(self):
         store = ServiceCatalogStore()
         assert store.enabled is False
