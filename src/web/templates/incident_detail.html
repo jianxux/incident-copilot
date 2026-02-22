@@ -599,7 +599,7 @@ async function sendMessage(event) {
     addTypingIndicator();
     
     try {
-        const response = await fetch('/copilot/chat', {
+        const response = await window.icFetch('/copilot/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -627,7 +627,7 @@ async function getSuggestions() {
     addTypingIndicator();
     
     try {
-        const response = await fetch(`/copilot/suggestions/${INCIDENT_ID}`);
+        const response = await window.icFetch(`/copilot/suggestions/${INCIDENT_ID}`);
         const data = await response.json();
         removeTypingIndicator();
         
@@ -650,7 +650,7 @@ async function generateSummary() {
     addTypingIndicator();
     
     try {
-        const response = await fetch(`/copilot/summary/${INCIDENT_ID}`);
+        const response = await window.icFetch(`/copilot/summary/${INCIDENT_ID}`);
         const data = await response.json();
         removeTypingIndicator();
         
