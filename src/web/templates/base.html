@@ -180,6 +180,27 @@
             if (theme === 'dark') document.documentElement.classList.add('dark');
         })();
     </script>
+    <script>
+        // icFetch — must be defined before any template content scripts use it
+        window.icFetch = async function(url, options) {
+            const opts = options ? { ...options } : {};
+            const headers = new Headers(opts.headers || {});
+            const token = localStorage.getItem('access_token');
+
+            if (token && !headers.has('Authorization')) {
+                headers.set('Authorization', 'Bearer ' + token);
+            }
+
+            opts.headers = headers;
+            const response = await fetch(url, opts);
+            if (response.status === 401) {
+                window.location.href = '/login?session_expired=1';
+                throw new Error('Unauthorized');
+            }
+
+            return response;
+        };
+    </script>
 </head>
 
 <body class="h-full bg-cream text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -344,25 +365,6 @@
 
     <script src="/dashboard/static/app.js"></script>
     <script>
-        window.icFetch = async function(url, options) {
-            const opts = options ? { ...options } : {};
-            const headers = new Headers(opts.headers || {});
-            const token = localStorage.getItem('access_token');
-
-            if (token && !headers.has('Authorization')) {
-                headers.set('Authorization', 'Bearer ' + token);
-            }
-
-            opts.headers = headers;
-            const response = await fetch(url, opts);
-            if (response.status === 401) {
-                window.location.href = '/login?session_expired=1';
-                throw new Error('Unauthorized');
-            }
-
-            return response;
-        };
-
         function toggleTheme() {
             const root = document.documentElement;
             const isDark = root.classList.toggle('dark');
