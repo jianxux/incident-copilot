@@ -235,6 +235,28 @@ def _pd_id_to_uuid(pd_id: str) -> str:
     return str(uuid.uuid5(PD_NAMESPACE, pd_id))
 
 
+def _parse_iso_datetime(value: object, fallback: datetime | None = None) -> datetime | None:
+    """Parse ISO-ish datetime values and normalize to UTC."""
+    if isinstance(value, datetime):
+        return value.astimezone(UTC) if value.tzinfo else value.replace(tzinfo=UTC)
+
+    if isinstance(value, str):
+        raw = value.strip()
+        if raw:
+            normalized = raw.replace("Z", "+00:00")
+            try:
+                parsed = datetime.fromisoformat(normalized)
+                return parsed.astimezone(UTC) if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+            except ValueError:
+                pass
+            try:
+                return datetime.strptime(raw, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
+            except ValueError:
+                pass
+
+    return fallback
+
+
 def _build_pd_upsert_rows(
     pd_incidents: list[dict], tenant_id: str
 ) -> tuple[list[dict], list[dict]]:
@@ -259,10 +281,8 @@ def _build_pd_upsert_rows(
         if isinstance(svc, dict):
             service_summary = svc.get("summary", "")
 
-        created_at_str = inc.get("created_at", "")
-        try:
-            triggered_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
-        except (ValueError, AttributeError):
+        triggered_at = _parse_iso_datetime(inc.get("created_at"), datetime.now(UTC))
+        if triggered_at is None:
             triggered_at = datetime.now(UTC)
 
         assigned_to = []
@@ -290,7 +310,7 @@ def _build_pd_upsert_rows(
             "escalation_policy": ep_summary,
         }
 
-        rows.append({
+        row = {
             "id": _pd_id_to_uuid(inc_id),
             "tenant_id": tenant_id,
             "title": inc.get("title", ""),
@@ -304,7 +324,21 @@ def _build_pd_upsert_rows(
             "metadata": metadata,
             "created_at": triggered_at.isoformat(),
             "updated_at": now_iso,
-        })
+        }
+
+        if pd_status == "resolved":
+            resolved_dt = _parse_iso_datetime(
+                inc.get("last_status_change_at"),
+                _parse_iso_datetime(inc.get("resolved_at"), datetime.now(UTC)),
+            )
+            if resolved_dt is None:
+                resolved_dt = datetime.now(UTC)
+            resolved_iso = resolved_dt.isoformat()
+            row["resolved_at"] = resolved_iso
+            row["processed_at"] = resolved_iso
+            metadata["resolved_at"] = resolved_iso
+
+        rows.append(row)
 
         summaries.append({
             "id": inc_id,
@@ -2239,7 +2273,12 @@ async def run_onboarding_test_incident(
     from ..onboarding import checklist_store
     from ..onboarding.test_incident import start_test_incident
 
-    tenant_id = auth.tenant_id or "default"
+    if not auth.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="auth_required",
+        )
+    tenant_id = auth.tenant_id
 
     incident_id = await start_test_incident(
         service_name=service_name,
