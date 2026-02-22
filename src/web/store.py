@@ -615,10 +615,191 @@ class SupabaseIncidentStore(_BaseIncidentStore):
         return {"total": total, "by_status": by_status, "by_severity": by_severity}
 
 
+class HybridIncidentStore(_BaseIncidentStore):
+    """Hybrid store that keeps in-memory state with best-effort Supabase persistence."""
+
+    def __init__(self, max_incidents: int = 100):
+        super().__init__(max_incidents=max_incidents)
+        self._memory = InMemoryIncidentStore(max_incidents=max_incidents)
+        self._supabase = SupabaseIncidentStore(max_incidents=max_incidents)
+
+    async def subscribe(self) -> asyncio.Queue:
+        return await self._memory.subscribe()
+
+    async def unsubscribe(self, queue: asyncio.Queue):
+        await self._memory.unsubscribe(queue)
+
+    async def add_incident(
+        self,
+        incident_id: str,
+        title: str,
+        service_name: str,
+        severity: Severity,
+        triggered_at: datetime,
+        source: str = "manual",
+        source_url: str | None = None,
+        source_id: str | None = None,
+        metadata: dict | None = None,
+        tenant_id: str | None = None,
+    ) -> StoredIncident:
+        incident = await self._memory.add_incident(
+            incident_id=incident_id,
+            title=title,
+            service_name=service_name,
+            severity=severity,
+            triggered_at=triggered_at,
+            source=source,
+            source_url=source_url,
+            source_id=source_id,
+            metadata=metadata,
+            tenant_id=tenant_id,
+        )
+        try:
+            await self._supabase.add_incident(
+                incident_id=incident_id,
+                title=title,
+                service_name=service_name,
+                severity=severity,
+                triggered_at=triggered_at,
+                source=source,
+                source_url=source_url,
+                source_id=source_id,
+                metadata=metadata,
+                tenant_id=tenant_id,
+            )
+        except Exception as e:
+            logger.warning(
+                "hybrid_store_supabase_add_failed",
+                incident_id=incident_id,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+        return incident
+
+    async def complete_incident(
+        self,
+        incident_id: str,
+        context_card: ContextCard,
+        metadata: dict | None = None,
+        tenant_id: str | None = None,
+    ) -> StoredIncident | None:
+        memory_result = await self._memory.complete_incident(
+            incident_id=incident_id,
+            context_card=context_card,
+            metadata=metadata,
+            tenant_id=tenant_id,
+        )
+        try:
+            supabase_result = await self._supabase.complete_incident(
+                incident_id=incident_id,
+                context_card=context_card,
+                metadata=metadata,
+                tenant_id=tenant_id,
+            )
+            return supabase_result or memory_result
+        except Exception as e:
+            logger.warning(
+                "hybrid_store_supabase_complete_failed",
+                incident_id=incident_id,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+            return memory_result
+
+    async def fail_incident(
+        self,
+        incident_id: str,
+        error_message: str,
+        metadata: dict | None = None,
+        tenant_id: str | None = None,
+    ) -> StoredIncident | None:
+        memory_result = await self._memory.fail_incident(
+            incident_id=incident_id,
+            error_message=error_message,
+            metadata=metadata,
+            tenant_id=tenant_id,
+        )
+        try:
+            supabase_result = await self._supabase.fail_incident(
+                incident_id=incident_id,
+                error_message=error_message,
+                metadata=metadata,
+                tenant_id=tenant_id,
+            )
+            return supabase_result or memory_result
+        except Exception as e:
+            logger.warning(
+                "hybrid_store_supabase_fail_failed",
+                incident_id=incident_id,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+            return memory_result
+
+    async def get_incident(
+        self,
+        incident_id: str,
+        tenant_id: str | None = None,
+    ) -> StoredIncident | None:
+        memory_incident = await self._memory.get_incident(incident_id, tenant_id=tenant_id)
+        try:
+            supabase_incident = await self._supabase.get_incident(incident_id, tenant_id=tenant_id)
+            return supabase_incident or memory_incident
+        except Exception as e:
+            logger.warning(
+                "hybrid_store_supabase_get_failed",
+                incident_id=incident_id,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+            return memory_incident
+
+    async def get_all_incidents(
+        self,
+        tenant_id: str | None = None,
+    ) -> list[StoredIncident]:
+        memory_incidents = await self._memory.get_all_incidents(tenant_id=tenant_id)
+        merged_by_id: dict[str, StoredIncident] = {
+            incident.incident_id: incident for incident in memory_incidents
+        }
+
+        try:
+            supabase_incidents = await self._supabase.get_all_incidents(tenant_id=tenant_id)
+            for incident in supabase_incidents:
+                merged_by_id[incident.incident_id] = incident
+        except Exception as e:
+            logger.warning(
+                "hybrid_store_supabase_list_failed",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+            return memory_incidents
+
+        return sorted(
+            merged_by_id.values(),
+            key=lambda incident: incident.triggered_at,
+            reverse=True,
+        )
+
+    async def get_stats(self) -> dict:
+        incidents = await self.get_all_incidents()
+        total = len(incidents)
+        by_status = {"processing": 0, "completed": 0, "error": 0}
+        by_severity = {s.value: 0 for s in Severity}
+
+        for incident in incidents:
+            by_status[incident.status] = by_status.get(incident.status, 0) + 1
+            by_severity[incident.severity.value] = (
+                by_severity.get(incident.severity.value, 0) + 1
+            )
+
+        return {"total": total, "by_status": by_status, "by_severity": by_severity}
+
+
 def get_incident_store() -> _BaseIncidentStore:
     if is_supabase_db_enabled():
-        logger.info("incident_store_backend", backend="supabase")
-        return SupabaseIncidentStore(max_incidents=100)
+        logger.info("incident_store_backend", backend="hybrid")
+        return HybridIncidentStore(max_incidents=100)
 
     logger.info("incident_store_backend", backend="memory")
     return InMemoryIncidentStore(max_incidents=100)

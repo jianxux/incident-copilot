@@ -288,6 +288,95 @@ class TestIncidentsListAPI:
         assert "total" in data
 
 
+def test_list_incidents_merges_supabase_and_memory_with_supabase_wins(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from src.auth.middleware import AuthContext, get_auth_context
+    from src.main import create_app
+    from src.models import Severity
+    from src.web.store import StoredIncident
+
+    now = datetime(2026, 2, 22, 12, 0, tzinfo=timezone.utc)
+
+    async def fake_supabase_list(**_kwargs):
+        return (
+            [
+                {
+                    "id": "inc-1",
+                    "title": "Supabase title",
+                    "service": "payments-api",
+                    "severity": "high",
+                    "status": "processing",
+                    "created_at": now.isoformat(),
+                    "updated_at": now.isoformat(),
+                    "metadata": {},
+                },
+                {
+                    "id": "inc-2",
+                    "title": "Supabase only",
+                    "service": "auth-api",
+                    "severity": "medium",
+                    "status": "processing",
+                    "created_at": now.isoformat(),
+                    "updated_at": now.isoformat(),
+                    "metadata": {},
+                },
+            ],
+            2,
+        )
+
+    memory_rows = [
+        StoredIncident(
+            incident_id="inc-1",
+            title="Memory title",
+            service_name="payments-api",
+            severity=Severity.CRITICAL,
+            status="processing",
+            triggered_at=now,
+        ),
+        StoredIncident(
+            incident_id="inc-3",
+            title="Memory only",
+            service_name="worker-api",
+            severity=Severity.LOW,
+            status="processing",
+            triggered_at=now,
+        ),
+    ]
+
+    monkeypatch.setattr("src.api.incidents.is_supabase_db_enabled", lambda: True)
+    monkeypatch.setattr("src.api.incidents._list_supabase_incidents", fake_supabase_list)
+    monkeypatch.setattr(
+        "src.api.incidents.incident_store.get_all_incidents",
+        AsyncMock(return_value=memory_rows),
+    )
+
+    app = create_app()
+
+    mock_tenant = MagicMock()
+    mock_tenant.id = "tenant-1"
+    mock_tenant.slug = "tenant-1"
+    mock_tenant.integrations = {}
+
+    async def override_auth():
+        return AuthContext(user=MagicMock(id="u1"), tenant=mock_tenant)
+
+    app.dependency_overrides[get_auth_context] = override_auth
+
+    with TestClient(app) as client:
+        response = client.get("/api/incidents")
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 3
+
+    incidents = {item["id"]: item for item in payload["incidents"]}
+    assert set(incidents) == {"inc-1", "inc-2", "inc-3"}
+    assert incidents["inc-1"]["title"] == "Supabase title"
+
+
 class TestDashboardWrapperEndpoints:
     """Test dashboard wrapper endpoints pass auth_data correctly."""
 

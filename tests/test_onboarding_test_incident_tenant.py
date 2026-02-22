@@ -36,10 +36,14 @@ async def test_start_test_incident_uses_explicit_tenant(monkeypatch):
         test_incident_module, "incident_store", SupabaseIncidentStore()
     )
 
-    await start_test_incident(service_name="payments-api", tenant_id="tenant-123")
+    try:
+        await start_test_incident(service_name="payments-api", tenant_id="tenant-123")
 
-    assert fake_db.upsert_processing_incident.await_count == 1
-    assert (
-        fake_db.upsert_processing_incident.await_args.kwargs["tenant_id"]
-        == "tenant-123"
-    )
+        assert fake_db.upsert_processing_incident.await_count == 1
+        assert (
+            fake_db.upsert_processing_incident.await_args.kwargs["tenant_id"]
+            == "tenant-123"
+        )
+    finally:
+        config_module.get_settings.cache_clear()
+        supabase_client_module.is_supabase_db_enabled.cache_clear()

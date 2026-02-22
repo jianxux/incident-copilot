@@ -441,7 +441,9 @@ async def list_incidents(
     auth: AuthContext = Depends(get_auth_context),
 ):
     """List incidents with frontend-compatible filters and pagination."""
-    tenant_id = await _require_tenant(auth)
+    tenant_id = auth.tenant_id
+    if not tenant_id:
+        return {"incidents": [], "total": 0}
 
     statuses = [s for s in _extract_multi_query(request, "status", status) if s in _ALLOWED_STATUSES]
     severities = [s for s in _extract_multi_query(request, "severity", severity) if s in _ALLOWED_SEVERITIES]
@@ -451,9 +453,57 @@ async def list_incidents(
     parsed_date_from = _as_datetime(date_from)
     parsed_date_to = _as_datetime(date_to)
 
+    def _stored_to_row(item: Any) -> dict[str, Any]:
+        return {
+            "id": item.incident_id,
+            "title": item.title,
+            "service": item.service_name,
+            "severity": item.severity.value,
+            "status": item.status,
+            "triggered_at": item.triggered_at,
+            "processed_at": item.processed_at,
+            "created_at": item.triggered_at,
+            "updated_at": item.processed_at or item.triggered_at,
+            "metadata": item.metadata if isinstance(item.metadata, dict) else {},
+        }
+
     if is_supabase_db_enabled():
-        rows, total = await _list_supabase_incidents(
-            tenant_id=tenant_id,
+        try:
+            supabase_rows, _ = await _list_supabase_incidents(
+                tenant_id=tenant_id,
+                page=1,
+                limit=2000,
+                statuses=[],
+                severities=[],
+                services=[],
+                teams=[],
+                assignee=None,
+                date_from=None,
+                date_to=None,
+                search=None,
+            )
+        except Exception as exc:
+            logger.warning(
+                "list_incidents_supabase_fetch_failed",
+                error=str(exc),
+                error_type=type(exc).__name__,
+                tenant_id=tenant_id,
+            )
+            supabase_rows = []
+
+        stored = await incident_store.get_all_incidents(tenant_id=tenant_id)
+        memory_rows = [_stored_to_row(item) for item in stored]
+
+        merged_by_id: dict[str, dict[str, Any]] = {
+            str(row.get("id")): row for row in memory_rows if row.get("id")
+        }
+        for row in supabase_rows:
+            row_id = str(row.get("id")) if row.get("id") is not None else ""
+            if row_id:
+                merged_by_id[row_id] = row  # Supabase wins on conflict.
+
+        page_rows, total = _list_inmemory_incidents(
+            list(merged_by_id.values()),
             page=page,
             limit=limit,
             statuses=statuses,
@@ -465,25 +515,11 @@ async def list_incidents(
             date_to=parsed_date_to,
             search=search,
         )
-        incidents = [_format_incident(row) for row in rows]
+        incidents = [_format_incident(row) for row in page_rows]
         return {"incidents": incidents, "total": total}
 
-    stored = await incident_store.get_all_incidents()
-    rows = [
-        {
-            "id": item.incident_id,
-            "title": item.title,
-            "service": item.service_name,
-            "severity": item.severity.value,
-            "status": item.status,
-            "triggered_at": item.triggered_at,
-            "processed_at": item.processed_at,
-            "created_at": item.triggered_at,
-            "updated_at": item.processed_at or item.triggered_at,
-            "metadata": {},
-        }
-        for item in stored
-    ]
+    stored = await incident_store.get_all_incidents(tenant_id=tenant_id)
+    rows = [_stored_to_row(item) for item in stored]
 
     page_rows, total = _list_inmemory_incidents(
         rows,

@@ -1740,7 +1740,12 @@ async def run_onboarding_test_incident(
     from ..onboarding import checklist_store
     from ..onboarding.test_incident import start_test_incident
 
-    tenant_id = auth.tenant_id or "default"
+    if not auth.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="auth_required",
+        )
+    tenant_id = auth.tenant_id
 
     incident_id = await start_test_incident(
         service_name=service_name,

@@ -39,6 +39,13 @@ async def start_test_incident(
     incident_id = str(uuid.uuid4())
     triggered_at = datetime.now(UTC)
     title = title or f"[TEST] Incident Copilot onboarding test for {service_name}"
+    settings = get_settings()
+    supabase_enabled = bool(
+        settings.supabase_db_enabled and settings.supabase_url and settings.supabase_anon_key
+    )
+
+    if supabase_enabled and not tenant_id:
+        raise ValueError("tenant_id is required when SUPABASE_DB_ENABLED=true")
 
     await incident_store.add_incident(
         incident_id=incident_id,
@@ -49,7 +56,6 @@ async def start_test_incident(
         tenant_id=tenant_id,
     )
 
-    settings = get_settings()
     incident = PagerDutyIncident(
         incident_id=incident_id,
         title=title,
