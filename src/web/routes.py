@@ -2198,7 +2198,13 @@ async def get_test_incident_status(
             return {"incident_id": incident_id, "status": "processing"}
 
         incident = rows.data[0]
-        status = "completed" if incident.get("verdict") else "processing"
+        db_status = (incident.get("status") or "").lower()
+        if db_status in ("completed", "resolved"):
+            status = "completed"
+        elif db_status == "error":
+            status = "error"
+        else:
+            status = "processing"
         return {
             "incident_id": incident_id,
             "status": status,
