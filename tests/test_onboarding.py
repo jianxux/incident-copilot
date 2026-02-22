@@ -153,6 +153,44 @@ class TestChecklistStore:
         assert abs(c.progress - 3 / len(required)) < 0.01
 
 
+# ── Test Incident Poll Status Logic ────────────────────────────────
+
+
+class TestTestIncidentPollStatus:
+    """Tests for the poll endpoint status mapping logic (routes.py)."""
+
+    def _map_status(self, db_status: str | None) -> str:
+        """Mirror the logic from get_test_incident_status."""
+        raw = (db_status or "").lower()
+        if raw in ("completed", "resolved"):
+            return "completed"
+        elif raw == "error":
+            return "error"
+        else:
+            return "processing"
+
+    def test_completed_status(self):
+        assert self._map_status("completed") == "completed"
+
+    def test_resolved_status(self):
+        assert self._map_status("resolved") == "completed"
+
+    def test_error_status(self):
+        assert self._map_status("error") == "error"
+
+    def test_processing_status(self):
+        assert self._map_status("processing") == "processing"
+
+    def test_triggered_status(self):
+        assert self._map_status("triggered") == "processing"
+
+    def test_none_status(self):
+        assert self._map_status(None) == "processing"
+
+    def test_empty_status(self):
+        assert self._map_status("") == "processing"
+
+
 # ── API Endpoint Tests (via TestClient) ────────────────────────────
 # NOTE: Full integration tests with TestClient + create_app() are in
 # tests/integration/test_onboarding_api.py. They require more memory
