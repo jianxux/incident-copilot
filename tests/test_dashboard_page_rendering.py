@@ -65,6 +65,6 @@ def test_connect_integrations_button_js_logic_present():
     with TestClient(app) as client:
         response = client.get("/dashboard")
     assert response.status_code == 200
-    assert "/api/onboarding/status" in response.text
+    assert "/dashboard/api/onboarding/status" in response.text
     assert "connect-integrations-btn" in response.text
     assert "hasAlerting" in response.text

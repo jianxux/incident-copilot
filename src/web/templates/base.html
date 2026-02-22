@@ -483,7 +483,7 @@
             if (!btn) return;
             const token = localStorage.getItem('access_token');
             if (!token) { btn.classList.add('sm:inline-flex'); return; }
-            window.icFetch('/api/onboarding/status')
+            window.icFetch('/dashboard/api/onboarding/status')
                 .then(r => r.ok ? r.json() : null)
                 .then(data => {
                     if (!data) { btn.classList.add('sm:inline-flex'); return; }
