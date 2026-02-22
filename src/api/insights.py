@@ -1,5 +1,7 @@
 """API routes for AI Insights and Pattern Detection."""
 
+import asyncio
+
 import structlog
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
@@ -18,10 +20,42 @@ from ..insights import (
     Severity,
     insights_service,
 )
+from ..supabase_client import is_supabase_db_enabled
 
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/insights", tags=["insights"])
+_auto_analysis_task: asyncio.Task[None] | None = None
+
+
+async def _count_incidents_for_default_tenant() -> int:
+    from ..db.supabase_db import get_db
+
+    db = get_db(use_admin=True)
+    tenant = await db.ensure_tenant(slug="default", name="Default Tenant")
+    tenant_id = str(tenant.get("id") or "")
+    if not tenant_id:
+        return 0
+
+    def _query():
+        return (
+            db.client.table("incidents")
+            .select("id", count="exact")
+            .eq("tenant_id", tenant_id)
+            .limit(1)
+            .execute()
+        )
+
+    result = await db._to_thread(_query)
+    return int(result.count or 0)
+
+
+async def _run_auto_analysis(days: int) -> None:
+    try:
+        await insights_service.run_analysis(AnalysisRequest(lookback_days=days))
+        logger.info("insights_auto_analysis_completed", days=days)
+    except Exception as exc:
+        logger.warning("insights_auto_analysis_failed", error=str(exc), days=days)
 
 
 # --- Response Models ---
@@ -110,6 +144,25 @@ async def get_insights_summary(
     logger.info("api_get_insights_summary", days=days)
 
     summary = await insights_service.get_insight_summary(days=days)
+
+    analysis_pending = False
+    if summary.total_insights == 0 and is_supabase_db_enabled():
+        global _auto_analysis_task
+        try:
+            if _auto_analysis_task and _auto_analysis_task.done():
+                _auto_analysis_task = None
+            has_running = _auto_analysis_task is not None and not _auto_analysis_task.done()
+            if has_running:
+                analysis_pending = True
+            else:
+                incident_count = await _count_incidents_for_default_tenant()
+                if incident_count > 0:
+                    _auto_analysis_task = asyncio.create_task(_run_auto_analysis(days))
+                    analysis_pending = True
+        except Exception as exc:
+            logger.warning("insights_auto_analysis_check_failed", error=str(exc))
+
+    summary.analysis_pending = analysis_pending
     return summary
 
 
