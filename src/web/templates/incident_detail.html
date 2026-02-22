@@ -581,18 +581,7 @@ async function generateSummary() {
     }
 }
 
-async function startSession() {
-    try {
-        await fetch(`/copilot/start/${INCIDENT_ID}?service_name={{ incident.service_name }}`, {
-            method: 'POST'
-        });
-    } catch (error) {
-        console.error('Failed to start session:', error);
-    }
-}
-
-// Start session when page loads
-document.addEventListener('DOMContentLoaded', startSession);
+// Copilot session starts on-demand when user sends first message via WebSocket
 </script>
 
 {% endblock %}
