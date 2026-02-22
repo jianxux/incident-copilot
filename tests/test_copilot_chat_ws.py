@@ -49,6 +49,8 @@ def test_copilot_chat_has_reconnect_logic():
     assert "MAX_RECONNECT_DELAY_MS" in template
     assert "Reconnected to copilot" in template
     assert "Connection lost. Refresh to retry." in template
+    assert "event.code === 1011" in template
+    assert "Connection closed by server" in template
 
 
 def test_copilot_chat_checks_ws_readystate():
