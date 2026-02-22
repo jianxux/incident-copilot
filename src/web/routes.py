@@ -2247,8 +2247,6 @@ async def run_onboarding_test_incident(
         tenant_id=tenant_id,
     )
 
-    await checklist_store.set_step(tenant_id, "run_test", True)
-
     return {"incident_id": incident_id, "status": "processing"}
 
 
