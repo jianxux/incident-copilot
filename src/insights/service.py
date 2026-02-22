@@ -1,12 +1,15 @@
 """Main insights service orchestrating all analysis."""
 
 import hashlib
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import structlog
 
+from ..analytics.models import IncidentMetrics
 from ..analytics.store import analytics_store
 from ..config import Settings, get_settings
+from ..supabase_client import is_supabase_db_enabled
 from .analyzer import IncidentAnalyzer
 from .anomaly import AnomalyDetector
 from .detector import PatternDetector
@@ -45,6 +48,120 @@ class InsightsService:
         self.digest_generator = DigestGenerator(self.settings)
         self.store = insights_store
 
+    # ------------------------------------------------------------------
+    # Data fetching: prefer Supabase DB, fall back to in-memory store
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _row_to_metrics(row: dict[str, Any]) -> IncidentMetrics:
+        """Convert a Supabase incident row to an IncidentMetrics object."""
+
+        def _parse_dt(val: Any) -> datetime | None:
+            if val is None:
+                return None
+            if isinstance(val, datetime):
+                return val
+            try:
+                return datetime.fromisoformat(str(val).replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                return None
+
+        metadata = row.get("metadata") or {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+
+        triggered = (
+            _parse_dt(row.get("triggered_at"))
+            or _parse_dt(row.get("created_at"))
+            or datetime.now(UTC)
+        )
+        acknowledged = _parse_dt(
+            row.get("acknowledged_at") or metadata.get("acknowledged_at")
+        )
+        resolved = _parse_dt(
+            row.get("resolved_at")
+            or row.get("processed_at")
+            or metadata.get("resolved_at")
+        )
+
+        return IncidentMetrics(
+            incident_id=str(row.get("id", "")),
+            triggered_at=triggered,
+            acknowledged_at=acknowledged,
+            resolved_at=resolved,
+            service_name=row.get("service") or "unknown",
+            severity=(row.get("severity") or "medium").lower(),
+        )
+
+    async def _fetch_incidents(
+        self,
+        start: datetime,
+        end: datetime,
+        service_name: str | None = None,
+    ) -> list[IncidentMetrics]:
+        """Fetch incidents from Supabase DB, falling back to in-memory store."""
+        if is_supabase_db_enabled():
+            try:
+                from ..db.supabase_db import get_db
+
+                db = get_db(use_admin=True)
+
+                def _query():
+                    q = (
+                        db.client.table("incidents")
+                        .select("*")
+                        .gte("created_at", start.isoformat())
+                        .lte("created_at", end.isoformat())
+                        .order("created_at", desc=True)
+                        .limit(5000)
+                    )
+                    if service_name:
+                        q = q.eq("service", service_name)
+                    return q.execute()
+
+                result = await db._to_thread(_query)
+                rows = result.data or []
+                metrics = [self._row_to_metrics(r) for r in rows]
+                logger.info(
+                    "incidents_fetched_from_db",
+                    count=len(metrics),
+                    start=start.isoformat(),
+                    end=end.isoformat(),
+                )
+                return metrics
+            except Exception as e:
+                logger.warning("db_fetch_failed_falling_back", error=str(e))
+
+        # Fallback to in-memory analytics store
+        return await analytics_store.get_metrics_for_period(
+            start=start, end=end, service_name=service_name
+        )
+
+    async def _fetch_all_incidents(self) -> list[IncidentMetrics]:
+        """Fetch all incidents from Supabase DB, falling back to in-memory store."""
+        if is_supabase_db_enabled():
+            try:
+                from ..db.supabase_db import get_db
+
+                db = get_db(use_admin=True)
+
+                def _query():
+                    return (
+                        db.client.table("incidents")
+                        .select("*")
+                        .order("created_at", desc=True)
+                        .limit(5000)
+                        .execute()
+                    )
+
+                result = await db._to_thread(_query)
+                rows = result.data or []
+                return [self._row_to_metrics(r) for r in rows]
+            except Exception as e:
+                logger.warning("db_fetch_all_failed_falling_back", error=str(e))
+
+        return await analytics_store.get_all_metrics()
+
     async def run_analysis(
         self,
         request: AnalysisRequest | None = None,
@@ -57,9 +174,9 @@ class InsightsService:
         start_time = datetime.utcnow()
         request = request or AnalysisRequest()
 
-        # Get incidents from the analytics store
+        # Get incidents from the database (Supabase preferred, in-memory fallback)
         lookback_start = datetime.utcnow() - timedelta(days=request.lookback_days)
-        incidents = await analytics_store.get_metrics_for_period(
+        incidents = await self._fetch_incidents(
             start=lookback_start,
             end=datetime.utcnow(),
             service_name=request.service_name,
@@ -243,8 +360,8 @@ class InsightsService:
         generate_ai: bool = True,
     ) -> IncidentDigest:
         """Generate an incident digest."""
-        # Get all incidents
-        incidents = await analytics_store.get_all_metrics()
+        # Get all incidents from DB
+        incidents = await self._fetch_all_incidents()
 
         digest = await self.digest_generator.generate_digest(
             incidents=incidents,
