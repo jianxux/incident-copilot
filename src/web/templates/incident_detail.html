@@ -3,6 +3,7 @@
 {% block content %}
 {% set incident_metadata = incident.metadata or {} %}
 {% set provider = incident_metadata.get('provider', incident.source or 'unknown') %}
+{% set is_pd_synced = provider == 'pagerduty' %}
 {% set pd_status = incident_metadata.get('status', 'unknown') %}
 {% set urgency = incident_metadata.get('urgency', 'unknown') %}
 {% set assigned_to = incident_metadata.get('assigned_to', []) %}
@@ -174,6 +175,26 @@
         {% endif %}
     </div>
 </div>
+
+{% if is_pd_synced and not (card and card.github) %}
+<div id="ondemand-github-section" class="hidden bg-white/80 dark:bg-slate-900/60 backdrop-blur rounded-2xl border border-stone-200 dark:border-slate-800 p-6 mb-4 sm:mb-6">
+    <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center">
+        <i class="fab fa-github mr-3 text-slate-600 dark:text-slate-300"></i>
+        Recent Deployments
+    </h2>
+
+    <div id="ondemand-github-repo" class="text-sm text-slate-600 dark:text-slate-300 mb-4 hidden">
+        <i class="fas fa-code-branch mr-2"></i>
+        <span id="ondemand-github-repo-name"></span>
+    </div>
+
+    <div id="ondemand-github-deploys" class="space-y-3"></div>
+    <div id="ondemand-github-codeowners" class="mt-4 pt-4 border-t border-stone-200 dark:border-slate-800 hidden">
+        <h4 class="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-2">Code Owners</h4>
+        <div id="ondemand-github-codeowners-list" class="flex flex-wrap gap-2"></div>
+    </div>
+</div>
+{% endif %}
 
 {% if card %}
 <!-- AI Copilot Chat -->
@@ -587,6 +608,76 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+function formatTimestamp(value) {
+    if (!value) return 'Unknown time';
+    const dt = new Date(value);
+    return Number.isNaN(dt.getTime()) ? String(value) : dt.toLocaleString();
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const section = document.getElementById('ondemand-github-section');
+    if (!section) return;
+
+    try {
+        const response = await fetch(`/api/incidents/${INCIDENT_ID}/context`);
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const github = data.github_context || data.github;
+        if (!github || (typeof github !== 'object')) return;
+
+        const deploys = Array.isArray(github.recent_deploys) ? github.recent_deploys.slice(0, 5) : [];
+        const codeowners = Array.isArray(github.codeowners) ? github.codeowners : [];
+
+        if (deploys.length === 0 && codeowners.length === 0) return;
+
+        const repoName = github.repo;
+        if (repoName) {
+            const repoWrap = document.getElementById('ondemand-github-repo');
+            const repoEl = document.getElementById('ondemand-github-repo-name');
+            if (repoWrap && repoEl) {
+                repoEl.textContent = repoName;
+                repoWrap.classList.remove('hidden');
+            }
+        }
+
+        const deploysEl = document.getElementById('ondemand-github-deploys');
+        if (deploysEl) {
+            if (deploys.length > 0) {
+                deploysEl.innerHTML = deploys.map((deploy) => `
+                    <div class="bg-stone-100/60 dark:bg-slate-800/50 rounded-lg p-3">
+                        <div class="flex items-center justify-between">
+                            <code class="text-[#e05a3a] font-mono text-sm">${escapeHtml(deploy.short_sha || '').slice(0, 12) || 'unknown'}</code>
+                            <span class="text-slate-600 dark:text-slate-300 text-sm">${escapeHtml(formatTimestamp(deploy.timestamp))}</span>
+                        </div>
+                        <p class="text-slate-700 text-sm mt-1 truncate">${escapeHtml(deploy.message || 'No commit message')}</p>
+                        <div class="flex items-center space-x-3 mt-2 text-xs text-slate-600 dark:text-slate-300">
+                            <span><i class="fas fa-user mr-1"></i>${escapeHtml(deploy.author || 'unknown')}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                deploysEl.innerHTML = '<p class="text-slate-600 dark:text-slate-300">No recent deployments found</p>';
+            }
+        }
+
+        if (codeowners.length > 0) {
+            const ownersWrap = document.getElementById('ondemand-github-codeowners');
+            const ownersEl = document.getElementById('ondemand-github-codeowners-list');
+            if (ownersWrap && ownersEl) {
+                ownersEl.innerHTML = codeowners.map((owner) => (
+                    `<span class="bg-stone-100 dark:bg-slate-800/60 text-slate-700 px-2 py-1 rounded text-sm">${escapeHtml(owner)}</span>`
+                )).join('');
+                ownersWrap.classList.remove('hidden');
+            }
+        }
+
+        section.classList.remove('hidden');
+    } catch (error) {
+        // Best effort UI enhancement; do not surface network errors.
+    }
+});
 
 async function sendMessage(event) {
     event.preventDefault();
