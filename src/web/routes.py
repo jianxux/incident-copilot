@@ -89,6 +89,17 @@ router = APIRouter(
 )
 
 
+def _map_status(raw_status: str | None) -> str:
+    """Normalize processing statuses to lifecycle statuses."""
+    status_map = {
+        "processing": "triggered",
+        "completed": "resolved",
+        "error": "triggered",
+    }
+    normalized = str(raw_status or "processing").strip().lower()
+    return status_map.get(normalized, normalized)
+
+
 def mask_secret(value: str) -> str:
     """Mask a secret, showing only first/last 4 chars if long enough."""
     if not value:
@@ -120,11 +131,16 @@ def severity_color(severity: Severity) -> str:
 def status_color(status: str) -> str:
     """Get Tailwind color class for status."""
     colors = {
+        "triggered": "bg-yellow-500",
+        "acknowledged": "bg-blue-500",
+        "resolved": "bg-green-500",
+        "error": "bg-red-500",
+        # Backward compatibility for legacy processing statuses.
         "processing": "bg-yellow-500",
         "completed": "bg-green-500",
-        "error": "bg-red-500",
     }
-    return colors.get(status, "bg-gray-500")
+    normalized = str(status or "").strip().lower()
+    return colors.get(normalized, "bg-gray-500")
 
 
 def tenant_slug_from_auth(auth: AuthContext) -> str:
@@ -457,15 +473,6 @@ async def api_incidents(
     # Sync PagerDuty incidents — first load awaits, subsequent are background
     await _maybe_trigger_pd_sync(tenant_id)
 
-    def _map_status(raw_status: str | None) -> str:
-        status_map = {
-            "processing": "triggered",
-            "completed": "resolved",
-            "error": "triggered",
-        }
-        normalized = str(raw_status or "processing").strip().lower()
-        return status_map.get(normalized, normalized)
-
     # When Supabase DB is disabled, fall back to in-memory store.
     from ..supabase_client import is_supabase_db_enabled
 
@@ -608,7 +615,9 @@ async def api_incident_stats(
 
     total = len(incidents)
     open_count = sum(
-        1 for i in incidents if getattr(i, "status", "processing") != "completed"
+        1
+        for i in incidents
+        if _map_status(getattr(i, "status", "processing")) not in ("resolved",)
     )
 
     today = datetime.now(UTC).date()
@@ -618,8 +627,8 @@ async def api_incident_stats(
     for i in incidents:
         p = getattr(i, "processed_at", None)
         t = getattr(i, "triggered_at", None)
-        st = getattr(i, "status", "processing")
-        if st == "completed" and p:
+        st = _map_status(getattr(i, "status", "processing"))
+        if st == "resolved" and p:
             if hasattr(p, "date") and p.date() == today:
                 resolved_today += 1
             if t and p:
@@ -663,7 +672,7 @@ async def api_incident_detail(
         "title": incident.title,
         "service": incident.service_name,
         "severity": incident.severity.value,
-        "status": incident.status,
+        "status": _map_status(incident.status),
         "created_at": incident.triggered_at.isoformat(),
         "updated_at": (
             incident.processed_at.isoformat()
@@ -695,12 +704,26 @@ async def api_dashboard_stats(
     db = get_db(use_admin=True)
     rows = await db.list_processing_incidents(tenant_id=tenant_id, limit=100, offset=0)
 
-    by_status: dict[str, int] = {"processing": 0, "completed": 0, "error": 0}
+    by_status: dict[str, int] = {
+        "triggered": 0,
+        "acknowledged": 0,
+        "resolved": 0,
+        "error": 0,
+        # Backward compatibility for existing dashboard consumers.
+        "processing": 0,
+        "completed": 0,
+    }
     by_severity: dict[str, int] = {s.value: 0 for s in Severity}
 
     for r in rows:
-        st = r.get("status") or "processing"
+        st = _map_status(r.get("status") or "processing")
         by_status[st] = by_status.get(st, 0) + 1
+        if st == "resolved":
+            by_status["completed"] += 1
+        elif st in ("triggered", "acknowledged"):
+            by_status["processing"] += 1
+        elif st == "error":
+            by_status["error"] += 1
         sev = r.get("severity") or Severity.MEDIUM.value
         by_severity[sev] = by_severity.get(sev, 0) + 1
 
