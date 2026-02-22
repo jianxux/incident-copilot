@@ -318,8 +318,11 @@ async def _background_pd_sync(tenant_id: str) -> None:
             token_rec = await oauth_token_store.get_token(tenant_id, "pagerduty")
             if token_rec and token_rec.access_token:
                 oauth_token = token_rec.access_token
-        except Exception:
-            pass
+                logger.info("pd_sync_token_from_oauth_store", tenant_id=tenant_id)
+            else:
+                logger.info("pd_sync_no_token_in_oauth_store", tenant_id=tenant_id)
+        except Exception as exc:
+            logger.warning("pd_sync_oauth_store_error", tenant_id=tenant_id, error=str(exc))
 
         if not oauth_token:
             try:
@@ -339,12 +342,18 @@ async def _background_pd_sync(tenant_id: str) -> None:
                         oauth = decrypted.get("oauth", {})
                         oauth_token = oauth.get("access_token", "")
                         api_key = decrypted.get("api_key", "")
-            except Exception:
-                pass
+                        logger.info("pd_sync_token_from_integration_configs", tenant_id=tenant_id, has_oauth=bool(oauth_token), has_api_key=bool(api_key))
+                    else:
+                        logger.info("pd_sync_no_encrypted_config", tenant_id=tenant_id)
+                else:
+                    logger.info("pd_sync_no_integration_config_row", tenant_id=tenant_id)
+            except Exception as exc:
+                logger.warning("pd_sync_integration_configs_error", tenant_id=tenant_id, error=str(exc))
 
         token = oauth_token or api_key
         if not token:
-            return  # No PD connection — silently skip
+            logger.warning("pd_sync_no_token_found", tenant_id=tenant_id)
+            return
 
         pd_auth = f"Bearer {oauth_token}" if oauth_token else f"Token token={api_key}"
 
