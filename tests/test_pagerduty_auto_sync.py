@@ -2,6 +2,7 @@
 
 import asyncio
 import time
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -9,6 +10,7 @@ import pytest
 from src.web.routes import (
     _PD_SYNC_INTERVAL,
     _background_pd_sync,
+    _build_pd_upsert_rows,
     _maybe_trigger_pd_sync,
     _pd_sync_timestamps,
 )
@@ -23,49 +25,194 @@ def _clear_sync_timestamps():
 
 
 # ---------------------------------------------------------------------------
+# _build_pd_upsert_rows — row building logic
+# ---------------------------------------------------------------------------
+
+
+class TestBuildPdUpsertRows:
+    """Tests for the shared PagerDuty incident row builder."""
+
+    def test_basic_incident(self):
+        pd_incidents = [
+            {
+                "id": "P123",
+                "title": "High CPU on web-1",
+                "status": "triggered",
+                "urgency": "high",
+                "created_at": "2026-02-21T10:00:00Z",
+                "service": {"summary": "web-service"},
+                "html_url": "https://pd.com/incidents/P123",
+                "incident_number": 42,
+                "assignments": [],
+                "escalation_policy": {"summary": "Default"},
+            }
+        ]
+        rows, summaries = _build_pd_upsert_rows(pd_incidents, "tenant-1")
+        assert len(rows) == 1
+        assert len(summaries) == 1
+        row = rows[0]
+        assert row["id"] == "P123"
+        assert row["tenant_id"] == "tenant-1"
+        assert row["service"] == "web-service"
+        assert row["severity"] == "high"
+        assert row["status"] == "triggered"
+        assert row["source"] == "pagerduty"
+        assert row["source_id"] == "42"
+
+    def test_resolved_status_mapping(self):
+        pd_incidents = [
+            {
+                "id": "P456",
+                "title": "Resolved issue",
+                "status": "resolved",
+                "urgency": "low",
+                "created_at": "2026-02-21T08:00:00Z",
+                "service": {"summary": "api"},
+                "assignments": [],
+                "escalation_policy": {},
+            }
+        ]
+        rows, _ = _build_pd_upsert_rows(pd_incidents, "t1")
+        assert rows[0]["status"] == "resolved"
+        assert rows[0]["severity"] == "low"
+
+    def test_acknowledged_status_mapping(self):
+        pd_incidents = [
+            {
+                "id": "P789",
+                "title": "Acked",
+                "status": "acknowledged",
+                "urgency": "high",
+                "created_at": "2026-02-21T09:00:00Z",
+                "service": {"summary": "db"},
+                "assignments": [],
+                "escalation_policy": {},
+            }
+        ]
+        rows, _ = _build_pd_upsert_rows(pd_incidents, "t1")
+        assert rows[0]["status"] == "acknowledged"
+
+    def test_skips_empty_id(self):
+        pd_incidents = [{"id": "", "title": "No ID"}]
+        rows, summaries = _build_pd_upsert_rows(pd_incidents, "t1")
+        assert len(rows) == 0
+        assert len(summaries) == 0
+
+    def test_metadata_includes_assignments(self):
+        pd_incidents = [
+            {
+                "id": "P111",
+                "title": "Assigned",
+                "status": "triggered",
+                "urgency": "high",
+                "created_at": "2026-02-21T10:00:00Z",
+                "service": {"summary": "svc"},
+                "assignments": [
+                    {"assignee": {"summary": "Alice"}},
+                    {"assignee": {"summary": "Bob"}},
+                ],
+                "escalation_policy": {"summary": "Oncall Team"},
+            }
+        ]
+        rows, _ = _build_pd_upsert_rows(pd_incidents, "t1")
+        meta = rows[0]["metadata"]
+        assert meta["assigned_to"] == ["Alice", "Bob"]
+        assert meta["escalation_policy"] == "Oncall Team"
+        assert meta["provider"] == "pagerduty"
+
+    def test_multiple_incidents_batch(self):
+        pd_incidents = [
+            {
+                "id": f"P{i}",
+                "title": f"Inc {i}",
+                "status": "triggered",
+                "urgency": "low",
+                "created_at": "2026-02-21T10:00:00Z",
+                "service": {"summary": f"svc-{i}"},
+                "assignments": [],
+                "escalation_policy": {},
+            }
+            for i in range(25)
+        ]
+        rows, summaries = _build_pd_upsert_rows(pd_incidents, "t1")
+        assert len(rows) == 25
+        assert len(summaries) == 25
+
+    def test_missing_service_defaults_to_empty(self):
+        pd_incidents = [
+            {
+                "id": "P222",
+                "title": "No service",
+                "status": "triggered",
+                "urgency": "low",
+                "created_at": "2026-02-21T10:00:00Z",
+                "assignments": [],
+                "escalation_policy": {},
+            }
+        ]
+        rows, _ = _build_pd_upsert_rows(pd_incidents, "t1")
+        assert rows[0]["service"] == ""
+
+    def test_bad_date_defaults_to_now(self):
+        pd_incidents = [
+            {
+                "id": "P333",
+                "title": "Bad date",
+                "status": "triggered",
+                "urgency": "low",
+                "created_at": "not-a-date",
+                "service": {"summary": "svc"},
+                "assignments": [],
+                "escalation_policy": {},
+            }
+        ]
+        rows, _ = _build_pd_upsert_rows(pd_incidents, "t1")
+        # Should not raise, triggered_at should be set
+        assert rows[0]["triggered_at"] is not None
+
+
+# ---------------------------------------------------------------------------
 # _maybe_trigger_pd_sync — debounce logic
 # ---------------------------------------------------------------------------
 
 
-def test_first_call_triggers_sync():
-    """First call for a tenant should launch a background sync task."""
-    with patch("src.web.routes.asyncio.create_task") as mock_create:
-        _maybe_trigger_pd_sync("tenant-1")
-
-    mock_create.assert_called_once()
-    # Timestamp should be set
-    assert "tenant-1" in _pd_sync_timestamps
-
-
-def test_second_call_within_interval_skips():
+@pytest.mark.asyncio
+async def test_second_call_within_interval_skips():
     """A call within 5 min of the last sync should NOT trigger another sync."""
     _pd_sync_timestamps["tenant-1"] = time.time()
 
-    with patch("src.web.routes.asyncio.create_task") as mock_create:
-        _maybe_trigger_pd_sync("tenant-1")
+    with patch("src.web.routes._background_pd_sync", new_callable=AsyncMock) as mock_sync:
+        result = await _maybe_trigger_pd_sync("tenant-1")
 
-    mock_create.assert_not_called()
+    mock_sync.assert_not_called()
+    assert result is False
 
 
-def test_call_after_interval_triggers_sync():
+@pytest.mark.asyncio
+async def test_call_after_interval_triggers_sync():
     """A call after the debounce interval should trigger sync again."""
     _pd_sync_timestamps["tenant-1"] = time.time() - _PD_SYNC_INTERVAL - 1
 
-    with patch("src.web.routes.asyncio.create_task") as mock_create:
-        _maybe_trigger_pd_sync("tenant-1")
+    with patch("src.web.routes._background_pd_sync", new_callable=AsyncMock) as mock_sync:
+        with patch("src.web.routes.asyncio.create_task") as mock_task:
+            await _maybe_trigger_pd_sync("tenant-1")
 
-    mock_create.assert_called_once()
+    # Subsequent sync fires as background task
+    mock_task.assert_called_once()
 
 
-def test_different_tenants_sync_independently():
+@pytest.mark.asyncio
+async def test_different_tenants_sync_independently():
     """Each tenant has its own debounce timestamp."""
     _pd_sync_timestamps["tenant-1"] = time.time()  # recently synced
 
-    with patch("src.web.routes.asyncio.create_task") as mock_create:
-        _maybe_trigger_pd_sync("tenant-1")  # should skip
-        _maybe_trigger_pd_sync("tenant-2")  # should trigger
+    with patch("src.web.routes._background_pd_sync", new_callable=AsyncMock) as mock_sync:
+        with patch("src.web.routes.asyncio.create_task"):
+            await _maybe_trigger_pd_sync("tenant-1")  # should skip
+            await _maybe_trigger_pd_sync("tenant-2")  # should trigger (first sync)
 
-    mock_create.assert_called_once()
+    # tenant-2 is first sync so it's awaited directly
+    mock_sync.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -79,18 +226,11 @@ async def test_sync_returns_silently_when_no_token():
     mock_token_store = MagicMock()
     mock_token_store.get_token = AsyncMock(return_value=None)
 
-    with (
-        patch("src.web.routes.incident_store") as mock_store,
-        patch(
-            "src.integrations.oauth_tokens.oauth_token_store",
-            mock_token_store,
-        ),
+    with patch(
+        "src.integrations.oauth_tokens.oauth_token_store",
+        mock_token_store,
     ):
-        # Should not raise
         await _background_pd_sync("tenant-no-pd")
-
-    # No incidents should have been added
-    mock_store.add_incident.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -101,7 +241,6 @@ async def test_sync_failure_does_not_raise():
     mock_token_rec.access_token = "xoxb-fake"
     mock_token_store.get_token = AsyncMock(return_value=mock_token_rec)
 
-    # Make httpx.AsyncClient.get raise
     mock_response = MagicMock()
     mock_response.status_code = 500
     mock_client_instance = AsyncMock()
@@ -110,17 +249,13 @@ async def test_sync_failure_does_not_raise():
     mock_client_instance.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("src.web.routes.incident_store") as mock_store,
         patch(
             "src.integrations.oauth_tokens.oauth_token_store",
             mock_token_store,
         ),
         patch("httpx.AsyncClient", return_value=mock_client_instance),
     ):
-        # Should not raise even though API returned 500
         await _background_pd_sync("tenant-err")
-
-    mock_store.add_incident.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -160,18 +295,13 @@ class TestFirstSyncTimeout:
     @pytest.mark.asyncio
     async def test_first_sync_has_timeout(self):
         """If PD API is slow, first sync should timeout and not block forever."""
-        import asyncio
-        from unittest.mock import AsyncMock, patch
 
         async def slow_sync(tenant_id):
-            await asyncio.sleep(30)  # Simulate very slow API
+            await asyncio.sleep(30)
 
         with patch("src.web.routes._background_pd_sync", side_effect=slow_sync):
             with patch("src.web.routes._pd_sync_timestamps", {}):
-                from src.web.routes import _maybe_trigger_pd_sync
-                # Should complete within ~8s timeout, not 30s
-                import time
                 start = time.time()
                 await _maybe_trigger_pd_sync("tenant-slow")
                 elapsed = time.time() - start
-                assert elapsed < 12, f"First sync took {elapsed}s, should timeout at ~8s"
+                assert elapsed < 8, f"First sync took {elapsed}s, should timeout at ~5s"

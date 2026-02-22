@@ -225,6 +225,86 @@ async def health_check():
     return {"status": "ok", "service": "incident-copilot"}
 
 
+def _build_pd_upsert_rows(
+    pd_incidents: list[dict], tenant_id: str
+) -> tuple[list[dict], list[dict]]:
+    """Convert PagerDuty API incidents into DB upsert rows + summary list.
+
+    Returns (rows_for_db, incident_summaries).
+    """
+    now_iso = datetime.now(UTC).isoformat()
+    rows = []
+    summaries = []
+
+    for inc in pd_incidents:
+        inc_id = inc.get("id", "")
+        if not inc_id:
+            continue
+
+        urgency = inc.get("urgency", "low")
+        severity_val = Severity.HIGH.value if urgency == "high" else Severity.LOW.value
+
+        service_summary = ""
+        svc = inc.get("service")
+        if isinstance(svc, dict):
+            service_summary = svc.get("summary", "")
+
+        created_at_str = inc.get("created_at", "")
+        try:
+            triggered_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            triggered_at = datetime.now(UTC)
+
+        assigned_to = []
+        for assignment in inc.get("assignments", []):
+            assignee = assignment.get("assignee", {})
+            if isinstance(assignee, dict) and assignee.get("summary"):
+                assigned_to.append(assignee["summary"])
+
+        ep = inc.get("escalation_policy", {})
+        ep_summary = ep.get("summary", "") if isinstance(ep, dict) else ""
+
+        pd_status = inc.get("status", "triggered")
+        if pd_status == "resolved":
+            db_status = "resolved"
+        elif pd_status == "acknowledged":
+            db_status = "acknowledged"
+        else:
+            db_status = "triggered"
+
+        metadata = {
+            "provider": "pagerduty",
+            "status": pd_status,
+            "urgency": urgency,
+            "assigned_to": assigned_to,
+            "escalation_policy": ep_summary,
+        }
+
+        rows.append({
+            "id": inc_id,
+            "tenant_id": tenant_id,
+            "title": inc.get("title", ""),
+            "service": service_summary,
+            "severity": severity_val,
+            "status": db_status,
+            "triggered_at": triggered_at.isoformat(),
+            "source": "pagerduty",
+            "source_url": inc.get("html_url", ""),
+            "source_id": str(inc.get("incident_number", "")),
+            "metadata": metadata,
+            "created_at": triggered_at.isoformat(),
+            "updated_at": now_iso,
+        })
+
+        summaries.append({
+            "id": inc_id,
+            "title": inc.get("title", ""),
+            "status": pd_status,
+        })
+
+    return rows, summaries
+
+
 async def _background_pd_sync(tenant_id: str) -> None:
     """Fire-and-forget background sync of PagerDuty incidents for a tenant."""
     try:
@@ -291,71 +371,20 @@ async def _background_pd_sync(tenant_id: str) -> None:
 
             pd_incidents = resp.json().get("incidents", [])
 
-        # 3. Upsert each incident
-        for inc in pd_incidents:
-            inc_id = inc.get("id", "")
-            if not inc_id:
-                continue
+        # 3. Batch-upsert all incidents in a single DB call
+        rows, _ = _build_pd_upsert_rows(pd_incidents, tenant_id)
 
-            urgency = inc.get("urgency", "low")
-            severity = Severity.HIGH if urgency == "high" else Severity.LOW
+        if rows:
+            from ..db.supabase_db import get_db
 
-            service_summary = ""
-            svc = inc.get("service")
-            if isinstance(svc, dict):
-                service_summary = svc.get("summary", "")
+            db = get_db(use_admin=True)
 
-            created_at_str = inc.get("created_at", "")
-            try:
-                triggered_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
-            except (ValueError, AttributeError):
-                triggered_at = datetime.now(UTC)
+            def _batch_upsert():
+                return db.client.table("incidents").upsert(
+                    rows, on_conflict="id"
+                ).execute()
 
-            assigned_to = []
-            for assignment in inc.get("assignments", []):
-                assignee = assignment.get("assignee", {})
-                if isinstance(assignee, dict) and assignee.get("summary"):
-                    assigned_to.append(assignee["summary"])
-
-            ep = inc.get("escalation_policy", {})
-            ep_summary = ep.get("summary", "") if isinstance(ep, dict) else ""
-
-            metadata = {
-                "provider": "pagerduty",
-                "status": inc.get("status", ""),
-                "urgency": urgency,
-                "assigned_to": assigned_to,
-                "escalation_policy": ep_summary,
-            }
-
-            await incident_store.add_incident(
-                incident_id=inc_id,
-                title=inc.get("title", ""),
-                service_name=service_summary,
-                severity=severity,
-                triggered_at=triggered_at,
-                source="pagerduty",
-                source_url=inc.get("html_url", ""),
-                source_id=str(inc.get("incident_number", "")),
-                metadata=metadata,
-                tenant_id=tenant_id,
-            )
-
-            if inc.get("status") == "resolved":
-                await incident_store.complete_incident(
-                    inc_id,
-                    ContextCard(
-                        incident_id=inc_id,
-                        title=inc.get("title", ""),
-                        severity=severity,
-                        service_name=service_summary,
-                        triggered_at=triggered_at,
-                        assembled_at=datetime.now(UTC),
-                        assembly_time_ms=0,
-                    ),
-                    metadata={"resolved_via_sync": True},
-                    tenant_id=tenant_id,
-                )
+            await db._to_thread(_batch_upsert)
 
         # 4. Update timestamp on success
         import time
@@ -388,7 +417,7 @@ async def _maybe_trigger_pd_sync(tenant_id: str) -> bool:
     if first_sync:
         # First sync: await with a timeout so we don't block too long
         try:
-            await asyncio.wait_for(_background_pd_sync(tenant_id), timeout=8.0)
+            await asyncio.wait_for(_background_pd_sync(tenant_id), timeout=5.0)
         except asyncio.TimeoutError:
             logger.warning("pd_first_sync_timeout", tenant_id=tenant_id)
         return True
@@ -1975,85 +2004,21 @@ async def sync_pagerduty_incidents(
 
             pd_incidents = resp.json().get("incidents", [])
 
-        synced = 0
-        incident_summaries = []
+        rows, incident_summaries = _build_pd_upsert_rows(pd_incidents, tenant_id)
 
-        for inc in pd_incidents:
-            inc_id = inc.get("id", "")
-            if not inc_id:
-                continue
+        if rows:
+            from ..db.supabase_db import get_db
 
-            urgency = inc.get("urgency", "low")
-            severity = Severity.HIGH if urgency == "high" else Severity.LOW
+            db = get_db(use_admin=True)
 
-            service_summary = ""
-            svc = inc.get("service")
-            if isinstance(svc, dict):
-                service_summary = svc.get("summary", "")
+            def _batch_upsert():
+                return db.client.table("incidents").upsert(
+                    rows, on_conflict="id"
+                ).execute()
 
-            created_at_str = inc.get("created_at", "")
-            try:
-                triggered_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
-            except (ValueError, AttributeError):
-                triggered_at = datetime.now(UTC)
+            await db._to_thread(_batch_upsert)
 
-            # Build assigned_to list
-            assigned_to = []
-            for assignment in inc.get("assignments", []):
-                assignee = assignment.get("assignee", {})
-                if isinstance(assignee, dict) and assignee.get("summary"):
-                    assigned_to.append(assignee["summary"])
-
-            # Escalation policy
-            ep = inc.get("escalation_policy", {})
-            ep_summary = ep.get("summary", "") if isinstance(ep, dict) else ""
-
-            metadata = {
-                "provider": "pagerduty",
-                "status": inc.get("status", ""),
-                "urgency": urgency,
-                "assigned_to": assigned_to,
-                "escalation_policy": ep_summary,
-            }
-
-            await incident_store.add_incident(
-                incident_id=inc_id,
-                title=inc.get("title", ""),
-                service_name=service_summary,
-                severity=severity,
-                triggered_at=triggered_at,
-                source="pagerduty",
-                source_url=inc.get("html_url", ""),
-                source_id=str(inc.get("incident_number", "")),
-                metadata=metadata,
-                tenant_id=tenant_id,
-            )
-
-            # If resolved, mark as completed
-            if inc.get("status") == "resolved":
-                await incident_store.complete_incident(
-                    inc_id,
-                    ContextCard(
-                        incident_id=inc_id,
-                        title=inc.get("title", ""),
-                        severity=severity,
-                        service_name=service_summary,
-                        triggered_at=triggered_at,
-                        assembled_at=datetime.now(UTC),
-                        assembly_time_ms=0,
-                    ),
-                    metadata={"resolved_via_sync": True},
-                    tenant_id=tenant_id,
-                )
-
-            synced += 1
-            incident_summaries.append({
-                "id": inc_id,
-                "title": inc.get("title", ""),
-                "status": inc.get("status", ""),
-            })
-
-        return {"ok": True, "synced": synced, "incidents": incident_summaries}
+        return {"ok": True, "synced": len(rows), "incidents": incident_summaries}
 
     except HTTPException:
         raise
