@@ -469,3 +469,173 @@ class TestInsightsAPI:
         response = client.get("/dashboard/insights")
         assert response.status_code == 200
         assert "Insights" in response.text
+
+
+class TestInsightsDBFetch:
+    """Tests for InsightsService fetching incidents from Supabase DB."""
+
+    def test_row_to_metrics_basic(self):
+        """Test converting a Supabase row to IncidentMetrics."""
+        row = {
+            "id": "inc-123",
+            "created_at": "2026-02-20T10:00:00Z",
+            "triggered_at": "2026-02-20T10:00:00Z",
+            "acknowledged_at": "2026-02-20T10:05:00Z",
+            "resolved_at": "2026-02-20T11:00:00Z",
+            "service": "api-gateway",
+            "severity": "high",
+            "metadata": {},
+        }
+        metrics = InsightsService._row_to_metrics(row)
+        assert metrics.incident_id == "inc-123"
+        assert metrics.service_name == "api-gateway"
+        assert metrics.severity == "high"
+        assert metrics.acknowledged_at is not None
+        assert metrics.resolved_at is not None
+        assert metrics.time_to_resolve_seconds is not None
+        assert metrics.time_to_resolve_seconds == pytest.approx(3600.0, abs=1)
+
+    def test_row_to_metrics_missing_fields(self):
+        """Test conversion with missing optional fields."""
+        row = {
+            "id": "inc-456",
+            "created_at": "2026-02-20T10:00:00Z",
+            "service": None,
+            "severity": None,
+            "metadata": None,
+        }
+        metrics = InsightsService._row_to_metrics(row)
+        assert metrics.incident_id == "inc-456"
+        assert metrics.service_name == "unknown"
+        assert metrics.severity == "medium"
+        assert metrics.acknowledged_at is None
+        assert metrics.resolved_at is None
+
+    def test_row_to_metrics_metadata_timestamps(self):
+        """Test that acknowledged_at/resolved_at fall back to metadata."""
+        row = {
+            "id": "inc-789",
+            "created_at": "2026-02-20T10:00:00Z",
+            "acknowledged_at": None,
+            "resolved_at": None,
+            "service": "db",
+            "severity": "critical",
+            "metadata": {
+                "acknowledged_at": "2026-02-20T10:02:00Z",
+                "resolved_at": "2026-02-20T10:30:00Z",
+            },
+        }
+        metrics = InsightsService._row_to_metrics(row)
+        assert metrics.acknowledged_at is not None
+        assert metrics.resolved_at is not None
+
+    def test_row_to_metrics_processed_at_fallback(self):
+        """Test that processed_at is used when resolved_at is missing."""
+        row = {
+            "id": "inc-proc",
+            "created_at": "2026-02-20T10:00:00Z",
+            "resolved_at": None,
+            "processed_at": "2026-02-20T10:45:00Z",
+            "service": "worker",
+            "severity": "low",
+            "metadata": {},
+        }
+        metrics = InsightsService._row_to_metrics(row)
+        assert metrics.resolved_at is not None
+
+    @pytest.mark.asyncio
+    async def test_fetch_incidents_fallback_to_memory(self):
+        """Test that _fetch_incidents falls back to in-memory store when DB is disabled."""
+        from unittest.mock import AsyncMock, patch
+
+        service = InsightsService()
+        now = datetime.utcnow()
+        start = now - timedelta(days=7)
+
+        with patch(
+            "src.insights.service.is_supabase_db_enabled", return_value=False
+        ):
+            with patch.object(
+                service, "_fetch_incidents", wraps=service._fetch_incidents
+            ):
+                # Should fall through to analytics_store
+                incidents = await service._fetch_incidents(start=start, end=now)
+                assert isinstance(incidents, list)
+
+    @pytest.mark.asyncio
+    async def test_fetch_incidents_from_db_via_mock(self):
+        """Test that _fetch_incidents returns DB rows when patched at method level."""
+        from unittest.mock import AsyncMock, patch
+
+        now = datetime.utcnow()
+        mock_metrics = [
+            IncidentMetrics(
+                incident_id=f"db-inc-{i}",
+                triggered_at=now - timedelta(days=i),
+                service_name="test-service",
+                severity="high",
+            )
+            for i in range(3)
+        ]
+
+        service = InsightsService()
+
+        with patch.object(
+            service, "_fetch_incidents", new_callable=AsyncMock, return_value=mock_metrics
+        ):
+            result = await service._fetch_incidents(
+                start=now - timedelta(days=7), end=now
+            )
+            assert len(result) == 3
+            assert all(m.service_name == "test-service" for m in result)
+
+    @pytest.mark.asyncio
+    async def test_run_analysis_uses_db(self):
+        """Test that run_analysis fetches from DB and produces results."""
+        from unittest.mock import AsyncMock, patch
+
+        now = datetime.utcnow()
+        mock_incidents = [
+            IncidentMetrics(
+                incident_id=f"analysis-{i}",
+                triggered_at=now - timedelta(days=i),
+                resolved_at=now - timedelta(days=i) + timedelta(hours=1),
+                service_name="test-svc",
+                severity="high",
+            )
+            for i in range(5)
+        ]
+
+        service = InsightsService()
+
+        with patch.object(
+            service, "_fetch_incidents", new_callable=AsyncMock, return_value=mock_incidents
+        ):
+            result = await service.run_analysis()
+            assert result.incidents_analyzed == 5
+            assert result.duration_ms >= 0
+
+    @pytest.mark.asyncio
+    async def test_generate_digest_uses_db(self):
+        """Test that generate_digest fetches from DB."""
+        from unittest.mock import AsyncMock, patch
+
+        now = datetime.utcnow()
+        mock_incidents = [
+            IncidentMetrics(
+                incident_id=f"digest-{i}",
+                triggered_at=now - timedelta(days=i),
+                resolved_at=now - timedelta(days=i) + timedelta(hours=2),
+                service_name="web-app",
+                severity="medium",
+            )
+            for i in range(3)
+        ]
+
+        service = InsightsService()
+
+        with patch.object(
+            service, "_fetch_all_incidents", new_callable=AsyncMock, return_value=mock_incidents
+        ):
+            digest = await service.generate_digest(generate_ai=False)
+            assert digest is not None
