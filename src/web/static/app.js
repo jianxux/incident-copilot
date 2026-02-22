@@ -147,6 +147,8 @@ function handleSSEEvent(data) {
 
 // Update dashboard stats
 async function updateStats() {
+    if (!document.getElementById('stat-total')) return;
+
     try {
         const response = await fetch('/dashboard/api/stats');
         const stats = await response.json();
