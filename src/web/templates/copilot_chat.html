@@ -194,9 +194,14 @@
             }
         });
 
-        ws.addEventListener("close", () => {
+        ws.addEventListener("close", (event) => {
             if (manualClose) {
                 updateConnectionStatus("disconnected");
+                return;
+            }
+            if (event.code === 1011 || event.code === 1000) {
+                updateConnectionStatus("disconnected");
+                renderMessage("System", "Connection closed by server", new Date().toISOString(), false);
                 return;
             }
             updateConnectionStatus("reconnecting");
