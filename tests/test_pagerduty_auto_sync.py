@@ -62,6 +62,7 @@ class TestBuildPdUpsertRows:
         assert row["source_id"] == "P123"
 
     def test_resolved_status_mapping(self):
+        last_change = "2026-02-21T08:30:00Z"
         pd_incidents = [
             {
                 "id": "P456",
@@ -69,6 +70,8 @@ class TestBuildPdUpsertRows:
                 "status": "resolved",
                 "urgency": "low",
                 "created_at": "2026-02-21T08:00:00Z",
+                "last_status_change_at": last_change,
+                "resolved_at": "2026-02-21T08:20:00Z",
                 "service": {"summary": "api"},
                 "assignments": [],
                 "escalation_policy": {},
@@ -77,6 +80,27 @@ class TestBuildPdUpsertRows:
         rows, _ = _build_pd_upsert_rows(pd_incidents, "t1")
         assert rows[0]["status"] == "resolved"
         assert rows[0]["severity"] == "low"
+        assert rows[0]["processed_at"] == "2026-02-21T08:30:00+00:00"
+        assert rows[0]["resolved_at"] == "2026-02-21T08:30:00+00:00"
+        assert rows[0]["metadata"]["resolved_at"] == "2026-02-21T08:30:00+00:00"
+
+    def test_resolved_timestamp_falls_back_to_resolved_at(self):
+        pd_incidents = [
+            {
+                "id": "P457",
+                "title": "Resolved issue fallback",
+                "status": "resolved",
+                "urgency": "low",
+                "created_at": "2026-02-21T08:00:00Z",
+                "resolved_at": "2026-02-21T08:45:00Z",
+                "service": {"summary": "api"},
+                "assignments": [],
+                "escalation_policy": {},
+            }
+        ]
+        rows, _ = _build_pd_upsert_rows(pd_incidents, "t1")
+        assert rows[0]["processed_at"] == "2026-02-21T08:45:00+00:00"
+        assert rows[0]["resolved_at"] == "2026-02-21T08:45:00+00:00"
 
     def test_acknowledged_status_mapping(self):
         pd_incidents = [

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -271,6 +272,37 @@ async def _require_tenant(auth: AuthContext) -> str:
     return auth.tenant_id
 
 
+async def _trigger_pd_sync_best_effort(tenant_id: str) -> None:
+    """Trigger PD sync when available; never raise into API flow."""
+    try:
+        routes_mod = importlib.import_module("src.web.routes")
+    except Exception as exc:
+        logger.warning(
+            "pd_sync_best_effort_import_failed",
+            tenant_id=tenant_id,
+            error=str(exc),
+        )
+        return
+
+    maybe_sync = getattr(routes_mod, "_maybe_trigger_pd_sync", None)
+    if maybe_sync is None:
+        logger.warning(
+            "pd_sync_best_effort_missing_attr",
+            tenant_id=tenant_id,
+            attr="_maybe_trigger_pd_sync",
+        )
+        return
+
+    try:
+        await maybe_sync(tenant_id)
+    except Exception as exc:
+        logger.warning(
+            "pd_sync_best_effort_call_failed",
+            tenant_id=tenant_id,
+            error=str(exc),
+        )
+
+
 async def _get_incident_row(tenant_id: str, incident_id: str) -> dict[str, Any] | None:
     from ..db.supabase_db import get_db
 
@@ -503,11 +535,7 @@ async def list_incidents(
     tenant_id = await _require_tenant(auth)
 
     # Trigger PagerDuty background sync (batch upsert, non-blocking after first load)
-    try:
-        from ..web.routes import _maybe_trigger_pd_sync
-        await _maybe_trigger_pd_sync(tenant_id)
-    except Exception:
-        pass  # PD sync is best-effort; don't break incident listing
+    await _trigger_pd_sync_best_effort(tenant_id)
 
     statuses = [s for s in _extract_multi_query(request, "status", status) if s in _ALLOWED_STATUSES]
     severities = [s for s in _extract_multi_query(request, "severity", severity) if s in _ALLOWED_SEVERITIES]
@@ -518,8 +546,53 @@ async def list_incidents(
     parsed_date_to = _as_datetime(date_to)
 
     if is_supabase_db_enabled():
-        rows, total = await _list_supabase_incidents(
+        rows, _ = await _list_supabase_incidents(
             tenant_id=tenant_id,
+            page=1,
+            limit=2000,
+            statuses=statuses,
+            severities=severities,
+            services=services,
+            teams=teams,
+            assignee=assignee,
+            date_from=parsed_date_from,
+            date_to=parsed_date_to,
+            search=search,
+        )
+        stored = await incident_store.get_all_incidents(tenant_id=tenant_id)
+        memory_rows = [
+            {
+                "id": item.incident_id,
+                "title": item.title,
+                "service": item.service_name,
+                "severity": item.severity.value,
+                "status": item.status,
+                "triggered_at": item.triggered_at,
+                "processed_at": item.processed_at,
+                "created_at": item.triggered_at,
+                "updated_at": item.processed_at or item.triggered_at,
+                "metadata": item.metadata if isinstance(item.metadata, dict) else {},
+            }
+            for item in stored
+        ]
+
+        merged_by_id: dict[str, dict[str, Any]] = {
+            str(row.get("id")): row for row in memory_rows if row.get("id")
+        }
+        for row in rows:
+            row_id = str(row.get("id", ""))
+            if row_id:
+                merged_by_id[row_id] = row
+
+        merged_rows = list(merged_by_id.values())
+        merged_rows.sort(
+            key=lambda row: _as_datetime(row.get("created_at") or row.get("triggered_at"))
+            or datetime.min.replace(tzinfo=UTC),
+            reverse=True,
+        )
+
+        page_rows, total = _list_inmemory_incidents(
+            merged_rows,
             page=page,
             limit=limit,
             statuses=statuses,
@@ -531,7 +604,7 @@ async def list_incidents(
             date_to=parsed_date_to,
             search=search,
         )
-        incidents = [_format_incident(row) for row in rows]
+        incidents = [_format_incident(row) for row in page_rows]
         return {"incidents": incidents, "total": total}
 
     stored = await incident_store.get_all_incidents()
