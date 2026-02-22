@@ -372,17 +372,27 @@ async def _background_pd_sync(tenant_id: str) -> None:
         )
 
 
-def _maybe_trigger_pd_sync(tenant_id: str) -> None:
-    """Launch a background PD sync if the tenant hasn't synced recently."""
+async def _maybe_trigger_pd_sync(tenant_id: str) -> bool:
+    """Sync PD incidents if stale. Returns True if sync was awaited (first time)."""
     import time
 
     now = time.time()
     last = _pd_sync_timestamps.get(tenant_id, 0)
     if now - last < _PD_SYNC_INTERVAL:
-        return
+        return False
+
+    first_sync = last == 0  # Never synced before for this tenant
     # Mark immediately to prevent duplicate launches
     _pd_sync_timestamps[tenant_id] = now
-    asyncio.create_task(_background_pd_sync(tenant_id))
+
+    if first_sync:
+        # First sync: await it so the response includes PD incidents
+        await _background_pd_sync(tenant_id)
+        return True
+    else:
+        # Subsequent syncs: fire-and-forget
+        asyncio.create_task(_background_pd_sync(tenant_id))
+        return False
 
 
 @landing_router.get("/api/incidents")
@@ -393,8 +403,8 @@ async def api_incidents(
     """Tenant-scoped JSON API endpoint for incidents list."""
     tenant_id = auth_data["tenant_id"]
 
-    # Trigger background PagerDuty sync if stale
-    _maybe_trigger_pd_sync(tenant_id)
+    # Sync PagerDuty incidents — first load awaits, subsequent are background
+    await _maybe_trigger_pd_sync(tenant_id)
 
     def _map_status(raw_status: str | None) -> str:
         status_map = {
