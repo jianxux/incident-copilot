@@ -386,8 +386,11 @@ async def _maybe_trigger_pd_sync(tenant_id: str) -> bool:
     _pd_sync_timestamps[tenant_id] = now
 
     if first_sync:
-        # First sync: await it so the response includes PD incidents
-        await _background_pd_sync(tenant_id)
+        # First sync: await with a timeout so we don't block too long
+        try:
+            await asyncio.wait_for(_background_pd_sync(tenant_id), timeout=8.0)
+        except asyncio.TimeoutError:
+            logger.warning("pd_first_sync_timeout", tenant_id=tenant_id)
         return True
     else:
         # Subsequent syncs: fire-and-forget
