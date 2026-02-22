@@ -152,3 +152,26 @@ async def test_sync_success_updates_timestamp():
 
     assert "tenant-ok" in _pd_sync_timestamps
     assert _pd_sync_timestamps["tenant-ok"] > 0
+
+
+class TestFirstSyncTimeout:
+    """First PD sync should not block indefinitely."""
+
+    @pytest.mark.asyncio
+    async def test_first_sync_has_timeout(self):
+        """If PD API is slow, first sync should timeout and not block forever."""
+        import asyncio
+        from unittest.mock import AsyncMock, patch
+
+        async def slow_sync(tenant_id):
+            await asyncio.sleep(30)  # Simulate very slow API
+
+        with patch("src.web.routes._background_pd_sync", side_effect=slow_sync):
+            with patch("src.web.routes._pd_sync_timestamps", {}):
+                from src.web.routes import _maybe_trigger_pd_sync
+                # Should complete within ~8s timeout, not 30s
+                import time
+                start = time.time()
+                await _maybe_trigger_pd_sync("tenant-slow")
+                elapsed = time.time() - start
+                assert elapsed < 12, f"First sync took {elapsed}s, should timeout at ~8s"

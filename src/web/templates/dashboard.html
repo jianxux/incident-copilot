@@ -374,10 +374,11 @@
     }
 
     function incidentRow(incident) {
+        const incId = incident.incident_id || incident.id || '';
         const a = document.createElement('a');
-        a.href = `/dashboard/incident/${incident.incident_id}`;
+        a.href = `/dashboard/incident/${incId}`;
         a.className = 'block px-4 sm:px-6 py-3 sm:py-4 hover:bg-white/60 dark:hover:bg-slate-900/70 transition-colors group';
-        a.dataset.incidentId = incident.incident_id;
+        a.dataset.incidentId = incId;
 
         const title = (incident.title || '').length > 70 ? (incident.title || '').slice(0, 67) + '…' : (incident.title || 'Untitled incident');
         const sev = (incident.severity || 'medium').toLowerCase();
