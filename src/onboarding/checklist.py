@@ -13,7 +13,6 @@ CHECKLIST_STEPS = [
     "connect_datadog",
     "add_services",
     "run_test",
-    "go_live",
 ]
 
 # Optional steps don't count toward progress percentage
@@ -69,6 +68,5 @@ def _title(step: str) -> str:
         "connect_datadog": "Connect Datadog (optional)",
         "add_services": "Add services",
         "run_test": "Run a test incident",
-        "go_live": "Go live",
     }
     return titles.get(step, step)
