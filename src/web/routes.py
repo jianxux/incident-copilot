@@ -957,9 +957,14 @@ async def handoff_page(request: Request):
 
 
 @router.get("/incident/{incident_id}", response_class=HTMLResponse)
-async def incident_detail(request: Request, incident_id: str):
+async def incident_detail(
+    request: Request,
+    incident_id: str,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
     """Incident detail page showing full context card."""
-    incident = await incident_store.get_incident(incident_id)
+    tenant_id = auth_data.get("tenant_id")
+    incident = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
 
     if not incident:
         return templates.TemplateResponse(
@@ -984,9 +989,14 @@ async def incident_detail(request: Request, incident_id: str):
 
 
 @router.get("/incident/{incident_id}/chat", response_class=HTMLResponse)
-async def incident_chat(request: Request, incident_id: str):
+async def incident_chat(
+    request: Request,
+    incident_id: str,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
     """Full-page AI Copilot chat for an incident."""
-    incident = await incident_store.get_incident(incident_id)
+    tenant_id = auth_data.get("tenant_id")
+    incident = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
 
     if not incident:
         return templates.TemplateResponse(
@@ -1011,11 +1021,16 @@ async def incident_chat(request: Request, incident_id: str):
 
 
 @router.get("/incident/{incident_id}/timeline", response_class=HTMLResponse)
-async def incident_timeline(request: Request, incident_id: str):
+async def incident_timeline(
+    request: Request,
+    incident_id: str,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
     """Interactive timeline view for an incident."""
     from .timeline import TimelineBuilder, TimelineEventType, format_duration
 
-    incident = await incident_store.get_incident(incident_id)
+    tenant_id = auth_data.get("tenant_id")
+    incident = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
 
     if not incident:
         return templates.TemplateResponse(
