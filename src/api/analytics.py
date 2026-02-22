@@ -1,12 +1,23 @@
 """API routes for analytics and MTTR metrics."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from typing import Literal
 
 import structlog
 from fastapi import APIRouter, Query
 
 from ..analytics import AnalyticsTracker, analytics_store
-from ..analytics.models import IncidentMetrics, MTTRStats, PeriodComparison
+from ..analytics.models import (
+    AnalyticsIncidentSummary,
+    AnalyticsSummaryResponse,
+    HeatmapData,
+    IncidentMetrics,
+    MTTRStats,
+    PeriodComparison,
+    ServiceHealth,
+    TeamPerformance,
+    TrendData,
+)
 
 logger = structlog.get_logger()
 
@@ -15,24 +26,124 @@ router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 tracker = AnalyticsTracker()
 
 
+def _demo_team_performance() -> list[TeamPerformance]:
+    return [
+        TeamPerformance(
+            team_id="team-platform",
+            team_name="Platform",
+            incidents_handled=42,
+            avg_response_time_minutes=7.5,
+            avg_resolution_time_hours=1.8,
+            on_call_hours=216,
+            escalation_rate=0.12,
+        ),
+        TeamPerformance(
+            team_id="team-api",
+            team_name="API",
+            incidents_handled=31,
+            avg_response_time_minutes=9.2,
+            avg_resolution_time_hours=2.4,
+            on_call_hours=192,
+            escalation_rate=0.16,
+        ),
+        TeamPerformance(
+            team_id="team-infra",
+            team_name="Infrastructure",
+            incidents_handled=18,
+            avg_response_time_minutes=6.1,
+            avg_resolution_time_hours=2.9,
+            on_call_hours=168,
+            escalation_rate=0.08,
+        ),
+    ]
+
+
+def _demo_service_health() -> list[ServiceHealth]:
+    return [
+        ServiceHealth(
+            service_id="svc-auth",
+            service_name="Authentication",
+            incident_count=9,
+            critical_count=1,
+            uptime_percentage=99.93,
+            last_incident="2026-02-20T14:00:00Z",
+            trend="stable",
+        ),
+        ServiceHealth(
+            service_id="svc-payments",
+            service_name="Payments",
+            incident_count=6,
+            critical_count=0,
+            uptime_percentage=99.97,
+            last_incident="2026-02-18T22:30:00Z",
+            trend="improving",
+        ),
+        ServiceHealth(
+            service_id="svc-search",
+            service_name="Search",
+            incident_count=12,
+            critical_count=2,
+            uptime_percentage=99.82,
+            last_incident="2026-02-21T07:15:00Z",
+            trend="degrading",
+        ),
+    ]
+
+
+def _demo_trends(period: Literal["day", "week", "month", "quarter"]) -> list[TrendData]:
+    if period == "day":
+        points = 1
+    elif period == "week":
+        points = 7
+    elif period == "month":
+        points = 30
+    else:
+        points = 12
+
+    end = datetime.now(timezone.utc).date()
+    trends: list[TrendData] = []
+
+    for idx in range(points):
+        d = end - timedelta(days=points - idx - 1)
+        incidents = 2 + (idx % 4)
+        resolved = max(0, incidents - (idx % 2))
+        trends.append(
+            TrendData(
+                date=d.isoformat(),
+                incidents=incidents,
+                resolved=resolved,
+                mttr_hours=1.2 + (idx % 5) * 0.3,
+                mtta_minutes=8 + (idx % 4) * 2,
+            )
+        )
+
+    return trends
+
+
 @router.get("/mttr", response_model=MTTRStats)
 async def get_mttr_stats(
-    days: int = Query(7, ge=1, le=365, description="Number of days to analyze"),
+    period: Literal["day", "week", "month"] = Query(
+        "week", description="Aggregation period: day, week, or month"
+    ),
     service: str | None = Query(None, description="Filter by service name"),
     severity: str | None = Query(None, description="Filter by severity level"),
 ):
     """
-    Get MTTR statistics for a time period.
+    Get MTTR statistics for a period.
 
-    Returns mean, median, and p90 MTTR values along with incident counts.
+    Maps period to day-count windows: day->1, week->7, month->30.
     """
-    logger.info("api_get_mttr_stats", days=days, service=service, severity=severity)
+    period_to_days = {"day": 1, "week": 7, "month": 30}
+    days = period_to_days[period]
+
+    logger.info("api_get_mttr_stats", period=period, days=days, service=service, severity=severity)
 
     stats = await tracker.get_stats_for_days(
         days=days,
         service_name=service,
         severity=severity,
     )
+    stats.period = period
     return stats
 
 
@@ -96,30 +207,78 @@ async def compare_periods(
     return comparison
 
 
-@router.get("/summary")
+@router.get("/summary", response_model=AnalyticsSummaryResponse)
 async def get_analytics_summary(
-    service: str | None = Query(None, description="Filter by service name"),
+    period: Literal["day", "week", "month", "quarter"] = Query(
+        "week", description="Summary period: day, week, month, or quarter"
+    ),
 ):
-    """
-    Get a high-level analytics summary.
+    """Get a high-level analytics summary as demo data for dashboard views."""
+    logger.info("api_get_analytics_summary", period=period)
 
-    Returns stats for 7d, 30d, and 90d periods with comparisons.
-    """
-    logger.info("api_get_analytics_summary", service=service)
+    incidents = AnalyticsIncidentSummary(
+        total_incidents=97,
+        resolved_incidents=84,
+        open_incidents=13,
+        mttr_hours=2.3,
+        mtta_minutes=9.4,
+        by_severity={
+            "critical": 5,
+            "high": 18,
+            "medium": 33,
+            "low": 28,
+            "info": 13,
+        },
+        by_source={
+            "pagerduty": 38,
+            "datadog": 26,
+            "sentry": 19,
+            "manual": 14,
+        },
+        change_from_previous={
+            "incidents": -7.1,
+            "mttr": -11.3,
+            "mtta": -5.6,
+        },
+    )
 
-    periods = [7, 30, 90]
-    summary = {}
+    return AnalyticsSummaryResponse(
+        period=period,
+        incidents=incidents,
+        team_performance=_demo_team_performance(),
+        service_health=_demo_service_health(),
+        trends=_demo_trends(period),
+    )
 
-    for days in periods:
-        stats = await tracker.get_stats_for_days(days=days, service_name=service)
-        comparison = await tracker.compare_to_previous(days=days, service_name=service)
 
-        summary[f"{days}d"] = {
-            "stats": stats.model_dump(),
-            "comparison": comparison.model_dump(),
-        }
+@router.get("/teams", response_model=list[TeamPerformance])
+async def get_team_performance():
+    """Get team-level performance metrics (demo data)."""
+    return _demo_team_performance()
 
-    return summary
+
+@router.get("/services", response_model=list[ServiceHealth])
+async def get_service_health():
+    """Get service health metrics (demo data)."""
+    return _demo_service_health()
+
+
+@router.get("/heatmap", response_model=list[HeatmapData])
+async def get_heatmap_data():
+    """Get weekly incident heatmap data (7 days x 24 hours = 168 entries)."""
+    data: list[HeatmapData] = []
+    for day in range(7):
+        for hour in range(24):
+            # Simple deterministic pattern for demo visualization.
+            count = (day * 3 + hour) % 9
+            data.append(
+                HeatmapData(
+                    day_of_week=day,
+                    hour_of_day=hour,
+                    incident_count=count,
+                )
+            )
+    return data
 
 
 @router.post("/record/triggered")
