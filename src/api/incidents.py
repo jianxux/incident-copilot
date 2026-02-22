@@ -11,6 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
 from ..auth.middleware import AuthContext, get_auth_context
+from ..config import get_settings
+from ..integrations import GitHubAdapter
 from ..models import Severity
 from ..supabase_client import is_supabase_db_enabled
 from ..web.store import incident_store
@@ -209,6 +211,32 @@ def _map_context_payload(
     data["created_at"] = _iso(created_at or data.get("created_at")) or _now_iso()
 
     return data
+
+
+async def _try_ondemand_enrichment(incident_row: dict[str, Any]) -> dict[str, Any]:
+    service = incident_row.get("service") or incident_row.get("service_name")
+    if not service:
+        return {}
+
+    settings = get_settings()
+    if not settings.github_token:
+        return {}
+
+    try:
+        github_context = await GitHubAdapter(settings).get_context(service)
+        if not github_context:
+            return {}
+
+        payload = github_context.model_dump(mode="json")
+        return {"github": payload, "github_context": payload}
+    except Exception as exc:
+        logger.warning(
+            "ondemand_github_enrichment_failed",
+            error=str(exc),
+            incident_id=incident_row.get("id"),
+            service=service,
+        )
+        return {}
 
 
 def _event_to_timeline(event: dict[str, Any], incident_id: str) -> dict[str, Any]:
@@ -866,9 +894,10 @@ async def get_incident_context(
             card_row = None
 
         if not card_row:
+            enriched_payload = await _try_ondemand_enrichment(row)
             return _map_context_payload(
                 incident_id=incident_id,
-                payload={},
+                payload=enriched_payload,
                 context_id="",
                 created_at=row.get("created_at"),
             )
@@ -885,9 +914,16 @@ async def get_incident_context(
         raise HTTPException(status_code=404, detail="incident_not_found")
 
     if not item.context_card:
+        enriched_payload = await _try_ondemand_enrichment(
+            {
+                "id": item.incident_id,
+                "service": item.service_name,
+                "service_name": item.service_name,
+            }
+        )
         return _map_context_payload(
             incident_id=incident_id,
-            payload={},
+            payload=enriched_payload,
             context_id="",
             created_at=item.triggered_at,
         )
