@@ -285,7 +285,7 @@
                 <div class="flex-1"></div>
 
                 <!-- Quick actions -->
-                <a href="/dashboard/onboarding-wizard" class="hidden sm:inline-flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg bg-brand text-white hover:bg-brand-dark transition">
+                <a id="connect-integrations-btn" href="/dashboard/onboarding-wizard" class="hidden items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-lg bg-brand text-white hover:bg-brand-dark transition">
                     <i class="fas fa-plug"></i>
                     Connect integrations
                 </a>
@@ -475,6 +475,27 @@
                     dropdown.classList.add('hidden');
                 }
             });
+        })();
+
+        // Show "Connect integrations" button only when key integrations are missing
+        (function() {
+            const btn = document.getElementById('connect-integrations-btn');
+            if (!btn) return;
+            const token = localStorage.getItem('access_token');
+            if (!token) { btn.classList.add('sm:inline-flex'); return; }
+            window.icFetch('/api/onboarding/status')
+                .then(r => r.ok ? r.json() : null)
+                .then(data => {
+                    if (!data) { btn.classList.add('sm:inline-flex'); return; }
+                    const ig = data.integrations || data;
+                    const hasAlerting = ig.pagerduty || ig.opsgenie;
+                    const hasSlack = ig.slack;
+                    if (!hasAlerting || !hasSlack) {
+                        btn.classList.add('sm:inline-flex');
+                    }
+                    // If both connected, button stays hidden
+                })
+                .catch(() => { btn.classList.add('sm:inline-flex'); });
         })();
 
         // Keyboard shortcuts
