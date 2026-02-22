@@ -35,6 +35,11 @@
     </div>
 </div>
 
+<div id="analysis-status" class="hidden mb-6 bg-blue-50 border border-blue-200 text-blue-900 rounded-xl px-4 py-3 text-sm">
+    <i class="fas fa-spinner fa-spin mr-2"></i>
+    <span id="analysis-status-text">Analyzing your incidents...</span>
+</div>
+
 <!-- Summary Stats Cards -->
 <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
     <div class="bg-white rounded-xl p-5 border border-slate-200 card-hover transition-all duration-200">
@@ -198,6 +203,8 @@
 
 <script>
 let currentDays = 7;
+let autoAnalysisTriggered = false;
+let analysisPollingTimer = null;
 
 function setDays(days) {
     currentDays = days;
@@ -228,8 +235,53 @@ async function loadSummary() {
         
         document.getElementById('stat-total-insights').textContent = data.total_insights || 0;
         document.getElementById('stat-critical').textContent = data.critical_count || 0;
+
+        if (data.analysis_pending) {
+            showAnalysisStatus('Analyzing your incidents...');
+            scheduleAnalysisRefresh();
+            return;
+        }
+
+        if ((data.total_insights || 0) === 0 && !autoAnalysisTriggered) {
+            autoAnalysisTriggered = true;
+            await autoRunAnalysis();
+            return;
+        }
+
+        hideAnalysisStatus();
     } catch (error) {
         console.error('Failed to load summary:', error);
+    }
+}
+
+function showAnalysisStatus(message) {
+    const el = document.getElementById('analysis-status');
+    const textEl = document.getElementById('analysis-status-text');
+    textEl.textContent = message;
+    el.classList.remove('hidden');
+}
+
+function hideAnalysisStatus() {
+    const el = document.getElementById('analysis-status');
+    el.classList.add('hidden');
+}
+
+function scheduleAnalysisRefresh() {
+    if (analysisPollingTimer) return;
+    analysisPollingTimer = setTimeout(async () => {
+        analysisPollingTimer = null;
+        await refreshData();
+    }, 1500);
+}
+
+async function autoRunAnalysis() {
+    showAnalysisStatus('Analyzing your incidents...');
+    try {
+        await window.icFetch(`/api/insights/analyze?days=${currentDays}`, { method: 'POST' });
+        scheduleAnalysisRefresh();
+    } catch (error) {
+        console.error('Auto analysis failed:', error);
+        hideAnalysisStatus();
     }
 }
 
