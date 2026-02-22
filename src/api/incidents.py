@@ -443,6 +443,13 @@ async def list_incidents(
     """List incidents with frontend-compatible filters and pagination."""
     tenant_id = await _require_tenant(auth)
 
+    # Trigger PagerDuty background sync (batch upsert, non-blocking after first load)
+    try:
+        from ..web.routes import _maybe_trigger_pd_sync
+        await _maybe_trigger_pd_sync(tenant_id)
+    except Exception:
+        pass  # PD sync is best-effort; don't break incident listing
+
     statuses = [s for s in _extract_multi_query(request, "status", status) if s in _ALLOWED_STATUSES]
     severities = [s for s in _extract_multi_query(request, "severity", severity) if s in _ALLOWED_SEVERITIES]
     services = _extract_multi_query(request, "service", service)
