@@ -109,6 +109,24 @@ def _compute_duration_ms(start: Any, end: Any) -> int | None:
     return max(0, int((end_dt - start_dt).total_seconds() * 1000))
 
 
+def _compute_duration_seconds(start: Any, end: Any) -> int | None:
+    start_dt = _as_datetime(start)
+    end_dt = _as_datetime(end)
+    if not start_dt or not end_dt:
+        return None
+    return max(0, int((end_dt - start_dt).total_seconds()))
+
+
+def _extract_verdict_summary(row: dict[str, Any]) -> str | None:
+    metadata = _extract_metadata(row)
+    verdict = metadata.get("verdict") or metadata.get("ai_verdict") or {}
+    if isinstance(verdict, dict):
+        return verdict.get("summary") or verdict.get("one_liner")
+    if isinstance(verdict, str):
+        return verdict[:200]
+    return None
+
+
 def _extract_metadata(row: dict[str, Any]) -> dict[str, Any]:
     metadata = row.get("metadata") or {}
     return metadata if isinstance(metadata, dict) else {}
@@ -128,20 +146,33 @@ def _format_incident(row: dict[str, Any]) -> dict[str, Any]:
     tta = _compute_duration_ms(created_at, acknowledged_at)
     ttr = _compute_duration_ms(created_at, resolved_at)
 
+    processed_at = _iso(row.get("processed_at"))
+    triggered_at = _iso(row.get("triggered_at")) or created_at
+
     incident = {
         "id": str(row.get("id", "")),
+        "incident_id": str(row.get("id", "")),
         "title": row.get("title") or "Untitled incident",
         "description": row.get("description"),
         "severity": _normalize_severity(row.get("severity")),
         "status": _normalize_status(row.get("status")),
         "source": row.get("source") or "manual",
         "service": row.get("service") or "unknown",
+        "service_name": row.get("service") or "unknown",
         "assignee": metadata.get("assignee") or row.get("assigned_to"),
         "team": metadata.get("team"),
         "created_at": created_at,
         "updated_at": _iso(row.get("updated_at")) or created_at,
+        "triggered_at": triggered_at,
+        "processed_at": processed_at,
         "acknowledged_at": acknowledged_at,
         "resolved_at": resolved_at,
+        "duration_seconds": _compute_duration_seconds(
+            row.get("triggered_at") or row.get("created_at"),
+            row.get("processed_at") or row.get("resolved_at"),
+        ),
+        "verdict_summary": _extract_verdict_summary(row),
+        "source_url": row.get("source_url") or "",
         "ttd": metadata.get("ttd") if isinstance(metadata.get("ttd"), int) else None,
         "tta": tta,
         "ttr": ttr,
