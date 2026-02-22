@@ -1,6 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
+{% set incident_metadata = incident.metadata or {} %}
+{% set provider = incident_metadata.get('provider', incident.source or 'unknown') %}
+{% set is_pd_synced = provider == 'pagerduty' %}
+{% set pd_status = incident_metadata.get('status', 'unknown') %}
+{% set urgency = incident_metadata.get('urgency', 'unknown') %}
+{% set assigned_to = incident_metadata.get('assigned_to', []) %}
+{% set escalation_policy = incident_metadata.get('escalation_policy', '') %}
+{% set description = incident_metadata.get('description') or (card.title if card else incident.title) %}
+{% set pagerduty_url = incident.source_url or (card.alert_url if card else None) %}
+
 <!-- Back Link -->
 <a href="/dashboard" class="inline-flex items-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:text-white transition mb-6">
     <i class="fas fa-arrow-left mr-2"></i>
@@ -37,13 +47,71 @@
                 <i class="fas fa-robot mr-2"></i>
                 Copilot Chat
             </a>
-            {% if card and card.alert_url %}
-            <a href="{{ card.alert_url }}" target="_blank" 
+            {% if pagerduty_url %}
+            <a href="{{ pagerduty_url }}" target="_blank" 
                class="bg-stone-100 dark:bg-slate-800/60 hover:bg-slate-200 text-slate-900 dark:text-white px-3 sm:px-4 py-2 rounded-lg transition flex items-center text-sm">
                 <i class="fas fa-external-link-alt mr-2"></i>
                 PagerDuty
             </a>
             {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Incident Details -->
+<div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur rounded-2xl border border-stone-200 dark:border-slate-800 p-4 sm:p-6 mb-4 sm:mb-6">
+    <h2 class="text-base sm:text-lg font-semibold text-slate-900 dark:text-white flex items-center mb-4">
+        <i class="fas fa-circle-info mr-2 sm:mr-3 text-[#e05a3a]"></i>
+        Incident Details
+    </h2>
+    <div class="space-y-4">
+        <div>
+            <h3 class="text-xs uppercase tracking-wide text-slate-600 dark:text-slate-300 font-semibold mb-1">Description</h3>
+            <p class="text-slate-900 dark:text-white">{{ description }}</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+            <div>
+                <h3 class="text-xs uppercase tracking-wide text-slate-600 dark:text-slate-300 font-semibold mb-1">Source</h3>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-[#e05a3a]/10 text-[#e05a3a] font-medium">
+                    <i class="fas fa-bell mr-1.5"></i>
+                    {% if provider == 'pagerduty' %}PagerDuty{% elif provider == 'opsgenie' %}Opsgenie{% else %}{{ provider | replace('_', ' ') | title }}{% endif %}
+                </span>
+            </div>
+            <div>
+                <h3 class="text-xs uppercase tracking-wide text-slate-600 dark:text-slate-300 font-semibold mb-1">PD Status</h3>
+                <p class="text-slate-900 dark:text-white">{{ pd_status | replace('_', ' ') | title }}</p>
+            </div>
+            <div>
+                <h3 class="text-xs uppercase tracking-wide text-slate-600 dark:text-slate-300 font-semibold mb-1">Urgency</h3>
+                <p class="text-slate-900 dark:text-white">{{ urgency | replace('_', ' ') | title }}</p>
+            </div>
+            <div>
+                <h3 class="text-xs uppercase tracking-wide text-slate-600 dark:text-slate-300 font-semibold mb-1">Assigned To</h3>
+                {% if assigned_to %}
+                <p class="text-slate-900 dark:text-white">{{ assigned_to | join(', ') }}</p>
+                {% else %}
+                <p class="text-slate-600 dark:text-slate-300">Unassigned</p>
+                {% endif %}
+            </div>
+            <div>
+                <h3 class="text-xs uppercase tracking-wide text-slate-600 dark:text-slate-300 font-semibold mb-1">Escalation Policy</h3>
+                {% if escalation_policy %}
+                <p class="text-slate-900 dark:text-white">{{ escalation_policy }}</p>
+                {% else %}
+                <p class="text-slate-600 dark:text-slate-300">None</p>
+                {% endif %}
+            </div>
+            <div>
+                <h3 class="text-xs uppercase tracking-wide text-slate-600 dark:text-slate-300 font-semibold mb-1">PagerDuty</h3>
+                {% if pagerduty_url %}
+                <a href="{{ pagerduty_url }}" target="_blank" class="inline-flex items-center text-[#e05a3a] hover:text-[#c94f34] font-medium">
+                    Open Incident
+                    <i class="fas fa-arrow-up-right-from-square ml-1.5 text-xs"></i>
+                </a>
+                {% else %}
+                <p class="text-slate-600 dark:text-slate-300">No external link</p>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
@@ -69,6 +137,30 @@
                 <span class="text-slate-600 dark:text-slate-300 ml-2">{{ incident.triggered_at | format_datetime }}</span>
             </div>
         </div>
+        {% if pd_status in ['acknowledged', 'resolved'] and incident_metadata.get('acknowledged_at') %}
+        <div class="flex items-center space-x-4">
+            <div class="w-3 h-3 rounded-full bg-amber-500"></div>
+            <div>
+                <span class="text-slate-900 dark:text-white font-medium">Acknowledged</span>
+                <span class="text-slate-600 dark:text-slate-300 ml-2">{{ incident_metadata.get('acknowledged_at') }}</span>
+            </div>
+        </div>
+        {% endif %}
+        {% if pd_status == 'resolved' and (incident_metadata.get('resolved_at') or incident.processed_at) %}
+        <div class="flex items-center space-x-4">
+            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+            <div>
+                <span class="text-slate-900 dark:text-white font-medium">Resolved</span>
+                <span class="text-slate-600 dark:text-slate-300 ml-2">
+                    {% if incident_metadata.get('resolved_at') %}
+                        {{ incident_metadata.get('resolved_at') }}
+                    {% else %}
+                        {{ incident.processed_at | format_datetime }}
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        {% endif %}
         {% if incident.processed_at %}
         <div class="flex items-center space-x-4">
             <div class="w-3 h-3 rounded-full {% if incident.status == 'completed' %}bg-green-500{% else %}bg-red-500{% endif %}"></div>
@@ -83,6 +175,26 @@
         {% endif %}
     </div>
 </div>
+
+{% if is_pd_synced and not (card and card.github) %}
+<div id="ondemand-github-section" class="hidden bg-white/80 dark:bg-slate-900/60 backdrop-blur rounded-2xl border border-stone-200 dark:border-slate-800 p-6 mb-4 sm:mb-6">
+    <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center">
+        <i class="fab fa-github mr-3 text-slate-600 dark:text-slate-300"></i>
+        Recent Deployments
+    </h2>
+
+    <div id="ondemand-github-repo" class="text-sm text-slate-600 dark:text-slate-300 mb-4 hidden">
+        <i class="fas fa-code-branch mr-2"></i>
+        <span id="ondemand-github-repo-name"></span>
+    </div>
+
+    <div id="ondemand-github-deploys" class="space-y-3"></div>
+    <div id="ondemand-github-codeowners" class="mt-4 pt-4 border-t border-stone-200 dark:border-slate-800 hidden">
+        <h4 class="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-2">Code Owners</h4>
+        <div id="ondemand-github-codeowners-list" class="flex flex-wrap gap-2"></div>
+    </div>
+</div>
+{% endif %}
 
 {% if card %}
 <!-- AI Copilot Chat -->
@@ -497,6 +609,76 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+function formatTimestamp(value) {
+    if (!value) return 'Unknown time';
+    const dt = new Date(value);
+    return Number.isNaN(dt.getTime()) ? String(value) : dt.toLocaleString();
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const section = document.getElementById('ondemand-github-section');
+    if (!section) return;
+
+    try {
+        const response = await fetch(`/api/incidents/${INCIDENT_ID}/context`);
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const github = data.github_context || data.github;
+        if (!github || (typeof github !== 'object')) return;
+
+        const deploys = Array.isArray(github.recent_deploys) ? github.recent_deploys.slice(0, 5) : [];
+        const codeowners = Array.isArray(github.codeowners) ? github.codeowners : [];
+
+        if (deploys.length === 0 && codeowners.length === 0) return;
+
+        const repoName = github.repo;
+        if (repoName) {
+            const repoWrap = document.getElementById('ondemand-github-repo');
+            const repoEl = document.getElementById('ondemand-github-repo-name');
+            if (repoWrap && repoEl) {
+                repoEl.textContent = repoName;
+                repoWrap.classList.remove('hidden');
+            }
+        }
+
+        const deploysEl = document.getElementById('ondemand-github-deploys');
+        if (deploysEl) {
+            if (deploys.length > 0) {
+                deploysEl.innerHTML = deploys.map((deploy) => `
+                    <div class="bg-stone-100/60 dark:bg-slate-800/50 rounded-lg p-3">
+                        <div class="flex items-center justify-between">
+                            <code class="text-[#e05a3a] font-mono text-sm">${escapeHtml(deploy.short_sha || '').slice(0, 12) || 'unknown'}</code>
+                            <span class="text-slate-600 dark:text-slate-300 text-sm">${escapeHtml(formatTimestamp(deploy.timestamp))}</span>
+                        </div>
+                        <p class="text-slate-700 text-sm mt-1 truncate">${escapeHtml(deploy.message || 'No commit message')}</p>
+                        <div class="flex items-center space-x-3 mt-2 text-xs text-slate-600 dark:text-slate-300">
+                            <span><i class="fas fa-user mr-1"></i>${escapeHtml(deploy.author || 'unknown')}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                deploysEl.innerHTML = '<p class="text-slate-600 dark:text-slate-300">No recent deployments found</p>';
+            }
+        }
+
+        if (codeowners.length > 0) {
+            const ownersWrap = document.getElementById('ondemand-github-codeowners');
+            const ownersEl = document.getElementById('ondemand-github-codeowners-list');
+            if (ownersWrap && ownersEl) {
+                ownersEl.innerHTML = codeowners.map((owner) => (
+                    `<span class="bg-stone-100 dark:bg-slate-800/60 text-slate-700 px-2 py-1 rounded text-sm">${escapeHtml(owner)}</span>`
+                )).join('');
+                ownersWrap.classList.remove('hidden');
+            }
+        }
+
+        section.classList.remove('hidden');
+    } catch (error) {
+        // Best effort UI enhancement; do not surface network errors.
+    }
+});
+
 async function sendMessage(event) {
     event.preventDefault();
     const input = document.getElementById('copilot-input');
@@ -508,7 +690,7 @@ async function sendMessage(event) {
     addTypingIndicator();
     
     try {
-        const response = await fetch('/copilot/chat', {
+        const response = await window.icFetch('/copilot/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -536,7 +718,7 @@ async function getSuggestions() {
     addTypingIndicator();
     
     try {
-        const response = await fetch(`/copilot/suggestions/${INCIDENT_ID}`);
+        const response = await window.icFetch(`/copilot/suggestions/${INCIDENT_ID}`);
         const data = await response.json();
         removeTypingIndicator();
         
@@ -559,7 +741,7 @@ async function generateSummary() {
     addTypingIndicator();
     
     try {
-        const response = await fetch(`/copilot/summary/${INCIDENT_ID}`);
+        const response = await window.icFetch(`/copilot/summary/${INCIDENT_ID}`);
         const data = await response.json();
         removeTypingIndicator();
         
@@ -581,18 +763,7 @@ async function generateSummary() {
     }
 }
 
-async function startSession() {
-    try {
-        await fetch(`/copilot/start/${INCIDENT_ID}?service_name={{ incident.service_name }}`, {
-            method: 'POST'
-        });
-    } catch (error) {
-        console.error('Failed to start session:', error);
-    }
-}
-
-// Start session when page loads
-document.addEventListener('DOMContentLoaded', startSession);
+// Copilot session starts on-demand when user sends first message via WebSocket
 </script>
 
 {% endblock %}

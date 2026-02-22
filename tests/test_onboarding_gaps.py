@@ -40,12 +40,12 @@ async def test_checklist_db_set_step_updates(tmp_path):
 async def test_checklist_db_persistence(tmp_path):
     db_path = tmp_path / "onboarding.db"
     store = ChecklistStore(db_path=db_path)
-    await store.set_step("tenant-1", "run_test", True)
+    await store.set_step("tenant-1", "add_services", True)
 
     store2 = ChecklistStore(db_path=db_path)
     checklist = await store2.get("tenant-1")
 
-    assert checklist.completed["run_test"] is True
+    assert checklist.completed["add_services"] is True
 
 
 @pytest.mark.asyncio

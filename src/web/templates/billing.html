@@ -113,9 +113,7 @@ async function loadCurrentPlan() {
     if (!token) return;
     
     try {
-        const response = await fetch('/api/billing/current', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await window.icFetch('/api/billing/current');
         const data = await response.json();
         
         document.getElementById('current-plan').textContent = data.plan_info.name;
@@ -140,11 +138,10 @@ async function upgrade(plan) {
     }
     
     try {
-        const response = await fetch('/api/billing/checkout', {
+        const response = await window.icFetch('/api/billing/checkout', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
             },
             body: JSON.stringify({ plan }),
         });
@@ -163,9 +160,8 @@ async function upgrade(plan) {
 
 async function openPortal() {
     try {
-        const response = await fetch('/api/billing/portal', {
+        const response = await window.icFetch('/api/billing/portal', {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
         });
         
         const data = await response.json();

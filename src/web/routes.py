@@ -32,6 +32,10 @@ from .store import incident_store
 
 logger = structlog.get_logger()
 
+# Background PagerDuty auto-sync: track last sync time per tenant (epoch seconds)
+_pd_sync_timestamps: dict[str, float] = {}
+_PD_SYNC_INTERVAL = 300  # seconds (5 minutes)
+
 # Set up templates
 templates_dir = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
@@ -85,6 +89,17 @@ router = APIRouter(
 )
 
 
+def _map_status(raw_status: str | None) -> str:
+    """Normalize processing statuses to lifecycle statuses."""
+    status_map = {
+        "processing": "triggered",
+        "completed": "resolved",
+        "error": "triggered",
+    }
+    normalized = str(raw_status or "processing").strip().lower()
+    return status_map.get(normalized, normalized)
+
+
 def mask_secret(value: str) -> str:
     """Mask a secret, showing only first/last 4 chars if long enough."""
     if not value:
@@ -116,11 +131,16 @@ def severity_color(severity: Severity) -> str:
 def status_color(status: str) -> str:
     """Get Tailwind color class for status."""
     colors = {
+        "triggered": "bg-yellow-500",
+        "acknowledged": "bg-blue-500",
+        "resolved": "bg-green-500",
+        "error": "bg-red-500",
+        # Backward compatibility for legacy processing statuses.
         "processing": "bg-yellow-500",
         "completed": "bg-green-500",
-        "error": "bg-red-500",
     }
-    return colors.get(status, "bg-gray-500")
+    normalized = str(status or "").strip().lower()
+    return colors.get(normalized, "bg-gray-500")
 
 
 def tenant_slug_from_auth(auth: AuthContext) -> str:
@@ -221,6 +241,261 @@ async def health_check():
     return {"status": "ok", "service": "incident-copilot"}
 
 
+def _pd_id_to_uuid(pd_id: str) -> str:
+    """Convert a PagerDuty incident ID to a deterministic UUID5.
+
+    Same PD ID always produces the same UUID, so upserts work correctly.
+    """
+    import uuid
+    PD_NAMESPACE = uuid.UUID("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+    return str(uuid.uuid5(PD_NAMESPACE, pd_id))
+
+
+def _parse_iso_datetime(value: object, fallback: datetime | None = None) -> datetime | None:
+    """Parse ISO-ish datetime values and normalize to UTC."""
+    if isinstance(value, datetime):
+        return value.astimezone(UTC) if value.tzinfo else value.replace(tzinfo=UTC)
+
+    if isinstance(value, str):
+        raw = value.strip()
+        if raw:
+            normalized = raw.replace("Z", "+00:00")
+            try:
+                parsed = datetime.fromisoformat(normalized)
+                return parsed.astimezone(UTC) if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+            except ValueError:
+                pass
+            try:
+                return datetime.strptime(raw, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
+            except ValueError:
+                pass
+
+    return fallback
+
+
+def _build_pd_upsert_rows(
+    pd_incidents: list[dict], tenant_id: str
+) -> tuple[list[dict], list[dict]]:
+    """Convert PagerDuty API incidents into DB upsert rows + summary list.
+
+    Returns (rows_for_db, incident_summaries).
+    """
+    now_iso = datetime.now(UTC).isoformat()
+    rows = []
+    summaries = []
+
+    for inc in pd_incidents:
+        inc_id = inc.get("id", "")
+        if not inc_id:
+            continue
+
+        urgency = inc.get("urgency", "low")
+        severity_val = Severity.HIGH.value if urgency == "high" else Severity.LOW.value
+
+        service_summary = ""
+        svc = inc.get("service")
+        if isinstance(svc, dict):
+            service_summary = svc.get("summary", "")
+
+        triggered_at = _parse_iso_datetime(inc.get("created_at"), datetime.now(UTC))
+        if triggered_at is None:
+            triggered_at = datetime.now(UTC)
+
+        assigned_to = []
+        for assignment in inc.get("assignments", []):
+            assignee = assignment.get("assignee", {})
+            if isinstance(assignee, dict) and assignee.get("summary"):
+                assigned_to.append(assignee["summary"])
+
+        ep = inc.get("escalation_policy", {})
+        ep_summary = ep.get("summary", "") if isinstance(ep, dict) else ""
+
+        pd_status = inc.get("status", "triggered")
+        if pd_status == "resolved":
+            db_status = "resolved"
+        elif pd_status == "acknowledged":
+            db_status = "acknowledged"
+        else:
+            db_status = "triggered"
+
+        metadata = {
+            "provider": "pagerduty",
+            "status": pd_status,
+            "urgency": urgency,
+            "assigned_to": assigned_to,
+            "escalation_policy": ep_summary,
+        }
+
+        row = {
+            "id": _pd_id_to_uuid(inc_id),
+            "tenant_id": tenant_id,
+            "title": inc.get("title", ""),
+            "service": service_summary,
+            "severity": severity_val,
+            "status": db_status,
+            "triggered_at": triggered_at.isoformat(),
+            "source": "pagerduty",
+            "source_url": inc.get("html_url", ""),
+            "source_id": inc_id,
+            "metadata": metadata,
+            "created_at": triggered_at.isoformat(),
+            "updated_at": now_iso,
+        }
+
+        if pd_status == "resolved":
+            resolved_dt = _parse_iso_datetime(
+                inc.get("last_status_change_at"),
+                _parse_iso_datetime(inc.get("resolved_at"), datetime.now(UTC)),
+            )
+            if resolved_dt is None:
+                resolved_dt = datetime.now(UTC)
+            resolved_iso = resolved_dt.isoformat()
+            row["resolved_at"] = resolved_iso
+            row["processed_at"] = resolved_iso
+            metadata["resolved_at"] = resolved_iso
+
+        rows.append(row)
+
+        summaries.append({
+            "id": inc_id,
+            "title": inc.get("title", ""),
+            "status": pd_status,
+        })
+
+    return rows, summaries
+
+
+async def _background_pd_sync(tenant_id: str) -> None:
+    """Fire-and-forget background sync of PagerDuty incidents for a tenant."""
+    try:
+        # 1. Resolve PD token (oauth_token_store then integration_configs)
+        oauth_token = ""
+        api_key = ""
+
+        try:
+            from ..integrations.oauth_tokens import oauth_token_store
+
+            token_rec = await oauth_token_store.get_token(tenant_id, "pagerduty")
+            if token_rec and token_rec.access_token:
+                oauth_token = token_rec.access_token
+                logger.info("pd_sync_token_from_oauth_store", tenant_id=tenant_id)
+            else:
+                logger.info("pd_sync_no_token_in_oauth_store", tenant_id=tenant_id)
+        except Exception as exc:
+            logger.warning("pd_sync_oauth_store_error", tenant_id=tenant_id, error=str(exc))
+
+        if not oauth_token:
+            try:
+                from ..db.supabase_db import get_db
+                from ..security.crypto import decrypt_json
+
+                db = get_db(use_admin=True)
+                rows = db.client.table("integration_configs").select("config").eq(
+                    "tenant_id", tenant_id
+                ).eq("type", "pagerduty").eq("is_active", True).limit(1).execute()
+
+                if rows.data:
+                    config = rows.data[0].get("config", {})
+                    encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
+                    if encrypted:
+                        decrypted = decrypt_json(encrypted)
+                        oauth = decrypted.get("oauth", {})
+                        oauth_token = oauth.get("access_token", "")
+                        api_key = decrypted.get("api_key", "")
+                        logger.info("pd_sync_token_from_integration_configs", tenant_id=tenant_id, has_oauth=bool(oauth_token), has_api_key=bool(api_key))
+                    else:
+                        logger.info("pd_sync_no_encrypted_config", tenant_id=tenant_id)
+                else:
+                    logger.info("pd_sync_no_integration_config_row", tenant_id=tenant_id)
+            except Exception as exc:
+                logger.warning("pd_sync_integration_configs_error", tenant_id=tenant_id, error=str(exc))
+
+        token = oauth_token or api_key
+        if not token:
+            logger.warning("pd_sync_no_token_found", tenant_id=tenant_id)
+            return
+
+        pd_auth = f"Bearer {oauth_token}" if oauth_token else f"Token token={api_key}"
+
+        # 2. Fetch last 25 incidents from PagerDuty
+        import httpx
+
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                "https://api.pagerduty.com/incidents",
+                headers={
+                    "Authorization": pd_auth,
+                    "Content-Type": "application/json",
+                    "Accept": "application/vnd.pagerduty+json;version=2",
+                },
+                params={
+                    "statuses[]": ["triggered", "acknowledged", "resolved"],
+                    "sort_by": "created_at:desc",
+                    "limit": 25,
+                },
+            )
+            if resp.status_code != 200:
+                logger.warning("bg_pd_sync_api_error", status=resp.status_code, tenant_id=tenant_id)
+                return
+
+            pd_incidents = resp.json().get("incidents", [])
+
+        # 3. Batch-upsert all incidents in a single DB call
+        rows, _ = _build_pd_upsert_rows(pd_incidents, tenant_id)
+
+        if rows:
+            from ..db.supabase_db import get_db
+
+            db = get_db(use_admin=True)
+
+            def _batch_upsert():
+                return db.client.table("incidents").upsert(
+                    rows, on_conflict="id"
+                ).execute()
+
+            await db._to_thread(_batch_upsert)
+
+        # 4. Update timestamp on success
+        import time
+
+        _pd_sync_timestamps[tenant_id] = time.time()
+        logger.info("bg_pd_sync_complete", tenant_id=tenant_id, synced=len(pd_incidents))
+
+    except Exception as exc:
+        logger.warning(
+            "bg_pd_sync_failed",
+            tenant_id=tenant_id,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
+
+
+async def _maybe_trigger_pd_sync(tenant_id: str) -> bool:
+    """Sync PD incidents if stale. Returns True if sync was awaited (first time)."""
+    import time
+
+    now = time.time()
+    last = _pd_sync_timestamps.get(tenant_id, 0)
+    if now - last < _PD_SYNC_INTERVAL:
+        return False
+
+    first_sync = last == 0  # Never synced before for this tenant
+    # Mark immediately to prevent duplicate launches
+    _pd_sync_timestamps[tenant_id] = now
+
+    if first_sync:
+        # First sync: await with a timeout so we don't block too long
+        try:
+            await asyncio.wait_for(_background_pd_sync(tenant_id), timeout=5.0)
+        except asyncio.TimeoutError:
+            logger.warning("pd_first_sync_timeout", tenant_id=tenant_id)
+        return True
+    else:
+        # Subsequent syncs: fire-and-forget
+        asyncio.create_task(_background_pd_sync(tenant_id))
+        return False
+
+
 @landing_router.get("/api/incidents")
 async def api_incidents(
     request: Request,
@@ -229,14 +504,8 @@ async def api_incidents(
     """Tenant-scoped JSON API endpoint for incidents list."""
     tenant_id = auth_data["tenant_id"]
 
-    def _map_status(raw_status: str | None) -> str:
-        status_map = {
-            "processing": "triggered",
-            "completed": "resolved",
-            "error": "triggered",
-        }
-        normalized = str(raw_status or "processing").strip().lower()
-        return status_map.get(normalized, normalized)
+    # Sync PagerDuty incidents — first load awaits, subsequent are background
+    await _maybe_trigger_pd_sync(tenant_id)
 
     # When Supabase DB is disabled, fall back to in-memory store.
     from ..supabase_client import is_supabase_db_enabled
@@ -260,6 +529,9 @@ async def api_incidents(
                     "service_name": i.service_name,
                     "severity": i.severity.value,
                     "status": status,
+                    "source": i.source or "",
+                    "source_url": i.source_url or "",
+                    "source_id": i.source_id or "",
                     "created_at": created_at,
                     "updated_at": updated_at,
                     "triggered_at": triggered_at,
@@ -331,6 +603,121 @@ async def api_incidents(
     }
 
 
+@landing_router.get("/api/incidents/stats")
+async def api_incident_stats(
+    request: Request,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
+    """Return incident statistics: total, open, resolved today, avg MTTR."""
+    tenant_id = auth_data["tenant_id"]
+
+    from ..supabase_client import is_supabase_db_enabled
+
+    if not is_supabase_db_enabled():
+        incidents = await incident_store.get_all_incidents()
+    else:
+        from ..db.supabase_db import get_db
+
+        db = get_db(use_admin=True)
+        rows = await db.list_processing_incidents(
+            tenant_id=tenant_id, limit=500, offset=0
+        )
+        incidents = [
+            type(
+                "Inc",
+                (),
+                {
+                    "status": r.get("status") or "processing",
+                    "processed_at": (
+                        datetime.fromisoformat(
+                            str(r["processed_at"]).replace("Z", "+00:00")
+                        )
+                        if r.get("processed_at")
+                        else None
+                    ),
+                    "triggered_at": (
+                        datetime.fromisoformat(
+                            str(r["triggered_at"]).replace("Z", "+00:00")
+                        )
+                        if r.get("triggered_at")
+                        else None
+                    ),
+                },
+            )()
+            for r in rows
+        ]
+
+    total = len(incidents)
+    open_count = sum(
+        1
+        for i in incidents
+        if _map_status(getattr(i, "status", "processing")) not in ("resolved",)
+    )
+
+    today = datetime.now(UTC).date()
+    resolved_today = 0
+    mttr_values: list[float] = []
+
+    for i in incidents:
+        p = getattr(i, "processed_at", None)
+        t = getattr(i, "triggered_at", None)
+        st = _map_status(getattr(i, "status", "processing"))
+        if st == "resolved" and p:
+            if hasattr(p, "date") and p.date() == today:
+                resolved_today += 1
+            if t and p:
+                mttr_values.append((p - t).total_seconds() / 60.0)
+
+    avg_mttr_minutes = round(sum(mttr_values) / len(mttr_values), 1) if mttr_values else None
+
+    return {
+        "total": total,
+        "open": open_count,
+        "resolved_today": resolved_today,
+        "avg_mttr_minutes": avg_mttr_minutes,
+    }
+
+
+@landing_router.get("/api/incidents/{incident_id}/context")
+async def api_incident_context(
+    incident_id: str,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
+    """Return the context card JSON for a specific incident."""
+    incident = await incident_store.get_incident(incident_id)
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    if not incident.context_card:
+        return {}
+    return incident.context_card.model_dump(mode="json")
+
+
+@landing_router.get("/api/incidents/{incident_id}")
+async def api_incident_detail(
+    incident_id: str,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
+    """Return a single incident by ID."""
+    incident = await incident_store.get_incident(incident_id)
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    return {
+        "id": incident.incident_id,
+        "title": incident.title,
+        "service": incident.service_name,
+        "severity": incident.severity.value,
+        "status": _map_status(incident.status),
+        "created_at": incident.triggered_at.isoformat(),
+        "updated_at": (
+            incident.processed_at.isoformat()
+            if incident.processed_at
+            else incident.triggered_at.isoformat()
+        ),
+        "source": incident.source,
+        "source_url": incident.source_url,
+    }
+
+
 @landing_router.get("/api/dashboard/stats")
 async def api_dashboard_stats(
     request: Request,
@@ -351,12 +738,26 @@ async def api_dashboard_stats(
     db = get_db(use_admin=True)
     rows = await db.list_processing_incidents(tenant_id=tenant_id, limit=100, offset=0)
 
-    by_status: dict[str, int] = {"processing": 0, "completed": 0, "error": 0}
+    by_status: dict[str, int] = {
+        "triggered": 0,
+        "acknowledged": 0,
+        "resolved": 0,
+        "error": 0,
+        # Backward compatibility for existing dashboard consumers.
+        "processing": 0,
+        "completed": 0,
+    }
     by_severity: dict[str, int] = {s.value: 0 for s in Severity}
 
     for r in rows:
-        st = r.get("status") or "processing"
+        st = _map_status(r.get("status") or "processing")
         by_status[st] = by_status.get(st, 0) + 1
+        if st == "resolved":
+            by_status["completed"] += 1
+        elif st in ("triggered", "acknowledged"):
+            by_status["processing"] += 1
+        elif st == "error":
+            by_status["error"] += 1
         sev = r.get("severity") or Severity.MEDIUM.value
         by_severity[sev] = by_severity.get(sev, 0) + 1
 
@@ -664,9 +1065,14 @@ async def handoff_page(request: Request):
 
 
 @router.get("/incident/{incident_id}", response_class=HTMLResponse)
-async def incident_detail(request: Request, incident_id: str):
+async def incident_detail(
+    request: Request,
+    incident_id: str,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
     """Incident detail page showing full context card."""
-    incident = await incident_store.get_incident(incident_id)
+    tenant_id = auth_data.get("tenant_id")
+    incident = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
 
     if not incident:
         return templates.TemplateResponse(
@@ -691,9 +1097,14 @@ async def incident_detail(request: Request, incident_id: str):
 
 
 @router.get("/incident/{incident_id}/chat", response_class=HTMLResponse)
-async def incident_chat(request: Request, incident_id: str):
+async def incident_chat(
+    request: Request,
+    incident_id: str,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
     """Full-page AI Copilot chat for an incident."""
-    incident = await incident_store.get_incident(incident_id)
+    tenant_id = auth_data.get("tenant_id")
+    incident = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
 
     if not incident:
         return templates.TemplateResponse(
@@ -718,11 +1129,16 @@ async def incident_chat(request: Request, incident_id: str):
 
 
 @router.get("/incident/{incident_id}/timeline", response_class=HTMLResponse)
-async def incident_timeline(request: Request, incident_id: str):
+async def incident_timeline(
+    request: Request,
+    incident_id: str,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
     """Interactive timeline view for an incident."""
     from .timeline import TimelineBuilder, TimelineEventType, format_duration
 
-    incident = await incident_store.get_incident(incident_id)
+    tenant_id = auth_data.get("tenant_id")
+    incident = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
 
     if not incident:
         return templates.TemplateResponse(
@@ -1594,6 +2010,140 @@ async def import_pagerduty_services(
         return {"ok": False, "error": str(exc)}
 
 
+@router.post("/api/integrations/pagerduty/sync")
+async def sync_pagerduty_incidents(
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Pull recent incidents from PagerDuty and persist to incident store."""
+    tenant_id = auth.tenant_id or "default"
+
+    try:
+        # Resolve PagerDuty token — same pattern as import_pagerduty_services
+        from ..integrations.oauth_tokens import oauth_token_store
+
+        token_rec = await oauth_token_store.get_token(tenant_id, "pagerduty")
+        oauth_token = ""
+        api_key = ""
+
+        if token_rec and token_rec.access_token:
+            oauth_token = token_rec.access_token
+        else:
+            try:
+                from ..db.supabase_db import get_db
+                from ..security.crypto import decrypt_json
+
+                db = get_db(use_admin=True)
+                rows = db.client.table("integration_configs").select("config").eq(
+                    "tenant_id", tenant_id
+                ).eq("type", "pagerduty").eq("is_active", True).limit(1).execute()
+
+                if rows.data:
+                    config = rows.data[0].get("config", {})
+                    encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
+                    if encrypted:
+                        decrypted = decrypt_json(encrypted)
+                        oauth = decrypted.get("oauth", {})
+                        oauth_token = oauth.get("access_token", "")
+                        api_key = decrypted.get("api_key", "")
+            except Exception as exc:
+                logger.warning("sync_incidents_legacy_lookup_failed", error=str(exc))
+
+        token = oauth_token or api_key
+        if not token:
+            raise HTTPException(status_code=404, detail="PagerDuty not connected")
+
+        if oauth_token:
+            pd_auth = f"Bearer {oauth_token}"
+        else:
+            pd_auth = f"Token token={api_key}"
+
+        # Fetch recent incidents from PagerDuty API
+        import httpx
+
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                "https://api.pagerduty.com/incidents",
+                headers={
+                    "Authorization": pd_auth,
+                    "Content-Type": "application/json",
+                    "Accept": "application/vnd.pagerduty+json;version=2",
+                },
+                params={
+                    "statuses[]": ["triggered", "acknowledged", "resolved"],
+                    "sort_by": "created_at:desc",
+                    "limit": 25,
+                },
+            )
+            if resp.status_code != 200:
+                logger.warning("sync_pd_incidents_api_error", status=resp.status_code, body=resp.text[:500])
+                return {"ok": False, "error": f"PagerDuty API returned {resp.status_code}", "details": resp.text[:200]}
+
+            pd_incidents = resp.json().get("incidents", [])
+
+        rows, incident_summaries = _build_pd_upsert_rows(pd_incidents, tenant_id)
+
+        if rows:
+            from ..db.supabase_db import get_db
+
+            db = get_db(use_admin=True)
+
+            def _batch_upsert():
+                return db.client.table("incidents").upsert(
+                    rows, on_conflict="id"
+                ).execute()
+
+            await db._to_thread(_batch_upsert)
+
+        return {"ok": True, "synced": len(rows), "incidents": incident_summaries}
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("sync_pagerduty_incidents_failed", error=str(exc), error_type=type(exc).__name__)
+        return {"ok": False, "error": str(exc)}
+
+
+@router.get("/api/integrations/pagerduty/sync/status")
+async def pagerduty_sync_status(
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Return PagerDuty sync connection status."""
+    tenant_id = auth.tenant_id or "default"
+
+    connected = False
+    try:
+        from ..integrations.oauth_tokens import oauth_token_store
+
+        token_rec = await oauth_token_store.get_token(tenant_id, "pagerduty")
+        if token_rec and token_rec.access_token:
+            connected = True
+    except Exception:
+        pass
+
+    if not connected:
+        try:
+            from ..db.supabase_db import get_db
+            from ..security.crypto import decrypt_json
+
+            db = get_db(use_admin=True)
+            rows = db.client.table("integration_configs").select("config").eq(
+                "tenant_id", tenant_id
+            ).eq("type", "pagerduty").eq("is_active", True).limit(1).execute()
+
+            if rows.data:
+                config = rows.data[0].get("config", {})
+                encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
+                if encrypted:
+                    decrypted = decrypt_json(encrypted)
+                    oauth = decrypted.get("oauth", {})
+                    if oauth.get("access_token") or decrypted.get("api_key"):
+                        connected = True
+        except Exception:
+            pass
+
+    return {"connected": connected, "last_sync": None}
+
+
 @router.post("/api/onboarding/integrations/github")
 async def save_github_integration(
     request: Request,
@@ -1689,7 +2239,13 @@ async def get_test_incident_status(
             return {"incident_id": incident_id, "status": "processing"}
 
         incident = rows.data[0]
-        status = "completed" if incident.get("verdict") else "processing"
+        db_status = (incident.get("status") or "").lower()
+        if db_status in ("completed", "resolved"):
+            status = "completed"
+        elif db_status == "error":
+            status = "error"
+        else:
+            status = "processing"
         return {
             "incident_id": incident_id,
             "status": status,
@@ -1752,8 +2308,6 @@ async def run_onboarding_test_incident(
         severity=Severity.HIGH,
         tenant_id=tenant_id,
     )
-
-    await checklist_store.set_step(tenant_id, "run_test", True)
 
     return {"incident_id": incident_id, "status": "processing"}
 

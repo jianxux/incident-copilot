@@ -26,7 +26,11 @@
     </div>
 
     <div id="chat-messages" class="flex-1 overflow-y-auto bg-slate-50 p-4 space-y-3">
-        <div class="text-xs text-slate-500 text-center">Connected to incident copilot</div>
+        <div class="text-xs text-slate-500 text-center flex items-center justify-center gap-2">
+            <span id="connection-status-dot" class="inline-block h-2 w-2 rounded-full bg-green-500"></span>
+            <span>Connected to incident copilot</span>
+            <span id="connection-status-text">connected</span>
+        </div>
     </div>
 
     <div id="generating" class="hidden px-4 py-2 text-sm text-slate-500 border-t border-slate-200 bg-white">
@@ -50,12 +54,24 @@
 (() => {
     const incidentId = "{{ incident_id }}";
     const proto = window.location.protocol === "https:" ? "wss" : "ws";
-    const ws = new WebSocket(`${proto}://${window.location.host}/ws/copilot/${incidentId}`);
+    const wsUrl = `${proto}://${window.location.host}/ws/copilot/${incidentId}`;
+    const MAX_RECONNECT_ATTEMPTS = 10;
+    const MAX_RECONNECT_DELAY_MS = 10000;
+    const BASE_RECONNECT_DELAY_MS = 1000;
 
     const messagesEl = document.getElementById("chat-messages");
     const formEl = document.getElementById("chat-form");
     const inputEl = document.getElementById("chat-input");
     const generatingEl = document.getElementById("generating");
+    const connectionStatusDotEl = document.getElementById("connection-status-dot");
+    const connectionStatusTextEl = document.getElementById("connection-status-text");
+
+    let ws = null;
+    let reconnectAttempts = 0;
+    let reconnectTimer = null;
+    let hasConnectedOnce = false;
+    let manualClose = false;
+    const pendingMessages = [];
 
     function renderMessage(roleLabel, text, timestamp, isUser = false) {
         const wrapper = document.createElement("div");
@@ -87,30 +103,130 @@
         }
     }
 
-    ws.addEventListener("message", (event) => {
-        const data = JSON.parse(event.data);
+    function updateConnectionStatus(status) {
+        const statusConfig = {
+            connected: { text: "connected", dotClass: "bg-green-500" },
+            reconnecting: { text: "reconnecting", dotClass: "bg-amber-400" },
+            disconnected: { text: "disconnected", dotClass: "bg-red-500" }
+        };
+        const config = statusConfig[status] || statusConfig.disconnected;
+        connectionStatusTextEl.textContent = config.text;
+        connectionStatusDotEl.classList.remove("bg-green-500", "bg-amber-400", "bg-red-500");
+        connectionStatusDotEl.classList.add(config.dotClass);
+    }
 
-        if (data.type === "assistant_typing") {
-            showGenerating(true);
+    function flushPendingMessages() {
+        while (pendingMessages.length > 0 && ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(pendingMessages.shift());
+        }
+    }
+
+    function scheduleReconnect() {
+        if (manualClose || reconnectTimer || reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                updateConnectionStatus("disconnected");
+                renderMessage(
+                    "System",
+                    "Connection lost. Refresh to retry.",
+                    new Date().toISOString(),
+                    false
+                );
+            }
             return;
         }
 
-        if (data.type === "assistant") {
-            showGenerating(false);
-            renderMessage("Copilot", data.message, data.timestamp, false);
+        const delay = Math.min(
+            BASE_RECONNECT_DELAY_MS * (2 ** reconnectAttempts),
+            MAX_RECONNECT_DELAY_MS
+        );
+        reconnectAttempts += 1;
+        updateConnectionStatus("reconnecting");
+
+        reconnectTimer = window.setTimeout(() => {
+            reconnectTimer = null;
+            connect();
+        }, delay);
+    }
+
+    function connect() {
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
             return;
         }
 
-        if (data.type === "error") {
-            showGenerating(false);
-            renderMessage("System", data.message, data.timestamp, false);
-            return;
+        ws = new WebSocket(wsUrl);
+        if (hasConnectedOnce) {
+            updateConnectionStatus("reconnecting");
         }
-    });
 
-    ws.addEventListener("close", () => {
-        renderMessage("System", "Connection closed", new Date().toISOString(), false);
-    });
+        ws.addEventListener("open", () => {
+            const reconnected = hasConnectedOnce;
+            hasConnectedOnce = true;
+            reconnectAttempts = 0;
+            if (reconnectTimer) {
+                window.clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+            updateConnectionStatus("connected");
+            flushPendingMessages();
+            if (reconnected) {
+                renderMessage("System", "Reconnected to copilot", new Date().toISOString(), false);
+            }
+        });
+
+        ws.addEventListener("message", (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === "assistant_typing") {
+                showGenerating(true);
+                return;
+            }
+
+            if (data.type === "assistant") {
+                showGenerating(false);
+                renderMessage("Copilot", data.message, data.timestamp, false);
+                return;
+            }
+
+            if (data.type === "error") {
+                showGenerating(false);
+                renderMessage("System", data.message, data.timestamp, false);
+                return;
+            }
+        });
+
+        ws.addEventListener("close", (event) => {
+            if (manualClose) {
+                updateConnectionStatus("disconnected");
+                return;
+            }
+            if (event.code === 1011 || event.code === 1000) {
+                updateConnectionStatus("disconnected");
+                renderMessage("System", "Connection closed by server", new Date().toISOString(), false);
+                return;
+            }
+            updateConnectionStatus("reconnecting");
+            scheduleReconnect();
+        });
+
+        ws.addEventListener("error", () => {
+            updateConnectionStatus("reconnecting");
+        });
+    }
+
+    function sendPayload(payload) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(payload);
+            return true;
+        }
+        pendingMessages.push(payload);
+        updateConnectionStatus("reconnecting");
+        if (!ws || ws.readyState === WebSocket.CLOSING || ws.readyState === WebSocket.CLOSED) {
+            scheduleReconnect();
+        }
+        return false;
+    }
+
+    connect();
 
     formEl.addEventListener("submit", (event) => {
         event.preventDefault();
@@ -120,7 +236,7 @@
         }
 
         renderMessage("You", message, new Date().toISOString(), true);
-        ws.send(JSON.stringify({ action: "chat", message }));
+        sendPayload(JSON.stringify({ action: "chat", message }));
         inputEl.value = "";
         inputEl.focus();
     });
@@ -132,13 +248,23 @@
 
             if (action === "chat" && message) {
                 renderMessage("You", message, new Date().toISOString(), true);
-                ws.send(JSON.stringify({ action: "chat", message }));
+                sendPayload(JSON.stringify({ action: "chat", message }));
                 return;
             }
 
-            ws.send(JSON.stringify({ action, message }));
+            sendPayload(JSON.stringify({ action, message }));
             showGenerating(true);
         });
+    });
+
+    window.addEventListener("beforeunload", () => {
+        manualClose = true;
+        if (reconnectTimer) {
+            window.clearTimeout(reconnectTimer);
+        }
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+            ws.close();
+        }
     });
 })();
 </script>

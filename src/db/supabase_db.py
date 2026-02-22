@@ -326,6 +326,10 @@ class SupabaseDB:
         triggered_at: str | None = None,
         processed_at: str | None = None,
         error_message: str | None = None,
+        source: str = "manual",
+        source_url: str | None = None,
+        source_id: str | None = None,
+        metadata: dict | None = None,
     ) -> dict:
         """Upsert an incident row used by the web dashboard."""
         self._check_enabled()
@@ -340,7 +344,10 @@ class SupabaseDB:
             "triggered_at": triggered_at,
             "processed_at": processed_at,
             "error_message": error_message,
-            "source": "manual",
+            "source": source,
+            "source_url": source_url,
+            "source_id": source_id or incident_id,
+            "metadata": metadata or {},
             "created_at": triggered_at or datetime.utcnow().isoformat(),
             "updated_at": datetime.utcnow().isoformat(),
         }

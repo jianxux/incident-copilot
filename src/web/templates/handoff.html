@@ -136,7 +136,7 @@ function dateFmt(iso) {
 }
 
 async function loadLatest() {
-    const res = await fetch("/api/v1/oncall/handoff/latest");
+    const res = await window.icFetch("/api/v1/oncall/handoff/latest");
     const data = await res.json();
     const summary = data.summary;
     const meta = document.getElementById("latest-meta");
@@ -153,7 +153,7 @@ async function loadLatest() {
 }
 
 async function loadHistory() {
-    const res = await fetch("/api/v1/oncall/handoff/history?limit=20");
+    const res = await window.icFetch("/api/v1/oncall/handoff/history?limit=20");
     const data = await res.json();
     const container = document.getElementById("history-list");
     container.innerHTML = "";
@@ -181,7 +181,7 @@ async function onGenerate(e) {
     const status = document.getElementById("generate-status");
     if (!scheduleId) return;
     status.textContent = "Generating handoff...";
-    const res = await fetch("/api/v1/oncall/handoff/generate", {
+    const res = await window.icFetch("/api/v1/oncall/handoff/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ schedule_id: scheduleId })
@@ -213,7 +213,7 @@ async function onSaveConfig(e) {
         delivery_channels: selectedChannels(),
         slack_target: document.getElementById("cfg-slack-target").value.trim() || null
     };
-    const res = await fetch(`/api/v1/oncall/handoff/schedule?schedule_id=${encodeURIComponent(scheduleId)}`, {
+    const res = await window.icFetch(`/api/v1/oncall/handoff/schedule?schedule_id=${encodeURIComponent(scheduleId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -233,7 +233,7 @@ async function onTestDelivery() {
         return;
     }
     status.textContent = "Testing delivery...";
-    const res = await fetch("/api/v1/oncall/handoff/test-delivery", {
+    const res = await window.icFetch("/api/v1/oncall/handoff/test-delivery", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ schedule_id: scheduleId, base_url: window.location.origin })

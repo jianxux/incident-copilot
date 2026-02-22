@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -11,6 +12,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
 from ..auth.middleware import AuthContext, get_auth_context
+from ..config import get_settings
+from ..integrations import GitHubAdapter
 from ..models import Severity
 from ..supabase_client import is_supabase_db_enabled
 from ..web.store import incident_store
@@ -109,6 +112,24 @@ def _compute_duration_ms(start: Any, end: Any) -> int | None:
     return max(0, int((end_dt - start_dt).total_seconds() * 1000))
 
 
+def _compute_duration_seconds(start: Any, end: Any) -> int | None:
+    start_dt = _as_datetime(start)
+    end_dt = _as_datetime(end)
+    if not start_dt or not end_dt:
+        return None
+    return max(0, int((end_dt - start_dt).total_seconds()))
+
+
+def _extract_verdict_summary(row: dict[str, Any]) -> str | None:
+    metadata = _extract_metadata(row)
+    verdict = metadata.get("verdict") or metadata.get("ai_verdict") or {}
+    if isinstance(verdict, dict):
+        return verdict.get("summary") or verdict.get("one_liner")
+    if isinstance(verdict, str):
+        return verdict[:200]
+    return None
+
+
 def _extract_metadata(row: dict[str, Any]) -> dict[str, Any]:
     metadata = row.get("metadata") or {}
     return metadata if isinstance(metadata, dict) else {}
@@ -128,20 +149,33 @@ def _format_incident(row: dict[str, Any]) -> dict[str, Any]:
     tta = _compute_duration_ms(created_at, acknowledged_at)
     ttr = _compute_duration_ms(created_at, resolved_at)
 
+    processed_at = _iso(row.get("processed_at"))
+    triggered_at = _iso(row.get("triggered_at")) or created_at
+
     incident = {
         "id": str(row.get("id", "")),
+        "incident_id": str(row.get("id", "")),
         "title": row.get("title") or "Untitled incident",
         "description": row.get("description"),
         "severity": _normalize_severity(row.get("severity")),
         "status": _normalize_status(row.get("status")),
         "source": row.get("source") or "manual",
         "service": row.get("service") or "unknown",
+        "service_name": row.get("service") or "unknown",
         "assignee": metadata.get("assignee") or row.get("assigned_to"),
         "team": metadata.get("team"),
         "created_at": created_at,
         "updated_at": _iso(row.get("updated_at")) or created_at,
+        "triggered_at": triggered_at,
+        "processed_at": processed_at,
         "acknowledged_at": acknowledged_at,
         "resolved_at": resolved_at,
+        "duration_seconds": _compute_duration_seconds(
+            row.get("triggered_at") or row.get("created_at"),
+            row.get("processed_at") or row.get("resolved_at"),
+        ),
+        "verdict_summary": _extract_verdict_summary(row),
+        "source_url": row.get("source_url") or "",
         "ttd": metadata.get("ttd") if isinstance(metadata.get("ttd"), int) else None,
         "tta": tta,
         "ttr": ttr,
@@ -180,6 +214,32 @@ def _map_context_payload(
     return data
 
 
+async def _try_ondemand_enrichment(incident_row: dict[str, Any]) -> dict[str, Any]:
+    service = incident_row.get("service") or incident_row.get("service_name")
+    if not service:
+        return {}
+
+    settings = get_settings()
+    if not settings.github_token:
+        return {}
+
+    try:
+        github_context = await GitHubAdapter(settings).get_context(service)
+        if not github_context:
+            return {}
+
+        payload = github_context.model_dump(mode="json")
+        return {"github": payload, "github_context": payload}
+    except Exception as exc:
+        logger.warning(
+            "ondemand_github_enrichment_failed",
+            error=str(exc),
+            incident_id=incident_row.get("id"),
+            service=service,
+        )
+        return {}
+
+
 def _event_to_timeline(event: dict[str, Any], incident_id: str) -> dict[str, Any]:
     metadata = event.get("metadata")
     if not isinstance(metadata, dict):
@@ -210,6 +270,37 @@ async def _require_tenant(auth: AuthContext) -> str:
             detail="auth_required",
         )
     return auth.tenant_id
+
+
+async def _trigger_pd_sync_best_effort(tenant_id: str) -> None:
+    """Trigger PD sync when available; never raise into API flow."""
+    try:
+        routes_mod = importlib.import_module("src.web.routes")
+    except Exception as exc:
+        logger.warning(
+            "pd_sync_best_effort_import_failed",
+            tenant_id=tenant_id,
+            error=str(exc),
+        )
+        return
+
+    maybe_sync = getattr(routes_mod, "_maybe_trigger_pd_sync", None)
+    if maybe_sync is None:
+        logger.warning(
+            "pd_sync_best_effort_missing_attr",
+            tenant_id=tenant_id,
+            attr="_maybe_trigger_pd_sync",
+        )
+        return
+
+    try:
+        await maybe_sync(tenant_id)
+    except Exception as exc:
+        logger.warning(
+            "pd_sync_best_effort_call_failed",
+            tenant_id=tenant_id,
+            error=str(exc),
+        )
 
 
 async def _get_incident_row(tenant_id: str, incident_id: str) -> dict[str, Any] | None:
@@ -445,6 +536,9 @@ async def list_incidents(
     if not tenant_id:
         return {"incidents": [], "total": 0}
 
+    # Trigger PagerDuty background sync (batch upsert, non-blocking after first load)
+    await _trigger_pd_sync_best_effort(tenant_id)
+
     statuses = [s for s in _extract_multi_query(request, "status", status) if s in _ALLOWED_STATUSES]
     severities = [s for s in _extract_multi_query(request, "severity", severity) if s in _ALLOWED_SEVERITIES]
     services = _extract_multi_query(request, "service", service)
@@ -473,14 +567,14 @@ async def list_incidents(
                 tenant_id=tenant_id,
                 page=1,
                 limit=2000,
-                statuses=[],
-                severities=[],
-                services=[],
-                teams=[],
-                assignee=None,
-                date_from=None,
-                date_to=None,
-                search=None,
+                statuses=statuses,
+                severities=severities,
+                services=services,
+                teams=teams,
+                assignee=assignee,
+                date_from=parsed_date_from,
+                date_to=parsed_date_to,
+                search=search,
             )
         except Exception as exc:
             logger.warning(
@@ -502,8 +596,15 @@ async def list_incidents(
             if row_id:
                 merged_by_id[row_id] = row  # Supabase wins on conflict.
 
+        merged_rows = list(merged_by_id.values())
+        merged_rows.sort(
+            key=lambda row: _as_datetime(row.get("created_at") or row.get("triggered_at"))
+            or datetime.min.replace(tzinfo=UTC),
+            reverse=True,
+        )
+
         page_rows, total = _list_inmemory_incidents(
-            list(merged_by_id.values()),
+            merged_rows,
             page=page,
             limit=limit,
             statuses=statuses,
@@ -864,9 +965,10 @@ async def get_incident_context(
             card_row = None
 
         if not card_row:
+            enriched_payload = await _try_ondemand_enrichment(row)
             return _map_context_payload(
                 incident_id=incident_id,
-                payload={},
+                payload=enriched_payload,
                 context_id="",
                 created_at=row.get("created_at"),
             )
@@ -883,9 +985,16 @@ async def get_incident_context(
         raise HTTPException(status_code=404, detail="incident_not_found")
 
     if not item.context_card:
+        enriched_payload = await _try_ondemand_enrichment(
+            {
+                "id": item.incident_id,
+                "service": item.service_name,
+                "service_name": item.service_name,
+            }
+        )
         return _map_context_payload(
             incident_id=incident_id,
-            payload={},
+            payload=enriched_payload,
             context_id="",
             created_at=item.triggered_at,
         )

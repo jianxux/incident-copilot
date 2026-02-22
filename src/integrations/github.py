@@ -1,12 +1,13 @@
 """GitHub integration adapter."""
 
+import asyncio
 from datetime import datetime, timedelta
 
 import httpx
 import structlog
 
 from ..config import Settings
-from ..models import Deployment, GitHubContext
+from ..models import Deployment, GitHubContext, GitHubDeployment, GitHubPullRequest
 
 logger = structlog.get_logger()
 
@@ -55,16 +56,19 @@ class GitHubAdapter:
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                # Fetch recent commits
-                deploys = await self._fetch_recent_commits(client, repo, since_hours)
-
-                # Fetch CODEOWNERS
-                codeowners = await self._fetch_codeowners(client, repo)
+                deploys, codeowners, prs, deployments = await asyncio.gather(
+                    self._fetch_recent_commits(client, repo, since_hours),
+                    self._fetch_codeowners(client, repo),
+                    self._fetch_merged_prs(client, repo, since_hours),
+                    self._fetch_deployments(client, repo),
+                )
 
                 return GitHubContext(
                     repo=repo,
                     recent_deploys=deploys,
                     codeowners=codeowners,
+                    recent_prs=prs,
+                    recent_deployments=deployments,
                 )
 
         except Exception as e:
@@ -153,3 +157,97 @@ class GitHubAdapter:
                     owners.add(part)
 
         return list(owners)[:10]  # Limit to 10 owners
+
+    async def _fetch_merged_prs(
+        self, client: httpx.AsyncClient, repo: str, since_hours: int
+    ) -> list[GitHubPullRequest]:
+        """Fetch recently merged pull requests."""
+        since = (datetime.utcnow() - timedelta(hours=since_hours)).isoformat() + "Z"
+
+        url = f"{self.BASE_URL}/repos/{repo}/pulls"
+        params = {"state": "closed", "sort": "updated", "direction": "desc", "per_page": 10}
+
+        try:
+            resp = await client.get(url, headers=self._get_headers(), params=params)
+            if resp.status_code != 200:
+                logger.warning("github_prs_failed", repo=repo, status=resp.status_code)
+                return []
+
+            prs = []
+            for pr in resp.json():
+                merged_at_str = pr.get("merged_at")
+                if not merged_at_str:
+                    continue
+                try:
+                    merged_at = datetime.fromisoformat(merged_at_str.replace("Z", "+00:00"))
+                except (ValueError, AttributeError):
+                    continue
+
+                user = pr.get("user") or {}
+                prs.append(
+                    GitHubPullRequest(
+                        number=pr.get("number", 0),
+                        title=pr.get("title", "")[:200],
+                        author=user.get("login", "unknown"),
+                        merged_at=merged_at,
+                        url=pr.get("html_url"),
+                        additions=pr.get("additions", 0),
+                        deletions=pr.get("deletions", 0),
+                    )
+                )
+                if len(prs) >= 5:
+                    break
+            return prs
+        except Exception as e:
+            logger.warning("github_prs_error", repo=repo, error=str(e))
+            return []
+
+    async def _fetch_deployments(
+        self, client: httpx.AsyncClient, repo: str
+    ) -> list[GitHubDeployment]:
+        """Fetch recent deployments from GitHub Deployments API."""
+        url = f"{self.BASE_URL}/repos/{repo}/deployments"
+        params = {"per_page": 10}
+
+        try:
+            resp = await client.get(url, headers=self._get_headers(), params=params)
+            if resp.status_code != 200:
+                logger.warning("github_deployments_failed", repo=repo, status=resp.status_code)
+                return []
+
+            deployments = []
+            for dep in resp.json()[:5]:
+                created_str = dep.get("created_at", "")
+                try:
+                    created_at = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
+                except (ValueError, AttributeError):
+                    created_at = datetime.utcnow()
+
+                creator = dep.get("creator") or {}
+                # Fetch latest status
+                statuses_url = dep.get("statuses_url", "")
+                dep_status = "unknown"
+                if statuses_url:
+                    try:
+                        status_resp = await client.get(statuses_url, headers=self._get_headers())
+                        if status_resp.status_code == 200:
+                            statuses = status_resp.json()
+                            if statuses:
+                                dep_status = statuses[0].get("state", "unknown")
+                    except Exception:
+                        pass
+
+                deployments.append(
+                    GitHubDeployment(
+                        id=str(dep.get("id", "")),
+                        environment=dep.get("environment", "unknown"),
+                        status=dep_status,
+                        created_at=created_at,
+                        url=dep.get("url"),
+                        creator=creator.get("login", "unknown"),
+                    )
+                )
+            return deployments
+        except Exception as e:
+            logger.warning("github_deployments_error", repo=repo, error=str(e))
+            return []

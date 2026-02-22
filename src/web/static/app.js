@@ -35,6 +35,7 @@ const statusDot = document.getElementById('status-dot');
 const statusText = document.getElementById('status-text');
 
 function setConnectionStatus(connected) {
+    if (!statusDot || !statusText) return;
     if (connected) {
         statusDot.className = 'w-2 h-2 rounded-full bg-green-500 animate-pulse-dot';
         statusText.textContent = 'Connected';
@@ -146,8 +147,10 @@ function handleSSEEvent(data) {
 
 // Update dashboard stats
 async function updateStats() {
+    if (!document.getElementById('stat-total')) return;
+
     try {
-        const response = await fetch('/dashboard/api/stats');
+        const response = await window.icFetch('/dashboard/api/stats');
         const stats = await response.json();
         
         document.getElementById('stat-total').textContent = stats.total;
@@ -249,7 +252,7 @@ function escapeHtml(text) {
 // Demo incident creation
 async function createDemoIncident() {
     try {
-        const response = await fetch('/dashboard/api/demo', { method: 'POST' });
+        const response = await window.icFetch('/dashboard/api/demo', { method: 'POST' });
         const data = await response.json();
         showToast('Demo incident created!', 'success');
     } catch (e) {

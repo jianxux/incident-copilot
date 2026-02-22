@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime, timedelta
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -140,6 +140,14 @@ def test_list_response_matches_frontend_contract(authed_client):
     filtered_payload = filtered.json()
     assert filtered_payload["total"] == 2
     assert all(item["service"] == "api" for item in filtered_payload["incidents"])
+
+
+def test_list_endpoint_awaits_pd_sync_trigger(authed_client):
+    with patch("src.api.incidents._trigger_pd_sync_best_effort", new_callable=AsyncMock) as mock_sync:
+        response = authed_client.get("/api/incidents")
+
+    assert response.status_code == 200
+    mock_sync.assert_awaited_once_with("tenant-incidents")
 
 
 def test_stats_response_matches_frontend_contract(authed_client):

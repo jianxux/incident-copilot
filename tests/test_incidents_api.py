@@ -271,21 +271,18 @@ class TestIncidentsListAPI:
             yield c
 
     def test_empty_incidents_unauthenticated(self, client):
-        """Without auth, returns empty incidents list."""
+        """Without auth, incidents endpoint is unauthorized."""
         resp = client.get("/api/incidents")
-        assert resp.status_code == 200
+        assert resp.status_code == 401
         data = resp.json()
-        assert "incidents" in data
-        assert "total" in data
-        assert isinstance(data["incidents"], list)
-        assert isinstance(data["total"], int)
+        assert data["detail"] == "auth_required"
 
     def test_incidents_response_shape(self, client):
-        """Verify response has expected top-level keys."""
+        """Incidents endpoint requires auth when no overrides are configured."""
         resp = client.get("/api/incidents")
+        assert resp.status_code == 401
         data = resp.json()
-        assert "incidents" in data
-        assert "total" in data
+        assert data["detail"] == "auth_required"
 
 
 def test_list_incidents_merges_supabase_and_memory_with_supabase_wins(monkeypatch):

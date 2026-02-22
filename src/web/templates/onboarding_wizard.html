@@ -172,9 +172,7 @@ function token() { return localStorage.getItem('access_token'); }
 
 async function api(path, opts={}) {
   const headers = Object.assign({'Content-Type': 'application/json'}, opts.headers || {});
-  const t = token();
-  if (t) headers['Authorization'] = `Bearer ${t}`;
-  const res = await fetch(path, Object.assign({}, opts, {headers}));
+  const res = await window.icFetch(path, Object.assign({}, opts, {headers}));
   const body = await res.text();
   let data = {};
   try { data = body ? JSON.parse(body) : {}; } catch (_) { data = {}; }
@@ -198,8 +196,8 @@ async function startOAuth(provider) {
   const returnTo = encodeURIComponent(window.location.pathname);
   const url = `/api/integrations/${provider}/connect?return_to=${returnTo}`;
   try {
-    const res = await fetch(url, {
-      headers: {'Authorization': `Bearer ${token()}`, 'Accept': 'application/json'}
+    const res = await window.icFetch(url, {
+      headers: {'Accept': 'application/json'}
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);

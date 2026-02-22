@@ -1,8 +1,9 @@
 """Data models for analytics and MTTR tracking."""
 
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class IncidentMetrics(BaseModel):
@@ -112,3 +113,86 @@ class PeriodComparison(BaseModel):
             incidents_count_change=current.incidents_count - previous.incidents_count,
             trend=trend,
         )
+
+
+class SeverityBreakdown(BaseModel):
+    """Incident counts by severity."""
+
+    critical: int = 0
+    high: int = 0
+    medium: int = 0
+    low: int = 0
+    info: int = 0
+
+
+class ChangeFromPrevious(BaseModel):
+    """Percentage changes compared to previous equivalent period."""
+
+    incidents: float = 0.0
+    mttr: float = 0.0
+    mtta: float = 0.0
+
+
+class AnalyticsIncidentSummary(BaseModel):
+    """Summary incident metrics for analytics dashboard."""
+
+    total_incidents: int = 0
+    resolved_incidents: int = 0
+    open_incidents: int = 0
+    mttr_hours: float = 0.0
+    mtta_minutes: float = 0.0
+    by_severity: SeverityBreakdown = Field(default_factory=SeverityBreakdown)
+    by_source: dict[str, int] = Field(default_factory=dict)
+    change_from_previous: ChangeFromPrevious = Field(default_factory=ChangeFromPrevious)
+
+
+class TeamPerformance(BaseModel):
+    """Team-level incident performance metrics."""
+
+    team_id: str
+    team_name: str
+    incidents_handled: int = 0
+    avg_response_time_minutes: float = 0.0
+    avg_resolution_time_hours: float = 0.0
+    on_call_hours: float = 0.0
+    escalation_rate: float = 0.0
+
+
+class ServiceHealth(BaseModel):
+    """Service health data for analytics dashboard."""
+
+    service_id: str
+    service_name: str
+    incident_count: int = 0
+    critical_count: int = 0
+    uptime_percentage: float = 100.0
+    last_incident: str | None = None
+    trend: Literal["improving", "stable", "degrading"] = "stable"
+
+
+class TrendData(BaseModel):
+    """Daily trend point for analytics dashboard."""
+
+    date: str
+    incidents: int = 0
+    resolved: int = 0
+    mttr_hours: float = 0.0
+    mtta_minutes: float = 0.0
+
+
+class HeatmapData(BaseModel):
+    """Incidents grouped by weekday and hour."""
+
+    day_of_week: int
+    hour_of_day: int
+    incident_count: int = 0
+
+
+class AnalyticsSummaryResponse(BaseModel):
+    """Top-level analytics summary response."""
+
+    period: Literal["day", "week", "month", "quarter"]
+    incidents: AnalyticsIncidentSummary
+    team_performance: list[TeamPerformance] = Field(default_factory=list)
+    service_health: list[ServiceHealth] = Field(default_factory=list)
+    trends: list[TrendData] = Field(default_factory=list)

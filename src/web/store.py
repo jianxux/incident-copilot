@@ -796,6 +796,7 @@ class HybridIncidentStore(_BaseIncidentStore):
         return {"total": total, "by_status": by_status, "by_severity": by_severity}
 
 
+
 def get_incident_store() -> _BaseIncidentStore:
     if is_supabase_db_enabled():
         logger.info("incident_store_backend", backend="hybrid")
