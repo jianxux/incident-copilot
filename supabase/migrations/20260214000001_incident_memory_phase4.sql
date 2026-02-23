@@ -9,8 +9,12 @@ ALTER TABLE IF EXISTS incident_memory
     ADD COLUMN IF NOT EXISTS embedding_dimensions INTEGER NOT NULL DEFAULT 1536;
 
 DROP INDEX IF EXISTS idx_incident_memory_embedding;
-CREATE INDEX IF NOT EXISTS idx_incident_memory_embedding
-    ON incident_memory USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+-- ivfflat requires fixed dimensions; use HNSW which supports variable-dimension vectors,
+-- or skip the index when the column has no fixed dimension constraint.
+-- For local dev, we use a basic btree on the id instead and rely on sequential scan
+-- for small datasets. Production should use pgvector with fixed dimensions.
+CREATE INDEX IF NOT EXISTS idx_incident_memory_id_lookup
+    ON incident_memory (id);
 
 -- Materialized storage for pairwise service correlations.
 CREATE TABLE IF NOT EXISTS service_correlations (

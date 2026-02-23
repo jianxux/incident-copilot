@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .api import (
+    ai_feedback_router,
     analytics_router,
     correlation_router,
     demo_router,
@@ -238,6 +239,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(metrics_router)
     app.include_router(memory_feedback_router)
+    app.include_router(ai_feedback_router)
     app.include_router(memory_stats_router)
     app.include_router(auth_router)
     app.include_router(oauth_integrations_router)  # generic OAuth (handles all providers including PD/Slack)

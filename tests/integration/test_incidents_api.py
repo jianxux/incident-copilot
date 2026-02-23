@@ -226,7 +226,8 @@ def test_context_timeline_notes_and_similar(authed_client):
         assert {"id", "title", "severity", "status"}.issubset(set(similar_payload[0].keys()))
 
 
-def test_incident_endpoints_require_auth():
+def test_incident_list_endpoint_requires_auth():
+    """Unauthenticated GET /api/incidents requests return auth_required."""
     from fastapi.testclient import TestClient
 
     from src.main import create_app
@@ -235,5 +236,5 @@ def test_incident_endpoints_require_auth():
     with TestClient(app) as client:
         response = client.get("/api/incidents")
 
-    assert response.status_code == 200
-    assert response.json() == {"incidents": [], "total": 0}
+    assert response.status_code == 401
+    assert response.json() == {"detail": "auth_required"}

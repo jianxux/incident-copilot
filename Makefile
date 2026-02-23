@@ -129,6 +129,18 @@ deps-graph: uv-check
 pre-commit: uv-check
 	$(UV) run pre-commit run --all-files
 
+# Integration tests (requires local Supabase: `supabase start`)
+test-integration: uv-check
+	$(UV) run pytest tests/integration/ -x -v --tb=short
+
+# Start local Supabase for integration tests
+supabase-up:
+	supabase start
+
+# Stop local Supabase
+supabase-down:
+	supabase stop
+
 # Security scan
 security: uv-check
 	$(UV) run bandit -r src -ll
