@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import importlib
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -15,6 +14,7 @@ from pydantic import BaseModel, Field
 from ..auth.middleware import AuthContext, get_auth_context
 from ..config import get_settings
 from ..integrations import GitHubAdapter
+from ..integrations.pagerduty_sync import maybe_trigger_pd_sync
 from ..models import Severity
 from ..supabase_client import is_supabase_db_enabled
 from ..web.store import incident_store
@@ -276,26 +276,7 @@ async def _require_tenant(auth: AuthContext) -> str:
 async def _trigger_pd_sync_best_effort(tenant_id: str) -> None:
     """Trigger PD sync when available; never raise into API flow."""
     try:
-        routes_mod = importlib.import_module("src.web.routes")
-    except Exception as exc:
-        logger.warning(
-            "pd_sync_best_effort_import_failed",
-            tenant_id=tenant_id,
-            error=str(exc),
-        )
-        return
-
-    maybe_sync = getattr(routes_mod, "_maybe_trigger_pd_sync", None)
-    if maybe_sync is None:
-        logger.warning(
-            "pd_sync_best_effort_missing_attr",
-            tenant_id=tenant_id,
-            attr="_maybe_trigger_pd_sync",
-        )
-        return
-
-    try:
-        await maybe_sync(tenant_id)
+        await maybe_trigger_pd_sync(tenant_id)
     except Exception as exc:
         logger.warning(
             "pd_sync_best_effort_call_failed",

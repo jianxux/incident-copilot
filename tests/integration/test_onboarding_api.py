@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import time
 from unittest.mock import MagicMock
 
 import pytest
@@ -418,3 +419,41 @@ def test_service_api_list_returns_description_and_team(authed_client):
 def test_service_api_missing_name(anon_client):
     resp = anon_client.post("/api/services", json={})
     assert resp.status_code == 422
+
+
+def test_onboarding_test_incident_fallback_surfaces_in_incidents_and_context(
+    authed_client, monkeypatch
+):
+    async def _boom(self, incident, slack_channel=None):
+        raise RuntimeError("onboarding orchestrator boom")
+
+    monkeypatch.setattr(
+        "src.onboarding.test_incident.ContextOrchestrator.process_incident",
+        _boom,
+    )
+
+    create_resp = authed_client.post("/dashboard/api/onboarding/test-incident")
+    assert create_resp.status_code == 200
+    incident_id = create_resp.json()["incident_id"]
+
+    found_resolved = False
+    context_payload = {}
+
+    for _ in range(50):
+        list_resp = authed_client.get("/api/incidents", params={"limit": 200})
+        assert list_resp.status_code == 200
+        incidents = list_resp.json()["incidents"]
+        current = next((item for item in incidents if item["id"] == incident_id), None)
+        if current and current["status"] == "resolved":
+            found_resolved = True
+            context_resp = authed_client.get(f"/api/incidents/{incident_id}/context")
+            assert context_resp.status_code == 200
+            context_payload = context_resp.json()
+            if context_payload.get("errors"):
+                break
+        time.sleep(0.05)
+
+    assert found_resolved is True
+    assert isinstance(context_payload.get("errors"), list)
+    assert context_payload["errors"]
+    assert "orchestrator" in context_payload["errors"][0].lower()

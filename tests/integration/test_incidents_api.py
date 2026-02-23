@@ -150,6 +150,16 @@ def test_list_endpoint_awaits_pd_sync_trigger(authed_client):
     mock_sync.assert_awaited_once_with("tenant-incidents")
 
 
+def test_list_exposes_error_status(authed_client):
+    inc2 = _run(incident_store.get_incident("inc-1002"))
+    inc2.status = "error"
+
+    response = authed_client.get("/api/incidents", params={"limit": 10})
+    assert response.status_code == 200
+    items = {item["id"]: item for item in response.json()["incidents"]}
+    assert items["inc-1002"]["status"] == "error"
+
+
 def test_stats_response_matches_frontend_contract(authed_client):
     response = authed_client.get("/api/incidents/stats")
     assert response.status_code == 200
@@ -161,6 +171,7 @@ def test_stats_response_matches_frontend_contract(authed_client):
         "acknowledged",
         "resolved",
         "processing",
+        "error",
     }
     assert set(payload["by_severity"].keys()) == {
         "critical",

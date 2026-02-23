@@ -17,12 +17,13 @@ class TestIncidentFormatting:
 
     def _map_status(self, value: str | None) -> str:
         status_map = {
-            "processing": "triggered",
+            "processing": "processing",
             "completed": "resolved",
-            "error": "triggered",
+            "resolved": "resolved",
+            "error": "error",
         }
         normalized = str(value or "processing").strip().lower()
-        return status_map.get(normalized, normalized)
+        return status_map.get(normalized, "processing")
 
     def _format(self, row: dict) -> dict:
         """Import and call the format function from routes."""
@@ -112,20 +113,25 @@ class TestIncidentFormatting:
         assert result["duration_seconds"] == 2700  # 45 minutes
         assert result["status"] == "resolved"
 
-    def test_processing_status_maps_to_triggered(self):
+    def test_processing_status_maps_to_processing(self):
         row = {"id": "inc-map-1", "status": "processing"}
         result = self._format(row)
-        assert result["status"] == "triggered"
+        assert result["status"] == "processing"
 
     def test_completed_status_maps_to_resolved(self):
         row = {"id": "inc-map-2", "status": "completed"}
         result = self._format(row)
         assert result["status"] == "resolved"
 
-    def test_error_status_maps_to_triggered(self):
+    def test_error_status_maps_to_error(self):
         row = {"id": "inc-map-3", "status": "error"}
         result = self._format(row)
-        assert result["status"] == "triggered"
+        assert result["status"] == "error"
+
+    def test_unknown_status_defaults_to_processing(self):
+        row = {"id": "inc-map-4", "status": "nonsense"}
+        result = self._format(row)
+        assert result["status"] == "processing"
 
     def test_verdict_from_metadata_dict(self):
         row = {
@@ -175,7 +181,7 @@ class TestIncidentFormatting:
         assert result["title"] == ""
         assert result["service"] == ""
         assert result["severity"] == "medium"
-        assert result["status"] == "triggered"
+        assert result["status"] == "processing"
         assert result["source"] == ""
 
     def test_backward_compat_service_name(self):
