@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import datetime, timedelta
 
@@ -14,7 +15,7 @@ from ..config import Settings
 from .config import IncidentMemoryConfig
 from .feedback import FeedbackStore, get_feedback_store
 from .models import IncidentRecallResult
-from .scoring import apply_temporal_decay
+from .scoring import apply_feedback_weight, apply_temporal_decay
 from .store import IncidentMemoryStore
 
 logger = structlog.get_logger()
@@ -108,6 +109,10 @@ class IncidentRecall:
         query: RecallQuery,
     ) -> list[IncidentRecallResult]:
         """Recompute temporal decay and apply feedback-based score refinement."""
+        if not matches:
+            return matches
+
+        feedback_summaries = await self._load_feedback_summaries(matches)
         now = datetime.utcnow()
         refined: list[IncidentRecallResult] = []
 
@@ -131,28 +136,37 @@ class IncidentRecall:
                 item.vector_similarity * max(item.temporal_decay, 0.0)
             )
 
-            feedback_adjustment = 0.0
-            if query.incident_id:
-                feedback_adjustment = (
-                    await self.feedback_store.similarity_weight_adjustment(
-                        incident_id=query.incident_id,
-                        recalled_incident_id=item.record.id,
-                    )
-                )
-
             new_decay = (
                 decayed_similarity / item.vector_similarity
                 if item.vector_similarity > 0
                 else 0.0
             )
             item.temporal_decay = round(new_decay, 6)
-            item.score = max(
-                decayed_similarity + structured_boost + feedback_adjustment, 0.0
+            base_score = max(decayed_similarity + structured_boost, 0.0)
+            item.score = apply_feedback_weight(
+                score=base_score,
+                feedback_summary=feedback_summaries.get(item.record.id),
             )
             refined.append(item)
 
         refined.sort(key=lambda result: result.score, reverse=True)
         return refined
+
+    async def _load_feedback_summaries(
+        self,
+        matches: list[IncidentRecallResult],
+    ) -> dict[str, dict[str, int | float]]:
+        incident_ids = list({item.record.id for item in matches})
+        summaries = await asyncio.gather(
+            *(
+                self.feedback_store.get_feedback_summary(recalled_incident_id)
+                for recalled_incident_id in incident_ids
+            )
+        )
+        return {
+            incident_id: summary
+            for incident_id, summary in zip(incident_ids, summaries, strict=True)
+        }
 
     async def _embed_text(self, text: str) -> list[float]:
         if not self.settings.openai_api_key:
