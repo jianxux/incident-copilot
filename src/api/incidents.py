@@ -28,18 +28,19 @@ _IN_MEMORY_NOTES: dict[str, list[dict[str, Any]]] = {}
 _IN_MEMORY_TIMELINE: dict[str, list[dict[str, Any]]] = {}
 
 _ALLOWED_SEVERITIES = {"critical", "high", "medium", "low", "info"}
-_ALLOWED_STATUSES = {"triggered", "acknowledged", "resolved", "processing"}
+_ALLOWED_STATUSES = {"triggered", "acknowledged", "resolved", "processing", "error"}
 
 _STATUS_DB_TO_API = {
     "completed": "resolved",
-    "error": "processing",
+    "error": "error",
 }
 
 _STATUS_API_TO_DB = {
     "triggered": {"triggered"},
     "acknowledged": {"acknowledged"},
     "resolved": {"resolved", "completed"},
-    "processing": {"processing", "error"},
+    "processing": {"processing"},
+    "error": {"error"},
 }
 
 
@@ -262,6 +263,106 @@ def _event_to_timeline(event: dict[str, Any], incident_id: str) -> dict[str, Any
         "timestamp": _iso(event.get("occurred_at") or event.get("created_at")) or _now_iso(),
         "metadata": metadata,
     }
+
+
+def _extract_github_context(payload: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        return {}
+
+    github_context = payload.get("github_context")
+    if isinstance(github_context, dict):
+        return github_context
+
+    github = payload.get("github")
+    if isinstance(github, dict):
+        return github
+
+    if any(key in payload for key in ("recent_deploys", "recent_prs", "recent_deployments")):
+        return payload
+
+    return {}
+
+
+def _build_github_timeline_events(
+    incident_id: str,
+    github_context: dict[str, Any],
+) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+
+    for idx, deploy in enumerate(github_context.get("recent_deploys") or []):
+        if not isinstance(deploy, dict):
+            continue
+        timestamp = _iso(deploy.get("timestamp")) or _now_iso()
+        short_sha = str(deploy.get("short_sha") or "")[:12]
+        message = deploy.get("message") or "Code change"
+        description = f"{short_sha}: {message}" if short_sha else str(message)
+        events.append(
+            {
+                "id": f"{incident_id}-gh-code-{idx}",
+                "incident_id": incident_id,
+                "type": "code_change",
+                "description": description,
+                "actor": deploy.get("author"),
+                "timestamp": timestamp,
+                "metadata": {"source": "github", "commit": deploy},
+            }
+        )
+
+    for idx, pr in enumerate(github_context.get("recent_prs") or []):
+        if not isinstance(pr, dict):
+            continue
+        timestamp = _iso(pr.get("merged_at")) or _now_iso()
+        number = pr.get("number")
+        title = pr.get("title") or "Pull request merged"
+        prefix = f"PR #{number}: " if number is not None else "PR: "
+        events.append(
+            {
+                "id": f"{incident_id}-gh-pr-{idx}",
+                "incident_id": incident_id,
+                "type": "pull_request",
+                "description": f"{prefix}{title}",
+                "actor": pr.get("author"),
+                "timestamp": timestamp,
+                "metadata": {"source": "github", "pull_request": pr},
+            }
+        )
+
+    for idx, deployment in enumerate(github_context.get("recent_deployments") or []):
+        if not isinstance(deployment, dict):
+            continue
+        timestamp = _iso(deployment.get("created_at")) or _now_iso()
+        environment = deployment.get("environment") or "unknown"
+        status = deployment.get("status") or "unknown"
+        events.append(
+            {
+                "id": f"{incident_id}-gh-deploy-{idx}",
+                "incident_id": incident_id,
+                "type": "deployment",
+                "description": f"Deployment to {environment} ({status})",
+                "actor": deployment.get("creator"),
+                "timestamp": timestamp,
+                "metadata": {"source": "github", "deployment": deployment},
+            }
+        )
+
+    return events
+
+
+async def _github_timeline_events_from_context(
+    incident_id: str,
+    *,
+    incident_row: dict[str, Any] | None,
+    stored_context_payload: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    github_context = _extract_github_context(stored_context_payload)
+    if not github_context and incident_row:
+        enriched_payload = await _try_ondemand_enrichment(incident_row)
+        github_context = _extract_github_context(enriched_payload)
+
+    if not github_context:
+        return []
+
+    return _build_github_timeline_events(incident_id, github_context)
 
 
 async def _require_tenant(auth: AuthContext) -> str:
@@ -497,7 +598,13 @@ def _list_inmemory_incidents(
     return filtered[offset : offset + limit], total
 
 
-async def _build_timeline_from_inmemory(incident_id: str, incident: dict[str, Any]) -> list[dict[str, Any]]:
+async def _build_timeline_from_inmemory(
+    incident_id: str,
+    incident: dict[str, Any],
+    *,
+    incident_row: dict[str, Any] | None = None,
+    stored_context_payload: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     events = list(_IN_MEMORY_TIMELINE.get(incident_id, []))
 
     base_events: list[dict[str, Any]] = [
@@ -537,6 +644,13 @@ async def _build_timeline_from_inmemory(incident_id: str, incident: dict[str, An
 
     combined = base_events + events
     timeline = [_event_to_timeline(event, incident_id) for event in combined]
+    timeline.extend(
+        await _github_timeline_events_from_context(
+            incident_id,
+            incident_row=incident_row,
+            stored_context_payload=stored_context_payload,
+        )
+    )
     timeline.sort(key=lambda item: item.get("timestamp") or "")
     return timeline
 
@@ -712,6 +826,7 @@ async def get_incident_stats(
         "acknowledged": 0,
         "resolved": 0,
         "processing": 0,
+        "error": 0,
     }
     by_severity = {
         "critical": 0,
@@ -1083,6 +1198,7 @@ async def get_incident_timeline(
         db = get_db(use_admin=True)
         events = await db.list_incident_events(incident_id)
         comments = await db.list_comments(incident_id)
+        card_row = await db.get_context_card(incident_id)
 
         timeline = [_event_to_timeline(event, incident_id) for event in events]
         for comment in comments:
@@ -1097,6 +1213,13 @@ async def get_incident_timeline(
                     "metadata": {"note": True},
                 }
             )
+        timeline.extend(
+            await _github_timeline_events_from_context(
+                incident_id,
+                incident_row=row,
+                stored_context_payload=card_row.get("data") if isinstance(card_row, dict) else None,
+            )
+        )
 
         timeline.sort(key=lambda item: item.get("timestamp") or "")
         return timeline
@@ -1111,7 +1234,18 @@ async def get_incident_timeline(
         "resolved_at": _iso(item.processed_at) if item.status == "completed" else None,
     }
 
-    return await _build_timeline_from_inmemory(incident_id, incident)
+    return await _build_timeline_from_inmemory(
+        incident_id,
+        incident,
+        incident_row={
+            "id": item.incident_id,
+            "service": item.service_name,
+            "service_name": item.service_name,
+        },
+        stored_context_payload=(
+            item.context_card.model_dump(mode="json") if item.context_card else None
+        ),
+    )
 
 
 @router.post("/{incident_id}/notes")
