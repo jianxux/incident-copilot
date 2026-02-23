@@ -16,6 +16,7 @@ from .memory_feedback import router as memory_feedback_router
 from .memory_stats import router as memory_stats_router
 from .metrics import router as metrics_router
 from .onboarding import router as onboarding_router
+from .pagerduty_sync_api import router as pagerduty_sync_router
 from .plugins import router as plugins_router
 from .runbooks import router as runbooks_router
 from .webhooks import router as webhooks_router
@@ -32,6 +33,7 @@ __all__ = [
     "email_router",
     "insights_router",
     "incidents_router",
+    "pagerduty_sync_router",
     "metrics_router",
     "ai_feedback_router",
     "memory_feedback_router",
