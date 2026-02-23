@@ -534,7 +534,7 @@ async def list_incidents(
     """List incidents with frontend-compatible filters and pagination."""
     tenant_id = auth.tenant_id
     if not tenant_id:
-        return {"incidents": [], "total": 0}
+        raise HTTPException(status_code=401, detail="auth_required")
 
     # Trigger PagerDuty background sync (batch upsert, non-blocking after first load)
     await _trigger_pd_sync_best_effort(tenant_id)
