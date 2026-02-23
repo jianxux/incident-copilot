@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 import structlog
 
 from ..config import get_settings
-from ..models import PagerDutyIncident, Severity
+from ..models import AILogSummary, ContextCard, PagerDutyIncident, Severity
 from ..orchestrator import ContextOrchestrator
 from ..web.store import incident_store
 
@@ -87,9 +87,34 @@ async def _process(
         )
         logger.info("test_incident_completed", incident_id=incident.incident_id)
     except Exception as e:
-        logger.error(
-            "test_incident_failed", incident_id=incident.incident_id, error=str(e)
+        error_message = str(e)
+        fallback_card = ContextCard(
+            incident_id=incident.incident_id,
+            title=incident.title,
+            severity=incident.severity,
+            service_name=incident.service_name,
+            triggered_at=incident.triggered_at,
+            alert_url=incident.html_url,
+            ai_summary=AILogSummary(
+                top_issues=[f"Orchestrator error: {error_message}"],
+                explanation="Generated fallback context after orchestrator failure.",
+                likely_cause=error_message,
+                suggested_actions=[
+                    "Verify onboarding integrations are connected and credentials are valid.",
+                    "Re-run onboarding test incident after fixing integration errors.",
+                ],
+            ),
+            assembly_time_ms=0,
+            errors=[f"orchestrator: {error_message}"],
         )
-        await incident_store.fail_incident(
-            incident.incident_id, str(e), tenant_id=tenant_id
+        logger.error(
+            "test_incident_fallback_completed",
+            incident_id=incident.incident_id,
+            error=error_message,
+        )
+        await incident_store.complete_incident(
+            incident.incident_id,
+            fallback_card,
+            metadata={"fallback": True, "error": error_message},
+            tenant_id=tenant_id,
         )
