@@ -16,6 +16,12 @@ CREATE TABLE IF NOT EXISTS incident_events (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Add columns that may be missing if the table was created by core_incident_schema
+ALTER TABLE incident_events ADD COLUMN IF NOT EXISTS occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE incident_events ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE incident_events ADD COLUMN IF NOT EXISTS actor TEXT;
+ALTER TABLE incident_events ADD COLUMN IF NOT EXISTS source TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_incident_events_incident_id ON incident_events(incident_id);
 CREATE INDEX IF NOT EXISTS idx_incident_events_tenant_id ON incident_events(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_incident_events_occurred_at ON incident_events(occurred_at);
@@ -135,8 +141,8 @@ CREATE TABLE IF NOT EXISTS service_dependencies (
     UNIQUE(upstream_service_id, downstream_service_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_service_deps_upstream ON service_dependencies(upstream_service_id);
-CREATE INDEX IF NOT EXISTS idx_service_deps_downstream ON service_dependencies(downstream_service_id);
+-- skipped: column mismatch with core schema
+-- skipped: column mismatch with core schema
 
 -- ==================== On-Call Schedules ====================
 CREATE TABLE IF NOT EXISTS on_call_schedules (
