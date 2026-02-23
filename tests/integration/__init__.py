@@ -1,1 +1,1 @@
-"""Integration tests for API endpoints."""
+# Integration tests - requires local Supabase running

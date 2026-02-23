@@ -13,19 +13,6 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- -----------------------------------------------------------------------------
--- Helper functions
--- -----------------------------------------------------------------------------
-
--- Current tenant id for the authenticated user (from profiles)
-CREATE OR REPLACE FUNCTION public.current_tenant_id()
-RETURNS uuid
-LANGUAGE sql
-STABLE
-AS $$
-  SELECT tenant_id FROM public.profiles WHERE id = auth.uid();
-$$;
-
--- -----------------------------------------------------------------------------
 -- Tenants
 -- -----------------------------------------------------------------------------
 
@@ -61,6 +48,18 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 );
 
 CREATE INDEX IF NOT EXISTS idx_profiles_tenant_id ON public.profiles(tenant_id);
+
+-- -----------------------------------------------------------------------------
+-- Helper functions (after profiles table exists)
+-- -----------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.current_tenant_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT tenant_id FROM public.profiles WHERE id = auth.uid();
+$$;
 
 -- -----------------------------------------------------------------------------
 -- Services & dependencies

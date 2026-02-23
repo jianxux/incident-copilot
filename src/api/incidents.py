@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import importlib
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
@@ -303,6 +304,30 @@ async def _trigger_pd_sync_best_effort(tenant_id: str) -> None:
         )
 
 
+async def _capture_resolution_memory_best_effort(
+    *,
+    incident: dict[str, Any],
+    resolution: str | None,
+    resolved_at: str,
+) -> None:
+    """Capture incident resolution to memory; never raise into API flow."""
+    try:
+        from ..orchestrator import ContextOrchestrator
+
+        orchestrator = ContextOrchestrator(get_settings())
+        await orchestrator.capture_resolution(
+            incident=incident,
+            resolution=resolution,
+            resolved_at=resolved_at,
+        )
+    except Exception as exc:
+        logger.warning(
+            "resolution_memory_capture_best_effort_failed",
+            incident_id=incident.get("id") or incident.get("incident_id"),
+            error=str(exc),
+        )
+
+
 async def _get_incident_row(tenant_id: str, incident_id: str) -> dict[str, Any] | None:
     from ..db.supabase_db import get_db
 
@@ -534,7 +559,7 @@ async def list_incidents(
     """List incidents with frontend-compatible filters and pagination."""
     tenant_id = auth.tenant_id
     if not tenant_id:
-        return {"incidents": [], "total": 0}
+        raise HTTPException(status_code=401, detail="auth_required")
 
     # Trigger PagerDuty background sync (batch upsert, non-blocking after first load)
     await _trigger_pd_sync_best_effort(tenant_id)
@@ -898,6 +923,14 @@ async def resolve_incident(
             occurred_at=now,
         )
 
+        asyncio.create_task(
+            _capture_resolution_memory_best_effort(
+                incident=updated or row,
+                resolution=request.resolution,
+                resolved_at=now,
+            )
+        )
+
         return _format_incident(updated or row)
 
     item = await incident_store.get_incident(incident_id)
@@ -921,6 +954,30 @@ async def resolve_incident(
             "occurred_at": now,
             "metadata": {"actor": actor, "resolution": request.resolution},
         }
+    )
+
+    resolution_row = {
+        "id": item.incident_id,
+        "title": item.title,
+        "description": None,
+        "service": item.service_name,
+        "service_name": item.service_name,
+        "severity": item.severity.value,
+        "status": item.status,
+        "triggered_at": item.triggered_at,
+        "processed_at": item.processed_at,
+        "created_at": item.triggered_at,
+        "updated_at": now,
+        "resolved_at": now,
+        "metadata": metadata,
+    }
+
+    asyncio.create_task(
+        _capture_resolution_memory_best_effort(
+            incident=resolution_row,
+            resolution=request.resolution,
+            resolved_at=now,
+        )
     )
 
     row = {

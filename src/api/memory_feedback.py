@@ -16,10 +16,11 @@ from ..memory import (
     ResolutionFeedback,
     get_feedback_store,
 )
-from ..memory.feedback import FeedbackType
+from ..memory.feedback import AIFeedback, AIFeedbackType, AIFeedbackValue, FeedbackType
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api/memory", tags=["memory-feedback"])
+feedback_router = APIRouter(prefix="/api/feedback", tags=["feedback"])
 
 
 def _feedback_store():
@@ -37,6 +38,15 @@ class SubmitFeedbackRequest(BaseModel):
     notes: str | None = None
 
 
+class SubmitAIFeedbackRequest(BaseModel):
+    """Request payload for verdict/summary/runbook feedback."""
+
+    incident_id: str = Field(..., min_length=1)
+    feedback_type: AIFeedbackType
+    feedback: AIFeedbackValue
+    notes: str | None = None
+
+
 @router.post("/feedback")
 async def submit_feedback(request: SubmitFeedbackRequest):
     """Submit resolution feedback for a recalled incident."""
@@ -48,6 +58,20 @@ async def submit_feedback(request: SubmitFeedbackRequest):
         notes=request.notes,
     )
     await store.submit(item)
+    return {"status": "ok", "feedback": item.model_dump(mode="json")}
+
+
+@feedback_router.post("/verdict")
+async def submit_ai_feedback(request: SubmitAIFeedbackRequest):
+    """Submit operator feedback for AI verdict/summary/runbook suggestions."""
+    store = _feedback_store()
+    item = AIFeedback(
+        incident_id=request.incident_id,
+        feedback_type=request.feedback_type,
+        feedback=request.feedback,
+        notes=request.notes,
+    )
+    await store.submit_ai_feedback(item)
     return {"status": "ok", "feedback": item.model_dump(mode="json")}
 
 

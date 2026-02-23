@@ -3,7 +3,7 @@
 import asyncio
 import time
 from datetime import UTC, datetime
-from typing import cast
+from typing import Any, cast
 
 import structlog
 
@@ -20,6 +20,7 @@ from .integrations import (
 from .integrations.oncall_legacy import OnCallAdapter
 from .memory import (
     IncidentMemoryConfig,
+    IncidentCapture,
     IncidentMemoryStore,
     IncidentRecall,
     RecallQuery,
@@ -77,6 +78,7 @@ class ContextOrchestrator:
         self.memory_config = IncidentMemoryConfig.from_settings(settings)
         self.memory_store: IncidentMemoryStore | None = None
         self.incident_recall: IncidentRecall | None = None
+        self.incident_capture: IncidentCapture | None = None
         self._memory_disabled: bool = False
         self._memory_disabled_reason: str | None = None
         if self.memory_config.enabled:
@@ -90,11 +92,17 @@ class ContextOrchestrator:
                     store=self.memory_store,
                     config=self.memory_config,
                 )
+                self.incident_capture = IncidentCapture(
+                    settings=settings,
+                    store=self.memory_store,
+                    config=self.memory_config,
+                )
             except Exception as e:
                 # Memory is optional; degrade gracefully.
                 logger.warning("incident_memory_init_failed", error=str(e))
                 self.memory_store = None
                 self.incident_recall = None
+                self.incident_capture = None
                 self._memory_disabled = True
                 self._memory_disabled_reason = str(e)
 
@@ -430,11 +438,159 @@ class ContextOrchestrator:
         await self.slack.send_context_card(card, channel=slack_channel)
         tracker.end(Phase.CARD_DELIVERED)
 
+        # Fire-and-forget: memory capture should never block delivery path.
+        asyncio.create_task(self._capture_incident_to_memory(incident, card))
+
         # Finalize latency report
         latency_report = tracker.log_report()
         card.latency_report = latency_report
 
         return card
+
+    async def _capture_incident_to_memory(
+        self,
+        incident: PagerDutyIncident,
+        card: ContextCard,
+    ) -> None:
+        """Best-effort auto-capture of assembled incident context into memory."""
+        if self._memory_disabled or not self.incident_capture:
+            return
+
+        try:
+            logs_summary = {
+                "top_issues": (
+                    card.ai_summary.top_issues if card.ai_summary else []
+                ),
+                "explanation": (
+                    card.ai_summary.explanation if card.ai_summary else None
+                ),
+                "likely_cause": (
+                    card.ai_summary.likely_cause if card.ai_summary else None
+                ),
+                "suggested_actions": (
+                    card.ai_summary.suggested_actions if card.ai_summary else []
+                ),
+            }
+
+            similar_incidents = [
+                {
+                    "incident_id": s.incident_id,
+                    "title": s.title,
+                    "service": s.service,
+                    "severity": s.severity,
+                    "root_cause": s.root_cause,
+                    "resolution": s.resolution,
+                    "occurred_at": s.occurred_at.isoformat(),
+                    "resolved_at": (
+                        s.resolved_at.isoformat() if s.resolved_at else None
+                    ),
+                    "similarity_score": s.similarity_score,
+                }
+                for s in card.similar_incidents
+            ]
+
+            payload: dict[str, Any] = {
+                "id": incident.incident_id,
+                "incident_id": incident.incident_id,
+                "title": incident.title,
+                "description": incident.description,
+                "service": incident.service_name,
+                "severity": incident.severity.value,
+                "triggered_at": incident.triggered_at.isoformat(),
+                "logs_summary": logs_summary,
+                "verdict": (
+                    card.verdict.model_dump(mode="json")
+                    if hasattr(card.verdict, "model_dump")
+                    else card.verdict
+                ),
+                "resolution_steps": card.runbook_steps,
+                "similar_incidents_found": similar_incidents,
+            }
+
+            await self.incident_capture.capture(payload)
+            logger.info(
+                "incident_memory_auto_capture_succeeded",
+                incident_id=incident.incident_id,
+            )
+        except Exception as e:
+            logger.warning(
+                "incident_memory_auto_capture_failed",
+                incident_id=incident.incident_id,
+                error=str(e),
+            )
+
+    async def capture_resolution(
+        self,
+        incident: dict[str, Any],
+        resolution: str | None = None,
+        resolved_at: str | datetime | None = None,
+    ) -> None:
+        """Best-effort memory upsert when an incident is resolved."""
+        if self._memory_disabled or not self.incident_capture:
+            return
+
+        try:
+            metadata = incident.get("metadata") if isinstance(incident, dict) else {}
+            if not isinstance(metadata, dict):
+                metadata = {}
+
+            incident_id = str(
+                incident.get("id")
+                or incident.get("incident_id")
+                or metadata.get("incident_id")
+                or ""
+            )
+            if not incident_id:
+                logger.warning("incident_memory_resolution_capture_missing_id")
+                return
+
+            resolved_value = (
+                resolved_at
+                or incident.get("resolved_at")
+                or incident.get("processed_at")
+                or metadata.get("resolved_at")
+            )
+            if isinstance(resolved_value, datetime):
+                resolved_iso = resolved_value.isoformat()
+            elif isinstance(resolved_value, str):
+                resolved_iso = resolved_value
+            else:
+                resolved_iso = datetime.now(UTC).isoformat()
+
+            triggered_value = incident.get("triggered_at") or incident.get("created_at")
+            if isinstance(triggered_value, datetime):
+                triggered_iso = triggered_value.isoformat()
+            else:
+                triggered_iso = str(triggered_value) if triggered_value else None
+
+            resolution_summary = resolution or metadata.get("resolution_notes")
+
+            payload: dict[str, Any] = {
+                "id": incident_id,
+                "incident_id": incident_id,
+                "title": incident.get("title") or "Untitled incident",
+                "description": incident.get("description"),
+                "service": incident.get("service") or incident.get("service_name"),
+                "severity": incident.get("severity"),
+                "triggered_at": triggered_iso,
+                "resolved_at": resolved_iso,
+                "status": "resolved",
+                "resolution_summary": resolution_summary,
+                "resolution_steps": metadata.get("resolution_steps") or [],
+                "verdict": metadata.get("verdict") or metadata.get("ai_verdict"),
+            }
+
+            await self.incident_capture.capture(payload)
+            logger.info(
+                "incident_memory_resolution_capture_succeeded",
+                incident_id=incident_id,
+            )
+        except Exception as e:
+            logger.warning(
+                "incident_memory_resolution_capture_failed",
+                incident_id=incident.get("id") or incident.get("incident_id"),
+                error=str(e),
+            )
 
     async def _recall_similar_incidents_from_memory(
         self,

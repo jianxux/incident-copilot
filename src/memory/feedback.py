@@ -14,6 +14,8 @@ from pydantic import BaseModel, Field
 logger = structlog.get_logger()
 
 FeedbackType = Literal["helpful", "not_helpful", "partial"]
+AIFeedbackType = Literal["verdict", "summary", "runbook"]
+AIFeedbackValue = Literal["helpful", "not_helpful"]
 
 
 class ResolutionFeedback(BaseModel):
@@ -22,6 +24,16 @@ class ResolutionFeedback(BaseModel):
     incident_id: str = Field(..., min_length=1)
     recalled_incident_id: str = Field(..., min_length=1)
     feedback: FeedbackType
+    notes: str | None = None
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+class AIFeedback(BaseModel):
+    """Operator feedback about AI analysis helpfulness."""
+
+    incident_id: str = Field(..., min_length=1)
+    feedback_type: AIFeedbackType
+    feedback: AIFeedbackValue
     notes: str | None = None
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
@@ -64,6 +76,24 @@ class FeedbackStore:
                 """
                 CREATE INDEX IF NOT EXISTS idx_feedback_pair
                 ON incident_memory_feedback (incident_id, recalled_incident_id)
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS incident_ai_feedback (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    incident_id TEXT NOT NULL,
+                    feedback_type TEXT NOT NULL CHECK(feedback_type IN ('verdict', 'summary', 'runbook')),
+                    feedback TEXT NOT NULL CHECK(feedback IN ('helpful', 'not_helpful')),
+                    notes TEXT,
+                    timestamp TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_ai_feedback_incident_id
+                ON incident_ai_feedback (incident_id)
                 """
             )
             conn.commit()
@@ -126,6 +156,42 @@ class FeedbackStore:
         finally:
             conn.close()
 
+    async def submit_ai_feedback(self, item: AIFeedback) -> AIFeedback:
+        """Persist one AI feedback record."""
+        await asyncio.to_thread(self._submit_ai_feedback_sync, item)
+        logger.info(
+            "incident_ai_feedback_submitted",
+            incident_id=item.incident_id,
+            feedback_type=item.feedback_type,
+            feedback=item.feedback,
+        )
+        return item
+
+    def _submit_ai_feedback_sync(self, item: AIFeedback) -> None:
+        conn = self._connect()
+        try:
+            conn.execute(
+                """
+                INSERT INTO incident_ai_feedback (
+                    incident_id,
+                    feedback_type,
+                    feedback,
+                    notes,
+                    timestamp
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    item.incident_id,
+                    item.feedback_type,
+                    item.feedback,
+                    item.notes,
+                    item.timestamp.isoformat(),
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
     async def feedback_breakdown(self) -> dict[str, int]:
         """Count feedback events by type."""
         return await asyncio.to_thread(self._feedback_breakdown_sync)
@@ -180,6 +246,49 @@ class FeedbackStore:
         aggregate = sum(weights.get(str(row["feedback"]), 0.0) for row in rows)
         average = aggregate / len(rows)
         return max(-0.25, min(0.25, round(average * 0.20, 4)))
+
+    async def get_feedback_summary(self, recalled_incident_id: str) -> dict[str, int | float]:
+        """Return aggregate feedback statistics for one recalled incident."""
+        return await asyncio.to_thread(
+            self._get_feedback_summary_sync,
+            recalled_incident_id,
+        )
+
+    def _get_feedback_summary_sync(self, recalled_incident_id: str) -> dict[str, int | float]:
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                """
+                SELECT
+                    SUM(CASE WHEN feedback = 'helpful' THEN 1 ELSE 0 END) AS helpful,
+                    SUM(CASE WHEN feedback = 'not_helpful' THEN 1 ELSE 0 END) AS not_helpful,
+                    SUM(CASE WHEN feedback = 'partial' THEN 1 ELSE 0 END) AS partial
+                FROM incident_memory_feedback
+                WHERE recalled_incident_id = ?
+                """,
+                (recalled_incident_id,),
+            ).fetchone()
+        finally:
+            conn.close()
+
+        helpful = int(row["helpful"] or 0) if row is not None else 0
+        not_helpful = int(row["not_helpful"] or 0) if row is not None else 0
+        partial = int(row["partial"] or 0) if row is not None else 0
+        total = helpful + not_helpful + partial
+        if total == 0:
+            net_score = 0.0
+        else:
+            net_score = round(
+                ((helpful * 1.0) + (partial * 0.25) + (not_helpful * -1.0)) / total,
+                4,
+            )
+
+        return {
+            "helpful": helpful,
+            "not_helpful": not_helpful,
+            "partial": partial,
+            "net_score": net_score,
+        }
 
     async def recall_hit_rate(self) -> float:
         """Compute incident-level recall hit rate from feedback outcomes."""
