@@ -380,6 +380,172 @@ def test_list_incidents_merges_supabase_and_memory_with_supabase_wins(monkeypatc
     assert incidents["inc-1"]["title"] == "Supabase title"
 
 
+def test_timeline_inmemory_includes_github_event_types(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from src.auth.middleware import AuthContext, get_auth_context
+    from src.main import create_app
+    from src.models import Severity
+    from src.web.store import StoredIncident
+
+    now = datetime(2026, 2, 22, 12, 0, tzinfo=timezone.utc)
+
+    app = create_app()
+
+    mock_tenant = MagicMock()
+    mock_tenant.id = "tenant-1"
+    mock_tenant.slug = "tenant-1"
+
+    async def override_auth():
+        return AuthContext(user=MagicMock(id="u1"), tenant=mock_tenant)
+
+    app.dependency_overrides[get_auth_context] = override_auth
+
+    monkeypatch.setattr("src.api.incidents.is_supabase_db_enabled", lambda: False)
+    monkeypatch.setattr(
+        "src.api.incidents.incident_store.get_incident",
+        AsyncMock(
+            return_value=StoredIncident(
+                incident_id="inc-1",
+                title="Latency spike",
+                service_name="payments-api",
+                severity=Severity.HIGH,
+                status="processing",
+                triggered_at=now,
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        "src.api.incidents._try_ondemand_enrichment",
+        AsyncMock(
+            return_value={
+                "github": {
+                    "recent_deploys": [
+                        {
+                            "short_sha": "abc1234",
+                            "author": "alice",
+                            "message": "Fix timeout regression",
+                            "timestamp": "2026-02-22T11:40:00Z",
+                        }
+                    ],
+                    "recent_prs": [
+                        {
+                            "number": 42,
+                            "title": "Reduce retry storm",
+                            "author": "bob",
+                            "merged_at": "2026-02-22T11:45:00Z",
+                        }
+                    ],
+                    "recent_deployments": [
+                        {
+                            "id": "d-1",
+                            "environment": "production",
+                            "status": "success",
+                            "created_at": "2026-02-22T11:50:00Z",
+                            "creator": "ci-bot",
+                        }
+                    ],
+                }
+            }
+        ),
+    )
+
+    with TestClient(app) as client:
+        response = client.get("/api/incidents/inc-1/timeline")
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    event_types = {event.get("type") for event in payload}
+    assert {"code_change", "pull_request", "deployment"}.issubset(event_types)
+
+
+def test_timeline_supabase_uses_stored_context_card_for_github_event_types(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from src.auth.middleware import AuthContext, get_auth_context
+    from src.main import create_app
+
+    class _FakeDb:
+        async def list_incident_events(self, _incident_id):
+            return []
+
+        async def list_comments(self, _incident_id):
+            return []
+
+        async def get_context_card(self, _incident_id):
+            return {
+                "id": "ctx-1",
+                "data": {
+                    "github": {
+                        "recent_deploys": [
+                            {
+                                "short_sha": "def5678",
+                                "author": "carol",
+                                "message": "Tune connection pool",
+                                "timestamp": "2026-02-22T10:40:00Z",
+                            }
+                        ],
+                        "recent_prs": [
+                            {
+                                "number": 43,
+                                "title": "Batch writes for queue",
+                                "author": "dave",
+                                "merged_at": "2026-02-22T10:45:00Z",
+                            }
+                        ],
+                        "recent_deployments": [
+                            {
+                                "id": "d-2",
+                                "environment": "staging",
+                                "status": "in_progress",
+                                "created_at": "2026-02-22T10:50:00Z",
+                                "creator": "deploy-bot",
+                            }
+                        ],
+                    }
+                },
+            }
+
+    app = create_app()
+
+    mock_tenant = MagicMock()
+    mock_tenant.id = "tenant-1"
+    mock_tenant.slug = "tenant-1"
+
+    async def override_auth():
+        return AuthContext(user=MagicMock(id="u1"), tenant=mock_tenant)
+
+    app.dependency_overrides[get_auth_context] = override_auth
+
+    monkeypatch.setattr("src.api.incidents.is_supabase_db_enabled", lambda: True)
+    monkeypatch.setattr(
+        "src.api.incidents._get_incident_row",
+        AsyncMock(
+            return_value={
+                "id": "inc-1",
+                "service": "payments-api",
+                "created_at": "2026-02-22T10:00:00Z",
+            }
+        ),
+    )
+    monkeypatch.setattr("src.db.supabase_db.get_db", lambda use_admin=True: _FakeDb())
+    mock_ondemand = AsyncMock(return_value={})
+    monkeypatch.setattr("src.api.incidents._try_ondemand_enrichment", mock_ondemand)
+
+    with TestClient(app) as client:
+        response = client.get("/api/incidents/inc-1/timeline")
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    event_types = {event.get("type") for event in payload}
+    assert {"code_change", "pull_request", "deployment"}.issubset(event_types)
+    mock_ondemand.assert_not_awaited()
+
+
 class TestDashboardWrapperEndpoints:
     """Test dashboard wrapper endpoints pass auth_data correctly."""
 
