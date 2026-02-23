@@ -375,15 +375,9 @@ async def _require_tenant(auth: AuthContext) -> str:
 
 
 async def _trigger_pd_sync_best_effort(tenant_id: str) -> None:
-    """Trigger PD sync when available; never raise into API flow."""
-    try:
-        await maybe_trigger_pd_sync(tenant_id)
-    except Exception as exc:
-        logger.warning(
-            "pd_sync_best_effort_call_failed",
-            tenant_id=tenant_id,
-            error=str(exc),
-        )
+    from src.integrations.pagerduty_sync import trigger_pd_sync_best_effort as _pd_sync
+
+    await _pd_sync(tenant_id)
 
 
 async def _capture_resolution_memory_best_effort(
