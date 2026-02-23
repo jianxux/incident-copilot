@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import enum
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, List, Optional
 
 import structlog
@@ -114,7 +114,7 @@ class VerdictEngine:
         log_summary: Optional[dict | str] = None,
         metrics: Optional[dict] = None,
         topology: Optional[dict] = None,
-        similar_incidents: Optional[list[dict]] = None,
+        similar_incidents: Optional[list[Any]] = None,
         **kwargs,
     ) -> Verdict:
         # Backward compat with adapter-style call sites.
@@ -134,13 +134,14 @@ class VerdictEngine:
             topology = kwargs.get("topology")
         if similar_incidents is None and kwargs.get("similar_incidents") is not None:
             similar_incidents = kwargs.get("similar_incidents")
+        normalized_similar_incidents = self._normalize_similar_incidents(similar_incidents)
 
         sections = self._build_context_sections(
             recent_deploys=recent_deploys,
             log_summary=log_summary,
             metrics=metrics,
             topology=topology,
-            similar_incidents=similar_incidents,
+            similar_incidents=normalized_similar_incidents,
         )
 
         # Legacy path: direct LLM client attached on self.client.
@@ -195,7 +196,7 @@ class VerdictEngine:
                         else (log_summary or "")
                     ),
                     metrics=metrics if metrics is not None else topology,
-                    similar_incidents=similar_incidents,
+                    similar_incidents=normalized_similar_incidents,
                 )
                 return self._map_response_to_verdict(response, service_name)
             except Exception as e:
@@ -281,7 +282,7 @@ class VerdictEngine:
         log_summary: Optional[dict | str] = None,
         metrics: Optional[dict] = None,
         topology: Optional[dict] = None,
-        similar_incidents: Optional[list[dict]] = None,
+        similar_incidents: Optional[list[Any]] = None,
     ) -> str:
         sections: list[str] = []
 
@@ -335,22 +336,92 @@ class VerdictEngine:
                 lines.append(f"{key}: {value}")
             sections.append("\n".join(lines))
 
-        if similar_incidents:
-            lines = ["SIMILAR PAST INCIDENTS:"]
-            for incident in similar_incidents[:5]:
-                title = incident.get("title", "Untitled incident")
-                occurred = incident.get("occurred_at", "unknown date")
-                root_cause = incident.get("root_cause", "unknown root cause")
-                resolution = incident.get("resolution")
-                line = f"- {title} ({occurred}) cause: {root_cause}"
-                if resolution:
-                    line += f" | resolution: {resolution}"
+        normalized_similar_incidents = self._normalize_similar_incidents(similar_incidents)
+        if normalized_similar_incidents:
+            lines = [
+                "SIMILAR PAST INCIDENTS:",
+                "Here are similar past incidents and their resolutions:",
+            ]
+            for incident in normalized_similar_incidents[:3]:
+                happened = (
+                    incident.get("title")
+                    or incident.get("description")
+                    or "Unknown incident"
+                )
+                root_cause = incident.get("root_cause") or "Unknown"
+                resolution = incident.get("resolution") or "Unknown"
+                time_to_resolve = self._format_time_to_resolve(
+                    incident.get("occurred_at"),
+                    incident.get("resolved_at"),
+                )
+                line = (
+                    f"- What happened: {happened} | Root cause: {root_cause}"
+                    f" | Resolution: {resolution}"
+                )
+                if time_to_resolve:
+                    line += f" | Time to resolve: {time_to_resolve}"
                 lines.append(line)
             sections.append("\n".join(lines))
 
         if not sections:
             return "No additional context available"
         return "\n\n".join(sections)
+
+    def _normalize_similar_incidents(
+        self, similar_incidents: Optional[list[Any]]
+    ) -> list[dict[str, Any]]:
+        if not similar_incidents:
+            return []
+
+        normalized: list[dict[str, Any]] = []
+        for incident in similar_incidents:
+            if isinstance(incident, dict):
+                normalized.append(incident)
+                continue
+            if hasattr(incident, "model_dump"):
+                normalized.append(incident.model_dump())
+                continue
+            normalized.append(
+                {
+                    "title": getattr(incident, "title", None),
+                    "description": getattr(incident, "description", None),
+                    "root_cause": getattr(incident, "root_cause", None),
+                    "resolution": getattr(incident, "resolution", None),
+                    "occurred_at": getattr(incident, "occurred_at", None),
+                    "resolved_at": getattr(incident, "resolved_at", None),
+                }
+            )
+        return normalized
+
+    def _format_time_to_resolve(self, occurred_at: Any, resolved_at: Any) -> str | None:
+        occurred = self._parse_datetime_like(occurred_at)
+        resolved = self._parse_datetime_like(resolved_at)
+        if not occurred or not resolved or resolved <= occurred:
+            return None
+        return self._humanize_duration(resolved - occurred)
+
+    def _parse_datetime_like(self, value: Any) -> datetime | None:
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            candidate = value.strip()
+            if candidate.endswith("Z"):
+                candidate = candidate[:-1] + "+00:00"
+            try:
+                return datetime.fromisoformat(candidate)
+            except ValueError:
+                return None
+        return None
+
+    def _humanize_duration(self, duration: timedelta) -> str:
+        total_seconds = int(duration.total_seconds())
+        hours, remainder = divmod(total_seconds, 3600)
+        minutes, _ = divmod(remainder, 60)
+        if hours > 0:
+            return f"{hours}h {minutes}m"
+        return f"{minutes}m"
 
     def _fallback_verdict(
         self,
