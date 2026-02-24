@@ -53,14 +53,14 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'hidden md:flex flex-col border-r border-[#2a2420] bg-[#1a1614] transition-all duration-300',
+        'hidden md:flex flex-col border-r border-stone-800 bg-stone-950 transition-all duration-300',
         sidebarOpen ? 'w-64' : 'w-16'
       )}
     >
       {/* Logo */}
       <div
         className={cn(
-          'relative flex h-16 items-center border-b border-[#2a2420]',
+          'relative flex h-16 items-center border-b border-stone-800',
           sidebarOpen ? 'justify-between px-4' : 'justify-center px-2'
         )}
       >
@@ -68,15 +68,15 @@ export function Sidebar() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <AlertTriangle className="h-5 w-5 text-primary-foreground" />
           </div>
-          {sidebarOpen && <span className="font-semibold text-[#f5efe8]">Incident Copilot</span>}
+          {sidebarOpen && <span className="font-semibold text-stone-100">Incident Copilot</span>}
         </Link>
         <Button
           variant="ghost"
           size="icon"
           onClick={toggleSidebar}
           className={cn(
-            'text-[#a8998a] hover:bg-[#2a2420] hover:text-[#e8ddd0]',
-            !sidebarOpen && 'absolute right-2 bg-[#2a2420] hover:bg-[#332c27]'
+            'text-stone-400 hover:bg-stone-800 hover:text-stone-200',
+            !sidebarOpen && 'absolute right-2 bg-stone-800 hover:bg-stone-700'
           )}
         >
           {sidebarOpen ? (
@@ -100,11 +100,11 @@ export function Sidebar() {
           ))}
         </div>
 
-        <Separator className="my-4 bg-[#2a2420]" />
+        <Separator className="my-4 bg-stone-800" />
 
         <div className="space-y-1">
           {sidebarOpen && (
-            <p className="px-3 py-2 text-xs font-semibold uppercase text-[#6b5e52]">
+            <p className="px-3 py-2 text-xs font-semibold uppercase text-stone-600">
               Operations
             </p>
           )}
@@ -120,7 +120,7 @@ export function Sidebar() {
       </nav>
 
       {/* Bottom nav */}
-      <div className="border-t border-[#2a2420] p-2">
+      <div className="border-t border-stone-800 p-2">
         {bottomNavItems.map((item) => (
           <NavItem
             key={item.href}
@@ -130,10 +130,10 @@ export function Sidebar() {
           />
         ))}
         {!sidebarOpen && (
-          <div className="flex justify-center py-3 border-t border-[#2a2420]">
+          <div className="flex justify-center py-3 border-t border-stone-800">
             <button
               onClick={toggleSidebar}
-              className="text-[#6b5e52] hover:text-[#a8998a] transition-colors"
+              className="text-stone-600 hover:text-stone-400 transition-colors"
             >
               <ChevronsRight className="h-4 w-4" />
             </button>
@@ -159,9 +159,9 @@ export function MobileSidebar() {
       />
 
       {/* Sidebar panel */}
-      <aside className="fixed inset-y-0 left-0 flex w-72 flex-col border-r border-[#2a2420] bg-[#1a1614] shadow-xl animate-in slide-in-from-left duration-300">
+      <aside className="fixed inset-y-0 left-0 flex w-72 flex-col border-r border-stone-800 bg-stone-950 shadow-xl animate-in slide-in-from-left duration-300">
         {/* Header with close button */}
-        <div className="flex h-16 items-center justify-between border-b border-[#2a2420] px-4">
+        <div className="flex h-16 items-center justify-between border-b border-stone-800 px-4">
           <Link
             href="/dashboard"
             className="flex items-center gap-2"
@@ -170,12 +170,12 @@ export function MobileSidebar() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <AlertTriangle className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-[#f5efe8]">Incident Copilot</span>
+            <span className="font-semibold text-stone-100">Incident Copilot</span>
           </Link>
           <Button
             variant="ghost"
             size="icon"
-            className="text-[#a8998a] hover:bg-[#2a2420] hover:text-[#e8ddd0]"
+            className="text-stone-400 hover:bg-stone-800 hover:text-stone-200"
             onClick={() => setMobileSidebarOpen(false)}
           >
             <X className="h-5 w-5" />
@@ -195,10 +195,10 @@ export function MobileSidebar() {
             ))}
           </div>
 
-          <Separator className="my-4 bg-[#2a2420]" />
+          <Separator className="my-4 bg-stone-800" />
 
           <div className="space-y-1">
-            <p className="px-3 py-2 text-xs font-semibold uppercase text-[#6b5e52]">
+            <p className="px-3 py-2 text-xs font-semibold uppercase text-stone-600">
               Operations
             </p>
             {secondaryNavItems.map((item) => (
@@ -213,7 +213,7 @@ export function MobileSidebar() {
         </nav>
 
         {/* Bottom nav */}
-        <div className="border-t border-[#2a2420] p-2">
+        <div className="border-t border-stone-800 p-2">
           {bottomNavItems.map((item) => (
             <MobileNavItem
               key={item.href}
@@ -246,7 +246,7 @@ function NavItem({ href, label, icon: Icon, isActive, collapsed }: NavItemProps)
           ? collapsed
             ? 'bg-primary/15 text-primary'
             : 'bg-primary text-primary-foreground'
-          : 'text-[#a8998a] hover:bg-[#2a2420] hover:text-[#e8ddd0]',
+          : 'text-stone-400 hover:bg-stone-800 hover:text-stone-200',
         collapsed && 'px-0 justify-center'
       )}
       title={collapsed ? label : undefined}
@@ -274,7 +274,7 @@ function MobileNavItem({ href, label, icon: Icon, isActive, onNavigate }: Mobile
         'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
         isActive
           ? 'bg-primary text-primary-foreground'
-          : 'text-[#a8998a] hover:bg-[#2a2420] hover:text-[#e8ddd0]'
+          : 'text-stone-400 hover:bg-stone-800 hover:text-stone-200'
       )}
     >
       <Icon className="h-5 w-5 shrink-0" />
