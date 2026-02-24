@@ -74,13 +74,11 @@
             border-radius: 12px;
             font-size: 0.875rem;
             font-weight: 600;
-            color: rgba(100,116,139,1); /* slate-500 */
+            color: rgba(168,162,158,1); /* stone-400 */
             transition: all 0.15s ease;
             text-decoration: none;
         }
-        .nav-item:hover { background: rgba(148,163,184,0.14); color: rgba(15,23,42,1); }
-        html.dark .nav-item { color: rgba(148,163,184,1); }
-        html.dark .nav-item:hover { background: rgba(148,163,184,0.10); color: rgba(241,245,249,1); }
+        .nav-item:hover { background: rgba(255,255,255,0.08); color: rgba(231,229,228,1); }
 
         .nav-item.active {
             background: rgba(224,90,58,0.10);
@@ -99,9 +97,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            color: rgba(100,116,139,1);
+            color: rgba(168,162,158,1); /* stone-400 */
         }
-        html.dark .nav-icon { color: rgba(148,163,184,1); }
         .nav-item.active .nav-icon { color: var(--brand-dark); }
         html.dark .nav-item.active .nav-icon { color: rgba(255,255,255,0.92); }
 
@@ -110,7 +107,7 @@
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            color: rgba(148,163,184,1);
+            color: rgba(120,113,108,1); /* stone-500 */
             padding: 16px 22px 6px;
         }
 
@@ -209,9 +206,9 @@
         <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
 
         <!-- Sidebar -->
-        <aside id="sidebar" class="sidebar flex flex-col bg-white/70 dark:bg-slate-900/60 backdrop-blur border-r border-stone-200 dark:border-slate-800 h-screen md:sticky md:relative top-0 overflow-y-auto">
+        <aside id="sidebar" class="sidebar flex flex-col bg-stone-900 dark:bg-slate-950 backdrop-blur border-r border-stone-800 h-screen md:sticky md:relative top-0 overflow-y-auto">
             <!-- Logo area -->
-            <div class="flex items-center h-16 px-4 border-b border-stone-200 dark:border-slate-800 flex-shrink-0">
+            <div class="flex items-center h-16 px-4 border-b border-stone-800 flex-shrink-0">
                 <a href="/dashboard" class="flex items-center space-x-3 min-w-0">
                     <!-- Logo concept: coral square + white clock icon -->
                     <svg class="w-9 h-9 flex-shrink-0" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -220,8 +217,8 @@
                         <path d="M16 10v6l4.5 2.25" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     <div class="min-w-0">
-                        <div class="sidebar-logo-text text-sm font-semibold text-slate-900 dark:text-white truncate">Incident Copilot</div>
-                        <div class="sidebar-tenant text-[11px] text-slate-500 dark:text-slate-400 truncate">Ops dashboard</div>
+                        <div class="sidebar-logo-text text-sm font-semibold text-white truncate">Incident Copilot</div>
+                        <div class="sidebar-tenant text-[11px] text-stone-400 truncate">Ops dashboard</div>
                     </div>
                 </a>
             </div>
@@ -271,7 +268,7 @@
             </nav>
 
             <!-- Bottom section -->
-            <div class="border-t border-stone-200 dark:border-slate-800 py-3 flex-shrink-0">
+            <div class="border-t border-stone-800 py-3 flex-shrink-0">
                 <a href="https://docs.incident-copilot.dev" target="_blank" class="nav-item">
                     <span class="nav-icon"><i class="fas fa-book text-sm"></i></span>
                     <span class="nav-label">Docs</span>
