@@ -2,7 +2,7 @@
 LaunchDarkly Collector - Collect feature flag changes.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 
 import httpx
 
@@ -171,7 +171,7 @@ class LaunchDarklyCollector:
             if isinstance(timestamp, int):
                 started_at = datetime.fromtimestamp(timestamp / 1000)
             else:
-                started_at = datetime.utcnow()
+                started_at = datetime.now(UTC)
 
             # Determine new state
             new_state = True

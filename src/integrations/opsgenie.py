@@ -2,7 +2,7 @@
 
 import hashlib
 import hmac
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 import httpx
@@ -115,9 +115,9 @@ class OpsgenieAdapter:
                             str(created_at).replace("Z", "+00:00")
                         )
                 else:
-                    triggered_at = datetime.utcnow()
+                    triggered_at = datetime.now(UTC)
             except (ValueError, TypeError):
-                triggered_at = datetime.utcnow()
+                triggered_at = datetime.now(UTC)
 
             # Extract responders (teams/users assigned)
             responders = []

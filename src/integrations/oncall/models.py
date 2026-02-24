@@ -1,6 +1,6 @@
 """On-Call Scheduling Models - Pydantic v2 models for schedules, shifts, and rotations."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from enum import StrEnum
 from zoneinfo import ZoneInfo
 
@@ -211,7 +211,7 @@ class OnCallOverride(BaseModel):
         """Check if override is currently active."""
         if self.status != OverrideStatus.ACTIVE:
             return False
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         return self.start_time <= now <= self.end_time
 
     def activate(self) -> None:

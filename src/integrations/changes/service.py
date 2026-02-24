@@ -4,7 +4,7 @@ Change Tracking Service - Core logic for tracking and correlating changes.
 
 import asyncio
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Protocol
 
 from .models import (
@@ -97,7 +97,7 @@ class ChangeTrackingService:
                 ChangeStatus.FAILED,
                 ChangeStatus.ROLLED_BACK,
             ):
-                change.completed_at = datetime.utcnow()
+                change.completed_at = datetime.now(UTC)
         return change
 
     # ========== Recent Changes ==========
@@ -111,7 +111,7 @@ class ChangeTrackingService:
         limit: int = 100,
     ) -> list[ChangeEvent]:
         """Get recent changes within a time window."""
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
 
         changes = []
         for change in self._changes.values():
@@ -278,7 +278,7 @@ class ChangeTrackingService:
         self, environment: str | None = None, at_time: datetime | None = None
     ) -> list[ChangeFreeze]:
         """Get currently active change freezes."""
-        check_time = at_time or datetime.utcnow()
+        check_time = at_time or datetime.now(UTC)
         active = []
 
         for freeze in self._freezes.values():
@@ -309,7 +309,7 @@ class ChangeTrackingService:
         freeze = self._freezes.get(freeze_id)
         if freeze:
             freeze.is_active = False
-            freeze.end_time = datetime.utcnow()
+            freeze.end_time = datetime.now(UTC)
         return freeze
 
     # ========== Timeline ==========
@@ -321,7 +321,7 @@ class ChangeTrackingService:
         services: list[str] | None = None,
     ) -> ChangeTimeline:
         """Get a change timeline for visualization."""
-        end_time = datetime.utcnow()
+        end_time = datetime.now(UTC)
         start_time = end_time - timedelta(hours=hours)
 
         events = await self.get_changes_in_window(

@@ -10,7 +10,7 @@ Usage:
 import asyncio
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 
 import structlog
@@ -359,7 +359,7 @@ class EvalHarness:
 
     def _save_results(self):
         """Save results to output directory."""
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
 
         # Save individual results
         results_file = self.output_dir / f"results_{timestamp}.json"

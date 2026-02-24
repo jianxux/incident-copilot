@@ -7,7 +7,7 @@ heuristic formatter.
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, UTC
 
 import structlog
 from anthropic import AsyncAnthropic
@@ -355,7 +355,7 @@ class HandoffSummaryGenerator:
         return "\n".join(lines).strip()[:1500]
 
     def _new_id(self) -> str:
-        return datetime.utcnow().strftime("handoff_%Y%m%d_%H%M%S_") + self._rand()
+        return datetime.now(UTC).strftime("handoff_%Y%m%d_%H%M%S_") + self._rand()
 
     def _rand(self) -> str:
         import secrets

@@ -1,7 +1,7 @@
 """Template service for managing incident templates."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 from .defaults import get_builtin_templates
@@ -59,7 +59,7 @@ class TemplateService:
         created_by: str | None = None,
     ) -> IncidentTemplate:
         """Create a new template."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         template = IncidentTemplate(
             id=f"template-{uuid.uuid4().hex[:12]}",
             name=req.name,
@@ -114,7 +114,7 @@ class TemplateService:
                 setattr(template, field, value)
 
         template.version += 1
-        template.updated_at = datetime.utcnow()
+        template.updated_at = datetime.now(UTC)
         self._save(template)
         return template
 
@@ -142,7 +142,7 @@ class TemplateService:
             return True
 
         template.is_active = False
-        template.updated_at = datetime.utcnow()
+        template.updated_at = datetime.now(UTC)
         self._save(template)
         return True
 
@@ -193,7 +193,7 @@ class TemplateService:
         if not original:
             return None
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         copy = original.model_copy(deep=True)
         copy.id = f"custom-{uuid.uuid4().hex[:12]}"
         copy.name = f"{original.name} (Custom)"
@@ -212,7 +212,7 @@ class TemplateService:
         template = await self.get(template_id, org_id)
         if template:
             template.analytics.usage_count += 1
-            template.analytics.last_used_at = datetime.utcnow()
+            template.analytics.last_used_at = datetime.now(UTC)
             self._save(template)
 
     async def record_resolution(
@@ -273,7 +273,7 @@ class TemplateService:
     ) -> list[IncidentTemplate]:
         """Import templates from export format."""
         imported = []
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         for t in export.templates:
             copy = t.model_copy(deep=True)
             copy.id = f"imported-{uuid.uuid4().hex[:12]}"

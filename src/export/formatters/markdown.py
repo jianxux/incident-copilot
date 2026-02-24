@@ -1,6 +1,6 @@
 """Markdown export formatter for documentation."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 from ..models import (
@@ -106,7 +106,7 @@ class MarkdownFormatter:
 
         # Metadata
         if self.options.include_metadata:
-            lines.append(f"*Exported at: {datetime.utcnow().isoformat()}*\n")
+            lines.append(f"*Exported at: {datetime.now(UTC).isoformat()}*\n")
             lines.append(f"*Total incidents: {len(incidents)}*\n\n")
 
         # Table of contents
@@ -194,7 +194,7 @@ class MarkdownFormatter:
         lines.append(self._heading("Postmortem Export", 1))
 
         if self.options.include_metadata:
-            lines.append(f"*Exported at: {datetime.utcnow().isoformat()}*\n")
+            lines.append(f"*Exported at: {datetime.now(UTC).isoformat()}*\n")
             lines.append(f"*Total postmortems: {len(postmortems)}*\n\n")
 
         if self.options.include_toc and len(postmortems) > 1:
@@ -344,7 +344,7 @@ class MarkdownFormatter:
         lines.append(self._heading("Analytics Report", 1))
 
         if self.options.include_metadata:
-            lines.append(f"*Generated at: {datetime.utcnow().isoformat()}*\n\n")
+            lines.append(f"*Generated at: {datetime.now(UTC).isoformat()}*\n\n")
 
         # MTTR Stats
         if "mttr_stats" in analytics:
@@ -441,7 +441,7 @@ class MarkdownFormatter:
         lines.append(self._heading("Data Export", 1))
 
         if self.options.include_metadata:
-            lines.append(f"*Exported at: {datetime.utcnow().isoformat()}*\n")
+            lines.append(f"*Exported at: {datetime.now(UTC).isoformat()}*\n")
             lines.append(f"*Records: {len(data)}*\n\n")
 
         # Determine columns

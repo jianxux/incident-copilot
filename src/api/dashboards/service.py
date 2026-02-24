@@ -1,7 +1,7 @@
 """Dashboard service for CRUD, cloning, and sharing operations."""
 
 import secrets
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import UUID, uuid4
 
 from .models import (
@@ -38,7 +38,7 @@ class DashboardService:
     async def create_dashboard(
         self, owner_id: UUID, data: DashboardCreate
     ) -> Dashboard:
-        did, now = uuid4(), datetime.utcnow()
+        did, now = uuid4(), datetime.now(UTC)
         widgets = []
         for wd in data.widgets:
             if errs := validate_widget_config(wd.config):
@@ -82,7 +82,7 @@ class DashboardService:
         d = self._dashboards.get(did)
         if not d or d.share_config.scope != ShareScope.PUBLIC:
             raise DashboardNotFoundError("Not found")
-        if d.share_config.expires_at and datetime.utcnow() > d.share_config.expires_at:
+        if d.share_config.expires_at and datetime.now(UTC) > d.share_config.expires_at:
             raise DashboardNotFoundError("Link expired")
         return d
 
@@ -123,7 +123,7 @@ class DashboardService:
             raise PermissionDeniedError("No edit access")
         for k, v in data.model_dump(exclude_unset=True).items():
             setattr(d, k, v)
-        d.updated_at = datetime.utcnow()
+        d.updated_at = datetime.now(UTC)
         return d
 
     async def delete_dashboard(self, did: UUID, user_id: UUID) -> None:
@@ -142,7 +142,7 @@ class DashboardService:
             raise ValueError(f"Invalid widget: {errs}")
         w = Widget(id=uuid4(), dashboard_id=did, **data.model_dump())
         d.widgets.append(w)
-        d.updated_at = datetime.utcnow()
+        d.updated_at = datetime.now(UTC)
         return w
 
     async def update_widget(
@@ -158,7 +158,7 @@ class DashboardService:
             raise ValueError(f"Invalid config: {errs}")
         for k, v in data.model_dump(exclude_unset=True).items():
             setattr(w, k, v)
-        w.updated_at = d.updated_at = datetime.utcnow()
+        w.updated_at = d.updated_at = datetime.now(UTC)
         return w
 
     async def delete_widget(self, did: UUID, wid: UUID, user_id: UUID) -> None:
@@ -166,7 +166,7 @@ class DashboardService:
         if not await self._can_edit(d, user_id):
             raise PermissionDeniedError("No edit access")
         d.widgets = [x for x in d.widgets if x.id != wid]
-        d.updated_at = datetime.utcnow()
+        d.updated_at = datetime.now(UTC)
 
     async def reorder_widgets(
         self, did: UUID, user_id: UUID, positions: dict[UUID, dict[str, int]]
@@ -178,14 +178,14 @@ class DashboardService:
             if w.id in positions:
                 for k, v in positions[w.id].items():
                     setattr(w.position, k, v)
-        d.updated_at = datetime.utcnow()
+        d.updated_at = datetime.now(UTC)
         return d
 
     async def clone_dashboard(
         self, did: UUID, user_id: UUID, new_name: str | None = None
     ) -> Dashboard:
         src = await self.get_dashboard(did, user_id)
-        nid, now = uuid4(), datetime.utcnow()
+        nid, now = uuid4(), datetime.now(UTC)
         widgets = [
             Widget(
                 id=uuid4(),
@@ -244,7 +244,7 @@ class DashboardService:
             expires_at=expires_at,
             allow_edit=allow_edit,
         )
-        d.updated_at = datetime.utcnow()
+        d.updated_at = datetime.now(UTC)
         return d.share_config
 
     async def _can_view(

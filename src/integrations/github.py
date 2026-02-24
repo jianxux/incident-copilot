@@ -1,7 +1,7 @@
 """GitHub integration adapter."""
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 import httpx
 import structlog
@@ -79,7 +79,7 @@ class GitHubAdapter:
         self, client: httpx.AsyncClient, repo: str, since_hours: int
     ) -> list[Deployment]:
         """Fetch recent commits from main/master branch."""
-        since = (datetime.utcnow() - timedelta(hours=since_hours)).isoformat() + "Z"
+        since = (datetime.now(UTC) - timedelta(hours=since_hours)).isoformat() + "Z"
 
         url = f"{self.BASE_URL}/repos/{repo}/commits"
         params = {"since": since, "per_page": 10}
@@ -103,7 +103,7 @@ class GitHubAdapter:
             try:
                 timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
             except (ValueError, AttributeError):
-                timestamp = datetime.utcnow()
+                timestamp = datetime.now(UTC)
 
             deploys.append(
                 Deployment(
@@ -162,7 +162,7 @@ class GitHubAdapter:
         self, client: httpx.AsyncClient, repo: str, since_hours: int
     ) -> list[GitHubPullRequest]:
         """Fetch recently merged pull requests."""
-        since = (datetime.utcnow() - timedelta(hours=since_hours)).isoformat() + "Z"
+        since = (datetime.now(UTC) - timedelta(hours=since_hours)).isoformat() + "Z"
 
         url = f"{self.BASE_URL}/repos/{repo}/pulls"
         params = {"state": "closed", "sort": "updated", "direction": "desc", "per_page": 10}
@@ -221,7 +221,7 @@ class GitHubAdapter:
                 try:
                     created_at = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
                 except (ValueError, AttributeError):
-                    created_at = datetime.utcnow()
+                    created_at = datetime.now(UTC)
 
                 creator = dep.get("creator") or {}
                 # Fetch latest status

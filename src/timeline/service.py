@@ -1,7 +1,7 @@
 """Timeline service for managing incident timelines."""
 
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import UUID
 
 from .models import (
@@ -92,7 +92,7 @@ class TimelineService:
             events = self._apply_filters(events, filters)
 
         # Find reference time (first event)
-        reference_time = events[0].timestamp if events else datetime.utcnow()
+        reference_time = events[0].timestamp if events else datetime.now(UTC)
 
         entries = []
         for event in events:

@@ -2,7 +2,7 @@
 
 import uuid
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 import structlog
 
@@ -37,6 +37,12 @@ class CorrelationEngine:
         self._initialized = False
         self._on_group_created: list[Callable] = []
         self._on_alert_correlated: list[Callable] = []
+
+    @staticmethod
+    def _to_utc_aware(dt: datetime | None) -> datetime | None:
+        if dt is None:
+            return None
+        return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt.astimezone(UTC)
 
     async def initialize(self) -> None:
         if self._initialized:
@@ -117,14 +123,15 @@ class CorrelationEngine:
     ) -> CorrelationResult:
         group.add_alert(alert)
         group.update_summary()
+        first_alert_at = self._to_utc_aware(group.first_alert_at)
+        created_at = self._to_utc_aware(group.created_at)
+        group_start_time = first_alert_at or created_at or datetime.now(UTC)
         should_notify, suppression_reason = False, None
         if rule.suppress_duplicates:
             if group.notification_sent:
                 if (
                     rule.re_notify_after_seconds > 0
-                    and (
-                        datetime.utcnow() - (group.first_alert_at or group.created_at)
-                    ).total_seconds()
+                    and (datetime.now(UTC) - group_start_time).total_seconds()
                     >= rule.re_notify_after_seconds
                 ):
                     should_notify = True
@@ -166,7 +173,7 @@ class CorrelationEngine:
     ) -> CorrelationResult:
         fingerprint = self.rule_manager.generate_fingerprint(alert, rule)
         window_expires = (
-            datetime.utcnow() + timedelta(seconds=rule.time_window_seconds)
+            datetime.now(UTC) + timedelta(seconds=rule.time_window_seconds)
             if rule.time_window_seconds > 0
             else None
         )
@@ -222,7 +229,7 @@ class CorrelationEngine:
         group = await self.store.get_group(group_id)
         if not group:
             return False
-        group.status, group.updated_at = status, datetime.utcnow()
+        group.status, group.updated_at = status, datetime.now(UTC)
         await self.store.store_group(group)
         await self.store.delete_fingerprint(group.fingerprint)
         logger.info("correlation_group_closed", group_id=group_id, status=status.value)

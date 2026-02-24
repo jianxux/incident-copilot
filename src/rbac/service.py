@@ -6,7 +6,7 @@ Core service for role-based access control.
 Handles permission checks, role assignments, and access decisions.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import UUID
 
 from .models import (
@@ -123,7 +123,7 @@ class RBACService:
         if permissions is not None:
             role.permissions = permissions
 
-        role.updated_at = datetime.utcnow()
+        role.updated_at = datetime.now(UTC)
         self._invalidate_cache_for_role(role_id)
 
         return role
@@ -198,7 +198,7 @@ class RBACService:
         assignments = self._assignments.get(user_id, [])
 
         # Filter out expired assignments
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         active = [
             a
             for a in assignments
@@ -210,7 +210,7 @@ class RBACService:
     async def get_users_with_role(self, role_id: UUID) -> list[UUID]:
         """Get all users with a specific role."""
         users = []
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         for user_id, assignments in self._assignments.items():
             for assignment in assignments:

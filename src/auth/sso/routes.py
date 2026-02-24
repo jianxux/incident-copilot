@@ -1,6 +1,6 @@
 """FastAPI routes for SSO (SAML and OIDC) authentication."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from urllib.parse import urlencode
 
@@ -103,7 +103,7 @@ async def enable_sso(tenant_id: str) -> dict[str, Any]:
         )
 
     config.sso_enabled = True
-    config.updated_at = datetime.utcnow()
+    config.updated_at = datetime.now(UTC)
 
     return {"message": "SSO enabled", "tenant_id": tenant_id}
 
@@ -113,7 +113,7 @@ async def disable_sso(tenant_id: str) -> dict[str, Any]:
     """Disable SSO for a tenant."""
     config = get_or_create_sso_config(tenant_id)
     config.sso_enabled = False
-    config.updated_at = datetime.utcnow()
+    config.updated_at = datetime.now(UTC)
 
     return {"message": "SSO disabled", "tenant_id": tenant_id}
 
@@ -155,7 +155,7 @@ async def add_identity_provider(
         idp.oidc_settings = OIDCSettings(**oidc_data)
 
     config.identity_providers.append(idp)
-    config.updated_at = datetime.utcnow()
+    config.updated_at = datetime.now(UTC)
 
     logger.info(
         "idp_added",
@@ -184,7 +184,7 @@ async def remove_identity_provider(
         raise HTTPException(status_code=404, detail="Identity provider not found")
 
     config.identity_providers = [p for p in config.identity_providers if p.id != idp_id]
-    config.updated_at = datetime.utcnow()
+    config.updated_at = datetime.now(UTC)
 
     # Disable SSO if no providers left
     if not config.identity_providers:
@@ -363,7 +363,7 @@ async def saml_acs(
         )
 
         # Update IdP last login
-        idp.last_login_at = datetime.utcnow()
+        idp.last_login_at = datetime.now(UTC)
 
         logger.info(
             "saml_login_success",
@@ -570,7 +570,7 @@ async def oidc_callback(
         )
 
         # Update IdP last login
-        idp.last_login_at = datetime.utcnow()
+        idp.last_login_at = datetime.now(UTC)
 
         logger.info(
             "oidc_login_success",

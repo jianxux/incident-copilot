@@ -2,7 +2,7 @@
 
 import hashlib
 import statistics
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 
 import structlog
@@ -59,17 +59,17 @@ class ReportGenerator:
 
         # Create output record
         output = ReportOutput(
-            id=self._generate_id(f"output_{config.id}_{datetime.utcnow().isoformat()}"),
+            id=self._generate_id(f"output_{config.id}_{datetime.now(UTC).isoformat()}"),
             report_config_id=config.id,
             run_status=ReportRunStatus.RUNNING,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(UTC),
             triggered_by="schedule" if not request else "manual",
         )
         await self.store.save_output(output)
 
         try:
             # Determine time range
-            period_end = request.period_end or datetime.utcnow()
+            period_end = request.period_end or datetime.now(UTC)
             period_start = request.period_start or self._get_default_period_start(
                 config.report_type, period_end
             )
@@ -128,7 +128,7 @@ class ReportGenerator:
             # Update output with content
             output.content = content
             output.run_status = ReportRunStatus.COMPLETED
-            output.completed_at = datetime.utcnow()
+            output.completed_at = datetime.now(UTC)
             output.duration_seconds = (
                 output.completed_at - output.started_at
             ).total_seconds()
@@ -172,7 +172,7 @@ class ReportGenerator:
         except Exception as e:
             output.run_status = ReportRunStatus.FAILED
             output.error_message = str(e)
-            output.completed_at = datetime.utcnow()
+            output.completed_at = datetime.now(UTC)
             await self.store.save_output(output)
 
             logger.error(

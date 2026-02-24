@@ -2081,7 +2081,7 @@ async def create_demo_incident():
     service = random.choice(DEMO_SERVICES)
     severity = random.choice(list(Severity))
     title = f"{random.choice(DEMO_TITLES)} in {service}"
-    triggered_at = datetime.utcnow()
+    triggered_at = datetime.now(UTC)
 
     # Add incident in processing state
     await incident_store.add_incident(
@@ -2120,7 +2120,7 @@ async def _process_demo_incident(
         return
 
     # Generate demo context card
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     # Demo deployments
     deploys = [

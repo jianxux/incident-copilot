@@ -1,6 +1,6 @@
 """Maintenance Windows - Pydantic Models"""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from enum import StrEnum
 from uuid import UUID, uuid4
 
@@ -121,7 +121,7 @@ class MaintenanceWindow(BaseModel):
         )
 
     def is_active(self, at_time: datetime | None = None) -> bool:
-        now = at_time or datetime.utcnow()
+        now = at_time or datetime.now(UTC)
         return (
             self.status in (MaintenanceStatus.IN_PROGRESS, MaintenanceStatus.EXTENDED)
             and self.schedule.start_time <= now <= self.schedule.end_time

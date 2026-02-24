@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 import httpx
@@ -108,7 +108,7 @@ class IncidentCapture:
                 or raw_incident.get("created_at")
                 or raw_incident.get("triggered_at")
             )
-            or datetime.utcnow(),
+            or datetime.now(UTC),
             resolved_at=self._parse_datetime(
                 extracted.get("resolved_at") or raw_incident.get("resolved_at")
             ),

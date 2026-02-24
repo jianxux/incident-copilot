@@ -1,6 +1,6 @@
 """Email template rendering."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -77,7 +77,7 @@ class EmailTemplateRenderer:
             "brand_color": config.brand_color,
             "logo_url": config.logo_url,
             "footer": config.custom_footer,
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(UTC),
         }
 
         html_body = self._render_html("test.html", context)
@@ -347,7 +347,7 @@ class EmailTemplateRenderer:
             "",
             f"Provider: {config.provider.value.upper()}",
             f"From: {config.from_name} <{config.from_email}>",
-            f"Timestamp: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}",
+            f"Timestamp: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}",
             "",
         ]
 

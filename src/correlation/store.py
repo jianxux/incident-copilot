@@ -1,6 +1,6 @@
 """Redis-backed store for alert groups and correlation state."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 
 import structlog
@@ -135,7 +135,7 @@ class CorrelationStore:
             }
         else:
             ttl = (
-                max(1, int((expires_at - datetime.utcnow()).total_seconds()))
+                max(1, int((expires_at - datetime.now(UTC)).total_seconds()))
                 if expires_at
                 else self.group_ttl
             )
@@ -146,11 +146,17 @@ class CorrelationStore:
         if self._use_memory:
             mapping = self._memory_store.get(key)
             if mapping:
-                if mapping.get(
-                    "expires_at"
-                ) and datetime.utcnow() > datetime.fromisoformat(mapping["expires_at"]):
-                    del self._memory_store[key]
-                    return None
+                expires_raw = mapping.get("expires_at")
+                if expires_raw:
+                    expires_at = datetime.fromisoformat(expires_raw)
+                    expires_at_utc = (
+                        expires_at.astimezone(UTC)
+                        if expires_at.tzinfo
+                        else expires_at.replace(tzinfo=UTC)
+                    )
+                    if datetime.now(UTC) > expires_at_utc:
+                        del self._memory_store[key]
+                        return None
                 return await self.get_group(mapping["group_id"])
             return None
         group_id = await self._redis.get(key)
@@ -211,7 +217,7 @@ class CorrelationStore:
         return deleted > 0
 
     async def cleanup_stale_groups(self, stale_after_seconds: int = 3600) -> int:
-        cutoff = datetime.utcnow() - timedelta(seconds=stale_after_seconds)
+        cutoff = datetime.now(UTC) - timedelta(seconds=stale_after_seconds)
         groups = await self.get_active_groups(limit=1000)
         count = 0
         for group in groups:

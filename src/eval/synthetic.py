@@ -9,7 +9,7 @@ Used for:
 
 import random
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from uuid import uuid4
 
 
@@ -254,7 +254,7 @@ class SyntheticIncidentGenerator:
         service = service_name or random.choice(self.SERVICES)
 
         # Set time
-        incident_time = incident_time or datetime.utcnow()
+        incident_time = incident_time or datetime.now(UTC)
 
         # Generate incident ID
         incident_id = f"INC-{uuid4().hex[:8].upper()}"

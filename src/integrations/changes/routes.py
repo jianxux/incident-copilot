@@ -2,7 +2,7 @@
 Change Tracking Routes - FastAPI endpoints for change queries.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -273,7 +273,7 @@ async def trigger_collection(
     svc: ChangeTrackingService = Depends(get_service),
 ) -> dict:
     """Trigger collection from all registered sources."""
-    since = datetime.utcnow() - timedelta(hours=hours)
+    since = datetime.now(UTC) - timedelta(hours=hours)
     changes = await svc.collect_all(since=since)
 
     return {

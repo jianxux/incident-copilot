@@ -2,7 +2,7 @@
 Escalation Service - Core business logic for escalation management.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -75,7 +75,7 @@ class EscalationService:
         for key, value in updates.items():
             if value is not None:
                 updated_data[key] = value
-        updated_data["updated_at"] = datetime.utcnow()
+        updated_data["updated_at"] = datetime.now(UTC)
 
         updated_policy = EscalationPolicy(**updated_data)
         self._policies[policy_id] = updated_policy
@@ -132,7 +132,7 @@ class EscalationService:
         first_level = policy.levels[0] if policy.levels else None
         next_escalation = None
         if first_level:
-            next_escalation = datetime.utcnow() + timedelta(
+            next_escalation = datetime.now(UTC) + timedelta(
                 minutes=first_level.delay_minutes
             )
 
@@ -182,7 +182,7 @@ class EscalationService:
             level=next_level,
             level_name=level_config.name,
             status=EscalationStatus.TRIGGERED,
-            triggered_at=datetime.utcnow(),
+            triggered_at=datetime.now(UTC),
             metadata={"reason": request.reason if request else "auto"},
         )
         state.history.append(history_entry)
@@ -191,12 +191,12 @@ class EscalationService:
         # Update state
         state.current_level = next_level
         state.status = EscalationStatus.TRIGGERED
-        state.last_escalation_at = datetime.utcnow()
+        state.last_escalation_at = datetime.now(UTC)
 
         # Calculate next escalation
         next_level_config = self._get_level(policy, next_level + 1)
         if next_level_config:
-            state.next_escalation_at = datetime.utcnow() + timedelta(
+            state.next_escalation_at = datetime.now(UTC) + timedelta(
                 minutes=next_level_config.delay_minutes
             )
         else:
@@ -247,7 +247,7 @@ class EscalationService:
         # Update latest history entry
         if state.history:
             state.history[-1].status = EscalationStatus.ACKNOWLEDGED
-            state.history[-1].acknowledged_at = datetime.utcnow()
+            state.history[-1].acknowledged_at = datetime.now(UTC)
             state.history[-1].acknowledged_by = acknowledged_by
 
         return state
@@ -265,7 +265,7 @@ class EscalationService:
         # Update latest history entry
         if state.history:
             state.history[-1].status = EscalationStatus.RESOLVED
-            state.history[-1].resolved_at = datetime.utcnow()
+            state.history[-1].resolved_at = datetime.now(UTC)
             state.history[-1].resolved_by = resolved_by
 
         return state
@@ -316,7 +316,7 @@ class EscalationService:
                 if state.current_level > rule.target_level:
                     state.current_level = rule.target_level
                     # Recalculate next escalation with cooldown
-                    state.next_escalation_at = datetime.utcnow() + timedelta(
+                    state.next_escalation_at = datetime.now(UTC) + timedelta(
                         minutes=rule.cooldown_minutes
                     )
                 break
@@ -347,7 +347,7 @@ class EscalationService:
             return None
 
         rotation.current_index = (rotation.current_index + 1) % len(rotation.members)
-        rotation.last_rotation = datetime.utcnow()
+        rotation.last_rotation = datetime.now(UTC)
 
         new_oncall = rotation.members[rotation.current_index]
         self._oncall[team_id] = new_oncall
@@ -385,7 +385,7 @@ class EscalationService:
 
     async def get_pending_escalations(self) -> list[EscalationState]:
         """Get all pending escalations that need action."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         pending = []
 
         for state in self._states.values():

@@ -1,7 +1,7 @@
 """JSON export formatter with schema options."""
 
 import json
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 from ..models import (
@@ -63,7 +63,7 @@ class JSONFormatter:
             "data": processed_data,
             "metadata": {
                 "export_type": self.export_type.value,
-                "exported_at": datetime.utcnow().isoformat(),
+                "exported_at": datetime.now(UTC).isoformat(),
                 "record_count": len(data) if isinstance(data, list) else 1,
             },
         }

@@ -2,7 +2,7 @@
 
 import re
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 
 from .models import (
@@ -282,7 +282,7 @@ class DependencyDiscovery:
             self._seen_edges[edge_key] = {
                 "dependency_id": dep.id,
                 "call_count": 1,
-                "last_seen": datetime.utcnow(),
+                "last_seen": datetime.now(UTC),
             }
 
     def _extract_service_from_url(self, url: str) -> str | None:
@@ -312,7 +312,7 @@ class DependencyDiscovery:
         max_age: timedelta = timedelta(days=7),
     ) -> int:
         """Remove dependencies not seen within max_age."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         removed = 0
 
         stale_keys = []

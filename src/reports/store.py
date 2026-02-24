@@ -1,7 +1,7 @@
 """In-memory store for scheduled reports."""
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, UTC
 
 from .models import ReportConfig, ReportOutput, ReportRunStatus, ReportStatus
 
@@ -25,7 +25,7 @@ class ReportStore:
     async def save_config(self, config: ReportConfig) -> ReportConfig:
         """Save or update a report configuration."""
         async with self._lock:
-            config.updated_at = datetime.utcnow()
+            config.updated_at = datetime.now(UTC)
             self._configs[config.id] = config
             if config.id not in self._outputs_by_config:
                 self._outputs_by_config[config.id] = []
@@ -79,7 +79,7 @@ class ReportStore:
         async with self._lock:
             if config_id in self._configs:
                 self._configs[config_id].status = status
-                self._configs[config_id].updated_at = datetime.utcnow()
+                self._configs[config_id].updated_at = datetime.now(UTC)
                 return self._configs[config_id]
             return None
 
@@ -96,7 +96,7 @@ class ReportStore:
                     self._configs[config_id].schedule.next_run_at = next_run_at
                 if last_run_at is not None:
                     self._configs[config_id].schedule.last_run_at = last_run_at
-                self._configs[config_id].updated_at = datetime.utcnow()
+                self._configs[config_id].updated_at = datetime.now(UTC)
                 return self._configs[config_id]
             return None
 
@@ -164,10 +164,10 @@ class ReportStore:
             if output_id in self._outputs:
                 self._outputs[output_id].run_status = status
                 if status == ReportRunStatus.COMPLETED:
-                    self._outputs[output_id].completed_at = datetime.utcnow()
+                    self._outputs[output_id].completed_at = datetime.now(UTC)
                     if self._outputs[output_id].started_at:
                         duration = (
-                            datetime.utcnow() - self._outputs[output_id].started_at
+                            datetime.now(UTC) - self._outputs[output_id].started_at
                         ).total_seconds()
                         self._outputs[output_id].duration_seconds = duration
                 if error_message:

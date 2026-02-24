@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 
 import structlog
 from anthropic import AsyncAnthropic
@@ -369,7 +369,7 @@ class PostmortemGenerator:
                 postmortem.timeline,
             )
 
-        postmortem.updated_at = datetime.utcnow()
+        postmortem.updated_at = datetime.now(UTC)
         postmortem.version += 1
 
         return postmortem

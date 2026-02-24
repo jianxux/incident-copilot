@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 import httpx
 import structlog
@@ -91,7 +91,7 @@ class IncidentRecall:
         query.embedding = await self._embed_text(query.narrative)
 
         if query.lookback_days is not None and query.start_time is None:
-            query.start_time = datetime.utcnow() - timedelta(days=query.lookback_days)
+            query.start_time = datetime.now(UTC) - timedelta(days=query.lookback_days)
 
         matches = await self.store.recall(query)
         matches = await self._apply_temporal_decay_and_feedback(matches, query)
@@ -113,7 +113,7 @@ class IncidentRecall:
             return matches
 
         feedback_summaries = await self._load_feedback_summaries(matches)
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         refined: list[IncidentRecallResult] = []
 
         for item in matches:

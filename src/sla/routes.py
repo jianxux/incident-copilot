@@ -5,7 +5,7 @@ FastAPI routes for SLA policy management, status queries, and reporting.
 
 import logging
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -500,7 +500,7 @@ async def list_breaches(
 
     Returns breaches within the specified time period.
     """
-    period_end = datetime.utcnow()
+    period_end = datetime.now(UTC)
     period_start = period_end - timedelta(days=days)
 
     breaches = await service.store.get_breaches_in_period(
@@ -571,7 +571,7 @@ async def get_sla_metrics(
     - Breach counts by severity
     - Daily compliance trends
     """
-    period_end = datetime.utcnow()
+    period_end = datetime.now(UTC)
     period_start = period_end - timedelta(days=days)
 
     metrics = await service.calculate_metrics(
@@ -594,7 +594,7 @@ async def get_metrics_summary(
 
     Returns high-level stats for the last 7 and 30 days.
     """
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     # Last 7 days
     metrics_7d = await service.calculate_metrics(
@@ -666,5 +666,5 @@ async def get_compliance_report(
         },
         "by_severity": metrics.incidents_by_severity,
         "trends": metrics.compliance_trend,
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }

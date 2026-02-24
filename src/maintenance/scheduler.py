@@ -1,7 +1,7 @@
 """Maintenance Windows - Scheduler with RRULE support and iCal export"""
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from uuid import UUID
 
 from .models import MaintenanceSchedule, MaintenanceStatus, MaintenanceWindow, ScopeType
@@ -34,7 +34,7 @@ class MaintenanceScheduler:
     ) -> list[RecurrenceInstance]:
         if not schedule.is_recurring or not schedule.rrule:
             return []
-        from_time = from_time or datetime.utcnow()
+        from_time = from_time or datetime.now(UTC)
         duration, occurrences = schedule.duration, []
         parts = self.parse_rrule(schedule.rrule)
         freq, interval = parts.get("FREQ", "WEEKLY"), int(parts.get("INTERVAL", "1"))
@@ -109,7 +109,7 @@ class MaintenanceScheduler:
         lines = [
             "BEGIN:VEVENT",
             f"UID:{window.id}@maintenance",
-            f"DTSTAMP:{datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')}",
+            f"DTSTAMP:{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}",
             f"DTSTART:{window.schedule.start_time.strftime('%Y%m%dT%H%M%SZ')}",
             f"DTEND:{window.schedule.end_time.strftime('%Y%m%dT%H%M%SZ')}",
             f"SUMMARY:{esc(window.title)}",
@@ -140,7 +140,7 @@ class MaintenanceScheduler:
             warnings.append("Window exceeds 24 hours")
         if schedule.duration < timedelta(minutes=5):
             warnings.append("Window less than 5 minutes")
-        if schedule.start_time < datetime.utcnow():
+        if schedule.start_time < datetime.now(UTC):
             warnings.append("Start time in past")
         if schedule.is_recurring:
             if not schedule.rrule:
@@ -161,7 +161,7 @@ class MaintenanceScheduler:
         scope_type: str | None = None,
         identifier: str | None = None,
     ) -> tuple[MaintenanceWindow, datetime] | None:
-        now, result = datetime.utcnow(), None
+        now, result = datetime.now(UTC), None
         for w in windows:
             if w.status in (MaintenanceStatus.CANCELLED, MaintenanceStatus.COMPLETED):
                 continue

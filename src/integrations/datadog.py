@@ -1,6 +1,6 @@
 """Datadog integration adapter."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 import httpx
 import structlog
@@ -67,7 +67,7 @@ class DatadogAdapter:
         self, client: httpx.AsyncClient, service_name: str, time_range_minutes: int
     ) -> list[LogEntry]:
         """Fetch recent error/warning logs from Datadog."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         start = now - timedelta(minutes=time_range_minutes)
 
         url = f"{self.base_url}/api/v2/logs/events/search"
@@ -103,7 +103,7 @@ class DatadogAdapter:
                     attrs.get("timestamp", "").replace("Z", "+00:00")
                 )
             except (ValueError, AttributeError):
-                timestamp = datetime.utcnow()
+                timestamp = datetime.now(UTC)
 
             logs.append(
                 LogEntry(
@@ -153,7 +153,7 @@ class DatadogAdapter:
         self, client: httpx.AsyncClient, service_name: str, time_range_minutes: int
     ) -> MetricSnapshot | None:
         """Fetch key metrics from Datadog."""
-        now = int(datetime.utcnow().timestamp())
+        now = int(datetime.now(UTC).timestamp())
         start = now - (time_range_minutes * 60)
 
         url = f"{self.base_url}/api/v1/query"

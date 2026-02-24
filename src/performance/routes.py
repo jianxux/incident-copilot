@@ -1,6 +1,6 @@
 """FastAPI routes for performance analytics."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -93,8 +93,8 @@ async def get_team_trends(
     trends = []
     for i in range(periods):
         p = PerformancePeriod(
-            start=datetime.utcnow() - timedelta(days=(i + 1) * period_days),
-            end=datetime.utcnow() - timedelta(days=i * period_days),
+            start=datetime.now(UTC) - timedelta(days=(i + 1) * period_days),
+            end=datetime.now(UTC) - timedelta(days=i * period_days),
             label=f"P{periods - i}",
         )
         m = await service.calculate_team_metrics(team_id, team_name, p)

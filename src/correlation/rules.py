@@ -2,7 +2,7 @@
 
 import hashlib
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from difflib import SequenceMatcher
 
 import structlog
@@ -54,7 +54,7 @@ class RuleManager:
         self._cache_ttl = timedelta(seconds=60)
 
     async def get_rules(self, force_refresh: bool = False) -> list[CorrelationRule]:
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if (
             not force_refresh
             and self._rule_cache
@@ -67,7 +67,7 @@ class RuleManager:
         return self._rule_cache
 
     async def create_rule(self, rule: CorrelationRule) -> CorrelationRule:
-        rule.created_at = rule.updated_at = datetime.utcnow()
+        rule.created_at = rule.updated_at = datetime.now(UTC)
         await self.store.store_rule(rule)
         self._rule_cache = None
         return rule
@@ -123,7 +123,7 @@ class RuleManager:
         fingerprint = self.generate_fingerprint(alert, rule)
         group = await self.store.get_group_by_fingerprint(fingerprint)
         if group and group.status == AlertGroupStatus.ACTIVE:
-            if group.window_expires_at and datetime.utcnow() > group.window_expires_at:
+            if group.window_expires_at and datetime.now(UTC) > group.window_expires_at:
                 return None
             return group
         if rule.strategy == CorrelationStrategy.PATTERN_BASED:

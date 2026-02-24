@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import enum
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any, List, Optional
 
 import structlog
@@ -511,7 +511,7 @@ class AICopilot:
 
     async def get_or_create_session(self, incident_id: str, context=None) -> IncidentSession:
         if incident_id not in self._sessions:
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(UTC).isoformat()
             self._sessions[incident_id] = IncidentSession(
                 incident_id=incident_id,
                 created_at=now,
@@ -538,7 +538,7 @@ class AICopilot:
             context = context_card.model_dump() if hasattr(context_card, "model_dump") else context_card
 
         session = await self.get_or_create_session(incident_id)
-        session.updated_at = datetime.utcnow().isoformat()
+        session.updated_at = datetime.now(UTC).isoformat()
         if isinstance(context, dict) and context:
             session.context_card = context
             session.service_name = context.get("service_name") or session.service_name

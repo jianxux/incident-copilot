@@ -1,6 +1,6 @@
 """Status.io Provider."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 
 import httpx
 
@@ -193,14 +193,14 @@ class StatusIOProvider:
                         m["datetime_planned_start"].replace("Z", "+00:00")
                     )
                     if m.get("datetime_planned_start")
-                    else datetime.utcnow()
+                    else datetime.now(UTC)
                 ),
                 scheduled_end=(
                     datetime.fromisoformat(
                         m["datetime_planned_end"].replace("Z", "+00:00")
                     )
                     if m.get("datetime_planned_end")
-                    else datetime.utcnow()
+                    else datetime.now(UTC)
                 ),
                 component_ids=[],
             )

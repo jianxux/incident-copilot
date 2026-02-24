@@ -3,7 +3,7 @@
 import asyncio
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 
 import structlog
 
@@ -75,7 +75,7 @@ class TagStore:
             for field, value in update_data.items():
                 if value is not None:
                     setattr(tag, field, value)
-            tag.updated_at = datetime.utcnow()
+            tag.updated_at = datetime.now(UTC)
             return tag
 
     async def delete_tag(self, tag_id: str) -> bool:
@@ -257,7 +257,7 @@ class TagStore:
             for field, value in update_data.items():
                 if value is not None:
                     setattr(rule, field, value)
-            rule.updated_at = datetime.utcnow()
+            rule.updated_at = datetime.now(UTC)
             return rule
 
     async def delete_auto_rule(self, rule_id: str) -> bool:

@@ -4,7 +4,7 @@ import json
 import sqlite3
 from collections.abc import Generator
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 
 import numpy as np
@@ -149,7 +149,7 @@ class IncidentStore:
 
         Returns True if incident was found and updated.
         """
-        resolved_at = resolved_at or datetime.utcnow()
+        resolved_at = resolved_at or datetime.now(UTC)
 
         with self._get_connection() as conn:
             cursor = conn.execute(

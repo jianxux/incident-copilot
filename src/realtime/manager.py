@@ -6,7 +6,7 @@ Manages WebSocket connections, rooms, subscriptions, and broadcasting.
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import uuid4
 
@@ -35,7 +35,7 @@ class RateLimiter:
 
     def check(self, conn_info: ConnectionInfo) -> tuple[bool, int]:
         """Check if connection can send a message. Returns (allowed, remaining)."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # Reset window if expired
         if now >= conn_info.rate_limit_reset:
@@ -324,7 +324,7 @@ class ConnectionManager:
                 presence = self._presence[room_key].get(conn_info.user_id)
                 if presence:
                     presence.status = status
-                    presence.last_activity = datetime.utcnow()
+                    presence.last_activity = datetime.now(UTC)
                     return True
 
         return False
@@ -366,7 +366,7 @@ class ConnectionManager:
                     break
 
                 # Check if last ping was responded to
-                time_since_ping = datetime.utcnow() - conn_info.last_ping
+                time_since_ping = datetime.now(UTC) - conn_info.last_ping
                 if (
                     time_since_ping.total_seconds()
                     > self._ping_interval + self._ping_timeout
@@ -389,7 +389,7 @@ class ConnectionManager:
         """Handle pong response from client."""
         conn_info = self._connection_info.get(connection_id)
         if conn_info:
-            conn_info.last_ping = datetime.utcnow()
+            conn_info.last_ping = datetime.now(UTC)
 
 
 # Global connection manager instance

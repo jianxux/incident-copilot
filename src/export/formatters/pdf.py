@@ -1,6 +1,6 @@
 """PDF export formatter using reportlab."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from io import BytesIO
 from typing import Any
 
@@ -197,7 +197,7 @@ class PDFFormatter:
             canvas.drawRightString(
                 page_width - doc.rightMargin,
                 page_height - 40,
-                datetime.utcnow().strftime("%Y-%m-%d"),
+                datetime.now(UTC).strftime("%Y-%m-%d"),
             )
 
         if self.options.include_footer:
@@ -236,7 +236,7 @@ class PDFFormatter:
         elements.append(Spacer(1, 0.5 * inch))
         elements.append(
             Paragraph(
-                f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
+                f"Generated: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')}",
                 self.styles["CustomBody"],
             )
         )

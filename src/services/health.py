@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, UTC
 
 import structlog
 
@@ -65,7 +65,7 @@ class ServiceIntegrationHealthChecker:
         for service in services:
             integration_state = self._evaluate_service_integrations(service.metadata or {})
             health_block = {
-                "checked_at": datetime.utcnow().isoformat(),
+                "checked_at": datetime.now(UTC).isoformat(),
                 "integrations": integration_state,
             }
             metadata = dict(service.metadata or {})

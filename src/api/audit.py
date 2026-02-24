@@ -1,6 +1,6 @@
 """Audit API routes for Incident Copilot."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 import structlog
@@ -114,9 +114,9 @@ async def get_audit_stats(
     """Get audit statistics."""
     try:
         # Build a basic query to count events
-        from datetime import timedelta
+        from datetime import timedelta, UTC
 
-        end_date = datetime.utcnow()
+        end_date = datetime.now(UTC)
         start_date = end_date - timedelta(days=days)
 
         query = AuditLogQuery(

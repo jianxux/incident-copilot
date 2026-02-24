@@ -1,7 +1,7 @@
 """In-memory store for insights data."""
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
@@ -113,7 +113,7 @@ class InsightsStore:
         tenant_id = await self._ensure_tenant_id()
         if not tenant_id:
             return
-        now_iso = datetime.utcnow().isoformat()
+        now_iso = datetime.now(UTC).isoformat()
         row = {
             "id": self._stable_uuid(record_id),
             "tenant_id": tenant_id,
@@ -357,7 +357,7 @@ class InsightsStore:
             if insight_id in self._insights:
                 insight = self._insights[insight_id]
                 insight.is_acknowledged = True
-                insight.acknowledged_at = datetime.utcnow()
+                insight.acknowledged_at = datetime.now(UTC)
                 insight.acknowledged_by = acknowledged_by
                 acked = insight
         if acked:

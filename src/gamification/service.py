@@ -5,7 +5,7 @@ Gamification Service
 Core service for managing achievements, badges, points, and leaderboards.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from uuid import UUID
 
 from .models import (
@@ -300,7 +300,7 @@ class GamificationService:
             user_points.total_points,
             user_points.current_level,
         )
-        user_points.updated_at = datetime.utcnow()
+        user_points.updated_at = datetime.now(UTC)
 
         self._user_points[user_id] = user_points
 
@@ -394,7 +394,7 @@ class GamificationService:
             # Check if unlocked
             if self._check_achievement_criteria(current_value, achievement):
                 user_achievement.is_unlocked = True
-                user_achievement.unlocked_at = datetime.utcnow()
+                user_achievement.unlocked_at = datetime.now(UTC)
                 unlocked.append(achievement)
 
                 # Award points
@@ -414,7 +414,7 @@ class GamificationService:
                         reason=f"Achievement: {achievement.name}",
                     )
 
-            user_achievement.updated_at = datetime.utcnow()
+            user_achievement.updated_at = datetime.now(UTC)
             await self._save_user_achievement(user_achievement)
 
         return unlocked
@@ -578,7 +578,7 @@ class GamificationService:
             Leaderboard with ranked entries
         """
         # Calculate period dates
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         period_start, period_end = self._calculate_period_dates(period, now)
 
         # Build cache key
@@ -788,7 +788,7 @@ class GamificationService:
         settings: GamificationSettings,
     ) -> GamificationSettings:
         """Update gamification settings."""
-        settings.updated_at = datetime.utcnow()
+        settings.updated_at = datetime.now(UTC)
         self._settings[organization_id] = settings
         return settings
 
