@@ -31,7 +31,7 @@ export function Header() {
   const { user, realTimeEnabled, setRealTimeEnabled, toggleMobileSidebar } = useAppStore();
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-[#e8e0d4] bg-card px-4 md:px-6">
+    <header className="flex h-16 items-center justify-between border-b border-stone-200 bg-card px-4 md:px-6">
       {/* Left side: hamburger + search */}
       <div className="flex items-center gap-3">
         {/* Mobile hamburger */}
