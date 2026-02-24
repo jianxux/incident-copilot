@@ -800,7 +800,6 @@ async def get_incident_stats(
         "acknowledged": 0,
         "resolved": 0,
         "processing": 0,
-        "error": 0,
     }
     by_severity = {
         "critical": 0,
@@ -823,6 +822,8 @@ async def get_incident_stats(
         item = _format_incident(row)
         status_value = item.get("status")
         severity_value = item.get("severity")
+        if status_value == "error":
+            status_value = "processing"
         if status_value in by_status:
             by_status[status_value] += 1
         if severity_value in by_severity:
