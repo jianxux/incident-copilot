@@ -103,6 +103,15 @@ def _reset_incident_state():
             triggered_at=now - timedelta(hours=2),
         )
     )
+    _run(
+        incident_store.add_incident(
+            incident_id="inc-1004",
+            title="Worker crash loop",
+            service_name="workers",
+            severity=Severity.LOW,
+            triggered_at=now - timedelta(hours=1),
+        )
+    )
 
     inc2 = _run(incident_store.get_incident("inc-1002"))
     inc2.status = "acknowledged"
@@ -110,6 +119,9 @@ def _reset_incident_state():
     inc3 = _run(incident_store.get_incident("inc-1003"))
     inc3.status = "completed"
     inc3.processed_at = now - timedelta(hours=1, minutes=20)
+
+    inc4 = _run(incident_store.get_incident("inc-1004"))
+    inc4.status = "error"
 
 
 def test_list_response_matches_frontend_contract(authed_client):
@@ -155,13 +167,14 @@ def test_stats_response_matches_frontend_contract(authed_client):
     assert response.status_code == 200
 
     payload = response.json()
-    assert payload["total"] >= 3
+    assert payload["total"] >= 4
     assert set(payload["by_status"].keys()) == {
         "triggered",
         "acknowledged",
         "resolved",
         "processing",
     }
+    assert payload["by_status"]["processing"] == 2
     assert set(payload["by_severity"].keys()) == {
         "critical",
         "high",
