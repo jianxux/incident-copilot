@@ -63,8 +63,57 @@
         .sidebar.collapsed .sidebar-tenant {
             display: none;
         }
-        .sidebar.collapsed .nav-item { justify-content: center; padding-left: 0; padding-right: 0; }
-        .sidebar.collapsed .nav-icon { margin-right: 0; }
+        .sidebar.collapsed .nav-item {
+            justify-content: center;
+            padding: 12px 0;
+            margin: 2px 8px;
+            position: relative;
+        }
+        .sidebar.collapsed .nav-icon { margin-right: 0; font-size: 1.1rem; }
+        /* Tooltip on hover when collapsed */
+        .sidebar.collapsed .nav-item::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: calc(100% + 12px);
+            top: 50%;
+            transform: translateY(-50%);
+            background: #1c1917;
+            color: #fafaf9;
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 6px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s ease;
+            z-index: 100;
+        }
+        .sidebar.collapsed .nav-item:hover::after {
+            opacity: 1;
+        }
+        /* Expand button when collapsed — always visible at bottom */
+        .sidebar-expand-btn {
+            display: none;
+        }
+        .sidebar.collapsed .sidebar-expand-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 14px 0;
+            cursor: pointer;
+            color: rgba(168,162,158,1);
+            transition: color 0.15s ease, background 0.15s ease;
+            border-top: 1px solid rgba(68,64,60,1);
+        }
+        .sidebar.collapsed .sidebar-expand-btn:hover {
+            color: rgba(231,229,228,1);
+            background: rgba(255,255,255,0.08);
+        }
+        /* Hide docs/theme/collapse in collapsed state — only show expand arrow */
+        .sidebar.collapsed .sidebar-bottom-items {
+            display: none;
+        }
 
         .nav-item {
             display: flex;
@@ -227,61 +276,67 @@
             <nav class="flex-1 py-3 overflow-y-auto">
                 <div class="nav-section-title">Workspace</div>
 
-                <a href="/dashboard" class="nav-item {% if page_title == 'Dashboard' %}active{% endif %}">
+                <a href="/dashboard" class="nav-item {% if page_title == 'Dashboard' %}active{% endif %}" data-tooltip="Dashboard">
                     <span class="nav-icon"><i class="fas fa-gauge-high text-sm"></i></span>
                     <span class="nav-label">Dashboard</span>
                 </a>
 
-                <a href="/dashboard/incidents" class="nav-item {% if page_title.startswith('Incident') %}active{% endif %}">
+                <a href="/dashboard/incidents" class="nav-item {% if page_title.startswith('Incident') %}active{% endif %}" data-tooltip="Incidents">
                     <span class="nav-icon"><i class="fas fa-fire text-sm"></i></span>
                     <span class="nav-label">Incidents</span>
                 </a>
 
-                <a href="/dashboard/onboarding-wizard" class="nav-item {% if page_title in ['Onboarding','Setup'] %}active{% endif %}">
+                <a href="/dashboard/onboarding-wizard" class="nav-item {% if page_title in ['Onboarding','Setup'] %}active{% endif %}" data-tooltip="Integrations">
                     <span class="nav-icon"><i class="fas fa-plug-circle-bolt text-sm"></i></span>
                     <span class="nav-label">Integrations</span>
                 </a>
 
                 <div class="nav-section-title">Insights</div>
 
-                <a href="/dashboard/analytics" class="nav-item {% if page_title == 'Analytics' %}active{% endif %}">
+                <a href="/dashboard/analytics" class="nav-item {% if page_title == 'Analytics' %}active{% endif %}" data-tooltip="Analytics">
                     <span class="nav-icon"><i class="fas fa-chart-column text-sm"></i></span>
                     <span class="nav-label">Analytics</span>
                 </a>
 
-                <a href="/dashboard/insights" class="nav-item {% if page_title == 'Insights' %}active{% endif %}">
+                <a href="/dashboard/insights" class="nav-item {% if page_title == 'Insights' %}active{% endif %}" data-tooltip="Insights">
                     <span class="nav-icon"><i class="fas fa-wand-magic-sparkles text-sm"></i></span>
                     <span class="nav-label">Insights</span>
                 </a>
 
                 <div class="nav-section-title">Admin</div>
 
-                <a href="/dashboard/config" class="nav-item {% if page_title in ['Config', 'Configuration', 'Settings'] %}active{% endif %}">
+                <a href="/dashboard/config" class="nav-item {% if page_title in ['Config', 'Configuration', 'Settings'] %}active{% endif %}" data-tooltip="Settings">
                     <span class="nav-icon"><i class="fas fa-gear text-sm"></i></span>
                     <span class="nav-label">Settings</span>
                 </a>
 
-                <a href="/dashboard/billing" class="nav-item {% if page_title == 'Billing' %}active{% endif %}">
+                <a href="/dashboard/billing" class="nav-item {% if page_title == 'Billing' %}active{% endif %}" data-tooltip="Billing">
                     <span class="nav-icon"><i class="fas fa-credit-card text-sm"></i></span>
                     <span class="nav-label">Billing</span>
                 </a>
             </nav>
 
             <!-- Bottom section -->
-            <div class="border-t border-stone-800 py-3 flex-shrink-0">
-                <a href="https://docs.incident-copilot.dev" target="_blank" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-book text-sm"></i></span>
-                    <span class="nav-label">Docs</span>
-                </a>
+            <div class="border-t border-stone-800 flex-shrink-0">
+                <div class="sidebar-bottom-items py-3">
+                    <a href="https://docs.incident-copilot.dev" target="_blank" class="nav-item" data-tooltip="Docs">
+                        <span class="nav-icon"><i class="fas fa-book text-sm"></i></span>
+                        <span class="nav-label">Docs</span>
+                    </a>
 
-                <button class="nav-item w-full" id="theme-toggle" onclick="toggleTheme()">
-                    <span class="nav-icon"><i class="fas fa-moon text-sm" id="theme-icon"></i></span>
-                    <span class="nav-label" id="theme-label">Dark mode</span>
-                </button>
+                    <button class="nav-item w-full" id="theme-toggle" onclick="toggleTheme()" data-tooltip="Toggle theme">
+                        <span class="nav-icon"><i class="fas fa-moon text-sm" id="theme-icon"></i></span>
+                        <span class="nav-label" id="theme-label">Dark mode</span>
+                    </button>
 
-                <div class="nav-item cursor-pointer" id="collapse-toggle" onclick="toggleSidebar()">
-                    <span class="nav-icon"><i class="fas fa-angles-left text-sm" id="collapse-icon"></i></span>
-                    <span class="nav-label">Collapse</span>
+                    <div class="nav-item cursor-pointer" id="collapse-toggle" onclick="toggleSidebar()" data-tooltip="Collapse">
+                        <span class="nav-icon"><i class="fas fa-angles-left text-sm" id="collapse-icon"></i></span>
+                        <span class="nav-label">Collapse</span>
+                    </div>
+                </div>
+                <!-- Expand button — only visible when collapsed -->
+                <div class="sidebar-expand-btn" onclick="toggleSidebar()" title="Expand sidebar">
+                    <i class="fas fa-angles-right"></i>
                 </div>
             </div>
         </aside>
