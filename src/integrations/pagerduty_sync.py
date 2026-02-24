@@ -120,6 +120,7 @@ def _build_pd_upsert_rows(
             "id": _pd_id_to_uuid(inc_id),
             "tenant_id": tenant_id,
             "title": inc.get("title", ""),
+            "description": inc.get("description", ""),
             "service": service_summary,
             "severity": severity_val,
             "status": db_status,
@@ -131,6 +132,14 @@ def _build_pd_upsert_rows(
             "created_at": triggered_at.isoformat(),
             "updated_at": now_iso,
         }
+
+        if pd_status == "acknowledged":
+            acknowledged_dt = _parse_iso_datetime(
+                inc.get("last_status_change_at"), datetime.now(UTC), tenant_id=tenant_id
+            )
+            if acknowledged_dt is None:
+                acknowledged_dt = datetime.now(UTC)
+            metadata["acknowledged_at"] = acknowledged_dt.isoformat()
 
         if pd_status == "resolved":
             resolved_dt = _parse_iso_datetime(
