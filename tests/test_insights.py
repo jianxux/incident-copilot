@@ -546,7 +546,7 @@ class TestInsightsDBFetch:
     @pytest.mark.asyncio
     async def test_fetch_incidents_fallback_to_memory(self):
         """Test that _fetch_incidents falls back to in-memory store when DB is disabled."""
-        from unittest.mock import AsyncMock, patch
+        from unittest.mock import patch
 
         service = InsightsService()
         now = datetime.utcnow()

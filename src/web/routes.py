@@ -65,7 +65,7 @@ async def require_dashboard_auth(request: Request) -> dict[str, str]:
         # API calls still get a clean JSON 401.
         accept = request.headers.get("accept", "")
         if "text/html" in accept:
-            raise DashboardAuthRedirect()
+            raise DashboardAuthRedirectError()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
@@ -73,7 +73,7 @@ async def require_dashboard_auth(request: Request) -> dict[str, str]:
     return {"tenant_id": tenant_id, "user_id": user_id}
 
 
-class DashboardAuthRedirect(Exception):
+class DashboardAuthRedirectError(Exception):
     """Raised to redirect unauthenticated browser requests to /login."""
     pass
 
@@ -296,7 +296,7 @@ async def api_incidents(
         duration_seconds = None
         if triggered and processed:
             try:
-                from datetime import datetime, timezone
+                from datetime import datetime
                 t0 = datetime.fromisoformat(str(triggered).replace("Z", "+00:00"))
                 t1 = datetime.fromisoformat(str(processed).replace("Z", "+00:00"))
                 duration_seconds = int((t1 - t0).total_seconds())
@@ -474,8 +474,8 @@ async def api_dashboard_stats(
         return await incident_store.get_stats()
 
     # Compute stats from incidents list
-    from ..models import Severity
     from ..db.supabase_db import get_db
+    from ..models import Severity
 
     db = get_db(use_admin=True)
     rows = await db.list_processing_incidents(tenant_id=tenant_id, limit=100, offset=0)
@@ -641,7 +641,6 @@ async def login_page(request: Request, error: str | None = None):
         "oauth_not_configured": "This login method is not configured.",
         "oauth_token_failed": "Failed to authenticate. Please try again.",
         "oauth_user_failed": "Failed to get user info. Please try again.",
-        "session_expired": "Your session has expired. Please sign in again.",
     }
 
     return templates.TemplateResponse(
@@ -1127,8 +1126,8 @@ async def update_incident_status(
         db = get_db(use_admin=True)
         update_data: dict = {"status": canonical_status}
         if canonical_status == "completed":
-            from datetime import datetime, timezone
-            update_data["processed_at"] = datetime.now(timezone.utc).isoformat()
+            from datetime import datetime
+            update_data["processed_at"] = datetime.now(UTC).isoformat()
         elif canonical_status == "processing":
             update_data["processed_at"] = None
 
@@ -1726,7 +1725,7 @@ async def import_pagerduty_services(
                 continue
             req = ServiceCreate(
                 name=name,
-                description=pd_svc.get("description") or f"Imported from PagerDuty",
+                description=pd_svc.get("description") or "Imported from PagerDuty",
                 team=pd_svc.get("teams", [{}])[0].get("summary") if pd_svc.get("teams") else None,
                 criticality=ServiceCriticality.CRITICAL if pd_svc.get("alert_creation") == "create_alerts_and_incidents" else ServiceCriticality.MEDIUM,
                 metadata={
@@ -2035,7 +2034,6 @@ async def run_onboarding_test_incident(
 ):
     """Start a synthetic incident to validate the pipeline."""
     from ..models import Severity
-    from ..onboarding import checklist_store
     from ..onboarding.test_incident import start_test_incident
 
     if not auth.tenant_id:

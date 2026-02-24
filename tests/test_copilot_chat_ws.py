@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -31,7 +31,7 @@ def _add_processing_incident(*, incident_id: str, title: str) -> None:
             title=title,
             service_name="payments-api",
             severity=Severity.HIGH,
-            triggered_at=datetime.now(timezone.utc),
+            triggered_at=datetime.now(UTC),
             source="pagerduty",
             source_url="https://pagerduty.com/incidents/TEST123",
             metadata={"description": "Copilot chat websocket test incident"},

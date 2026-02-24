@@ -6,6 +6,7 @@ import os
 import uuid
 
 import pytest
+
 from supabase import create_client
 
 # Local Supabase defaults (from `supabase start`)

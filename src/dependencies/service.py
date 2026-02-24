@@ -7,8 +7,14 @@ from datetime import datetime
 
 from ..services.models import (
     ServiceCreate as CatalogServiceCreate,
+)
+from ..services.models import (
     ServiceDependencyCreate as CatalogDependencyCreate,
+)
+from ..services.models import (
     ServiceDependencyUpdate as CatalogDependencyUpdate,
+)
+from ..services.models import (
     ServiceUpdate as CatalogServiceUpdate,
 )
 from ..services.store import ServiceCatalogStore, get_service_catalog_store
