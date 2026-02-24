@@ -346,7 +346,7 @@ function IncidentCard({ incident, onAcknowledge, onResolve }: IncidentItemProps)
             {incident.title}
           </h3>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Badge variant="outline">{incident.service}</Badge>
+            <Badge variant="service">{incident.service}</Badge>
             <span>•</span>
             <StatusIcon status={incident.status} />
             <span className="capitalize">{incident.status}</span>
@@ -388,7 +388,7 @@ function IncidentRow({ incident, onAcknowledge, onResolve }: IncidentItemProps) 
           <span className="font-medium truncate">{incident.title}</span>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Badge variant="outline" className="text-xs">{incident.service}</Badge>
+          <Badge variant="service" className="text-xs">{incident.service}</Badge>
           <span>•</span>
           <span>{formatDate(incident.created_at)}</span>
         </div>

@@ -29,11 +29,14 @@ const severityFilters: Array<{ value: SeverityFilter; label: string }> = [
 ];
 
 const typeStyleMap: Record<InsightData['type'], string> = {
-  pattern: 'bg-blue-500/10 text-blue-700 border-blue-200 dark:text-blue-300 dark:border-blue-900',
-  anomaly: 'bg-red-500/10 text-red-700 border-red-200 dark:text-red-300 dark:border-red-900',
+  pattern:
+    'bg-blue-500/15 text-blue-800 border-blue-300 dark:bg-blue-500/15 dark:text-blue-200 dark:border-blue-800',
+  anomaly:
+    'bg-rose-500/15 text-rose-800 border-rose-300 dark:bg-rose-500/15 dark:text-rose-200 dark:border-rose-800',
   recommendation:
-    'bg-green-500/10 text-green-700 border-green-200 dark:text-green-300 dark:border-green-900',
-  trend: 'bg-purple-500/10 text-purple-700 border-purple-200 dark:text-purple-300 dark:border-purple-900',
+    'bg-emerald-500/15 text-emerald-800 border-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-200 dark:border-emerald-800',
+  trend:
+    'bg-violet-500/15 text-violet-800 border-violet-300 dark:bg-violet-500/15 dark:text-violet-200 dark:border-violet-800',
 };
 
 const typeIconMap: Record<InsightData['type'], ComponentType<{ className?: string }>> = {
@@ -251,7 +254,7 @@ export default function InsightsPage() {
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {insight.affected_services.map((service) => (
-                          <Badge key={`${insight.id}-${service}`} variant="outline" className="text-xs">
+                          <Badge key={`${insight.id}-${service}`} variant="service" className="text-xs">
                             {service}
                           </Badge>
                         ))}
