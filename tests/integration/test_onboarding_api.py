@@ -27,6 +27,7 @@ def app():
 @pytest.fixture(scope="module")
 def authed_client(app, tmp_path_factory):
     from fastapi.testclient import TestClient
+
     from src.auth.middleware import AuthContext, get_auth_context
     from src.web.routes import require_dashboard_auth
 
@@ -275,7 +276,7 @@ def test_test_integration_pagerduty_refresh_retries_inside_client_scope(authed_c
             return self._payload
 
     class _ScopedAsyncClient:
-        instances: list["_ScopedAsyncClient"] = []
+        instances: list[_ScopedAsyncClient] = []
 
         def __init__(self, timeout=10):
             self.timeout = timeout

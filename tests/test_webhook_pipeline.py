@@ -1,6 +1,6 @@
 """Integration tests for the webhook pipeline."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -8,7 +8,6 @@ import pytest
 from src.config import Settings
 from src.models import ContextCard, OpsgenieAlert, PagerDutyIncident, Severity
 from src.web.store import incident_store
-
 
 # Test PagerDuty webhook payload
 PAGERDUTY_V3_PAYLOAD = {
@@ -53,6 +52,7 @@ class TestPagerDutyWebhook:
     async def test_valid_incident_trigger(self):
         """Valid PD incident should return 200 with accepted status."""
         from httpx import ASGITransport, AsyncClient
+
         from src.main import app
 
         transport = ASGITransport(app=app)
@@ -68,6 +68,7 @@ class TestPagerDutyWebhook:
     async def test_non_trigger_event_ignored(self):
         """Non-trigger events should be ignored."""
         from httpx import ASGITransport, AsyncClient
+
         from src.main import app
 
         transport = ASGITransport(app=app)
@@ -82,6 +83,7 @@ class TestPagerDutyWebhook:
     async def test_invalid_json(self):
         """Invalid JSON should return 400."""
         from httpx import ASGITransport, AsyncClient
+
         from src.main import app
 
         transport = ASGITransport(app=app)
@@ -97,6 +99,7 @@ class TestPagerDutyWebhook:
     async def test_health_endpoint(self):
         """Health check should return 200."""
         from httpx import ASGITransport, AsyncClient
+
         from src.main import app
 
         transport = ASGITransport(app=app)
@@ -113,7 +116,7 @@ class TestWebhookBackgroundPersistence:
             title="Context title",
             severity=Severity.HIGH,
             service_name=service_name,
-            triggered_at=datetime.now(timezone.utc),
+            triggered_at=datetime.now(UTC),
             assembly_time_ms=123,
         )
 
@@ -127,7 +130,7 @@ class TestWebhookBackgroundPersistence:
             description="desc",
             severity=Severity.HIGH,
             service_name="payments",
-            triggered_at=datetime.now(timezone.utc),
+            triggered_at=datetime.now(UTC),
             html_url="https://example.pagerduty.com/incidents/pd-complete-1",
         )
         settings = Settings(correlation_enabled=False)
@@ -153,7 +156,7 @@ class TestWebhookBackgroundPersistence:
             description="desc",
             severity=Severity.HIGH,
             service_name="payments",
-            triggered_at=datetime.now(timezone.utc),
+            triggered_at=datetime.now(UTC),
             html_url="https://example.pagerduty.com/incidents/pd-fail-1",
         )
         settings = Settings(correlation_enabled=False)
@@ -180,7 +183,7 @@ class TestWebhookBackgroundPersistence:
             description="desc",
             severity=Severity.HIGH,
             service_name="checkout",
-            triggered_at=datetime.now(timezone.utc),
+            triggered_at=datetime.now(UTC),
             url="https://example.app.opsgenie.com/alert/detail/og-complete-1/details",
         )
         settings = Settings(correlation_enabled=False)
@@ -206,7 +209,7 @@ class TestWebhookBackgroundPersistence:
             description="desc",
             severity=Severity.HIGH,
             service_name="checkout",
-            triggered_at=datetime.now(timezone.utc),
+            triggered_at=datetime.now(UTC),
             url="https://example.app.opsgenie.com/alert/detail/og-fail-1/details",
         )
         settings = Settings(correlation_enabled=False)
@@ -233,7 +236,7 @@ class TestWebhookBackgroundPersistence:
             description="desc",
             severity=Severity.HIGH,
             service_name="payments",
-            triggered_at=datetime.now(timezone.utc),
+            triggered_at=datetime.now(UTC),
             html_url="https://example.pagerduty.com/incidents/pd-fail-order-1",
         )
         settings = Settings(correlation_enabled=False)
@@ -267,7 +270,7 @@ class TestWebhookBackgroundPersistence:
             description="desc",
             severity=Severity.HIGH,
             service_name="checkout",
-            triggered_at=datetime.now(timezone.utc),
+            triggered_at=datetime.now(UTC),
             url="https://example.app.opsgenie.com/alert/detail/og-fail-order-1/details",
         )
         settings = Settings(correlation_enabled=False)

@@ -106,8 +106,9 @@ class TestRouteAuthIntegration:
 
     def test_incident_detail_has_auth_dependency(self):
         """incident_detail route should have require_dashboard_auth dependency."""
-        from src.web.routes import incident_detail
         import inspect
+
+        from src.web.routes import incident_detail
 
         sig = inspect.signature(incident_detail)
         param_names = list(sig.parameters.keys())
@@ -115,8 +116,9 @@ class TestRouteAuthIntegration:
 
     def test_incident_chat_has_auth_dependency(self):
         """incident_chat route should have require_dashboard_auth dependency."""
-        from src.web.routes import incident_chat
         import inspect
+
+        from src.web.routes import incident_chat
 
         sig = inspect.signature(incident_chat)
         param_names = list(sig.parameters.keys())
@@ -124,8 +126,9 @@ class TestRouteAuthIntegration:
 
     def test_incident_timeline_has_auth_dependency(self):
         """incident_timeline route should have require_dashboard_auth dependency."""
-        from src.web.routes import incident_timeline
         import inspect
+
+        from src.web.routes import incident_timeline
 
         sig = inspect.signature(incident_timeline)
         param_names = list(sig.parameters.keys())

@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-import asyncio
 import os
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-import pytest_asyncio
 
 # Ensure Supabase is disabled for unit tests
 os.environ["SUPABASE_DB_ENABLED"] = "false"
 os.environ.pop("SUPABASE_URL", None)
 
 from src.services.models import (
-    Service,
     ServiceCreate,
     ServiceCriticality,
     ServiceDependencyCreate,
@@ -23,7 +20,6 @@ from src.services.models import (
     ServiceUpdate,
 )
 from src.services.store import ServiceCatalogStore
-
 
 # ── Model Tests ────────────────────────────────────────────────────
 
@@ -327,7 +323,6 @@ class TestServiceCatalogStoreWithMock:
 
 class TestServiceCatalogSingleton:
     def test_get_store_returns_same_instance(self):
-        from src.services.store import get_service_catalog_store, service_catalog_store
         import src.services.store as store_mod
 
         # Reset

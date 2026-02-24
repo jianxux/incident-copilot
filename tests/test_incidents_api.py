@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -210,8 +210,9 @@ class TestIncidentStatusUpdate:
     @pytest.fixture(scope="class")
     def client(self):
         from fastapi.testclient import TestClient
-        from src.main import create_app
+
         from src.auth.middleware import AuthContext, get_auth_context
+        from src.main import create_app
         from src.web.routes import require_dashboard_auth
 
         app = create_app()
@@ -264,6 +265,7 @@ class TestIncidentsListAPI:
     @pytest.fixture(scope="class")
     def client(self):
         from fastapi.testclient import TestClient
+
         from src.main import create_app
 
         app = create_app()
@@ -293,7 +295,7 @@ def test_list_incidents_merges_supabase_and_memory_with_supabase_wins(monkeypatc
     from src.models import Severity
     from src.web.store import StoredIncident
 
-    now = datetime(2026, 2, 22, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 2, 22, 12, 0, tzinfo=UTC)
 
     async def fake_supabase_list(**_kwargs):
         return (
@@ -382,7 +384,7 @@ def test_timeline_inmemory_includes_github_event_types(monkeypatch):
     from src.models import Severity
     from src.web.store import StoredIncident
 
-    now = datetime(2026, 2, 22, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 2, 22, 12, 0, tzinfo=UTC)
 
     app = create_app()
 
@@ -546,8 +548,9 @@ class TestDashboardWrapperEndpoints:
     @pytest.fixture
     def authed_client(self):
         from fastapi.testclient import TestClient
-        from src.main import create_app
+
         from src.auth.middleware import AuthContext, get_auth_context
+        from src.main import create_app
         from src.web.routes import require_dashboard_auth
 
         app = create_app()
@@ -587,6 +590,7 @@ class TestDashboardWrapperEndpoints:
 
     def test_dashboard_stats_wrapper_returns_401_without_auth(self, monkeypatch):
         from fastapi.testclient import TestClient
+
         from src.main import create_app
 
         monkeypatch.setattr("src.supabase_client.is_supabase_auth_enabled", lambda: True)
@@ -603,6 +607,7 @@ class TestDashboardWrapperEndpoints:
 
     def test_dashboard_incidents_wrapper_returns_401_without_auth(self, monkeypatch):
         from fastapi.testclient import TestClient
+
         from src.main import create_app
 
         monkeypatch.setattr("src.supabase_client.is_supabase_auth_enabled", lambda: True)

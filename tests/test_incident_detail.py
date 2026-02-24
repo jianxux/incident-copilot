@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -38,7 +38,7 @@ def _add_processing_incident(
             title=title,
             service_name="payments-api",
             severity=Severity.HIGH,
-            triggered_at=datetime.now(timezone.utc),
+            triggered_at=datetime.now(UTC),
             source=source,
             source_url=source_url,
             metadata=metadata,

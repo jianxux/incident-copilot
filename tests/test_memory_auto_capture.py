@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -22,7 +22,7 @@ def _make_incident(incident_id: str = "INC-AUTO-1") -> PagerDutyIncident:
         description="Customers are seeing checkout failures",
         severity=Severity.HIGH,
         service_name="checkout-api",
-        triggered_at=datetime(2026, 2, 22, 10, 0, tzinfo=timezone.utc),
+        triggered_at=datetime(2026, 2, 22, 10, 0, tzinfo=UTC),
     )
 
 
@@ -76,7 +76,7 @@ async def test_resolve_incident_triggers_resolution_capture(monkeypatch):
     if hasattr(incident_store, "_order"):
         incident_store._order.clear()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     await incident_store.add_incident(
         incident_id="inc-resolve-memory",
         title="Payments API degradation",
