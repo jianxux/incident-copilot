@@ -1,16 +1,15 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIncidents, useIncidentStats } from '@/hooks/use-incidents';
 import { useInsights } from '@/hooks/use-analytics';
-import { formatDate, formatDuration } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import {
   AlertTriangle,
-  ArrowDown,
-  ArrowUp,
   CheckCircle2,
   Clock,
   Eye,
@@ -30,34 +29,117 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  Cell,
 } from 'recharts';
 
-// Mock data for demo
-const mockTrendData = [
-  { date: 'Mon', incidents: 12, resolved: 10 },
-  { date: 'Tue', incidents: 8, resolved: 8 },
-  { date: 'Wed', incidents: 15, resolved: 12 },
-  { date: 'Thu', incidents: 6, resolved: 6 },
-  { date: 'Fri', incidents: 10, resolved: 9 },
-  { date: 'Sat', incidents: 4, resolved: 4 },
-  { date: 'Sun', incidents: 3, resolved: 3 },
-];
+const severityVariant: Record<string, BadgeProps['variant']> = {
+  critical: 'critical',
+  high: 'high',
+  medium: 'medium',
+  low: 'low',
+  info: 'info',
+};
 
-const mockSeverityData = [
-  { name: 'Critical', value: 3, color: '#dc2626' },
-  { name: 'High', value: 8, color: '#ea580c' },
-  { name: 'Medium', value: 15, color: '#ca8a04' },
-  { name: 'Low', value: 22, color: '#2563eb' },
-];
+const severityChartConfig = {
+  critical: { label: 'Critical', color: '#dc2626' },
+  high: { label: 'High', color: '#ea580c' },
+  medium: { label: 'Medium', color: '#ca8a04' },
+  low: { label: 'Low', color: '#2563eb' },
+  info: { label: 'Info', color: '#6b7280' },
+} as const;
 
 export default function DashboardPage() {
   const { data: statsData, isLoading: statsLoading } = useIncidentStats();
-  const { data: incidentsData, isLoading: incidentsLoading } = useIncidents(
+  const { data: activeIncidentsData, isLoading: activeIncidentsLoading } = useIncidents(
     { status: ['triggered', 'acknowledged'] },
     1,
     5
   );
+  const { data: incidentsData } = useIncidents(undefined, 1, 100);
   const { data: insights } = useInsights();
+
+  const trendData = useMemo(() => {
+    const statsWithBreakdown = statsData as
+      | {
+          daily_breakdown?: Array<{ date: string; incidents: number; resolved: number }>;
+          weekly_breakdown?: Array<{ date: string; incidents: number; resolved: number }>;
+        }
+      | undefined;
+
+    if (statsWithBreakdown?.daily_breakdown?.length) {
+      return statsWithBreakdown.daily_breakdown;
+    }
+
+    if (statsWithBreakdown?.weekly_breakdown?.length) {
+      return statsWithBreakdown.weekly_breakdown;
+    }
+
+    const allIncidents = incidentsData?.incidents ?? [];
+    if (!allIncidents.length) {
+      return [];
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const buckets = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(today);
+      date.setDate(today.getDate() - (6 - index));
+      const key = date.toISOString().slice(0, 10);
+
+      return {
+        key,
+        date: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        incidents: 0,
+        resolved: 0,
+      };
+    });
+
+    const bucketMap = new Map(buckets.map((entry) => [entry.key, entry]));
+
+    allIncidents.forEach((incident) => {
+      const createdKey = new Date(incident.created_at).toISOString().slice(0, 10);
+      const createdBucket = bucketMap.get(createdKey);
+      if (createdBucket) {
+        createdBucket.incidents += 1;
+      }
+
+      if (incident.resolved_at) {
+        const resolvedKey = new Date(incident.resolved_at).toISOString().slice(0, 10);
+        const resolvedBucket = bucketMap.get(resolvedKey);
+        if (resolvedBucket) {
+          resolvedBucket.resolved += 1;
+        }
+      }
+    });
+
+    return buckets.map(({ date, incidents, resolved }) => ({ date, incidents, resolved }));
+  }, [incidentsData?.incidents, statsData]);
+
+  const severityData = useMemo(() => {
+    if (statsData?.by_severity) {
+      return (Object.keys(severityChartConfig) as Array<keyof typeof severityChartConfig>).map(
+        (severity) => ({
+          name: severityChartConfig[severity].label,
+          value: statsData.by_severity[severity] ?? 0,
+          color: severityChartConfig[severity].color,
+        })
+      );
+    }
+
+    if (statsData?.by_status) {
+      return [
+        { name: 'Triggered', value: statsData.by_status.triggered ?? 0, color: '#dc2626' },
+        { name: 'Acknowledged', value: statsData.by_status.acknowledged ?? 0, color: '#f59e0b' },
+        { name: 'Resolved', value: statsData.by_status.resolved ?? 0, color: '#16a34a' },
+        { name: 'Processing', value: statsData.by_status.processing ?? 0, color: '#2563eb' },
+      ];
+    }
+
+    return [];
+  }, [statsData]);
+
+  const activeIncidents = activeIncidentsData?.incidents?.slice(0, 5) ?? [];
 
   return (
     <div className="space-y-6">
@@ -86,6 +168,7 @@ export default function DashboardPage() {
           icon={<Flame className="h-5 w-5 text-red-500" />}
           trend={-12}
           loading={statsLoading}
+          invertTrend
         />
         <StatsCard
           title="Acknowledged"
@@ -102,6 +185,7 @@ export default function DashboardPage() {
           icon={<Clock className="h-5 w-5 text-blue-500" />}
           trend={-8}
           loading={statsLoading}
+          invertTrend
         />
         <StatsCard
           title="Resolved Today"
@@ -124,7 +208,7 @@ export default function DashboardPage() {
           <CardContent>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={mockTrendData}>
+                <AreaChart data={trendData}>
                   <defs>
                     <linearGradient id="colorIncidents" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
@@ -174,7 +258,7 @@ export default function DashboardPage() {
           <CardContent>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockSeverityData} layout="vertical">
+                <BarChart data={severityData} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis type="number" className="text-xs" />
                   <YAxis dataKey="name" type="category" className="text-xs" width={60} />
@@ -186,8 +270,8 @@ export default function DashboardPage() {
                     }}
                   />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                    {mockSeverityData.map((entry, index) => (
-                      <rect key={`bar-${index}`} fill={entry.color} />
+                    {severityData.map((entry, index) => (
+                      <Cell key={`bar-${index}`} fill={entry.color} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -211,7 +295,7 @@ export default function DashboardPage() {
             </Button>
           </CardHeader>
           <CardContent>
-            {incidentsLoading ? (
+            {activeIncidentsLoading ? (
               <div className="space-y-4">
                 {[...Array(3)].map((_, i) => (
                   <Skeleton key={i} className="h-16" />
@@ -219,35 +303,39 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {incidentsData?.incidents?.slice(0, 5).map((incident) => (
-                  <Link
-                    key={incident.id}
-                    href={`/incidents/${incident.id}`}
-                    className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-accent"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={incident.severity as any}>
-                          {incident.severity}
-                        </Badge>
-                        <span className="font-medium">{incident.title}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {incident.service} • {formatDate(incident.created_at)}
-                      </p>
-                    </div>
-                    <Badge
-                      variant={
-                        incident.status === 'triggered' ? 'destructive' : 'warning'
-                      }
+                {activeIncidents.length > 0 ? (
+                  activeIncidents.map((incident) => (
+                    <Link
+                      key={incident.id}
+                      href={`/incidents/${incident.id}`}
+                      className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-accent"
                     >
-                      {incident.status}
-                    </Badge>
-                  </Link>
-                )) || (
-                  <p className="text-center text-muted-foreground py-8">
-                    No active incidents 🎉
-                  </p>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={severityVariant[incident.severity] ?? 'secondary'}>
+                            {incident.severity}
+                          </Badge>
+                          <span className="font-medium">{incident.title}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {incident.service} • {formatDate(incident.created_at)}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={
+                          incident.status === 'triggered' ? 'destructive' : 'warning'
+                        }
+                      >
+                        {incident.status}
+                      </Badge>
+                    </Link>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center py-8">
+                    <CheckCircle2 className="h-8 w-8 text-green-500 mb-2" />
+                    <p className="font-medium">No active incidents</p>
+                    <p className="text-sm text-muted-foreground">All clear — nothing needs attention right now.</p>
+                  </div>
                 )}
               </div>
             )}
@@ -319,9 +407,13 @@ interface StatsCardProps {
   icon: React.ReactNode;
   trend?: number;
   loading?: boolean;
+  invertTrend?: boolean;
 }
 
-function StatsCard({ title, value, description, icon, trend, loading }: StatsCardProps) {
+function StatsCard({ title, value, description, icon, trend, loading, invertTrend }: StatsCardProps) {
+  const isPositiveTrend = (trend ?? 0) > 0;
+  const trendIsGood = invertTrend ? !isPositiveTrend : isPositiveTrend;
+
   return (
     <Card>
       <CardContent className="p-6">
@@ -344,10 +436,10 @@ function StatsCard({ title, value, description, icon, trend, loading }: StatsCar
               {trend !== undefined && (
                 <span
                   className={`flex items-center ${
-                    trend > 0 ? 'text-green-500' : 'text-red-500'
+                    trendIsGood ? 'text-green-500' : 'text-red-500'
                   }`}
                 >
-                  {trend > 0 ? (
+                  {isPositiveTrend ? (
                     <TrendingUp className="mr-1 h-3 w-3" />
                   ) : (
                     <TrendingDown className="mr-1 h-3 w-3" />

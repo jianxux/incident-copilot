@@ -6,7 +6,7 @@ import { useIncidents, useAcknowledgeIncident, useResolveIncident } from '@/hook
 import { useAppStore } from '@/lib/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -36,6 +36,13 @@ import {
 
 const severityOptions: Severity[] = ['critical', 'high', 'medium', 'low', 'info'];
 const statusOptions: Status[] = ['triggered', 'acknowledged', 'resolved'];
+const severityVariant: Record<string, BadgeProps['variant']> = {
+  critical: 'critical',
+  high: 'high',
+  medium: 'medium',
+  low: 'low',
+  info: 'info',
+};
 
 export default function IncidentsPage() {
   const [page, setPage] = useState(1);
@@ -249,13 +256,25 @@ export default function IncidentsPage() {
       ) : data?.incidents?.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center">
-            <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 text-lg font-semibold">No incidents found</h3>
-            <p className="text-muted-foreground">
-              {hasFilters
-                ? 'Try adjusting your filters'
-                : 'No incidents have been created yet'}
-            </p>
+            {hasFilters ? (
+              <>
+                <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground" />
+                <h3 className="mt-4 text-lg font-semibold">No incidents found</h3>
+                <p className="text-muted-foreground">
+                  Try adjusting your filters
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <CheckCircle className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold">No incidents yet</h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  New incidents will appear here once alerts start flowing in.
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       ) : incidentView === 'grid' ? (
@@ -332,7 +351,7 @@ function IncidentCard({ incident, onAcknowledge, onResolve }: IncidentItemProps)
     <Card className="transition-shadow hover:shadow-md">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
-          <Badge variant={incident.severity as any}>{incident.severity}</Badge>
+          <Badge variant={severityVariant[incident.severity] ?? 'secondary'}>{incident.severity}</Badge>
           <IncidentActions
             incident={incident}
             onAcknowledge={onAcknowledge}

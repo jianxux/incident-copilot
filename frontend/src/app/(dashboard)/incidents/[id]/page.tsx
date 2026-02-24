@@ -14,7 +14,7 @@ import {
 } from '@/hooks/use-incidents';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
@@ -39,6 +39,14 @@ import {
   Users,
   Zap,
 } from 'lucide-react';
+
+const severityVariant: Record<string, BadgeProps['variant']> = {
+  critical: 'critical',
+  high: 'high',
+  medium: 'medium',
+  low: 'low',
+  info: 'info',
+};
 
 export default function IncidentDetailPage() {
   const params = useParams();
@@ -106,7 +114,7 @@ export default function IncidentDetailPage() {
             <span>{incident.id.slice(0, 8)}</span>
           </div>
           <div className="flex items-center gap-3">
-            <Badge variant={incident.severity as any} className="text-base px-3 py-1">
+            <Badge variant={severityVariant[incident.severity] ?? 'secondary'} className="text-base px-3 py-1">
               {incident.severity}
             </Badge>
             <h1 className="text-2xl font-bold">{incident.title}</h1>
@@ -329,7 +337,7 @@ export default function IncidentDetailPage() {
                   placeholder="Add a note..."
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddNote()}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
                 />
                 <Button size="icon" onClick={handleAddNote} disabled={addNote.isPending}>
                   <Send className="h-4 w-4" />
@@ -349,7 +357,7 @@ export default function IncidentDetailPage() {
             <CardContent className="space-y-4">
               <div>
                 <p className="text-sm text-muted-foreground">Service</p>
-                <p className="font-medium">{incident.service}</p>
+                <Badge variant="service">{incident.service}</Badge>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Source</p>
