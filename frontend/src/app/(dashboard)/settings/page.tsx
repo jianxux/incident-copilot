@@ -98,14 +98,14 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex flex-col md:flex-row gap-6">
         {/* Sidebar */}
-        <nav className="w-64 space-y-1">
+        <nav className="flex flex-row md:flex-col overflow-x-auto md:overflow-visible md:w-64 w-full gap-1 md:space-y-1 md:gap-0">
           {sections.map((section) => (
             <button
               key={section.id}
               onClick={() => setActiveSection(section.id)}
-              className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors whitespace-nowrap md:w-full ${
                 activeSection === section.id
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'

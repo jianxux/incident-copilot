@@ -14,6 +14,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  ChevronsRight,
   Home,
   Layers,
   LifeBuoy,
@@ -52,25 +53,31 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'hidden md:flex flex-col border-r bg-card transition-all duration-300',
+        'hidden md:flex flex-col border-r border-[#2a2420] bg-[#1a1614] transition-all duration-300',
         sidebarOpen ? 'w-64' : 'w-16'
       )}
     >
       {/* Logo */}
-      <div className="flex h-16 items-center justify-between border-b px-4">
-        {sidebarOpen && (
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <AlertTriangle className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="font-semibold">Incident Copilot</span>
-          </Link>
+      <div
+        className={cn(
+          'relative flex h-16 items-center border-b border-[#2a2420]',
+          sidebarOpen ? 'justify-between px-4' : 'justify-center px-2'
         )}
+      >
+        <Link href="/dashboard" className={cn('flex items-center', sidebarOpen && 'gap-2')}>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+            <AlertTriangle className="h-5 w-5 text-primary-foreground" />
+          </div>
+          {sidebarOpen && <span className="font-semibold text-[#f5efe8]">Incident Copilot</span>}
+        </Link>
         <Button
           variant="ghost"
           size="icon"
           onClick={toggleSidebar}
-          className={cn(!sidebarOpen && 'mx-auto')}
+          className={cn(
+            'text-[#a8998a] hover:bg-[#2a2420] hover:text-[#e8ddd0]',
+            !sidebarOpen && 'absolute right-2 bg-[#2a2420] hover:bg-[#332c27]'
+          )}
         >
           {sidebarOpen ? (
             <ChevronLeft className="h-4 w-4" />
@@ -93,11 +100,11 @@ export function Sidebar() {
           ))}
         </div>
 
-        <Separator className="my-4" />
+        <Separator className="my-4 bg-[#2a2420]" />
 
         <div className="space-y-1">
           {sidebarOpen && (
-            <p className="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">
+            <p className="px-3 py-2 text-xs font-semibold uppercase text-[#6b5e52]">
               Operations
             </p>
           )}
@@ -113,7 +120,7 @@ export function Sidebar() {
       </nav>
 
       {/* Bottom nav */}
-      <div className="border-t p-2">
+      <div className="border-t border-[#2a2420] p-2">
         {bottomNavItems.map((item) => (
           <NavItem
             key={item.href}
@@ -122,6 +129,16 @@ export function Sidebar() {
             collapsed={!sidebarOpen}
           />
         ))}
+        {!sidebarOpen && (
+          <div className="flex justify-center py-3 border-t border-[#2a2420]">
+            <button
+              onClick={toggleSidebar}
+              className="text-[#6b5e52] hover:text-[#a8998a] transition-colors"
+            >
+              <ChevronsRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   );
@@ -142,9 +159,9 @@ export function MobileSidebar() {
       />
 
       {/* Sidebar panel */}
-      <aside className="fixed inset-y-0 left-0 flex w-72 flex-col bg-card shadow-xl animate-in slide-in-from-left duration-300">
+      <aside className="fixed inset-y-0 left-0 flex w-72 flex-col border-r border-[#2a2420] bg-[#1a1614] shadow-xl animate-in slide-in-from-left duration-300">
         {/* Header with close button */}
-        <div className="flex h-16 items-center justify-between border-b px-4">
+        <div className="flex h-16 items-center justify-between border-b border-[#2a2420] px-4">
           <Link
             href="/dashboard"
             className="flex items-center gap-2"
@@ -153,11 +170,12 @@ export function MobileSidebar() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <AlertTriangle className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-semibold">Incident Copilot</span>
+            <span className="font-semibold text-[#f5efe8]">Incident Copilot</span>
           </Link>
           <Button
             variant="ghost"
             size="icon"
+            className="text-[#a8998a] hover:bg-[#2a2420] hover:text-[#e8ddd0]"
             onClick={() => setMobileSidebarOpen(false)}
           >
             <X className="h-5 w-5" />
@@ -177,10 +195,10 @@ export function MobileSidebar() {
             ))}
           </div>
 
-          <Separator className="my-4" />
+          <Separator className="my-4 bg-[#2a2420]" />
 
           <div className="space-y-1">
-            <p className="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">
+            <p className="px-3 py-2 text-xs font-semibold uppercase text-[#6b5e52]">
               Operations
             </p>
             {secondaryNavItems.map((item) => (
@@ -195,7 +213,7 @@ export function MobileSidebar() {
         </nav>
 
         {/* Bottom nav */}
-        <div className="border-t p-2">
+        <div className="border-t border-[#2a2420] p-2">
           {bottomNavItems.map((item) => (
             <MobileNavItem
               key={item.href}
@@ -225,9 +243,11 @@ function NavItem({ href, label, icon: Icon, isActive, collapsed }: NavItemProps)
       className={cn(
         'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
         isActive
-          ? 'bg-primary text-primary-foreground'
-          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-        collapsed && 'justify-center'
+          ? collapsed
+            ? 'bg-primary/15 text-primary'
+            : 'bg-primary text-primary-foreground'
+          : 'text-[#a8998a] hover:bg-[#2a2420] hover:text-[#e8ddd0]',
+        collapsed && 'px-0 justify-center'
       )}
       title={collapsed ? label : undefined}
     >
@@ -254,7 +274,7 @@ function MobileNavItem({ href, label, icon: Icon, isActive, onNavigate }: Mobile
         'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
         isActive
           ? 'bg-primary text-primary-foreground'
-          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+          : 'text-[#a8998a] hover:bg-[#2a2420] hover:text-[#e8ddd0]'
       )}
     >
       <Icon className="h-5 w-5 shrink-0" />
