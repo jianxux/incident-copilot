@@ -10,6 +10,9 @@ from .common import (
     router,
     status_color,
 )
+
+# Backward-compatible alias used by src.main
+DashboardAuthRedirectError = DashboardAuthRedirect
 from .pages import incident_chat, incident_detail, incident_timeline
 
 # Import route modules for side-effect registration on shared routers.
@@ -25,6 +28,7 @@ __all__ = [
     "landing_router",
     "incident_store",
     "DashboardAuthRedirect",
+    "DashboardAuthRedirectError",
     "require_dashboard_auth",
     "_get_tenant_id_from_request",
     "_map_status",
