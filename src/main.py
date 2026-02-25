@@ -17,7 +17,6 @@ from .api import (
     email_router,
     health_router,
     incidents_router,
-    pagerduty_sync_router,
     insights_router,
     latency_router,
     memory_advanced_router,
@@ -26,6 +25,7 @@ from .api import (
     metrics_router,
     onboarding_router,
     oncall_handoff_router,
+    pagerduty_sync_router,
     plugins_router,
     postmortem_router,
     runbooks_router,
@@ -35,6 +35,7 @@ from .api.audit import router as audit_router
 from .api.copilot import router as copilot_router
 from .api.demo_trigger import router as demo_trigger_router
 from .api.health import set_app_start_time
+from .api.oauth_integrations import router as oauth_integrations_router
 from .audit.middleware import AuditMiddleware
 from .audit.store import audit_store
 from .auth.oauth_pagerduty import router as pagerduty_oauth_router
@@ -46,8 +47,20 @@ from .billing.routes import router as billing_router
 from .config import get_settings
 from .copilot.adapters.slack_adapter import router as slack_copilot_router
 from .copilot.adapters.web_adapter import router as web_copilot_router
-from .api.oauth_integrations import router as oauth_integrations_router
+from .metrics import HEALTH_STATUS, set_app_info
+from .metrics.middleware import PrometheusMiddleware
+from .oncall.scheduler import (
+    start_oncall_handoff_scheduler,
+    stop_oncall_handoff_scheduler,
+)
+from .ratelimit.middleware import RateLimitMiddleware
+from .ratelimit.routes import router as ratelimit_router
 from .search.routes import router as search_router
+from .security.headers import SecurityHeadersMiddleware
+from .services.routes import router as service_catalog_router
+from .services.store import close_service_catalog_store, init_service_catalog_store
+from .web import landing_router, web_router
+
 _oauth_refresh_available = False
 try:
     from .integrations.oauth_refresh import (
@@ -57,18 +70,6 @@ try:
     _oauth_refresh_available = True
 except ImportError:
     pass
-from .metrics import HEALTH_STATUS, set_app_info
-from .metrics.middleware import PrometheusMiddleware
-from .oncall.scheduler import (
-    start_oncall_handoff_scheduler,
-    stop_oncall_handoff_scheduler,
-)
-from .ratelimit.middleware import RateLimitMiddleware
-from .ratelimit.routes import router as ratelimit_router
-from .security.headers import SecurityHeadersMiddleware
-from .services.routes import router as service_catalog_router
-from .services.store import close_service_catalog_store, init_service_catalog_store
-from .web import landing_router, web_router
 
 # Configure structured logging
 structlog.configure(
@@ -227,9 +228,10 @@ def create_app() -> FastAPI:
 
     # Redirect unauthenticated browser requests to /login instead of JSON 401
     from starlette.responses import RedirectResponse
-    from .web.routes import DashboardAuthRedirect
 
-    @app.exception_handler(DashboardAuthRedirect)
+    from .web.routes import DashboardAuthRedirectError
+
+    @app.exception_handler(DashboardAuthRedirectError)
     async def _redirect_to_login(request, exc):
         response = RedirectResponse(url="/login?session_expired=1", status_code=307)
         # Clear the auth cookie to break redirect loops

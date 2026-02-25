@@ -2,7 +2,6 @@
 
 import asyncio
 import time
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -219,7 +218,7 @@ async def test_call_after_interval_triggers_sync():
     """A call after the debounce interval should trigger sync again."""
     _pd_sync_timestamps["tenant-1"] = time.time() - _PD_SYNC_INTERVAL - 1
 
-    with patch("src.integrations.pagerduty_sync._background_pd_sync", new_callable=AsyncMock) as mock_sync:
+    with patch("src.integrations.pagerduty_sync._background_pd_sync", new_callable=AsyncMock):
         with patch("src.integrations.pagerduty_sync.asyncio.create_task") as mock_task:
             await _maybe_trigger_pd_sync("tenant-1")
 

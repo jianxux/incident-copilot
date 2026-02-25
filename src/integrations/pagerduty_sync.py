@@ -300,7 +300,7 @@ async def _maybe_trigger_pd_sync(tenant_id: str) -> bool:
         # First sync: await with a timeout so we don't block too long
         try:
             await asyncio.wait_for(_background_pd_sync(tenant_id), timeout=10.0)
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             logger.warning(
                 "pd_first_sync_timeout",
                 tenant_id=tenant_id,

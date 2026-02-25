@@ -1,8 +1,6 @@
 """Tests for PagerDuty incident sync endpoint."""
 
-import asyncio
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
 
 import pytest
 
@@ -115,7 +113,7 @@ async def test_sync_resolved_incident_marks_completed(store):
         severity=Severity.LOW,
         service_name=inc["service"]["summary"],
         triggered_at=datetime.fromisoformat(inc["created_at"].replace("Z", "+00:00")),
-        assembled_at=datetime.now(timezone.utc),
+        assembled_at=datetime.now(UTC),
         assembly_time_ms=0,
     )
     await store.complete_incident(
@@ -140,7 +138,7 @@ async def test_sync_maps_urgency_to_severity(store):
             title=inc["title"],
             service_name=inc["service"]["summary"],
             severity=severity,
-            triggered_at=datetime.now(timezone.utc),
+            triggered_at=datetime.now(UTC),
             source="pagerduty",
             tenant_id="test-tenant",
         )
@@ -160,7 +158,7 @@ async def test_sync_multiple_incidents(store):
             title=inc["title"],
             service_name=inc["service"]["summary"],
             severity=Severity.HIGH,
-            triggered_at=datetime.now(timezone.utc),
+            triggered_at=datetime.now(UTC),
             source="pagerduty",
             source_id=str(inc["incident_number"]),
             tenant_id="test-tenant",
@@ -181,7 +179,7 @@ async def test_sync_upserts_existing_incident(store):
         title="Original title",
         service_name="svc",
         severity=Severity.HIGH,
-        triggered_at=datetime.now(timezone.utc),
+        triggered_at=datetime.now(UTC),
         source="pagerduty",
         tenant_id="test-tenant",
     )
@@ -192,7 +190,7 @@ async def test_sync_upserts_existing_incident(store):
         title="Updated title",
         service_name="svc",
         severity=Severity.HIGH,
-        triggered_at=datetime.now(timezone.utc),
+        triggered_at=datetime.now(UTC),
         source="pagerduty",
         tenant_id="test-tenant",
     )
@@ -234,7 +232,7 @@ async def test_sync_extracts_metadata_fields(store):
         title=inc["title"],
         service_name=inc["service"]["summary"],
         severity=Severity.HIGH,
-        triggered_at=datetime.now(timezone.utc),
+        triggered_at=datetime.now(UTC),
         source="pagerduty",
         metadata=metadata,
         tenant_id="test-tenant",

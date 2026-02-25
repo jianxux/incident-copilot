@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import os
-import tempfile
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -13,7 +11,6 @@ os.environ["SUPABASE_DB_ENABLED"] = "false"
 os.environ.pop("SUPABASE_URL", None)
 
 from src.onboarding.checklist import CHECKLIST_STEPS, OPTIONAL_STEPS, OnboardingChecklist
-
 
 # ── Checklist Model Tests ──────────────────────────────────────────
 
