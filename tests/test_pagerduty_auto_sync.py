@@ -16,6 +16,12 @@ from src.integrations.pagerduty_sync import (
 )
 
 
+def _close_coro_and_return_dummy_task(coro, *args, **kwargs):
+    """Close scheduled coroutine in tests to avoid un-awaited coroutine warnings."""
+    coro.close()
+    return MagicMock(name="dummy_task")
+
+
 @pytest.fixture(autouse=True)
 def _clear_sync_timestamps():
     """Reset the global sync timestamps between tests."""
@@ -219,7 +225,10 @@ async def test_call_after_interval_triggers_sync():
     _pd_sync_timestamps["tenant-1"] = time.time() - _PD_SYNC_INTERVAL - 1
 
     with patch("src.integrations.pagerduty_sync._background_pd_sync", new_callable=AsyncMock):
-        with patch("src.integrations.pagerduty_sync.asyncio.create_task") as mock_task:
+        with patch(
+            "src.integrations.pagerduty_sync.asyncio.create_task",
+            side_effect=_close_coro_and_return_dummy_task,
+        ) as mock_task:
             await _maybe_trigger_pd_sync("tenant-1")
 
     # Subsequent sync fires as background task
@@ -232,7 +241,10 @@ async def test_different_tenants_sync_independently():
     _pd_sync_timestamps["tenant-1"] = time.time()  # recently synced
 
     with patch("src.integrations.pagerduty_sync._background_pd_sync", new_callable=AsyncMock) as mock_sync:
-        with patch("src.integrations.pagerduty_sync.asyncio.create_task"):
+        with patch(
+            "src.integrations.pagerduty_sync.asyncio.create_task",
+            side_effect=_close_coro_and_return_dummy_task,
+        ):
             await _maybe_trigger_pd_sync("tenant-1")  # should skip
             await _maybe_trigger_pd_sync("tenant-2")  # should trigger (first sync)
 
@@ -250,12 +262,24 @@ async def test_sync_returns_silently_when_no_token():
     """If no PD token is found, the sync should return without error."""
     mock_token_store = MagicMock()
     mock_token_store.get_token = AsyncMock(return_value=None)
+    mock_rows = MagicMock()
+    mock_rows.data = []
+    mock_db = MagicMock()
+    (
+        mock_db.client.table.return_value.select.return_value.eq.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value
+    ) = mock_rows
 
-    with patch(
-        "src.integrations.oauth_tokens.oauth_token_store",
-        mock_token_store,
+    with (
+        patch(
+            "src.integrations.oauth_tokens.oauth_token_store",
+            mock_token_store,
+        ),
+        patch("src.db.supabase_db.get_db", return_value=mock_db),
+        patch("httpx.AsyncClient") as mock_async_client,
     ):
         await _background_pd_sync("tenant-no-pd")
+
+    mock_async_client.assert_not_called()
 
 
 @pytest.mark.asyncio

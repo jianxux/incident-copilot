@@ -637,8 +637,7 @@ class TestTemplateRegistry:
 class TestPostmortemRoutes:
     """Tests for postmortem API routes."""
 
-    @pytest.mark.asyncio
-    async def test_generate_postmortem(self, client, clean_store):
+    def test_generate_postmortem(self, client, clean_store):
         """Test POST /api/postmortems/generate."""
         response = client.post(
             "/api/postmortems/generate",
