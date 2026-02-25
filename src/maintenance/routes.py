@@ -1,6 +1,6 @@
 """Maintenance Windows - FastAPI Routes"""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -229,8 +229,8 @@ async def export_calendar(
     svc: MaintenanceService = Depends(get_svc),
 ):
     windows = await svc.list_windows(
-        from_time=from_time or datetime.utcnow(),
-        to_time=to_time or datetime.utcnow() + timedelta(days=30),
+        from_time=from_time or datetime.now(UTC),
+        to_time=to_time or datetime.now(UTC) + timedelta(days=30),
         scope_type=scope_type,
     )
     return Response(

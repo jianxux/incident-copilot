@@ -5,7 +5,7 @@ Supports business hours awareness and escalation notifications.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -76,7 +76,7 @@ class SLAService:
             policy_id=policy.id,
             severity=severity,
             sla_type=sla_type,
-            started_at=started_at or datetime.utcnow(),
+            started_at=started_at or datetime.now(UTC),
             target_minutes=target.target_minutes,
         )
 
@@ -113,7 +113,7 @@ class SLAService:
         if not timer:
             return None
 
-        now = completed_at or datetime.utcnow()
+        now = completed_at or datetime.now(UTC)
 
         # Update elapsed time
         timer = await self._update_elapsed(timer, now)
@@ -145,7 +145,7 @@ class SLAService:
         if not timer or timer.paused or timer.completed_at:
             return timer
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         timer = await self._update_elapsed(timer, now)
         timer.paused = True
         timer.paused_at = now
@@ -169,7 +169,7 @@ class SLAService:
         if not timer or not timer.paused:
             return timer
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if timer.paused_at:
             paused_duration = (now - timer.paused_at).total_seconds() / 60
             timer.total_paused_minutes += paused_duration
@@ -201,7 +201,7 @@ class SLAService:
             return None
 
         # Update elapsed time
-        timer = await self._update_elapsed(timer, datetime.utcnow())
+        timer = await self._update_elapsed(timer, datetime.now(UTC))
 
         # Already breached?
         if timer.status == SLAStatus.BREACHED:
@@ -225,7 +225,7 @@ class SLAService:
         # Check breach
         if timer.elapsed_minutes >= timer.target_minutes:
             timer.status = SLAStatus.BREACHED
-            timer.breached_at = datetime.utcnow()
+            timer.breached_at = datetime.now(UTC)
             await self.store.save_timer(timer)
 
             breach = await self._create_breach(timer, policy)
@@ -254,7 +254,7 @@ class SLAService:
         breaches = await self.store.get_incident_breaches(incident_id)
 
         # Update elapsed times
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if response_timer and not response_timer.completed_at:
             response_timer = await self._update_elapsed(response_timer, now)
         if resolution_timer and not resolution_timer.completed_at:
@@ -310,7 +310,7 @@ class SLAService:
         if not timer:
             return {"error": "Timer not found"}
 
-        timer = await self._update_elapsed(timer, datetime.utcnow())
+        timer = await self._update_elapsed(timer, datetime.now(UTC))
         remaining = timer.remaining_minutes
 
         result = {
@@ -330,7 +330,7 @@ class SLAService:
             result["breach_eta"] = eta.isoformat()
         elif remaining > 0:
             result["breach_eta"] = (
-                datetime.utcnow() + timedelta(minutes=remaining)
+                datetime.now(UTC) + timedelta(minutes=remaining)
             ).isoformat()
 
         return result
@@ -445,7 +445,7 @@ class SLAService:
             # Handle business hours pausing
             if policy.business_hours.enabled:
                 is_biz_hours = self._is_business_hours(
-                    datetime.utcnow(), policy.business_hours
+                    datetime.now(UTC), policy.business_hours
                 )
                 if is_biz_hours and timer.paused:
                     await self.resume_timer(timer.incident_id, timer.sla_type)
@@ -505,7 +505,7 @@ class SLAService:
             breach_percent=round(breach_percent, 2),
             escalation_level=escalation_level,
             escalated_to=policy.escalation_contacts,
-            breached_at=timer.breached_at or datetime.utcnow(),
+            breached_at=timer.breached_at or datetime.now(UTC),
         )
 
         await self.store.save_breach(breach)
@@ -540,12 +540,12 @@ class SLAService:
     ) -> datetime:
         """Calculate when SLA will breach accounting for business hours."""
         if not config.enabled:
-            return datetime.utcnow() + timedelta(minutes=remaining_minutes)
+            return datetime.now(UTC) + timedelta(minutes=remaining_minutes)
 
         try:
             tz = ZoneInfo(config.timezone)
         except Exception:
-            return datetime.utcnow() + timedelta(minutes=remaining_minutes)
+            return datetime.now(UTC) + timedelta(minutes=remaining_minutes)
 
         current = datetime.now(tz)
         remaining = remaining_minutes

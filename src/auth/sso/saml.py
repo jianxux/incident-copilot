@@ -3,7 +3,7 @@
 import base64
 import uuid
 import zlib
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from urllib.parse import urlencode
 from xml.etree.ElementTree import Element
@@ -116,7 +116,7 @@ class SAMLProvider(BaseProvider):
         Returns:
             XML string of the AuthnRequest
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         issue_instant = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # Build AuthnRequest
@@ -522,7 +522,7 @@ class SAMLProvider(BaseProvider):
             return None
 
         request_id = f"_id{uuid.uuid4().hex}"
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         issue_instant = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # Build LogoutRequest

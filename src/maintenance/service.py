@@ -1,7 +1,7 @@
 """Maintenance Windows - Service Layer"""
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from uuid import UUID
 
 from .models import (
@@ -39,9 +39,9 @@ class MaintenanceService:
             notification_type=ntype,
             recipients=window.stakeholders,
             message=message,
-            scheduled_for=datetime.utcnow(),
+            scheduled_for=datetime.now(UTC),
         )
-        notification.sent_at = datetime.utcnow()
+        notification.sent_at = datetime.now(UTC)
         for handler in self._notification_handlers:
             try:
                 await handler(notification)
@@ -92,7 +92,7 @@ class MaintenanceService:
             raise ValueError("Cannot update active/completed windows")
         for field, value in request.model_dump(exclude_unset=True).items():
             setattr(window, field, value)
-        window.updated_at = datetime.utcnow()
+        window.updated_at = datetime.now(UTC)
         return window
 
     async def delete_window(self, window_id: UUID) -> bool:
@@ -126,7 +126,7 @@ class MaintenanceService:
     async def is_in_maintenance(
         self, scope_type: ScopeType, identifier: str, at_time: datetime | None = None
     ) -> tuple[bool, MaintenanceWindow | None]:
-        now = at_time or datetime.utcnow()
+        now = at_time or datetime.now(UTC)
         for window in self._windows.values():
             if window.is_active(now) and window.scope.matches(scope_type, identifier):
                 return True, window
@@ -135,11 +135,11 @@ class MaintenanceService:
     async def get_active_windows(
         self, at_time: datetime | None = None
     ) -> list[MaintenanceWindow]:
-        now = at_time or datetime.utcnow()
+        now = at_time or datetime.now(UTC)
         return [w for w in self._windows.values() if w.is_active(now)]
 
     async def get_upcoming_windows(self, hours: int = 24) -> list[MaintenanceWindow]:
-        now, future = datetime.utcnow(), datetime.utcnow() + timedelta(hours=hours)
+        now, future = datetime.now(UTC), datetime.now(UTC) + timedelta(hours=hours)
         return sorted(
             [
                 w
@@ -178,7 +178,7 @@ class MaintenanceService:
             annotation = f"[MAINTENANCE] During: {window.title}"
             window.related_incident_ids.append(incident_id)
             window.annotations.append(
-                f"Incident {incident_id} at {datetime.utcnow().isoformat()}"
+                f"Incident {incident_id} at {datetime.now(UTC).isoformat()}"
             )
             return annotation
         return None
@@ -195,10 +195,10 @@ class MaintenanceService:
         if window.is_approved():
             window.status = (
                 MaintenanceStatus.SCHEDULED
-                if window.schedule.start_time > datetime.utcnow()
+                if window.schedule.start_time > datetime.now(UTC)
                 else MaintenanceStatus.IN_PROGRESS
             )
-        window.updated_at = datetime.utcnow()
+        window.updated_at = datetime.now(UTC)
         return window
 
     async def reject(
@@ -211,7 +211,7 @@ class MaintenanceService:
             ApprovalRecord(approver_id=approver_id, approved=False, comment=reason)
         )
         window.status = MaintenanceStatus.CANCELLED
-        window.updated_at = datetime.utcnow()
+        window.updated_at = datetime.now(UTC)
         await self._notify(window, NotificationType.CANCELLED, f"Rejected: {reason}")
         return window
 
@@ -220,7 +220,7 @@ class MaintenanceService:
         if not window or window.status not in (MaintenanceStatus.SCHEDULED,):
             raise ValueError("Cannot start")
         window.status = MaintenanceStatus.IN_PROGRESS
-        window.updated_at = datetime.utcnow()
+        window.updated_at = datetime.now(UTC)
         await self._notify(window, NotificationType.STARTED, f"Started: {window.title}")
         return window
 
@@ -229,7 +229,7 @@ class MaintenanceService:
         if not window:
             raise ValueError("Window not found")
         window.status = MaintenanceStatus.COMPLETED
-        window.updated_at = datetime.utcnow()
+        window.updated_at = datetime.now(UTC)
         await self._notify(
             window, NotificationType.COMPLETED, f"Completed: {window.title}"
         )
@@ -243,7 +243,7 @@ class MaintenanceService:
             raise ValueError("Window not found")
         window.status = MaintenanceStatus.CANCELLED
         window.annotations.append(f"Cancelled: {reason}")
-        window.updated_at = datetime.utcnow()
+        window.updated_at = datetime.now(UTC)
         await self._notify(
             window, NotificationType.CANCELLED, f"Cancelled: {window.title} - {reason}"
         )
@@ -263,7 +263,7 @@ class MaintenanceService:
         window.extension_count += 1
         window.extension_reason = request.reason
         window.status = MaintenanceStatus.EXTENDED
-        window.updated_at = datetime.utcnow()
+        window.updated_at = datetime.now(UTC)
         await self._notify(
             window,
             NotificationType.EXTENDED,
@@ -310,7 +310,7 @@ class MaintenanceService:
         return list(i1 & i2) if "*" not in i1 and "*" not in i2 else ["ALL"]
 
     async def process_scheduled_windows(self) -> list[MaintenanceWindow]:
-        now, processed = datetime.utcnow(), []
+        now, processed = datetime.now(UTC), []
         for window in self._windows.values():
             if (
                 window.status == MaintenanceStatus.SCHEDULED

@@ -1,7 +1,7 @@
 """Data models for SSO (SAML 2.0 and OIDC) authentication."""
 
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from enum import StrEnum
 from typing import Any
 
@@ -201,7 +201,7 @@ class SSOSession(BaseModel):
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
     expires_at: datetime = Field(
-        default_factory=lambda: datetime.utcnow() + timedelta(minutes=10)
+        default_factory=lambda: datetime.now(UTC) + timedelta(minutes=10)
     )
 
     # Result
@@ -211,7 +211,7 @@ class SSOSession(BaseModel):
 
     def is_expired(self) -> bool:
         """Check if the session has expired."""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
 
 class SSOUserInfo(BaseModel):

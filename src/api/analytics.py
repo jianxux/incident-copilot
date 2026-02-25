@@ -2,7 +2,7 @@
 
 import statistics
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from typing import Any, Literal
 
 import structlog
@@ -866,7 +866,7 @@ async def record_incident_triggered(
 ):
     """Record an incident trigger event (for testing/manual entry)."""
     if triggered_at is None:
-        triggered_at = datetime.utcnow()
+        triggered_at = datetime.now(UTC)
 
     metrics = await tracker.record_incident_triggered(
         incident_id=incident_id,
@@ -884,7 +884,7 @@ async def record_incident_acknowledged(
 ):
     """Record an incident acknowledgement event."""
     if acknowledged_at is None:
-        acknowledged_at = datetime.utcnow()
+        acknowledged_at = datetime.now(UTC)
 
     metrics = await tracker.record_incident_acknowledged(
         incident_id=incident_id,
@@ -900,7 +900,7 @@ async def record_incident_resolved(
 ):
     """Record an incident resolution event."""
     if resolved_at is None:
-        resolved_at = datetime.utcnow()
+        resolved_at = datetime.now(UTC)
 
     metrics = await tracker.record_incident_resolved(
         incident_id=incident_id,
@@ -916,7 +916,7 @@ async def record_context_card_delivered(
 ):
     """Record context card delivery event."""
     if delivered_at is None:
-        delivered_at = datetime.utcnow()
+        delivered_at = datetime.now(UTC)
 
     metrics = await tracker.record_context_card_delivered(
         incident_id=incident_id,

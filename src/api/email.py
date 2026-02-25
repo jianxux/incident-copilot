@@ -1,6 +1,6 @@
 """Email notification API endpoints."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 import structlog
@@ -284,7 +284,7 @@ async def update_email_config(config_input: EmailConfigInput):
     if existing:
         config.created_at = existing.created_at
 
-    config.updated_at = datetime.utcnow()
+    config.updated_at = datetime.now(UTC)
     _save_config(config)
 
     logger.info(

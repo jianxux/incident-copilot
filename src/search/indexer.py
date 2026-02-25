@@ -1,7 +1,7 @@
 """Indexing service for incidents, runbooks, and postmortems."""
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Callable, Protocol
 
 from .engine import SearchEngine
@@ -154,7 +154,7 @@ class PostmortemAdapter:
 def _parse_datetime(value: Any) -> datetime:
     """Parse datetime from various formats."""
     if value is None:
-        return datetime.utcnow()
+        return datetime.now(UTC)
     if isinstance(value, datetime):
         return value
     if isinstance(value, str):
@@ -170,7 +170,7 @@ def _parse_datetime(value: Any) -> datetime:
                 return datetime.strptime(value, fmt)
             except ValueError:
                 continue
-    return datetime.utcnow()
+    return datetime.now(UTC)
 
 
 class IndexingService:
@@ -248,7 +248,7 @@ class IndexingService:
                 if progress_callback:
                     progress_callback(indexed, total)
 
-            self._last_index_time[doc_type] = datetime.utcnow()
+            self._last_index_time[doc_type] = datetime.now(UTC)
             self._index_stats["total_indexed"] += indexed
 
             return {

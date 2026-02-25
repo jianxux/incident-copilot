@@ -5,7 +5,7 @@ import hashlib
 import os
 import tempfile
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from pathlib import Path
 from typing import Any
 
@@ -53,7 +53,7 @@ class ExportService:
     ) -> ExportJob:
         """Create a new export job."""
         job_id = str(uuid.uuid4())
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         expires_at = now + timedelta(hours=request.expiry_hours)
 
         job = ExportJob(
@@ -80,7 +80,7 @@ class ExportService:
     async def get_status(self, job_id: str) -> ExportJob | None:
         """Get the status of an export job."""
         job = self._jobs.get(job_id)
-        if job and job.expires_at and datetime.utcnow() > job.expires_at:
+        if job and job.expires_at and datetime.now(UTC) > job.expires_at:
             job.status = ExportJobStatus.EXPIRED
         return job
 
@@ -101,8 +101,8 @@ class ExportService:
             file_path=job.file_path,
             records_exported=job.records_processed,
             created_at=job.created_at,
-            completed_at=job.completed_at or datetime.utcnow(),
-            expires_at=job.expires_at or datetime.utcnow(),
+            completed_at=job.completed_at or datetime.now(UTC),
+            expires_at=job.expires_at or datetime.now(UTC),
             checksum=self._calculate_checksum(job.file_path) if job.file_path else None,
         )
 
@@ -180,7 +180,7 @@ class ExportService:
     ) -> ExportTemplate:
         """Create a new export template."""
         template.id = str(uuid.uuid4())
-        template.created_at = datetime.utcnow()
+        template.created_at = datetime.now(UTC)
         template.created_by = user_id
         self._templates[template.id] = template
         return template
@@ -223,8 +223,8 @@ class ExportService:
     ) -> ScheduledExport:
         """Create a scheduled export."""
         schedule.id = str(uuid.uuid4())
-        schedule.created_at = datetime.utcnow()
-        schedule.updated_at = datetime.utcnow()
+        schedule.created_at = datetime.now(UTC)
+        schedule.updated_at = datetime.now(UTC)
         schedule.created_by = user_id
         schedule.next_run_at = self._calculate_next_run(schedule)
         self._schedules[schedule.id] = schedule
@@ -248,7 +248,7 @@ class ExportService:
             if hasattr(schedule, key):
                 setattr(schedule, key, value)
 
-        schedule.updated_at = datetime.utcnow()
+        schedule.updated_at = datetime.now(UTC)
         schedule.next_run_at = self._calculate_next_run(schedule)
         return schedule
 
@@ -276,7 +276,7 @@ class ExportService:
 
     async def run_scheduled_exports(self) -> list[str]:
         """Run all due scheduled exports. Returns list of created job IDs."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         job_ids = []
 
         for schedule in self._schedules.values():
@@ -363,7 +363,7 @@ class ExportService:
 
         try:
             job.status = ExportJobStatus.PROCESSING
-            job.started_at = datetime.utcnow()
+            job.started_at = datetime.now(UTC)
             job.current_step = "Fetching data"
 
             # Fetch data based on export type
@@ -395,7 +395,7 @@ class ExportService:
             job.records_processed = job.total_records or 0
             job.progress_percent = 100
             job.status = ExportJobStatus.COMPLETED
-            job.completed_at = datetime.utcnow()
+            job.completed_at = datetime.now(UTC)
             job.current_step = None
 
             # Send notification if requested
@@ -406,7 +406,7 @@ class ExportService:
             job.status = ExportJobStatus.FAILED
             job.error_message = str(e)
             job.error_details = {"type": type(e).__name__}
-            job.completed_at = datetime.utcnow()
+            job.completed_at = datetime.now(UTC)
 
             # Retry if applicable
             if job.retry_count < job.max_retries:
@@ -444,11 +444,11 @@ class ExportService:
                 "severity": "high",
                 "service_name": "api-gateway",
                 "status": "resolved",
-                "triggered_at": datetime.utcnow() - timedelta(days=1),
-                "resolved_at": datetime.utcnow() - timedelta(hours=23),
+                "triggered_at": datetime.now(UTC) - timedelta(days=1),
+                "resolved_at": datetime.now(UTC) - timedelta(hours=23),
                 "timeline": [
                     {
-                        "timestamp": datetime.utcnow() - timedelta(days=1),
+                        "timestamp": datetime.now(UTC) - timedelta(days=1),
                         "event_type": "alert_triggered",
                         "title": "Alert triggered",
                     },
@@ -469,7 +469,7 @@ class ExportService:
                 "status": "published",
                 "executive_summary": "Database connection pool exhausted.",
                 "incident_duration_minutes": 60,
-                "created_at": datetime.utcnow(),
+                "created_at": datetime.now(UTC),
                 "root_cause": {
                     "primary_cause": "Connection pool configuration",
                     "contributing_factors": ["High traffic", "Missing monitoring"],
@@ -581,7 +581,7 @@ class ExportService:
 
     def _calculate_next_run(self, schedule: ScheduledExport) -> datetime:
         """Calculate the next run time for a scheduled export."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         if schedule.frequency == ExportScheduleFrequency.DAILY:
             return now + timedelta(days=1)

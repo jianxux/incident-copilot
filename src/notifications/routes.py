@@ -1,6 +1,6 @@
 """FastAPI routes for notification preferences."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import uuid4
 
@@ -241,7 +241,7 @@ async def add_channel(
     )
 
     prefs.channels.append(new_channel)
-    prefs.updated_at = datetime.utcnow()
+    prefs.updated_at = datetime.now(UTC)
     await service.preference_store.save(prefs)
 
     return new_channel
@@ -273,7 +273,7 @@ async def update_channel(
     if updates.settings is not None:
         channel.settings.update(updates.settings)
 
-    prefs.updated_at = datetime.utcnow()
+    prefs.updated_at = datetime.now(UTC)
     await service.preference_store.save(prefs)
 
     return channel
@@ -294,7 +294,7 @@ async def delete_channel(
         raise HTTPException(status_code=404, detail="Channel not found")
 
     prefs.channels.pop(channel_index)
-    prefs.updated_at = datetime.utcnow()
+    prefs.updated_at = datetime.now(UTC)
     await service.preference_store.save(prefs)
 
 
@@ -305,7 +305,7 @@ async def update_quiet_hours(
     service: NotificationService = Depends(get_notification_service),
 ) -> QuietHours:
     """Update quiet hours settings."""
-    from datetime import time as dt_time
+    from datetime import time as dt_time, UTC
 
     prefs = await service.preference_store.get(user_id)
 
@@ -331,7 +331,7 @@ async def update_quiet_hours(
     if updates.weekend_only is not None:
         quiet_hours.weekend_only = updates.weekend_only
 
-    prefs.updated_at = datetime.utcnow()
+    prefs.updated_at = datetime.now(UTC)
     await service.preference_store.save(prefs)
 
     return quiet_hours
@@ -378,7 +378,7 @@ async def add_rule(
     )
 
     prefs.rules.append(new_rule)
-    prefs.updated_at = datetime.utcnow()
+    prefs.updated_at = datetime.now(UTC)
     await service.preference_store.save(prefs)
 
     return new_rule
@@ -402,7 +402,7 @@ async def delete_rule(
     if len(prefs.rules) == original_len:
         raise HTTPException(status_code=404, detail="Rule not found")
 
-    prefs.updated_at = datetime.utcnow()
+    prefs.updated_at = datetime.now(UTC)
     await service.preference_store.save(prefs)
 
 

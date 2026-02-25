@@ -1,6 +1,6 @@
 """Email notification service."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 
 import structlog
@@ -215,7 +215,7 @@ class EmailNotificationService:
             html_body=html_body,
             text_body=text_body,
             tags=["test"],
-            metadata={"test": True, "timestamp": datetime.utcnow().isoformat()},
+            metadata={"test": True, "timestamp": datetime.now(UTC).isoformat()},
         )
 
         # Send
@@ -336,7 +336,7 @@ class DigestScheduler:
         if self.config.digest_frequency == DigestFrequency.DISABLED:
             return False
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # Check if it's the right hour
         if now.hour != self.config.digest_hour:
@@ -369,7 +369,7 @@ class DigestScheduler:
         Returns:
             Tuple of (start, end) datetime for the digest period
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         end = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
         if self.config.digest_frequency == DigestFrequency.DAILY:
@@ -413,7 +413,7 @@ class DigestScheduler:
                 title=inc.get("title", "Unknown"),
                 service_name=inc.get("service_name", inc.get("service", "Unknown")),
                 severity=inc.get("severity", "medium"),
-                triggered_at=inc.get("triggered_at", datetime.utcnow()),
+                triggered_at=inc.get("triggered_at", datetime.now(UTC)),
                 resolved_at=inc.get("resolved_at"),
                 status=inc.get("status", "open"),
                 url=inc.get("url"),

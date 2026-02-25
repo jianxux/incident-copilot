@@ -5,7 +5,7 @@ including DORA-style metrics, burnout indicators, and industry benchmarks.
 """
 
 import statistics
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from enum import StrEnum
 
 from pydantic import BaseModel, Field, computed_field
@@ -51,7 +51,7 @@ class PerformancePeriod(BaseModel):
     @classmethod
     def last_n_days(cls, n: int, label: str = "") -> "PerformancePeriod":
         """Create a period for the last N days."""
-        end = datetime.utcnow()
+        end = datetime.now(UTC)
         return cls(
             start=end - timedelta(days=n), end=end, label=label or f"Last {n} days"
         )

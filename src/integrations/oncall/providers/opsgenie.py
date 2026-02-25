@@ -1,6 +1,6 @@
 """Opsgenie on-call schedule provider."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 import httpx
 
@@ -175,7 +175,7 @@ class OpsgenieProvider:
             start_date = (
                 datetime.fromisoformat(rot["startDate"].replace("Z", "+00:00"))
                 if rot.get("startDate")
-                else datetime.utcnow()
+                else datetime.now(UTC)
             )
 
             rotations.append(
@@ -236,7 +236,7 @@ class OpsgenieProvider:
         shifts_count = 0
 
         try:
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             shifts = await self.get_schedule_timeline(
                 schedule_id,
                 since=now - timedelta(days=7),

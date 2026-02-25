@@ -6,7 +6,7 @@ import re
 import time
 from abc import ABC, abstractmethod
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from .models import (
     FacetValue,
@@ -200,7 +200,7 @@ class InMemorySearchBackend(SearchBackend):
     async def search(self, query: SearchQuery) -> SearchResult:
         """Execute search query."""
         start_time = time.perf_counter()
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         query_tokens = self._tokenize(query.query)
 
@@ -710,7 +710,7 @@ class SearchEngine:
     async def search(self, query: SearchQuery) -> SearchResult:
         """Execute search and log for analytics."""
         result = await self._backend.search(query)
-        self._query_log.append((datetime.utcnow(), query.query, result.total_hits))
+        self._query_log.append((datetime.now(UTC), query.query, result.total_hits))
         # Keep only last 10000 queries
         if len(self._query_log) > 10000:
             self._query_log = self._query_log[-10000:]
@@ -734,7 +734,7 @@ class SearchEngine:
 
     def get_analytics(self, hours: int = 24) -> dict:
         """Get search analytics for the specified time period."""
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
         recent = [(t, q, c) for t, q, c in self._query_log if t >= cutoff]
 
         if not recent:

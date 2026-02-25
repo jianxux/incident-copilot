@@ -1,7 +1,7 @@
 """Data models for authentication and multi-tenancy."""
 
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
@@ -62,8 +62,8 @@ class Tenant(BaseModel):
     def reset_monthly_usage(self) -> None:
         """Reset monthly usage counters."""
         self.incidents_this_month = 0
-        self.billing_cycle_start = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.billing_cycle_start = datetime.now(UTC)
+        self.updated_at = datetime.now(UTC)
 
 
 class UserRole(StrEnum):
@@ -170,10 +170,10 @@ class Session(BaseModel):
 
     # Expiry
     expires_at: datetime = Field(
-        default_factory=lambda: datetime.utcnow() + timedelta(hours=24)
+        default_factory=lambda: datetime.now(UTC) + timedelta(hours=24)
     )
     refresh_expires_at: datetime = Field(
-        default_factory=lambda: datetime.utcnow() + timedelta(days=30)
+        default_factory=lambda: datetime.now(UTC) + timedelta(days=30)
     )
 
     # Metadata
@@ -183,16 +183,16 @@ class Session(BaseModel):
 
     def is_expired(self) -> bool:
         """Check if session is expired."""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     def is_refresh_expired(self) -> bool:
         """Check if refresh token is expired."""
-        return datetime.utcnow() > self.refresh_expires_at
+        return datetime.now(UTC) > self.refresh_expires_at
 
     def refresh(self) -> None:
         """Refresh the session, extending expiry."""
         self.access_token = secrets.token_urlsafe(32)
-        self.expires_at = datetime.utcnow() + timedelta(hours=24)
+        self.expires_at = datetime.now(UTC) + timedelta(hours=24)
 
 
 # Plan limits configuration

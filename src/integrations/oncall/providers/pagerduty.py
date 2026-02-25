@@ -1,6 +1,6 @@
 """PagerDuty on-call schedule provider."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 import httpx
 
@@ -71,7 +71,7 @@ class PagerDutyProvider:
     async def get_oncall_now(self, schedule_id: str) -> list[OnCallUser]:
         """Get currently on-call users for a schedule."""
         client = await self._get_client()
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         params = {
             "schedule_ids[]": schedule_id,
@@ -191,7 +191,7 @@ class PagerDutyProvider:
         shifts_count = 0
 
         try:
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             shifts = await self.get_schedule_shifts(
                 schedule_id,
                 since=now - timedelta(days=7),

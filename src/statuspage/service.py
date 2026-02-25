@@ -1,7 +1,7 @@
 """Status Page Service - Core business logic."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 from .models import (
@@ -238,7 +238,7 @@ class StatusPageService:
                     in (ComponentStatus.PARTIAL_OUTAGE, ComponentStatus.MAJOR_OUTAGE)
                 ),
                 active_incidents=len(incidents),
-                last_sync=datetime.utcnow(),
+                last_sync=datetime.now(UTC),
             )
         except Exception:
             return StatusPageMetrics(config_id=config_id)

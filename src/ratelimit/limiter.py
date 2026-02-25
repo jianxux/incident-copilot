@@ -4,7 +4,7 @@ import asyncio
 import hashlib
 import re
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 import structlog
 from redis import asyncio as aioredis
@@ -250,7 +250,18 @@ class RateLimiter:
 
         if override and override.enabled:
             # Check expiration
-            if override.expires_at and override.expires_at < datetime.utcnow():
+            expires_at = override.expires_at
+            if expires_at:
+                # Backward compatibility: treat naive override expirations as UTC.
+                if (
+                    expires_at.tzinfo is None
+                    or expires_at.tzinfo.utcoffset(expires_at) is None
+                ):
+                    expires_at = expires_at.replace(tzinfo=UTC)
+                else:
+                    expires_at = expires_at.astimezone(UTC)
+
+            if expires_at and expires_at < datetime.now(UTC):
                 del self._overrides[override_key]
             else:
                 # Apply override
@@ -297,7 +308,7 @@ class RateLimiter:
             # Calculate reset time
             tokens_needed = config.capacity - remaining
             seconds_to_full = tokens_needed / config.refill_rate
-            reset_at = datetime.utcnow() + timedelta(seconds=seconds_to_full)
+            reset_at = datetime.now(UTC) + timedelta(seconds=seconds_to_full)
 
             return RateLimitResult(
                 allowed=allowed,
@@ -352,7 +363,7 @@ class RateLimiter:
         # Calculate reset time
         tokens_needed = config.capacity - remaining
         seconds_to_full = tokens_needed / config.refill_rate
-        reset_at = datetime.utcnow() + timedelta(seconds=seconds_to_full)
+        reset_at = datetime.now(UTC) + timedelta(seconds=seconds_to_full)
 
         return RateLimitResult(
             allowed=allowed,
@@ -393,7 +404,7 @@ class RateLimiter:
                 allowed=True,
                 limit=config.capacity,
                 remaining=config.capacity,
-                reset_at=datetime.utcnow() + timedelta(hours=1),
+                reset_at=datetime.now(UTC) + timedelta(hours=1),
                 scope=scope,
                 key="disabled",
                 cost=cost,
@@ -458,7 +469,7 @@ class RateLimiter:
                 allowed=True,
                 limit=1000,
                 remaining=1000,
-                reset_at=datetime.utcnow() + timedelta(hours=1),
+                reset_at=datetime.now(UTC) + timedelta(hours=1),
                 scope=RateLimitScope.GLOBAL,
                 key="none",
                 cost=cost,
@@ -576,7 +587,7 @@ class RateLimiter:
             current_tokens=config.capacity,
             capacity=config.capacity,
             refill_rate=config.refill_rate,
-            last_refill=datetime.utcnow(),
+            last_refill=datetime.now(UTC),
             requests_in_window=requests,
         )
 

@@ -4,7 +4,7 @@ Supports both self-hosted Loki and Grafana Cloud Loki.
 Provides log fetching capabilities using LogQL queries.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 
 import httpx
@@ -92,7 +92,7 @@ class LokiAdapter:
         self, service_name: str, time_range_minutes: int, limit: int = 100
     ) -> list[LogEntry]:
         """Fetch logs from Loki using query_range endpoint."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         start_time = now - timedelta(minutes=time_range_minutes)
 
         start_ns = int(start_time.timestamp() * 1e9)
@@ -149,7 +149,7 @@ class LokiAdapter:
                 try:
                     timestamp = datetime.utcfromtimestamp(int(timestamp_ns) / 1e9)
                 except (ValueError, TypeError):
-                    timestamp = datetime.utcnow()
+                    timestamp = datetime.now(UTC)
 
                 level = self._infer_log_level(message)
                 host = stream_labels.get("pod") or stream_labels.get("host")

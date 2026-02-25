@@ -171,14 +171,14 @@ class InsightsService:
 
         This is the main entry point for triggering analysis.
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
         request = request or AnalysisRequest()
 
         # Get incidents from the database (Supabase preferred, in-memory fallback)
-        lookback_start = datetime.utcnow() - timedelta(days=request.lookback_days)
+        lookback_start = datetime.now(UTC) - timedelta(days=request.lookback_days)
         incidents = await self._fetch_incidents(
             start=lookback_start,
-            end=datetime.utcnow(),
+            end=datetime.now(UTC),
             service_name=request.service_name,
         )
 
@@ -244,7 +244,7 @@ class InsightsService:
                 errors.append(f"Dependency analysis failed: {str(e)}")
 
         # Calculate result
-        end_time = datetime.utcnow()
+        end_time = datetime.now(UTC)
         duration_ms = int((end_time - start_time).total_seconds() * 1000)
 
         result = AnalysisResult(
@@ -295,7 +295,7 @@ class InsightsService:
         days: int = 7,
     ) -> InsightSummary:
         """Get a summary of insights for a time period."""
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
         all_insights = await self.store.get_all_insights(limit=1000)
 
         # Filter to period
@@ -324,7 +324,7 @@ class InsightsService:
 
         return InsightSummary(
             period_start=cutoff,
-            period_end=datetime.utcnow(),
+            period_end=datetime.now(UTC),
             total_insights=len(period_insights),
             critical_count=severity_counts[Severity.CRITICAL],
             high_count=severity_counts[Severity.HIGH],

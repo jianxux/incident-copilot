@@ -253,7 +253,7 @@ async def configure_handoff_schedule(
         slack_target=request.slack_target,
         teams_webhook_url=request.teams_webhook_url,
         email_target=request.email_target,
-        updated_at=datetime.utcnow(),
+        updated_at=datetime.now(UTC),
     )
 
     _HANDOFF_CONFIGS[schedule_id] = cfg

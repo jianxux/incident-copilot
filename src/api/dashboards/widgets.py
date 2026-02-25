@@ -1,7 +1,7 @@
 """Widget type implementations and data fetching."""
 
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 
 from .models import (
@@ -24,7 +24,7 @@ PRESET_DELTAS = {
 
 
 def resolve_date_range(dr: DateRange) -> tuple[datetime, datetime]:
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     if dr.preset == DateRangePreset.CUSTOM:
         return dr.start or now - timedelta(days=1), dr.end or now
     return now - PRESET_DELTAS.get(dr.preset, timedelta(days=1)), now
@@ -136,7 +136,7 @@ async def fetch_widget_data(w: Widget) -> dict[str, Any]:
         "type": w.config.widget_type.value,
         "title": w.title,
         "data": data,
-        "fetched_at": datetime.utcnow().isoformat(),
+        "fetched_at": datetime.now(UTC).isoformat(),
         "refresh": w.refresh_interval_seconds,
     }
 

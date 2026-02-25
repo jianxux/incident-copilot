@@ -1,7 +1,7 @@
 """On-Call Service - Core business logic for schedule management."""
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from .models import (
     HandoffNotification,
@@ -119,7 +119,7 @@ class OnCallService:
         if not schedule:
             return None
 
-        check_time = at_time or datetime.utcnow()
+        check_time = at_time or datetime.now(UTC)
 
         # Check for active overrides first
         for override in self._overrides.values():
@@ -176,7 +176,7 @@ class OnCallService:
         if not schedule:
             return []
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         until = now + timedelta(days=days)
 
         if schedule.provider == ProviderType.PAGERDUTY and self._pagerduty:
@@ -330,7 +330,7 @@ class OnCallService:
         self, lookahead_hours: int = 2
     ) -> list[HandoffNotification]:
         """Get handoffs happening in the next N hours that haven't been sent."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         cutoff = now + timedelta(hours=lookahead_hours)
 
         return [
@@ -343,7 +343,7 @@ class OnCallService:
         """Mark a handoff notification as sent."""
         for n in self._notifications:
             if n.id == notification_id:
-                n.sent_at = datetime.utcnow()
+                n.sent_at = datetime.now(UTC)
                 return True
         return False
 

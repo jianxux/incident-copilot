@@ -5,7 +5,7 @@ The adapter preserves the SSE subscriber mechanism from the in-memory store whil
 persisting data to Supabase PostgreSQL.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 
 import structlog
 
@@ -72,7 +72,7 @@ class SupabaseIncidentStore(IncidentStore):
                     await self._db.update_incident(
                         inc["id"],
                         status="resolved",
-                        resolved_at=datetime.utcnow().isoformat(),
+                        resolved_at=datetime.now(UTC).isoformat(),
                     )
                     # Store context card
                     await self._db.create_context_card(

@@ -1,7 +1,7 @@
 """API endpoints for alert correlation management."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
@@ -177,7 +177,7 @@ async def test_correlation(request: TestCorrelationRequest):
             service=request.service,
             severity=request.severity,
             tags=request.tags,
-            triggered_at=datetime.utcnow(),
+            triggered_at=datetime.now(UTC),
         )
     )
     return {

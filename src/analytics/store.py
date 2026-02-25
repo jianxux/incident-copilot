@@ -1,9 +1,16 @@
 """In-memory store for analytics data."""
 
 import asyncio
-from datetime import datetime
+from datetime import UTC, datetime
 
 from .models import IncidentMetrics
+
+
+def _to_utc_aware(dt: datetime) -> datetime:
+    """Normalize datetimes to timezone-aware UTC, treating naive values as UTC."""
+    if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
 
 
 class AnalyticsStore:
@@ -92,15 +99,22 @@ class AnalyticsStore:
         severity: str | None = None,
     ) -> list[IncidentMetrics]:
         """Get metrics for incidents within a time period."""
+        start_utc = _to_utc_aware(start)
+        end_utc = _to_utc_aware(end)
         results = []
         for metrics in self._metrics.values():
-            if start <= metrics.triggered_at <= end:
+            triggered_at_utc = _to_utc_aware(metrics.triggered_at)
+            if start_utc <= triggered_at_utc <= end_utc:
                 if service_name and metrics.service_name != service_name:
                     continue
                 if severity and metrics.severity != severity:
                     continue
                 results.append(metrics)
-        return sorted(results, key=lambda m: m.triggered_at, reverse=True)
+        return sorted(
+            results,
+            key=lambda m: _to_utc_aware(m.triggered_at),
+            reverse=True,
+        )
 
     async def clear(self):
         """Clear all stored metrics (for testing)."""

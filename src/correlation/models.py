@@ -1,6 +1,6 @@
 """Data models for alert correlation."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import StrEnum
 from typing import Any
 
@@ -67,7 +67,7 @@ class AlertGroup(BaseModel):
             if tag not in self.tags:
                 self.tags.append(tag)
         self.last_alert_at = alert.triggered_at
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
         if not self.first_alert_at:
             self.first_alert_at = alert.triggered_at
         if not self.representative_alert:

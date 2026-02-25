@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import uuid4
 
@@ -243,7 +243,7 @@ class NotificationService:
 
     async def process_digests(self) -> dict[str, Any]:
         """Process and send queued digest notifications."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         results = {}
 
         for key, payloads in list(self._digest_queue.items()):
@@ -352,7 +352,7 @@ class NotificationService:
             if hasattr(prefs, key):
                 setattr(prefs, key, value)
 
-        prefs.updated_at = datetime.utcnow()
+        prefs.updated_at = datetime.now(UTC)
 
         await self.preference_store.save(prefs)
         return prefs

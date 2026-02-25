@@ -2,7 +2,7 @@
 ArgoCD Collector - Collect deployment events from ArgoCD.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 
 import httpx
 
@@ -183,7 +183,7 @@ class ArgoCDCollector:
                     source=ChangeSource.ARGOCD,
                     status=ChangeStatus.COMPLETED,
                     title=f"Sync {app_name}",
-                    started_at=deployed_at or datetime.utcnow(),
+                    started_at=deployed_at or datetime.now(UTC),
                     author=entry.get("initiatedBy", {}).get("username", "argocd"),
                     environment="production",
                     service=app_name,

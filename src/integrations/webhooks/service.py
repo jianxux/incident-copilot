@@ -3,7 +3,7 @@
 import asyncio
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 from uuid import UUID
 
@@ -52,7 +52,7 @@ class CircuitBreaker:
                 recovery_time = self.config.circuit_opened_at + timedelta(
                     seconds=RECOVERY_TIMEOUT_SECONDS
                 )
-                if datetime.utcnow() >= recovery_time:
+                if datetime.now(UTC) >= recovery_time:
                     self.config.circuit_state = CircuitState.HALF_OPEN
                     self.config.failure_count = 0
                     return True
@@ -71,11 +71,11 @@ class CircuitBreaker:
     def record_failure(self) -> None:
         """Record failed request."""
         self.config.failure_count += 1
-        self.config.last_failure_at = datetime.utcnow()
+        self.config.last_failure_at = datetime.now(UTC)
 
         if self.config.failure_count >= FAILURE_THRESHOLD:
             self.config.circuit_state = CircuitState.OPEN
-            self.config.circuit_opened_at = datetime.utcnow()
+            self.config.circuit_opened_at = datetime.now(UTC)
             logger.warning(f"Circuit opened for webhook {self.config.id}")
 
 
@@ -230,7 +230,7 @@ class WebhookDeliveryService:
             request_body=payload_json,
         )
 
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
 
         try:
             async with httpx.AsyncClient() as client:
@@ -241,13 +241,13 @@ class WebhookDeliveryService:
                     timeout=webhook.timeout_seconds,
                 )
 
-            duration = (datetime.utcnow() - start_time).total_seconds() * 1000
+            duration = (datetime.now(UTC) - start_time).total_seconds() * 1000
 
             delivery.response_status_code = response.status_code
             delivery.response_body = response.text[:10000]  # Limit size
             delivery.response_headers = dict(response.headers)
             delivery.duration_ms = int(duration)
-            delivery.delivered_at = datetime.utcnow()
+            delivery.delivered_at = datetime.now(UTC)
 
             if 200 <= response.status_code < 300:
                 delivery.status = DeliveryStatus.DELIVERED
@@ -304,7 +304,7 @@ class WebhookDeliveryService:
             RETRY_MAX_DELAY_SECONDS,
         )
         delivery.status = DeliveryStatus.RETRYING
-        delivery.next_retry_at = datetime.utcnow() + timedelta(seconds=delay)
+        delivery.next_retry_at = datetime.now(UTC) + timedelta(seconds=delay)
         await self._pending_retries.put(delivery)
         logger.info(f"Scheduled retry for {delivery.id} in {delay}s")
 
@@ -316,7 +316,7 @@ class WebhookDeliveryService:
 
                 if delivery.next_retry_at:
                     wait_seconds = (
-                        delivery.next_retry_at - datetime.utcnow()
+                        delivery.next_retry_at - datetime.now(UTC)
                     ).total_seconds()
                     if wait_seconds > 0:
                         await asyncio.sleep(wait_seconds)
@@ -359,7 +359,7 @@ class WebhookDeliveryService:
                 "description": "This is a test webhook delivery",
                 "severity": "low",
                 "status": "open",
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
                 "incident_url": "https://example.com/incidents/test-123",
             },
             correlation_id="test-delivery",

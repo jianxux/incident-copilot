@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 
 from ..services.models import (
     ServiceCreate as CatalogServiceCreate,
@@ -54,8 +54,8 @@ class DependencyService:
                     health=HealthStatus(svc.health.value),
                     tags=svc.tags,
                     metadata=svc.metadata,
-                    created_at=svc.created_at or datetime.utcnow(),
-                    updated_at=svc.updated_at or datetime.utcnow(),
+                    created_at=svc.created_at or datetime.now(UTC),
+                    updated_at=svc.updated_at or datetime.now(UTC),
                 )
             )
 
@@ -72,8 +72,8 @@ class DependencyService:
                     error_rate=dep.error_rate,
                     requests_per_min=dep.requests_per_min,
                     health=HealthStatus(dep.health.value),
-                    discovered_at=dep.discovered_at or datetime.utcnow(),
-                    last_seen=dep.last_seen_at or datetime.utcnow(),
+                    discovered_at=dep.discovered_at or datetime.now(UTC),
+                    last_seen=dep.last_seen_at or datetime.now(UTC),
                     metadata=dep.metadata,
                 )
             )
@@ -105,8 +105,8 @@ class DependencyService:
                 health=HealthStatus(svc.health.value),
                 tags=svc.tags,
                 metadata=svc.metadata,
-                created_at=svc.created_at or datetime.utcnow(),
-                updated_at=svc.updated_at or datetime.utcnow(),
+                created_at=svc.created_at or datetime.now(UTC),
+                updated_at=svc.updated_at or datetime.now(UTC),
             )
             await self._refresh_graph()
             return created
@@ -138,8 +138,8 @@ class DependencyService:
                 health=HealthStatus(svc.health.value),
                 tags=svc.tags,
                 metadata=svc.metadata,
-                created_at=svc.created_at or datetime.utcnow(),
-                updated_at=svc.updated_at or datetime.utcnow(),
+                created_at=svc.created_at or datetime.now(UTC),
+                updated_at=svc.updated_at or datetime.now(UTC),
             )
 
         return self._analyzer.get_service(service_id)
@@ -162,8 +162,8 @@ class DependencyService:
                 health=HealthStatus(svc.health.value),
                 tags=svc.tags,
                 metadata=svc.metadata,
-                created_at=svc.created_at or datetime.utcnow(),
-                updated_at=svc.updated_at or datetime.utcnow(),
+                created_at=svc.created_at or datetime.now(UTC),
+                updated_at=svc.updated_at or datetime.now(UTC),
             )
 
         return next(
@@ -194,8 +194,8 @@ class DependencyService:
                     health=HealthStatus(s.health.value),
                     tags=s.tags,
                     metadata=s.metadata,
-                    created_at=s.created_at or datetime.utcnow(),
-                    updated_at=s.updated_at or datetime.utcnow(),
+                    created_at=s.created_at or datetime.now(UTC),
+                    updated_at=s.updated_at or datetime.now(UTC),
                 )
                 for s in services
             ]
@@ -236,8 +236,8 @@ class DependencyService:
                 health=HealthStatus(svc.health.value),
                 tags=svc.tags,
                 metadata=svc.metadata,
-                created_at=svc.created_at or datetime.utcnow(),
-                updated_at=svc.updated_at or datetime.utcnow(),
+                created_at=svc.created_at or datetime.now(UTC),
+                updated_at=svc.updated_at or datetime.now(UTC),
             )
 
         service = self._analyzer.get_service(service_id)
@@ -245,7 +245,7 @@ class DependencyService:
             return None
 
         service.health = health
-        service.updated_at = datetime.utcnow()
+        service.updated_at = datetime.now(UTC)
         return service
 
     async def delete_service(self, service_id: str) -> bool:
@@ -289,8 +289,8 @@ class DependencyService:
                 error_rate=dep.error_rate,
                 requests_per_min=dep.requests_per_min,
                 health=HealthStatus(dep.health.value),
-                discovered_at=dep.discovered_at or datetime.utcnow(),
-                last_seen=dep.last_seen_at or datetime.utcnow(),
+                discovered_at=dep.discovered_at or datetime.now(UTC),
+                last_seen=dep.last_seen_at or datetime.now(UTC),
                 metadata=dep.metadata,
             )
 
@@ -329,8 +329,8 @@ class DependencyService:
                 error_rate=dep.error_rate,
                 requests_per_min=dep.requests_per_min,
                 health=HealthStatus(dep.health.value),
-                discovered_at=dep.discovered_at or datetime.utcnow(),
-                last_seen=dep.last_seen_at or datetime.utcnow(),
+                discovered_at=dep.discovered_at or datetime.now(UTC),
+                last_seen=dep.last_seen_at or datetime.now(UTC),
                 metadata=dep.metadata,
             )
 
@@ -359,8 +359,8 @@ class DependencyService:
                     error_rate=d.error_rate,
                     requests_per_min=d.requests_per_min,
                     health=HealthStatus(d.health.value),
-                    discovered_at=d.discovered_at or datetime.utcnow(),
-                    last_seen=d.last_seen_at or datetime.utcnow(),
+                    discovered_at=d.discovered_at or datetime.now(UTC),
+                    last_seen=d.last_seen_at or datetime.now(UTC),
                     metadata=d.metadata,
                 )
                 for d in deps
@@ -416,8 +416,8 @@ class DependencyService:
                 error_rate=dep.error_rate,
                 requests_per_min=dep.requests_per_min,
                 health=HealthStatus(dep.health.value),
-                discovered_at=dep.discovered_at or datetime.utcnow(),
-                last_seen=dep.last_seen_at or datetime.utcnow(),
+                discovered_at=dep.discovered_at or datetime.now(UTC),
+                last_seen=dep.last_seen_at or datetime.now(UTC),
                 metadata=dep.metadata,
             )
 
@@ -438,7 +438,7 @@ class DependencyService:
         if requests_per_min is not None:
             dependency.requests_per_min = requests_per_min
 
-        dependency.last_seen = datetime.utcnow()
+        dependency.last_seen = datetime.now(UTC)
         return dependency
 
     async def delete_dependency(self, dependency_id: str) -> bool:

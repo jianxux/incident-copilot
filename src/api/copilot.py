@@ -1,6 +1,6 @@
 """AI Copilot API endpoints for interactive incident assistance."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 
 import structlog
 from fastapi import APIRouter, HTTPException
@@ -110,7 +110,7 @@ async def chat_with_copilot(request: ChatRequest):
                     title=f"Context refresh for {request.incident_id}",
                     severity=Severity.SEV3,
                     service_name=session.service_name,
-                    triggered_at=datetime.utcnow(),
+                    triggered_at=datetime.now(UTC),
                 )
                 # Fetch context without sending to Slack
                 context_card = await orchestrator.process_incident(
@@ -161,7 +161,7 @@ async def start_session(incident_id: str, service_name: str):
         title=f"Manual investigation: {incident_id}",
         severity=Severity.SEV3,
         service_name=service_name,
-        triggered_at=datetime.utcnow(),
+        triggered_at=datetime.now(UTC),
     )
 
     try:
@@ -222,7 +222,7 @@ async def generate_summary(incident_id: str):
         resolution=summary.get("resolution"),
         action_items=summary.get("action_items"),
         severity_assessment=summary.get("severity_assessment"),
-        generated_at=datetime.utcnow(),
+        generated_at=datetime.now(UTC),
     )
 
 
@@ -247,7 +247,7 @@ async def get_suggestions(incident_id: str):
     return SuggestionsResponse(
         incident_id=incident_id,
         suggestions=suggestions,
-        generated_at=datetime.utcnow(),
+        generated_at=datetime.now(UTC),
     )
 
 

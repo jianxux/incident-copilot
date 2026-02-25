@@ -7,7 +7,7 @@ Supports configurable check intervals and escalation handling.
 import asyncio
 import logging
 from collections.abc import Callable, Coroutine
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 from .models import (
@@ -156,7 +156,7 @@ class SLAScheduler:
     async def _check_warnings(self) -> None:
         """Check for SLA at-risk warnings and send notifications."""
         active_timers = await self.service.store.get_active_timers()
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         for timer in active_timers:
             # Skip if not at risk or already breached
@@ -209,7 +209,7 @@ class SLAScheduler:
                         sent = await self._notification_sender(notification)
                         if sent:
                             # Update breach with notification sent time
-                            breach.escalation_sent_at = datetime.utcnow()
+                            breach.escalation_sent_at = datetime.now(UTC)
                             await self.service.store.save_breach(breach)
                             logger.info(
                                 f"Sent {channel} notification for breach {breach.id}"
@@ -221,7 +221,7 @@ class SLAScheduler:
 
     async def _refresh_policy_cache(self) -> None:
         """Refresh the policy cache if stale."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         if self._policy_cache_time:
             age = (now - self._policy_cache_time).total_seconds()

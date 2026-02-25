@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from zoneinfo import ZoneInfo
 
 import structlog
@@ -141,7 +141,7 @@ class CronExpression:
     def next_run(self, after: datetime | None = None) -> datetime:
         """Calculate the next run time after a given datetime."""
         if after is None:
-            after = datetime.utcnow()
+            after = datetime.now(UTC)
 
         # Start from the next minute
         current = after.replace(second=0, microsecond=0) + timedelta(minutes=1)
@@ -222,7 +222,7 @@ class ReportScheduler:
 
     async def _check_schedules(self) -> None:
         """Check all active schedules and trigger due reports."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         active_configs = await self.store.get_active_configs()
 
         for config in active_configs:
@@ -411,15 +411,26 @@ class ReportScheduler:
         limit: int = 10,
     ) -> list[tuple[ReportConfig, datetime]]:
         """Get upcoming scheduled report runs."""
-        now = datetime.utcnow()
+        # Normalize all values to aware UTC for consistent comparisons/sorting.
+        # Backward compatibility: naive stored datetimes are interpreted as UTC.
+        now = datetime.now(UTC)
         cutoff = now + timedelta(hours=hours)
 
         active_configs = await self.store.get_active_configs()
         upcoming = []
 
         for config in active_configs:
-            if config.schedule.next_run_at and config.schedule.next_run_at <= cutoff:
-                upcoming.append((config, config.schedule.next_run_at))
+            next_run_at = config.schedule.next_run_at
+            if not next_run_at:
+                continue
+
+            if next_run_at.tzinfo is None:
+                next_run_at = next_run_at.replace(tzinfo=UTC)
+            else:
+                next_run_at = next_run_at.astimezone(UTC)
+
+            if next_run_at <= cutoff:
+                upcoming.append((config, next_run_at))
 
         # Sort by next run time
         upcoming.sort(key=lambda x: x[1])
