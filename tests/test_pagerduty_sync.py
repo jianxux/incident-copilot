@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 import pytest
 
+from src.integrations.pagerduty_sync import _build_pd_upsert_rows
 from src.models import ContextCard, Severity
 from src.web.store import InMemoryIncidentStore
 
@@ -113,3 +114,40 @@ async def test_default_provenance_when_omitted(store):
     assert incident.source_url is None
     assert incident.source_id == "MANUAL-1"
     assert incident.metadata == {}
+
+
+def test_build_pd_upsert_rows_includes_description():
+    rows, _ = _build_pd_upsert_rows(
+        [
+            {
+                "id": "PD-DESC-1",
+                "title": "Disk usage high",
+                "description": "Root volume above 90%",
+                "created_at": "2026-02-20T10:00:00Z",
+                "status": "triggered",
+            }
+        ],
+        tenant_id="tenant-1",
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["description"] == "Root volume above 90%"
+
+
+def test_build_pd_upsert_rows_sets_acknowledged_at_metadata():
+    rows, _ = _build_pd_upsert_rows(
+        [
+            {
+                "id": "PD-ACK-1",
+                "title": "API latency spike",
+                "created_at": "2026-02-20T10:00:00Z",
+                "status": "acknowledged",
+                "last_status_change_at": "2026-02-20T11:22:33Z",
+            }
+        ],
+        tenant_id="tenant-1",
+    )
+
+    assert len(rows) == 1
+    metadata = rows[0]["metadata"]
+    assert metadata["acknowledged_at"] == "2026-02-20T11:22:33+00:00"
