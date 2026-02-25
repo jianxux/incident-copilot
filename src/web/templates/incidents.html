@@ -23,7 +23,7 @@
     <div id="stat-open" class="text-2xl font-bold text-slate-900 dark:text-white mt-1">—</div>
   </div>
   <div class="bg-white/70 dark:bg-slate-900/60 border border-stone-200/60 dark:border-slate-800 rounded-xl p-4">
-    <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Completed Today</div>
+    <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Resolved Today</div>
     <div id="stat-resolved" class="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">—</div>
   </div>
   <div class="bg-white/70 dark:bg-slate-900/60 border border-stone-200/60 dark:border-slate-800 rounded-xl p-4">
@@ -49,9 +49,11 @@
     <select id="filter-status"
       class="px-3 py-2 text-sm rounded-lg border border-stone-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand/40">
       <option value="">All Statuses</option>
+      <option value="triggered">Triggered</option>
+      <option value="acknowledged">Acknowledged</option>
       <option value="processing">Processing</option>
-      <option value="completed">Completed</option>
       <option value="error">Error</option>
+      <option value="resolved">Resolved</option>
     </select>
     <!-- Severity filter -->
     <select id="filter-severity"
@@ -151,7 +153,7 @@
     let sortDir = -1; // -1 = desc
 
     const severityOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4, unknown: 5 };
-    const statusOrder = { processing: 0, completed: 1, error: 2 };
+    const statusOrder = { triggered: 0, acknowledged: 1, processing: 2, error: 3, resolved: 4 };
 
     const severityColors = {
         critical: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
@@ -163,9 +165,18 @@
     };
 
     const statusColors = {
+        triggered: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+        acknowledged: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
         processing: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
-        completed: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+        resolved: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
         error: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+    };
+    const statusLabels = {
+        triggered: 'Triggered',
+        acknowledged: 'Acknowledged',
+        processing: 'Processing',
+        error: 'Error',
+        resolved: 'Resolved',
     };
 
     const sourceIcons = {
@@ -176,20 +187,12 @@
         demo: 'fa-flask',
     };
 
-    function normalizeStatus(rawStatus) {
-        const status = (rawStatus || '').toLowerCase();
-        if (status === 'triggered' || status === 'acknowledged') return 'processing';
-        if (status === 'resolved') return 'completed';
-        if (status === 'processing' || status === 'completed' || status === 'error') return status;
-        return 'processing';
-    }
-
     // ---- Stats ----
     function updateStats() {
-        const open = allIncidents.filter(i => i.status === 'processing').length;
+        const open = allIncidents.filter(i => i.status === 'triggered' || i.status === 'acknowledged').length;
         const today = new Date().toDateString();
         const resolvedToday = allIncidents.filter(i =>
-            i.status === 'completed' &&
+            i.status === 'resolved' &&
             i.processed_at && new Date(i.processed_at).toDateString() === today
         ).length;
 
@@ -227,7 +230,7 @@
             allIncidents.forEach(i => {
                 i.service = i.service || i.service_name || '';
                 i.created_at = i.created_at || i.triggered_at;
-                i.status = normalizeStatus(i.status);
+                i.status = (i.status || 'processing').toLowerCase();
             });
             updateStats();
             applyFilters();
@@ -274,7 +277,7 @@
         filtered.sort((a, b) => {
             let av = a[sortField] || '', bv = b[sortField] || '';
             if (sortField === 'severity') { av = severityOrder[av] ?? 5; bv = severityOrder[bv] ?? 5; }
-            else if (sortField === 'status') { av = statusOrder[av] ?? 3; bv = statusOrder[bv] ?? 3; }
+            else if (sortField === 'status') { av = statusOrder[av] ?? 5; bv = statusOrder[bv] ?? 5; }
             else if (sortField === 'created_at') { av = new Date(av).getTime(); bv = new Date(bv).getTime(); }
             else { av = String(av).toLowerCase(); bv = String(bv).toLowerCase(); }
             if (av < bv) return -1 * sortDir;
@@ -333,7 +336,8 @@
 
     function rowHtml(i) {
         const sev = i.severity || 'unknown';
-        const stat = normalizeStatus(i.status);
+        const stat = (i.status || 'processing').toLowerCase();
+        const statLabel = statusLabels[stat] || stat;
         const sevClass = severityColors[sev] || severityColors.unknown;
         const statClass = statusColors[stat] || statusColors.processing;
         const srcIcon = sourceIcons[(i.source || '').toLowerCase()] || 'fa-circle-nodes';
@@ -362,7 +366,7 @@
             </div>
             <div class="col-span-1 mt-1 sm:mt-0">
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statClass}">
-                    ${stat}
+                    ${esc(statLabel)}
                 </span>
             </div>
             <div class="col-span-1 text-xs text-slate-600 dark:text-slate-400 mt-1 sm:mt-0 font-mono">
@@ -375,8 +379,8 @@
                 ${ago}
             </div>
             <div class="col-span-1 mt-1 sm:mt-0 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                ${stat === 'processing' ? `
-                    <button onclick="event.preventDefault();event.stopPropagation();quickAction('${esc(id)}','completed')" class="px-2 py-0.5 text-xs rounded border border-green-300 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/30 transition" title="Mark complete">Complete</button>
+                ${stat === 'triggered' || stat === 'acknowledged' || stat === 'processing' ? `
+                    <button onclick="event.preventDefault();event.stopPropagation();quickAction('${esc(id)}','resolved')" class="px-2 py-0.5 text-xs rounded border border-green-300 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/30 transition" title="Mark resolved">Resolve</button>
                     <button onclick="event.preventDefault();event.stopPropagation();quickAction('${esc(id)}','error')" class="px-2 py-0.5 text-xs rounded border border-red-300 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 transition" title="Mark error">Error</button>
                 ` : ''}
                 ${stat === 'error' ? `
@@ -440,7 +444,7 @@
                 const inc = allIncidents.find(i => (i.incident_id || i.id) === incidentId);
                 if (inc) {
                     inc.status = newStatus;
-                    if (newStatus === 'completed') inc.processed_at = new Date().toISOString();
+                    if (newStatus === 'resolved') inc.processed_at = new Date().toISOString();
                     if (newStatus === 'processing') inc.processed_at = null;
                 }
                 updateStats();
