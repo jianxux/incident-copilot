@@ -109,7 +109,7 @@
         html { scroll-behavior: smooth; }
 
         /* Anchor offsets (fixed nav) */
-        #features, #how-it-works, #integrations { scroll-margin-top: 80px; }
+        #features, #how-it-works, #integrations, #security { scroll-margin-top: 80px; }
 
         .nav-toggle {
             display: none;
@@ -285,6 +285,109 @@
             color: rgba(255,255,255,0.2);
         }
         .hero-card-footer .time-highlight { color: var(--coral); font-weight: 600; }
+        .hero-workflow {
+            margin-top: 1rem;
+            background: var(--warm-white);
+            border: 1px solid rgba(28,25,23,0.09);
+            border-radius: 16px;
+            padding: 0.9rem;
+            box-shadow: 0 12px 28px rgba(28,25,23,0.08);
+        }
+        .hero-workflow .wf-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--ink-light);
+            opacity: 0.8;
+            margin-bottom: 0.6rem;
+        }
+        .wf-slack {
+            background: var(--cream);
+            border: 1px solid rgba(28,25,23,0.09);
+            border-radius: 12px;
+            padding: 0.55rem 0.7rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            animation: wfSlack 6s ease-in-out infinite;
+        }
+        .wf-slack-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--coral);
+            box-shadow: 0 0 0 0 rgba(224,90,58,0.4);
+            animation: wfPulse 6s ease-in-out infinite;
+        }
+        .wf-slack-text {
+            font-size: 0.73rem;
+            color: var(--ink);
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .wf-arrow {
+            width: 2px;
+            height: 18px;
+            margin: 0.35rem auto;
+            background: rgba(224,90,58,0.35);
+            position: relative;
+            opacity: 0;
+            animation: wfArrow 6s ease-in-out infinite;
+        }
+        .wf-arrow::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 5px solid rgba(224,90,58,0.8);
+        }
+        .wf-card {
+            background: var(--ink);
+            color: var(--cream);
+            border-radius: 12px;
+            padding: 0.65rem 0.75rem;
+            transform: translateY(10px);
+            opacity: 0;
+            animation: wfCard 6s ease-in-out infinite;
+        }
+        .wf-card-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.66rem;
+            margin-bottom: 0.35rem;
+            color: rgba(250,246,239,0.75);
+        }
+        .wf-card-head .wf-time { color: var(--coral-soft); font-weight: 600; }
+        .wf-card p {
+            font-size: 0.72rem;
+            color: rgba(250,246,239,0.6);
+            line-height: 1.4;
+        }
+        @keyframes wfSlack {
+            0%, 12% { opacity: 0; transform: translateY(-6px); }
+            20%, 100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes wfArrow {
+            0%, 30% { opacity: 0; transform: scaleY(0.5); }
+            38%, 55% { opacity: 1; transform: scaleY(1); }
+            60%, 100% { opacity: 0.2; transform: scaleY(1); }
+        }
+        @keyframes wfCard {
+            0%, 35% { opacity: 0; transform: translateY(12px); }
+            45%, 85% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0.95; transform: translateY(0); }
+        }
+        @keyframes wfPulse {
+            0%, 26% { box-shadow: 0 0 0 0 rgba(224,90,58,0.45); }
+            34%, 56% { box-shadow: 0 0 0 8px rgba(224,90,58,0); }
+            100% { box-shadow: 0 0 0 0 rgba(224,90,58,0); }
+        }
 
         /* ── Marquee / trust ── */
         .trust {
@@ -605,6 +708,54 @@
             opacity: 0.6;
         }
 
+        /* ── Security ── */
+        .security {
+            padding: 5rem 2rem;
+        }
+        .security-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .security-inner h2 {
+            font-family: 'Instrument Serif', serif;
+            font-size: clamp(2rem, 4vw, 2.7rem);
+            font-weight: 400;
+            margin-bottom: 0.75rem;
+        }
+        .security-sub {
+            font-size: 1rem;
+            color: var(--ink-light);
+            margin-bottom: 2rem;
+            max-width: 700px;
+        }
+        .security-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+        .security-item {
+            background: var(--cream);
+            border: 1px solid rgba(28,25,23,0.09);
+            border-radius: 16px;
+            padding: 1.5rem;
+        }
+        .security-item h4 {
+            font-family: 'Instrument Serif', serif;
+            font-size: 1.25rem;
+            font-weight: 400;
+            margin-bottom: 0.45rem;
+            color: var(--ink);
+        }
+        .security-item p {
+            font-size: 0.9rem;
+            line-height: 1.55;
+            color: var(--ink-light);
+        }
+        .security-item .accent {
+            color: var(--coral);
+            font-weight: 600;
+        }
+
         /* ── CTA ── */
         .cta {
             margin: 3rem 2rem;
@@ -752,6 +903,7 @@
             .feature-grid { grid-template-columns: 1fr; }
             .how-grid { grid-template-columns: 1fr 1fr; }
             .stats { grid-template-columns: 1fr; }
+            .security-grid { grid-template-columns: 1fr; }
 
             .nav-inner { position: relative; }
             .nav-toggle { display: inline-flex; align-items: center; justify-content: center; }
@@ -809,6 +961,7 @@
                 <a href="#features">Features</a>
                 <a href="#how-it-works">How it works</a>
                 <a href="#integrations">Integrations</a>
+                <a href="#security">Security</a>
                 <a href="/login">Sign in</a>
                 <a href="/signup" class="btn-nav">Get started free</a>
             </div>
@@ -852,6 +1005,21 @@
                     <div class="hc-action">Rollback to b7e84fd</div>
                 </div>
                 <div class="hero-card-footer">Assembled in <span class="time-highlight">2.3s</span></div>
+            </div>
+            <div class="hero-workflow" aria-hidden="true">
+                <div class="wf-label">Live workflow: &lt;10s context delivered</div>
+                <div class="wf-slack">
+                    <span class="wf-slack-dot"></span>
+                    <span class="wf-slack-text">Slack alert: payments-api error spike detected</span>
+                </div>
+                <div class="wf-arrow"></div>
+                <div class="wf-card">
+                    <div class="wf-card-head">
+                        <span>Copilot Context Card</span>
+                        <span class="wf-time">+2.3s</span>
+                    </div>
+                    <p>Deploys, logs, and related incidents attached in thread.</p>
+                </div>
             </div>
         </div>
     </section>
@@ -976,6 +1144,32 @@
                 <div class="int-pill">Teams</div>
             </div>
             <p class="int-more">+ Grafana, Splunk, ServiceNow, Jira, and more</p>
+        </div>
+    </section>
+
+    <!-- Security -->
+    <section id="security" class="security">
+        <div class="security-inner">
+            <h2>Your data, handled with care</h2>
+            <p class="security-sub">Security and privacy principles built into every context workflow.</p>
+            <div class="security-grid">
+                <article class="security-item">
+                    <h4>🔒 No data stored</h4>
+                    <p>Context is assembled on-the-fly and <span class="accent">never persisted</span> beyond your session.</p>
+                </article>
+                <article class="security-item">
+                    <h4>🛡️ SOC 2 roadmap</h4>
+                    <p>Enterprise compliance is on our near-term roadmap, with controls actively being formalized.</p>
+                </article>
+                <article class="security-item">
+                    <h4>🔑 Your keys, your control</h4>
+                    <p>Bring your own API keys for observability platforms and keep provider access under your control.</p>
+                </article>
+                <article class="security-item">
+                    <h4>📋 Audit logging</h4>
+                    <p>Every AI query and data access is logged so actions remain traceable and auditable.</p>
+                </article>
+            </div>
         </div>
     </section>
 
