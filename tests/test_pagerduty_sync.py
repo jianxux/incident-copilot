@@ -1,7 +1,6 @@
 """Tests for PagerDuty/Opsgenie provenance data sync."""
 
-import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -23,7 +22,7 @@ async def test_store_accepts_provenance_fields(store):
         title="High CPU on payments-api",
         service_name="payments-api",
         severity=Severity.HIGH,
-        triggered_at=datetime.now(timezone.utc),
+        triggered_at=datetime.now(UTC),
         source="pagerduty",
         source_url="https://acme.pagerduty.com/incidents/PD-001",
         source_id="PD-001",
@@ -44,7 +43,7 @@ async def test_provenance_in_api_response(store):
         title="Latency spike",
         service_name="checkout-api",
         severity=Severity.MEDIUM,
-        triggered_at=datetime.now(timezone.utc),
+        triggered_at=datetime.now(UTC),
         source="opsgenie",
         source_url="https://app.opsgenie.com/alert/OG-100",
         source_id="OG-100",
@@ -71,7 +70,7 @@ async def test_complete_incident_merges_metadata(store):
         title="DB connection pool exhausted",
         service_name="user-service",
         severity=Severity.CRITICAL,
-        triggered_at=datetime.now(timezone.utc),
+        triggered_at=datetime.now(UTC),
         source="pagerduty",
         source_url="https://acme.pagerduty.com/incidents/PD-002",
         source_id="PD-002",
@@ -83,8 +82,8 @@ async def test_complete_incident_merges_metadata(store):
         title="DB connection pool exhausted",
         severity=Severity.CRITICAL,
         service_name="user-service",
-        triggered_at=datetime.now(timezone.utc),
-        assembled_at=datetime.now(timezone.utc),
+        triggered_at=datetime.now(UTC),
+        assembled_at=datetime.now(UTC),
         assembly_time_ms=1200,
     )
 
@@ -107,7 +106,7 @@ async def test_default_provenance_when_omitted(store):
         title="Manual incident",
         service_name="test-svc",
         severity=Severity.LOW,
-        triggered_at=datetime.now(timezone.utc),
+        triggered_at=datetime.now(UTC),
     )
 
     assert incident.source == "manual"

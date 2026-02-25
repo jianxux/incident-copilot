@@ -19,8 +19,8 @@ from .integrations import (
 )
 from .integrations.oncall_legacy import OnCallAdapter
 from .memory import (
-    IncidentMemoryConfig,
     IncidentCapture,
+    IncidentMemoryConfig,
     IncidentMemoryStore,
     IncidentRecall,
     RecallQuery,

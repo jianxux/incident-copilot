@@ -8,7 +8,6 @@ from uuid import NAMESPACE_URL, uuid5
 import structlog
 
 from ..supabase_client import is_supabase_db_enabled
-
 from .models import (
     AnomalyDetection,
     CascadingFailure,

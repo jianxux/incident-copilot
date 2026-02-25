@@ -10,9 +10,6 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 
-import pytest
-
-
 # ---------------------------------------------------------------------------
 # 1. Incident CRUD against real Supabase
 # ---------------------------------------------------------------------------
