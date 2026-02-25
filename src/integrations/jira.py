@@ -9,7 +9,7 @@ from typing import Any
 
 import httpx
 import structlog
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ..config import get_settings
 
@@ -25,8 +25,7 @@ class JiraIssue(BaseModel):
     summary: str | None = None
     status: str | None = None
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class JiraCreateIssueRequest(BaseModel):
