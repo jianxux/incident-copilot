@@ -1,6 +1,6 @@
 """Data models for runbook auto-linking."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
@@ -59,7 +59,7 @@ class Runbook(BaseModel):
     services: list[str] = Field(default_factory=list)  # Associated services
 
     # Indexing metadata
-    indexed_at: datetime = Field(default_factory=datetime.utcnow)
+    indexed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     content_hash: str | None = None
 
 
@@ -80,6 +80,6 @@ class RunbookIndex(BaseModel):
     """Serialized runbook index."""
 
     version: str = "1.0"
-    built_at: datetime = Field(default_factory=datetime.utcnow)
+    built_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     runbooks: list[Runbook] = Field(default_factory=list)
     vocabulary: dict[str, int] = Field(default_factory=dict)  # term -> doc frequency

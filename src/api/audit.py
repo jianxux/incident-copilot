@@ -1,6 +1,6 @@
 """Audit API routes for Incident Copilot."""
 
-from datetime import datetime, UTC
+from datetime import datetime
 from typing import Any
 
 import structlog

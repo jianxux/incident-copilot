@@ -1,6 +1,6 @@
 """Data models for Incident Copilot."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -362,7 +362,7 @@ class ContextCard(BaseModel):
     dashboard_url: str | None = None
 
     # Metadata
-    assembled_at: datetime = Field(default_factory=datetime.utcnow)
+    assembled_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     assembly_time_ms: int | None = None
     latency_report: Any = None
     errors: list[str] = Field(default_factory=list)

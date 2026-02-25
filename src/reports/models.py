@@ -1,6 +1,6 @@
 """Data models for scheduled reports."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -144,8 +144,8 @@ class ReportConfig(BaseModel):
     status: ReportStatus = ReportStatus.ACTIVE
 
     # Created/updated metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     created_by: str | None = None
 
     # Schedule
@@ -207,7 +207,7 @@ class ReportContent(BaseModel):
     # Report metadata
     report_config_id: str
     report_type: ReportType
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     period_start: datetime
     period_end: datetime
 
@@ -251,7 +251,7 @@ class ReportOutput(BaseModel):
 
     # Trigger info
     triggered_by: str | None = None  # "schedule", "manual", "api"
-    triggered_at: datetime = Field(default_factory=datetime.utcnow)
+    triggered_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Content
     content: ReportContent | None = None

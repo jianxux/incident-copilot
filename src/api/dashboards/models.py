@@ -1,6 +1,6 @@
 """Dashboard and Widget models for incident-copilot."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
@@ -108,8 +108,8 @@ class WidgetUpdate(BaseModel):
 class Widget(WidgetCreate):
     id: UUID = Field(default_factory=uuid4)
     dashboard_id: UUID
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class DashboardLayout(BaseModel):
@@ -155,8 +155,8 @@ class Dashboard(BaseModel):
     role: str | None = None
     widgets: list[Widget] = Field(default_factory=list)
     share_config: ShareConfig = Field(default_factory=ShareConfig)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     cloned_from: UUID | None = None
 
 

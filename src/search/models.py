@@ -1,6 +1,6 @@
 """Search models for incident-copilot."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
@@ -144,8 +144,8 @@ class SavedSearch(BaseModel):
     query: SearchQuery
     is_default: bool = Field(default=False, description="Show on dashboard")
     notify_on_new: bool = Field(default=False, description="Notify when new results")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     last_run_at: datetime | None = None
     run_count: int = Field(default=0)
 
@@ -203,8 +203,8 @@ class IndexedDocument(BaseModel):
     tags: list[str] = Field(default_factory=list)
     author_id: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     def to_searchable_text(self) -> str:
         """Combine all searchable fields into one text."""

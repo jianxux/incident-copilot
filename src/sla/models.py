@@ -4,7 +4,7 @@ Pydantic v2 models for SLA policies, targets, breaches, and metrics.
 Supports severity-based SLA targets with business hours awareness.
 """
 
-from datetime import datetime, time
+from datetime import UTC, datetime, time
 from enum import StrEnum
 from typing import Any
 
@@ -134,8 +134,8 @@ class SLAPolicy(BaseModel):
 
     # Metadata
     is_active: bool = True
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     created_by: str | None = None
 
     @model_validator(mode="after")
@@ -271,7 +271,7 @@ class SLAIncidentStatus(BaseModel):
     breaches: list[SLABreach] = Field(default_factory=list)
 
     # Timestamps
-    calculated_at: datetime = Field(default_factory=datetime.utcnow)
+    calculated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def worst_status(self) -> SLAStatus:
@@ -337,7 +337,7 @@ class SLAMetrics(BaseModel):
     top_breached_services: list[dict[str, Any]] = Field(default_factory=list)
 
     # Generated timestamp
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     def calculate_compliance(self) -> None:
         """Calculate compliance percentages from counts."""
@@ -382,7 +382,7 @@ class SLANotification(BaseModel):
     body: str
 
     # Status
-    sent_at: datetime = Field(default_factory=datetime.utcnow)
+    sent_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     delivered: bool = False
     delivery_error: str | None = None
 

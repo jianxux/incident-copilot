@@ -1,7 +1,7 @@
 """Data models for audit logging."""
 
 import secrets
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -152,7 +152,7 @@ class AuditEvent(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     # Timestamps
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Audit trail metadata
     api_key_id: str | None = None

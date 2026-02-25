@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import sqlite3
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
@@ -25,7 +25,7 @@ class ResolutionFeedback(BaseModel):
     recalled_incident_id: str = Field(..., min_length=1)
     feedback: FeedbackType
     notes: str | None = None
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class AIFeedback(BaseModel):
@@ -35,7 +35,7 @@ class AIFeedback(BaseModel):
     feedback_type: AIFeedbackType
     feedback: AIFeedbackValue
     notes: str | None = None
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class FeedbackStore:

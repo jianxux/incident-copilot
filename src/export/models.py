@@ -1,6 +1,6 @@
 """Data models for the export system."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -159,7 +159,7 @@ class ExportTemplate(BaseModel):
     csv_options: CSVOptions | None = None
     json_options: JSONOptions | None = None
     markdown_options: MarkdownOptions | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     created_by: str | None = None
     is_default: bool = False
     organization_id: str | None = None
@@ -195,7 +195,7 @@ class ExportJob(BaseModel):
     id: str
     request: ExportRequest
     status: ExportJobStatus = ExportJobStatus.PENDING
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     started_at: datetime | None = None
     completed_at: datetime | None = None
     expires_at: datetime | None = None
@@ -263,8 +263,8 @@ class ScheduledExport(BaseModel):
     delivery_s3_prefix: str | None = None
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     created_by: str | None = None
     organization_id: str | None = None
 

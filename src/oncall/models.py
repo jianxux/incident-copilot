@@ -7,7 +7,7 @@ should be backed by a database.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -100,7 +100,7 @@ class HandoffSummary(BaseModel):
     """Generated handoff summary (AI or heuristic)."""
 
     id: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     shift: ShiftInfo
     aggregate: HandoffAggregate
@@ -136,4 +136,4 @@ class HandoffConfig(BaseModel):
     teams_webhook_url: str | None = None
     email_target: str | None = None
 
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

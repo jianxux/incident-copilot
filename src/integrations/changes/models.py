@@ -219,7 +219,7 @@ class ChangeFreeze(BaseModel):
     # Status
     is_active: bool = True
     created_by: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     def is_in_effect(self, at_time: datetime | None = None) -> bool:
         """Check if freeze is in effect at given time."""

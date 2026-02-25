@@ -154,7 +154,7 @@ class HealthResponse(BaseModel):
 
     status: str = "healthy"
     service: str = "sla-tracking"
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # --- Health Check ---

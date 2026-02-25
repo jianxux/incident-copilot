@@ -1,6 +1,6 @@
 """Email notification models."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -109,8 +109,8 @@ class EmailConfig(BaseModel):
     brand_color: str = "#2563eb"  # Primary brand color
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @field_validator("brand_color")
     @classmethod
@@ -132,8 +132,8 @@ class EmailTemplate(BaseModel):
     text_template: str
     description: str | None = None
     variables: list[str] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class EmailMessage(BaseModel):
@@ -161,7 +161,7 @@ class SendResult(BaseModel):
     message_id: str | None = None
     provider: EmailProvider | None = None
     error: str | None = None
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
