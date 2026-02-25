@@ -1,6 +1,6 @@
 """FastAPI routes for search functionality."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -330,7 +330,7 @@ async def update_saved_search(
     for field, value in update_data.items():
         setattr(saved, field, value)
 
-    saved.updated_at = datetime.utcnow()
+    saved.updated_at = datetime.now(UTC)
     return saved
 
 
@@ -371,7 +371,7 @@ async def run_saved_search(
     result = await engine.search(query)
 
     # Update run stats
-    saved.last_run_at = datetime.utcnow()
+    saved.last_run_at = datetime.now(UTC)
     saved.run_count += 1
 
     return result
@@ -465,11 +465,11 @@ async def health_check(
         return {
             "status": "healthy",
             "backend": type(engine.backend).__name__,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
     except Exception as e:
         return {
             "status": "unhealthy",
             "error": str(e),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }

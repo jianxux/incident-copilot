@@ -3,7 +3,7 @@
 import asyncio
 import random
 from collections.abc import AsyncIterator
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 import structlog
@@ -70,7 +70,7 @@ class DemoGenerator:
             scenario = random.choice(DEMO_SCENARIOS)
 
         logger.info("generating_demo_context", scenario_id=scenario["id"])
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
 
         # Simulate fetching data from various sources
         alert = scenario["alert"]
@@ -165,7 +165,7 @@ class DemoGenerator:
         ]
 
         # Calculate total time
-        total_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+        total_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
 
         # Build the context card
         context_card = ContextCard(
@@ -217,7 +217,7 @@ class DemoGenerator:
             scenario = random.choice(DEMO_SCENARIOS)
 
         alert = scenario["alert"]
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
 
         yield {
             "step": "alert_received",
@@ -328,7 +328,7 @@ class DemoGenerator:
 
     def _elapsed_ms(self, start_time: datetime) -> int:
         """Calculate elapsed milliseconds since start."""
-        return int((datetime.utcnow() - start_time).total_seconds() * 1000)
+        return int((datetime.now(UTC) - start_time).total_seconds() * 1000)
 
 
 # Convenience functions

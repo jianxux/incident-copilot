@@ -1,6 +1,6 @@
 """Realistic demo scenarios for Incident Copilot demonstrations."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 
 from ..models import Severity
@@ -8,7 +8,7 @@ from ..models import Severity
 
 def _now() -> datetime:
     """Current time for scenario generation."""
-    return datetime.utcnow()
+    return datetime.now(UTC)
 
 
 def _minutes_ago(minutes: int) -> datetime:

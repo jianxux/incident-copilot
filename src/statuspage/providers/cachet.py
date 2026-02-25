@@ -1,6 +1,6 @@
 """Cachet (Self-Hosted) Provider."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 
 import httpx
 
@@ -106,7 +106,7 @@ class CachetProvider:
                 created_at=(
                     datetime.fromisoformat(i["created_at"].replace("Z", "+00:00"))
                     if i.get("created_at")
-                    else datetime.utcnow()
+                    else datetime.now(UTC)
                 ),
             )
             for i in r.json().get("data", [])
@@ -184,12 +184,12 @@ class CachetProvider:
                 scheduled_start=(
                     datetime.fromisoformat(m["scheduled_at"].replace("Z", "+00:00"))
                     if m.get("scheduled_at")
-                    else datetime.utcnow()
+                    else datetime.now(UTC)
                 ),
                 scheduled_end=(
                     datetime.fromisoformat(m["scheduled_at"].replace("Z", "+00:00"))
                     if m.get("scheduled_at")
-                    else datetime.utcnow()
+                    else datetime.now(UTC)
                 ),
                 component_ids=[str(m["component_id"])] if m.get("component_id") else [],
             )

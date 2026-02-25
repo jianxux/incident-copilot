@@ -2,7 +2,7 @@
 Change Tracking Models - Track deployments, config changes, and feature flags.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
@@ -223,7 +223,7 @@ class ChangeFreeze(BaseModel):
 
     def is_in_effect(self, at_time: datetime | None = None) -> bool:
         """Check if freeze is in effect at given time."""
-        check_time = at_time or datetime.utcnow()
+        check_time = at_time or datetime.now(UTC)
         return self.is_active and self.start_time <= check_time <= self.end_time
 
     def blocks_change(self, change: ChangeEvent) -> bool:

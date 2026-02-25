@@ -2,7 +2,7 @@
 
 import asyncio
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Protocol
 
 import asyncpg
@@ -50,6 +50,16 @@ class AuditStore:
     async def initialize(self) -> None:
         """Initialize the in-memory store (no-op for memory store)."""
         pass
+
+    @staticmethod
+    def _normalize_to_utc(dt: datetime) -> datetime:
+        """Normalize a datetime to timezone-aware UTC.
+
+        Naive datetimes are treated as UTC to preserve prior behavior.
+        """
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=UTC)
+        return dt.astimezone(UTC)
 
     async def store_event(self, event: AuditEvent) -> AuditEvent:
         """Store an audit event in memory."""
@@ -104,22 +114,30 @@ class AuditStore:
 
     async def cleanup_old_events(self) -> int:
         """Remove events older than retention period."""
-        cutoff = datetime.utcnow() - timedelta(days=self.retention_days)
+        cutoff = datetime.now(UTC) - timedelta(days=self.retention_days)
         deleted = 0
 
         async with self._lock:
             # Filter out old events
-            old_events = [e for e in self._events if e.timestamp < cutoff]
+            old_events = [
+                e
+                for e in self._events
+                if self._normalize_to_utc(e.timestamp) < cutoff
+            ]
             deleted = len(old_events)
 
-            self._events = [e for e in self._events if e.timestamp >= cutoff]
+            self._events = [
+                e
+                for e in self._events
+                if self._normalize_to_utc(e.timestamp) >= cutoff
+            ]
 
             # Update tenant indices
             for tenant_id in self._events_by_tenant:
                 self._events_by_tenant[tenant_id] = [
                     e
                     for e in self._events_by_tenant[tenant_id]
-                    if e.timestamp >= cutoff
+                    if self._normalize_to_utc(e.timestamp) >= cutoff
                 ]
 
         return deleted
@@ -131,10 +149,21 @@ class AuditStore:
         filtered = events
 
         # Date range filter
+        start_date = (
+            self._normalize_to_utc(query.start_date) if query.start_date else None
+        )
+        end_date = self._normalize_to_utc(query.end_date) if query.end_date else None
+
         if query.start_date:
-            filtered = [e for e in filtered if e.timestamp >= query.start_date]
+            filtered = [
+                e
+                for e in filtered
+                if self._normalize_to_utc(e.timestamp) >= start_date
+            ]
         if query.end_date:
-            filtered = [e for e in filtered if e.timestamp <= query.end_date]
+            filtered = [
+                e for e in filtered if self._normalize_to_utc(e.timestamp) <= end_date
+            ]
 
         # Event type filter
         if query.event_types:
@@ -429,7 +458,7 @@ class PostgresAuditStore:
         if not self._pool:
             await self.connect()
 
-        cutoff = datetime.utcnow() - timedelta(days=self.retention_days)
+        cutoff = datetime.now(UTC) - timedelta(days=self.retention_days)
 
         async with self._pool.acquire() as conn:
             result = await conn.execute(

@@ -1,7 +1,7 @@
 """Event collectors from various integration sources."""
 
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import uuid4
 
@@ -74,7 +74,7 @@ class PagerDutyCollector(EventCollector):
         return TimelineEvent(
             incident_id=incident_id,
             timestamp=datetime.fromisoformat(
-                entry.get("created_at", datetime.utcnow().isoformat())
+                entry.get("created_at", datetime.now(UTC).isoformat())
             ),
             event_type=event_type,
             source=EventSource.PAGERDUTY,
@@ -365,7 +365,7 @@ class CompositeCollector:
                     TimelineEvent(
                         id=uuid4(),
                         incident_id=incident_id,
-                        timestamp=datetime.utcnow(),
+                        timestamp=datetime.now(UTC),
                         event_type=EventType.MANUAL,
                         source=EventSource.SYSTEM,
                         severity=EventSeverity.WARNING,

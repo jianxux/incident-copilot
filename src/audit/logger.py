@@ -3,7 +3,7 @@
 import asyncio
 import time
 from contextlib import asynccontextmanager, contextmanager
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 from .models import AuditEvent, EventCategory, EventType, Outcome
@@ -65,7 +65,7 @@ class AuditLogger:
             api_key_id=api_key_id,
             session_id=session_id,
             metadata=metadata or {},
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
         )
 
         return await self.store.store_event(event)

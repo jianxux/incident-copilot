@@ -1,7 +1,7 @@
 """Authentication service for user and session management."""
 
 import hashlib
-from datetime import datetime
+from datetime import datetime, UTC
 
 import structlog
 
@@ -76,7 +76,7 @@ class AuthService:
         tenant.max_incidents_per_month = limits["max_incidents_per_month"]
         tenant.max_users = limits["max_users"]
         tenant.max_integrations = limits["max_integrations"]
-        tenant.updated_at = datetime.utcnow()
+        tenant.updated_at = datetime.now(UTC)
 
         logger.info("tenant_plan_updated", tenant_id=tenant_id, new_plan=plan)
         return tenant
@@ -92,7 +92,7 @@ class AuthService:
             raise ValueError(f"Tenant {tenant_id} not found")
 
         tenant.integrations.update(integrations)
-        tenant.updated_at = datetime.utcnow()
+        tenant.updated_at = datetime.now(UTC)
 
         logger.info(
             "tenant_integrations_updated",
@@ -117,7 +117,7 @@ class AuthService:
             return False
 
         tenant.incidents_this_month += 1
-        tenant.updated_at = datetime.utcnow()
+        tenant.updated_at = datetime.now(UTC)
         return True
 
     # --- User Management ---
@@ -196,7 +196,7 @@ class AuthService:
             existing.oauth_id = oauth_id
             if avatar_url:
                 existing.avatar_url = avatar_url
-            existing.last_login = datetime.utcnow()
+            existing.last_login = datetime.now(UTC)
 
             tenant = await self.get_tenant(existing.tenant_id)
             return existing, tenant, False
@@ -224,7 +224,7 @@ class AuthService:
             oauth_id=oauth_id,
         )
         user.avatar_url = avatar_url
-        user.last_login = datetime.utcnow()
+        user.last_login = datetime.now(UTC)
 
         return user, tenant, True
 
@@ -238,7 +238,7 @@ class AuthService:
         if password_hash != user.password_hash:
             return None
 
-        user.last_login = datetime.utcnow()
+        user.last_login = datetime.now(UTC)
         return user
 
     # --- Session Management ---
@@ -342,14 +342,14 @@ class AuthService:
         if not api_key or not api_key.is_active:
             return None
 
-        if api_key.expires_at and datetime.utcnow() > api_key.expires_at:
+        if api_key.expires_at and datetime.now(UTC) > api_key.expires_at:
             return None
 
         tenant = await self.get_tenant(api_key.tenant_id)
         if not tenant:
             return None
 
-        api_key.last_used = datetime.utcnow()
+        api_key.last_used = datetime.now(UTC)
         return api_key, tenant
 
     async def revoke_api_key(self, api_key_id: str) -> None:

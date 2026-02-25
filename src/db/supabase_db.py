@@ -83,7 +83,7 @@ class SupabaseDB:
             "name": name,
             "slug": slug,
             "plan": plan,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             **kwargs,
         }
 
@@ -122,7 +122,7 @@ class SupabaseDB:
         """Update a tenant."""
         self._check_enabled()
 
-        kwargs["updated_at"] = datetime.utcnow().isoformat()
+        kwargs["updated_at"] = datetime.now(UTC).isoformat()
         result = (
             self.client.table("tenants").update(kwargs).eq("id", tenant_id).execute()
         )
@@ -148,7 +148,7 @@ class SupabaseDB:
             "name": name,
             "role": role,
             "is_active": True,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             **kwargs,
         }
 
@@ -185,7 +185,7 @@ class SupabaseDB:
         """Update a user."""
         self._check_enabled()
 
-        kwargs["updated_at"] = datetime.utcnow().isoformat()
+        kwargs["updated_at"] = datetime.now(UTC).isoformat()
         result = self.client.table("users").update(kwargs).eq("id", user_id).execute()
         return result.data[0] if result.data else None
 
@@ -277,7 +277,7 @@ class SupabaseDB:
             "source_id": source_id,
             "severity": severity,
             "status": status,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             **kwargs,
         }
 
@@ -301,7 +301,7 @@ class SupabaseDB:
         """Update an incident."""
         self._check_enabled()
 
-        kwargs["updated_at"] = datetime.utcnow().isoformat()
+        kwargs["updated_at"] = datetime.now(UTC).isoformat()
 
         def _do():
             return (
@@ -348,8 +348,8 @@ class SupabaseDB:
             "source_url": source_url,
             "source_id": source_id or incident_id,
             "metadata": metadata or {},
-            "created_at": triggered_at or datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat(),
+            "created_at": triggered_at or datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
         }
 
         def _do():
@@ -467,7 +467,7 @@ class SupabaseDB:
             "incident_id": incident_id,
             "tenant_id": tenant_id,
             "data": data,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             **kwargs,
         }
 
@@ -514,7 +514,7 @@ class SupabaseDB:
             "title": title,
             "content": content,
             "source": source,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             **kwargs,
         }
 
@@ -567,7 +567,7 @@ class SupabaseDB:
         """Create or update an integration OAuth token record."""
         self._check_enabled()
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
         payload = {
             "tenant_id": tenant_id,
             "provider": provider,
@@ -663,7 +663,7 @@ class SupabaseDB:
             "resource_id": resource_id,
             "details": details or {},
             "ip_address": ip_address,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         }
 
         result = self.client.table("audit_logs").insert(log).execute()
@@ -714,8 +714,8 @@ class SupabaseDB:
             "tenant_id": tenant_id,
             "event_type": event_type,
             "title": title,
-            "occurred_at": occurred_at or datetime.utcnow().isoformat(),
-            "created_at": datetime.utcnow().isoformat(),
+            "occurred_at": occurred_at or datetime.now(UTC).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             **kwargs,
         }
 
@@ -763,8 +763,8 @@ class SupabaseDB:
             "service_name": service_name,
             "severity": severity,
             "executive_summary": executive_summary,
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             **kwargs,
         }
 
@@ -799,7 +799,7 @@ class SupabaseDB:
     async def update_postmortem(self, postmortem_id: str, **kwargs) -> dict | None:
         """Update a postmortem."""
         self._check_enabled()
-        kwargs["updated_at"] = datetime.utcnow().isoformat()
+        kwargs["updated_at"] = datetime.now(UTC).isoformat()
         result = (
             self.client.table("postmortems")
             .update(kwargs)
@@ -841,7 +841,7 @@ class SupabaseDB:
             "id": str(uuid4()),
             "tenant_id": tenant_id,
             "name": name,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             **kwargs,
         }
         result = self.client.table("tags").insert(tag).execute()
@@ -870,7 +870,7 @@ class SupabaseDB:
         record = {
             "incident_id": incident_id,
             "tag_id": tag_id,
-            "applied_at": datetime.utcnow().isoformat(),
+            "applied_at": datetime.now(UTC).isoformat(),
             **kwargs,
         }
         result = self.client.table("incident_tags").insert(record).execute()
@@ -909,7 +909,7 @@ class SupabaseDB:
             "id": str(uuid4()),
             "tenant_id": tenant_id,
             "name": name,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             **kwargs,
         }
         result = self.client.table("services").insert(service).execute()
@@ -955,7 +955,7 @@ class SupabaseDB:
     async def update_service(self, service_id: str, **kwargs) -> dict | None:
         """Update a service."""
         self._check_enabled()
-        kwargs["updated_at"] = datetime.utcnow().isoformat()
+        kwargs["updated_at"] = datetime.now(UTC).isoformat()
         result = (
             self.client.table("services").update(kwargs).eq("id", service_id).execute()
         )
@@ -977,7 +977,7 @@ class SupabaseDB:
             "tenant_id": tenant_id,
             "upstream_service_id": upstream_service_id,
             "downstream_service_id": downstream_service_id,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             **kwargs,
         }
         result = self.client.table("service_dependencies").insert(dep).execute()
@@ -1020,7 +1020,7 @@ class SupabaseDB:
             "schedule_id": schedule_id,
             "schedule_name": schedule_name,
             "provider": provider,
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             **kwargs,
         }
         result = (
@@ -1060,7 +1060,7 @@ class SupabaseDB:
             "incident_id": incident_id,
             "category": category,
             "amount": amount,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             **kwargs,
         }
         result = self.client.table("cost_entries").insert(entry).execute()
@@ -1102,8 +1102,8 @@ class SupabaseDB:
             "tenant_id": tenant_id,
             "author_name": author_name,
             "content": content,
-            "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             **kwargs,
         }
         result = self.client.table("incident_comments").insert(comment).execute()
@@ -1129,7 +1129,7 @@ class SupabaseDB:
     async def update_comment(self, comment_id: str, **kwargs) -> dict | None:
         """Update a comment."""
         self._check_enabled()
-        kwargs["updated_at"] = datetime.utcnow().isoformat()
+        kwargs["updated_at"] = datetime.now(UTC).isoformat()
         kwargs["edited"] = True
         result = (
             self.client.table("incident_comments")
@@ -1161,7 +1161,7 @@ class SupabaseDB:
             "tenant_id": tenant_id,
             "insight_type": insight_type,
             "title": title,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             **kwargs,
         }
         result = self.client.table("insights").insert(insight).execute()

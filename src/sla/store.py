@@ -6,7 +6,7 @@ Supports caching, async operations, and efficient querying.
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 from .models import (
@@ -216,7 +216,7 @@ class SLAStore:
         Args:
             policy: Policy to save
         """
-        policy.updated_at = datetime.utcnow()
+        policy.updated_at = datetime.now(UTC)
         data = policy.model_dump(mode="json")
 
         if self._use_redis:
@@ -405,7 +405,7 @@ class SLAStore:
             data = await self.redis.get(key)
             if data:
                 breach = SLABreach.model_validate(json.loads(data))
-                breach.acknowledged_at = datetime.utcnow()
+                breach.acknowledged_at = datetime.now(UTC)
                 breach.acknowledged_by = user
                 await self.redis.set(key, json.dumps(breach.model_dump(mode="json")))
                 if self._use_db:
@@ -740,7 +740,7 @@ class SLAStore:
                 SET acknowledged_at = $1, acknowledged_by = $2
                 WHERE id = $3
                 """,
-                datetime.utcnow(),
+                datetime.now(UTC),
                 user,
                 breach_id,
             )

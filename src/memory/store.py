@@ -126,7 +126,7 @@ class IncidentMemoryStore:
         if query.lookback_days is not None and start_time is None:
             import datetime as dt
 
-            start_time = dt.datetime.utcnow() - dt.timedelta(days=query.lookback_days)
+            start_time = dt.datetime.now(dt.UTC) - dt.timedelta(days=query.lookback_days)
 
         rows = await pool.fetch(
             f"""

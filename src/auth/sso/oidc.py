@@ -2,7 +2,7 @@
 
 import base64
 import secrets
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from urllib.parse import urlencode
 
@@ -297,7 +297,7 @@ class OIDCProvider(BaseProvider):
 
             # Validate expiration
             exp = claims.get("exp")
-            if exp and datetime.utcnow().timestamp() > exp:
+            if exp and datetime.now(UTC).timestamp() > exp:
                 raise ValueError("ID token has expired")
 
             logger.debug(

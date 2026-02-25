@@ -6,7 +6,7 @@ Statistics, pattern detection, and anomaly detection run locally.
 
 import hashlib
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 import structlog
 
@@ -47,7 +47,7 @@ class DigestGenerator:
 
         Combines statistics, patterns, anomalies, and AI-generated insights.
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # Determine period boundaries
         if period == DigestPeriod.DAILY:
@@ -60,9 +60,11 @@ class DigestGenerator:
         period_end = now
 
         # Filter incidents to period
-        period_incidents = [
-            i for i in incidents if period_start <= i.triggered_at <= period_end
-        ]
+        period_incidents = []
+        for i in incidents:
+            triggered_at = self._as_utc_aware(i.triggered_at)
+            if period_start <= triggered_at <= period_end:
+                period_incidents.append(i)
 
         # Calculate basic stats
         total = len(period_incidents)
@@ -227,8 +229,10 @@ class DigestGenerator:
 
         Useful for Slack/Teams notifications.
         """
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
-        recent = [i for i in incidents if i.triggered_at >= cutoff]
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
+        recent = [
+            i for i in incidents if self._as_utc_aware(i.triggered_at) >= cutoff
+        ]
 
         if not recent:
             return f"✅ No incidents in the last {hours} hours"
@@ -256,3 +260,10 @@ class DigestGenerator:
             lines.append(f"- {service}: {len(incs)}")
 
         return "\n".join(lines)
+
+    @staticmethod
+    def _as_utc_aware(value: datetime) -> datetime:
+        """Normalize datetime to UTC-aware; treat naive values as UTC."""
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)

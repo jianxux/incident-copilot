@@ -1,7 +1,7 @@
 """Cost calculation and analysis service."""
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from decimal import Decimal
 from typing import Any
 
@@ -229,7 +229,7 @@ class CostService:
         end_date: datetime | None = None,
     ) -> CostTrend:
         """Get cost trend for a period."""
-        end = end_date or datetime.utcnow()
+        end = end_date or datetime.now(UTC)
         days = int(period.rstrip("d"))
         start = end - timedelta(days=days)
         prev_start = start - timedelta(days=days)
@@ -308,7 +308,7 @@ class CostService:
         end_date: datetime | None = None,
     ) -> CostReport:
         """Generate a comprehensive cost report."""
-        end = end_date or datetime.utcnow()
+        end = end_date or datetime.now(UTC)
         days = int(period.rstrip("d"))
         start = end - timedelta(days=days)
 
@@ -415,7 +415,7 @@ class CostService:
         end_date: datetime | None = None,
     ) -> ROIAnalysis:
         """Calculate ROI for prevention investment."""
-        end = end_date or datetime.utcnow()
+        end = end_date or datetime.now(UTC)
         days = int(period.rstrip("d"))
         start = end - timedelta(days=days)
 
@@ -480,7 +480,7 @@ class CostService:
         end_date: datetime | None = None,
     ) -> TeamCostAllocation:
         """Calculate cost allocation for a team."""
-        end = end_date or datetime.utcnow()
+        end = end_date or datetime.now(UTC)
         days = int(period.rstrip("d"))
         start = end - timedelta(days=days)
         prev_start = start - timedelta(days=days)
@@ -551,7 +551,7 @@ class CostService:
 
         # Calculate end date for period2
         days1 = int(period1.rstrip("d"))
-        end2 = (end_date or datetime.utcnow()) - timedelta(days=days1)
+        end2 = (end_date or datetime.now(UTC)) - timedelta(days=days1)
         trend2 = await self.get_cost_trend(period2, end2)
 
         return {

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 import structlog
@@ -64,7 +64,7 @@ class PayloadTransformer:
     ) -> dict[str, Any]:
         try:
             rendered = self._env.from_string(template).render(
-                data=data, now=datetime.utcnow(), **data, **extra
+                data=data, now=datetime.now(UTC), **data, **extra
             )
             return json.loads(rendered)
         except TemplateSyntaxError as e:
@@ -77,7 +77,7 @@ class PayloadTransformer:
     def render_string(self, template: str, data: dict[str, Any], **extra: Any) -> str:
         try:
             return self._env.from_string(template).render(
-                data=data, now=datetime.utcnow(), **data, **extra
+                data=data, now=datetime.now(UTC), **data, **extra
             )
         except Exception:
             return template

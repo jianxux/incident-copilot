@@ -95,7 +95,7 @@ async def generate_postmortem(request: PostmortemGenerateRequest) -> GenerateRes
         title=f"Incident {request.incident_id}",
         severity=Severity.MEDIUM,
         service_name="unknown-service",
-        triggered_at=__import__("datetime").datetime.utcnow(),
+        triggered_at=__import__("datetime").datetime.now(__import__("datetime").UTC),
     )
 
     try:
@@ -438,7 +438,7 @@ async def refresh_postmortem(
         severity=Severity(postmortem.severity),
         service_name=postmortem.service_name,
         triggered_at=postmortem.incident_started_at
-        or __import__("datetime").datetime.utcnow(),
+        or __import__("datetime").datetime.now(__import__("datetime").UTC),
         alert_url=postmortem.alert_url,
         dashboard_url=postmortem.dashboard_url,
     )

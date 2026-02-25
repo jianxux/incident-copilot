@@ -15,7 +15,7 @@ import hashlib
 import json
 import re
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 
 import httpx
@@ -89,7 +89,7 @@ class RunbookIndexer:
         # Build index
         self._index = RunbookIndex(
             version="1.0",
-            built_at=datetime.utcnow(),
+            built_at=datetime.now(UTC),
             runbooks=all_runbooks,
             vocabulary=dict(vocabulary),
         )

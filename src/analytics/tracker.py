@@ -1,7 +1,7 @@
 """Analytics tracker for calculating MTTR and other metrics."""
 
 import statistics
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 import structlog
 
@@ -195,7 +195,7 @@ class AnalyticsTracker:
         severity: str | None = None,
     ) -> MTTRStats:
         """Get MTTR stats for the last N days."""
-        end = datetime.utcnow()
+        end = datetime.now(UTC)
         start = end - timedelta(days=days)
         return await self.calculate_mttr_stats(
             start=start,
@@ -212,7 +212,7 @@ class AnalyticsTracker:
         severity: str | None = None,
     ) -> PeriodComparison:
         """Compare current period to the same duration previous period."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         current_end = now
         current_start = now - timedelta(days=days)
         previous_end = current_start

@@ -1,6 +1,6 @@
 """Storage for postmortems."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 
 import structlog
 
@@ -18,7 +18,7 @@ class PostmortemStore:
 
     async def save(self, postmortem: Postmortem) -> Postmortem:
         """Save a postmortem."""
-        postmortem.updated_at = datetime.utcnow()
+        postmortem.updated_at = datetime.now(UTC)
         self._postmortems[postmortem.id] = postmortem
         self._by_incident[postmortem.incident_id] = postmortem.id
         logger.info(
@@ -50,7 +50,7 @@ class PostmortemStore:
         for field, value in update_data.items():
             if value is not None:
                 setattr(postmortem, field, value)
-        postmortem.updated_at = datetime.utcnow()
+        postmortem.updated_at = datetime.now(UTC)
         postmortem.version += 1
         logger.info(
             "postmortem_updated",

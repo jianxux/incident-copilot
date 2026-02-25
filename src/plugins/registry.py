@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import re
 import time
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 import structlog
@@ -71,7 +71,7 @@ class PluginRegistry:
             plugin = self._plugins[plugin_id]
             for k, v in request.model_dump(exclude_none=True).items():
                 setattr(plugin, k, v)
-            plugin.updated_at = datetime.utcnow()
+            plugin.updated_at = datetime.now(UTC)
             return plugin
 
     async def unregister(self, plugin_id: str) -> None:
@@ -173,7 +173,7 @@ class PluginRegistry:
                 {
                     "event": event.value,
                     "plugin_id": plugin.id,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "data": data,
                 }
                 if config.include_full_card
@@ -318,7 +318,7 @@ class PluginRegistry:
     ) -> None:
         m = plugin.metrics
         m.total_executions += 1
-        m.last_execution_at = datetime.utcnow()
+        m.last_execution_at = datetime.now(UTC)
         if success:
             m.successful_executions += 1
             m.consecutive_failures = 0

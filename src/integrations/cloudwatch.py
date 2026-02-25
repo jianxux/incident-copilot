@@ -1,6 +1,6 @@
 """AWS CloudWatch Logs integration adapter."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Any
 
 import structlog
@@ -110,7 +110,7 @@ class CloudWatchAdapter:
         client = self._get_logs_client()
         log_groups = self._get_log_groups_for_service(service_name)
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         start_time = now - timedelta(minutes=time_range_minutes)
 
         # Convert to milliseconds since epoch (CloudWatch uses ms)
@@ -252,7 +252,7 @@ class CloudWatchAdapter:
             logger.warning("no_valid_log_groups", service=service_name)
             return []
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         start_time = now - timedelta(minutes=time_range_minutes)
 
         start_ts = int(start_time.timestamp())

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 import httpx
@@ -114,7 +114,7 @@ class ServiceCatalogDiscovery:
                 environment=env_name,
                 version=attrs.get("version"),
                 metadata={"source": "datadog_apm"},
-                last_seen_at=datetime.utcnow(),
+                last_seen_at=datetime.now(UTC),
             )
             request = ServiceCreate(
                 id=name,
@@ -178,7 +178,7 @@ class ServiceCatalogDiscovery:
                 namespace=metadata.get("namespace") or namespace,
                 version=(metadata.get("labels") or {}).get("app.kubernetes.io/version"),
                 metadata={"type": spec.get("type")},
-                last_seen_at=datetime.utcnow(),
+                last_seen_at=datetime.now(UTC),
             )
             request = ServiceCreate(
                 id=name,

@@ -5,7 +5,7 @@ Escalation Scheduler - Background tasks for scheduled escalation checks.
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from .engine import PolicyEngine, get_policy_engine
 from .models import EscalationState, TeamRotation
@@ -126,7 +126,7 @@ class EscalationScheduler:
 
     async def _check_rotations(self):
         """Check and apply team rotations."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         for team_id, rotation in self.service._rotations.items():
             if self._should_rotate(rotation, now):
@@ -167,7 +167,7 @@ class EscalationScheduler:
 
     async def _cleanup_old_states(self, max_age_hours: int):
         """Remove old resolved escalation states."""
-        cutoff = datetime.utcnow() - timedelta(hours=max_age_hours)
+        cutoff = datetime.now(UTC) - timedelta(hours=max_age_hours)
         removed = 0
 
         to_remove = []

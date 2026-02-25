@@ -5,7 +5,7 @@ PagerDuty API Client
 Async HTTP client for PagerDuty REST API v2.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 import httpx
@@ -517,7 +517,7 @@ class PagerDutyClient:
         escalation_policy_id: str,
     ) -> PDOnCall | None:
         """Get the current on-call for an escalation policy."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         oncalls = await self.list_oncalls(
             escalation_policy_ids=[escalation_policy_id],
             since=now,

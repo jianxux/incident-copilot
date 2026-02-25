@@ -1,6 +1,6 @@
 """SSO service layer for managing identity providers and user provisioning."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 import structlog
@@ -108,7 +108,7 @@ class SSOService:
         if session_lifetime_hours is not None:
             config.session_lifetime_hours = session_lifetime_hours
 
-        config.updated_at = datetime.utcnow()
+        config.updated_at = datetime.now(UTC)
 
         logger.info(
             "sso_config_updated",
@@ -246,7 +246,7 @@ class SSOService:
         )
 
         config.identity_providers.append(idp)
-        config.updated_at = datetime.utcnow()
+        config.updated_at = datetime.now(UTC)
 
         logger.info(
             "idp_created",
@@ -363,8 +363,8 @@ class SSOService:
         if is_active is not None:
             idp.is_active = is_active
 
-        idp.updated_at = datetime.utcnow()
-        config.updated_at = datetime.utcnow()
+        idp.updated_at = datetime.now(UTC)
+        config.updated_at = datetime.now(UTC)
 
         logger.info(
             "idp_updated",
@@ -397,7 +397,7 @@ class SSOService:
         config.identity_providers = [
             p for p in config.identity_providers if p.id != idp_id
         ]
-        config.updated_at = datetime.utcnow()
+        config.updated_at = datetime.now(UTC)
 
         # Disable SSO if no providers left
         if not config.identity_providers:
@@ -436,7 +436,7 @@ class SSOService:
 
         if existing_user:
             # Update existing user with SSO info
-            existing_user.last_login = datetime.utcnow()
+            existing_user.last_login = datetime.now(UTC)
 
             # Optionally update name/avatar from SSO
             if user_info.name and not existing_user.name:

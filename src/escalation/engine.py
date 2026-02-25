@@ -5,7 +5,7 @@ Policy Engine - Condition evaluation and action execution.
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -255,14 +255,14 @@ class PolicyEngine:
 
         # Check if paused
         if state.is_paused:
-            if state.paused_until and state.paused_until <= datetime.utcnow():
+            if state.paused_until and state.paused_until <= datetime.now(UTC):
                 state.is_paused = False
             else:
                 return False
 
         # Check if time for next escalation
         if state.next_escalation_at:
-            if datetime.utcnow() < state.next_escalation_at:
+            if datetime.now(UTC) < state.next_escalation_at:
                 return False
 
         # Get next level and check its conditions
