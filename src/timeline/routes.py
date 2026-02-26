@@ -1,6 +1,6 @@
 """FastAPI routes for timeline viewing and management."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -28,7 +28,7 @@ router = APIRouter(prefix="/timeline", tags=["timeline"])
 class AddEventRequest(BaseModel):
     """Request to add a manual event."""
 
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     event_type: EventType = EventType.MANUAL
     severity: EventSeverity = EventSeverity.INFO
     title: str

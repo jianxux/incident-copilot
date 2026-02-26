@@ -1,6 +1,6 @@
 """Data models for incident tagging system."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
@@ -29,8 +29,8 @@ class Tag(BaseModel):
     description: str | None = Field(None, max_length=255)
     color: TagColor = Field(default=TagColor.BLUE)
     parent_id: str | None = Field(None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     created_by: str | None = None
     incident_count: int = Field(default=0)
     is_system: bool = Field(default=False)
@@ -59,7 +59,7 @@ class IncidentTag(BaseModel):
 
     incident_id: str
     tag_id: str
-    applied_at: datetime = Field(default_factory=datetime.utcnow)
+    applied_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     applied_by: str | None = None
     auto_applied: bool = False
     confidence: float | None = None
@@ -83,8 +83,8 @@ class AutoTagRule(BaseModel):
     pattern: str
     is_enabled: bool = True
     priority: int = 0
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     created_by: str | None = None
 
 

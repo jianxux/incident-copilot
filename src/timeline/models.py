@@ -1,6 +1,6 @@
 """Timeline models using Pydantic v2."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
@@ -71,7 +71,7 @@ class TimelineEvent(BaseModel):
     annotations: list[str] = Field(default_factory=list)
     related_events: list[UUID] = Field(default_factory=list)
     raw_data: dict[str, Any] | None = None  # Original data from source
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class TimelineGap(BaseModel):
@@ -130,7 +130,7 @@ class TimelineExport(BaseModel):
 
     incident_id: str
     title: str
-    exported_at: datetime = Field(default_factory=datetime.utcnow)
+    exported_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     summary: TimelineSummary
     entries: list[TimelineEntry]
     format_version: str = "1.0"

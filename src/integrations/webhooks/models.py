@@ -1,6 +1,6 @@
 """Pydantic models for webhook outbound system."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
@@ -88,8 +88,8 @@ class WebhookConfig(WebhookConfigBase):
     id: UUID = Field(default_factory=uuid4)
     organization_id: UUID
     secret: str  # For HMAC signing
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Circuit breaker state
     circuit_state: CircuitState = CircuitState.CLOSED
@@ -112,7 +112,7 @@ class WebhookEvent(BaseModel):
     event_type: WebhookEventType
     organization_id: UUID
     payload: dict[str, Any]
-    occurred_at: datetime = Field(default_factory=datetime.utcnow)
+    occurred_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     correlation_id: str | None = None  # For tracing
 
     # Optional metadata
@@ -141,7 +141,7 @@ class WebhookDelivery(BaseModel):
     response_headers: dict[str, str] | None = None
 
     # Timing
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     delivered_at: datetime | None = None
     duration_ms: int | None = None
     next_retry_at: datetime | None = None

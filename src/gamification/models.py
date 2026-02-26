@@ -6,7 +6,7 @@ Achievements, badges, and leaderboards for incident response excellence.
 Motivates engineers through recognition and friendly competition.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
 
@@ -77,7 +77,7 @@ class Badge(BaseModel):
     achievement_id: UUID | None = Field(None, description="Linked achievement")
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     is_active: bool = Field(default=True)
     is_hidden: bool = Field(default=False, description="Secret badge")
 
@@ -108,7 +108,7 @@ class Achievement(BaseModel):
     next_tier_id: UUID | None = Field(None, description="Next tier achievement")
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     is_active: bool = Field(default=True)
     is_hidden: bool = Field(default=False, description="Secret achievement")
 
@@ -132,8 +132,8 @@ class UserAchievement(BaseModel):
     unlocked_at: datetime | None = Field(None)
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class UserBadge(BaseModel):
@@ -146,7 +146,7 @@ class UserBadge(BaseModel):
     badge_id: UUID = Field(..., description="Badge ID")
 
     # Award details
-    awarded_at: datetime = Field(default_factory=datetime.utcnow)
+    awarded_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     awarded_for: str | None = Field(None, description="Specific reason/incident")
 
     # Display options
@@ -174,7 +174,7 @@ class UserPoints(BaseModel):
     achievements_unlocked: int = Field(default=0)
     badges_earned: int = Field(default=0)
 
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class PointTransaction(BaseModel):
@@ -192,7 +192,7 @@ class PointTransaction(BaseModel):
     source_id: UUID | None = Field(None, description="Related entity ID")
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     created_by: UUID | None = Field(None, description="Admin who made manual award")
 
 
@@ -241,7 +241,7 @@ class Leaderboard(BaseModel):
     period_end: datetime = Field(...)
 
     # Metadata
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class GamificationSettings(BaseModel):
@@ -270,7 +270,7 @@ class GamificationSettings(BaseModel):
     notify_on_leaderboard_change: bool = Field(default=True)
     weekly_summary: bool = Field(default=True)
 
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # Point values for common actions

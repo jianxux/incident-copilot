@@ -111,8 +111,8 @@ class IdentityProvider(BaseModel):
     role_mapping: dict[str, str] = Field(default_factory=dict)
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     last_login_at: datetime | None = None
 
     def matches_email_domain(self, email: str) -> bool:
@@ -144,8 +144,8 @@ class SSOConfig(BaseModel):
     force_reauthentication: bool = False
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     def get_idp_by_id(self, idp_id: str) -> IdentityProvider | None:
         """Get an identity provider by ID."""
@@ -199,7 +199,7 @@ class SSOSession(BaseModel):
     redirect_uri: str | None = None
 
     # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     expires_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC) + timedelta(minutes=10)
     )

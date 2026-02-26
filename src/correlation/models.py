@@ -30,7 +30,7 @@ class IncomingAlert(BaseModel):
     service: str
     severity: str = "medium"
     tags: list[str] = Field(default_factory=list)
-    triggered_at: datetime = Field(default_factory=datetime.utcnow)
+    triggered_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     url: str | None = None
     extra: dict[str, Any] = Field(default_factory=dict)
 
@@ -47,8 +47,8 @@ class AlertGroup(BaseModel):
     service: str | None = None
     services: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     first_alert_at: datetime | None = None
     last_alert_at: datetime | None = None
     window_expires_at: datetime | None = None
@@ -106,8 +106,8 @@ class CorrelationRule(BaseModel):
     suppress_duplicates: bool = True
     max_alerts_before_notify: int = 1
     re_notify_after_seconds: int = 1800
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     created_by: str | None = None
 
     def matches_service(self, service: str) -> bool:

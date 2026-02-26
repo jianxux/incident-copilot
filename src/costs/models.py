@@ -1,6 +1,6 @@
 """Data models for incident cost tracking and analysis."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
@@ -62,7 +62,7 @@ class CostEntry(BaseModel):
     hourly_rate: Decimal | None = None
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     created_by: str | None = None
     source: str = "manual"  # manual, calculated, imported
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -93,7 +93,7 @@ class EngineerRate(BaseModel):
     department: str | None = None
     level: str | None = None  # junior, mid, senior, staff, principal
     is_default: bool = False
-    effective_from: datetime = Field(default_factory=datetime.utcnow)
+    effective_from: datetime = Field(default_factory=lambda: datetime.now(UTC))
     effective_to: datetime | None = None
 
 
@@ -148,7 +148,7 @@ class IncidentCost(BaseModel):
     # Summary
     total_cost: Decimal = Field(default=Decimal("0"))
     currency: Currency = Currency.USD
-    calculated_at: datetime = Field(default_factory=datetime.utcnow)
+    calculated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @computed_field
     @property
@@ -207,7 +207,7 @@ class CostReport(BaseModel):
     period: str
     start_date: datetime
     end_date: datetime
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Summary
     total_cost: Decimal

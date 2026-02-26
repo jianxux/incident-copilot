@@ -27,7 +27,7 @@ class MemoryHealthReport(BaseModel):
     """Incident memory health summary and alerts."""
 
     status: str
-    checked_at: datetime = Field(default_factory=datetime.utcnow)
+    checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     total_records: int
     recall_hit_rate: float | None = None
     stale_days: int | None = None

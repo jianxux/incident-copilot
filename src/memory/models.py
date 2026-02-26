@@ -1,6 +1,6 @@
 """Data models for incident memory capture and recall."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
@@ -64,7 +64,7 @@ class GeneratedRunbook(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
     root_cause_category: str | None = None
     services_affected: list[str] = Field(default_factory=list)
-    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class MemoryHealthStatus(StrEnum):
@@ -86,4 +86,4 @@ class MemoryHealthReport(BaseModel):
     stale_records: int = Field(ge=0)
     days_since_last_capture: int | None = Field(default=None, ge=0)
     alerts: list[str] = Field(default_factory=list)
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

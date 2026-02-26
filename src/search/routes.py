@@ -102,7 +102,7 @@ class WebhookEvent(BaseModel):
 
     event_type: str
     payload: dict[str, Any]
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class IndexRequest(BaseModel):

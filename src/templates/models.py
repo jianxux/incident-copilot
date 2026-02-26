@@ -1,6 +1,6 @@
 """Data models for Incident Templates."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -81,7 +81,7 @@ class TemplateVersion(BaseModel):
     """Version history for a template."""
 
     version: int
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     created_by: str | None = None
     changes: str | None = None
     template_snapshot: dict = Field(default_factory=dict)
@@ -138,8 +138,8 @@ class IncidentTemplate(BaseModel):
     analytics: TemplateAnalytics = Field(default_factory=TemplateAnalytics)
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     created_by: str | None = None
 
 
@@ -164,14 +164,14 @@ class AppliedTemplate(BaseModel):
     initial_actions: list[InitialAction] = Field(default_factory=list)
     stakeholders: list[StakeholderRole] = Field(default_factory=list)
     custom_fields: dict[str, Any] = Field(default_factory=dict)
-    applied_at: datetime = Field(default_factory=datetime.utcnow)
+    applied_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class TemplateExport(BaseModel):
     """Export format for templates."""
 
     version: str = "1.0"
-    exported_at: datetime = Field(default_factory=datetime.utcnow)
+    exported_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     templates: list[IncidentTemplate] = Field(default_factory=list)
 
 

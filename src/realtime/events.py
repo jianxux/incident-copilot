@@ -4,7 +4,7 @@ Realtime Event Types
 Event definitions for incident updates, comments, status changes, and SLA warnings.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -49,7 +49,7 @@ class BaseEvent(BaseModel):
 
     event_type: EventType
     event_id: str = Field(default_factory=lambda: __import__("uuid").uuid4().hex)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     source: str = "system"  # Who triggered the event
 
     # Routing info
@@ -295,7 +295,7 @@ class SLABreached(BaseEvent):
     event_type: EventType = EventType.SLA_BREACHED
     sla_type: str
     deadline: datetime
-    breach_time: datetime = Field(default_factory=datetime.utcnow)
+    breach_time: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     def get_event_data(self) -> dict[str, Any]:
         return {
