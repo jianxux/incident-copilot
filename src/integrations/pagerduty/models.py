@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
 class PDUrgency(StrEnum):
@@ -328,8 +328,7 @@ class PDEventsAPIPayload(BaseModel):
     images: list[dict] = Field(default_factory=list)
     links: list[dict] = Field(default_factory=list)
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class CreateIncidentRequest(BaseModel):
