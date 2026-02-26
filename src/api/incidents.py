@@ -379,6 +379,35 @@ async def _trigger_pd_sync_best_effort(tenant_id: str) -> None:
     await _pd_sync(tenant_id)
 
 
+async def _force_pd_sync_best_effort(tenant_id: str) -> bool:
+    from src.integrations.pagerduty_sync import force_pd_sync_best_effort as _pd_force_sync
+
+    return await _pd_force_sync(tenant_id)
+
+
+def _get_pd_sync_status(tenant_id: str) -> dict[str, Any]:
+    from src.integrations.pagerduty_sync import get_pd_sync_status as _pd_sync_status
+
+    return _pd_sync_status(tenant_id)
+
+
+def _derive_pd_sync_state(status_data: dict[str, Any]) -> str:
+    if bool(status_data.get("in_progress")):
+        return "in_progress"
+
+    attempt_dt = _as_datetime(status_data.get("last_attempt"))
+    success_dt = _as_datetime(status_data.get("last_success"))
+    last_error = status_data.get("last_error")
+
+    if attempt_dt is None:
+        return "never"
+    if isinstance(last_error, str) and (success_dt is None or attempt_dt >= success_dt):
+        return "error"
+    if success_dt and (datetime.now(UTC) - success_dt) > timedelta(seconds=600):
+        return "stale"
+    return "synced"
+
+
 async def _capture_resolution_memory_best_effort(
     *,
     incident: dict[str, Any],
@@ -859,6 +888,36 @@ async def get_incident_stats(
         "mtta_minutes": mtta_minutes,
         "incidents_today": incidents_today,
         "incidents_week": incidents_week,
+    }
+
+
+@router.get("/sync-status")
+async def get_incident_sync_status(auth: AuthContext = Depends(get_auth_context)):
+    """Return PagerDuty sync status for the current tenant."""
+    tenant_id = await _require_tenant(auth)
+    status_data = _get_pd_sync_status(tenant_id)
+    return {
+        "last_attempt": status_data.get("last_attempt")
+        if isinstance(status_data.get("last_attempt"), str)
+        else None,
+        "last_success": status_data.get("last_success")
+        if isinstance(status_data.get("last_success"), str)
+        else None,
+        "last_error": status_data.get("last_error")
+        if isinstance(status_data.get("last_error"), str)
+        else None,
+        "status": _derive_pd_sync_state(status_data),
+    }
+
+
+@router.post("/sync")
+async def force_incident_sync(auth: AuthContext = Depends(get_auth_context)):
+    """Force a PagerDuty sync for the current tenant, bypassing throttle."""
+    tenant_id = await _require_tenant(auth)
+    ok = await _force_pd_sync_best_effort(tenant_id)
+    return {
+        "ok": ok,
+        "status": _derive_pd_sync_state(_get_pd_sync_status(tenant_id)),
     }
 
 

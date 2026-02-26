@@ -4,6 +4,7 @@ import asyncio
 import time
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 import structlog
 
@@ -14,6 +15,44 @@ logger = structlog.get_logger()
 # Background PagerDuty auto-sync: track last sync time per tenant (epoch seconds)
 _pd_sync_timestamps: dict[str, float] = {}
 _PD_SYNC_INTERVAL = 300  # seconds (5 minutes)
+_PD_SYNC_FETCH_LIMIT = 100
+_pd_sync_status: dict[str, dict[str, Any]] = {}
+
+
+def _ensure_sync_status(tenant_id: str) -> dict[str, Any]:
+    if tenant_id not in _pd_sync_status:
+        _pd_sync_status[tenant_id] = {
+            "last_attempt": None,
+            "last_success": None,
+            "last_error": None,
+            "in_progress": False,
+        }
+    return _pd_sync_status[tenant_id]
+
+
+def _set_sync_attempt(tenant_id: str, attempted_at: datetime | None = None) -> None:
+    status = _ensure_sync_status(tenant_id)
+    dt = attempted_at or datetime.now(UTC)
+    status["last_attempt"] = dt.isoformat()
+    status["in_progress"] = True
+
+
+def _set_sync_success(tenant_id: str, succeeded_at: datetime | None = None) -> None:
+    status = _ensure_sync_status(tenant_id)
+    dt = succeeded_at or datetime.now(UTC)
+    status["last_success"] = dt.isoformat()
+    status["last_error"] = None
+    status["in_progress"] = False
+
+
+def _set_sync_error(tenant_id: str, message: str) -> None:
+    status = _ensure_sync_status(tenant_id)
+    status["last_error"] = message
+    status["in_progress"] = False
+
+
+def get_pd_sync_status(tenant_id: str) -> dict[str, Any]:
+    return dict(_ensure_sync_status(tenant_id))
 
 
 def _pd_id_to_uuid(pd_id: str) -> str:
@@ -169,12 +208,14 @@ def _build_pd_upsert_rows(
     return rows, summaries
 
 
-async def _background_pd_sync(tenant_id: str) -> None:
+async def _background_pd_sync(tenant_id: str) -> bool:
     """Fire-and-forget background sync of PagerDuty incidents for a tenant."""
+    _set_sync_attempt(tenant_id)
     try:
         # 1. Resolve PD token (oauth_token_store then integration_configs)
         oauth_token = ""
         api_key = ""
+        token_resolution_errors: list[str] = []
 
         try:
             from ..integrations.oauth_tokens import oauth_token_store
@@ -186,6 +227,9 @@ async def _background_pd_sync(tenant_id: str) -> None:
             else:
                 logger.info("pd_sync_no_token_in_oauth_store", tenant_id=tenant_id)
         except Exception as exc:
+            token_resolution_errors.append(
+                f"oauth_token_store_error: {type(exc).__name__}: {exc}"
+            )
             logger.warning(
                 "pd_sync_oauth_store_error",
                 tenant_id=tenant_id,
@@ -218,10 +262,17 @@ async def _background_pd_sync(tenant_id: str) -> None:
                             has_api_key=bool(api_key),
                         )
                     else:
+                        token_resolution_errors.append(
+                            "pagerduty integration config is missing encrypted credentials"
+                        )
                         logger.info("pd_sync_no_encrypted_config", tenant_id=tenant_id)
                 else:
+                    token_resolution_errors.append("no active pagerduty integration config found")
                     logger.info("pd_sync_no_integration_config_row", tenant_id=tenant_id)
             except Exception as exc:
+                token_resolution_errors.append(
+                    f"integration_config_token_error: {type(exc).__name__}: {exc}"
+                )
                 logger.warning(
                     "pd_sync_integration_configs_error",
                     tenant_id=tenant_id,
@@ -231,12 +282,18 @@ async def _background_pd_sync(tenant_id: str) -> None:
 
         token = oauth_token or api_key
         if not token:
+            _set_sync_error(
+                tenant_id,
+                " | ".join(token_resolution_errors)
+                if token_resolution_errors
+                else "no pagerduty token found",
+            )
             logger.warning("pd_sync_no_token_found", tenant_id=tenant_id)
-            return
+            return False
 
         pd_auth = f"Bearer {oauth_token}" if oauth_token else f"Token token={api_key}"
 
-        # 2. Fetch last 25 incidents from PagerDuty
+        # 2. Fetch incidents from PagerDuty
         import httpx
 
         async with httpx.AsyncClient(timeout=15) as client:
@@ -250,12 +307,13 @@ async def _background_pd_sync(tenant_id: str) -> None:
                 params={
                     "statuses[]": ["triggered", "acknowledged", "resolved"],
                     "sort_by": "created_at:desc",
-                    "limit": 25,
+                    "limit": _PD_SYNC_FETCH_LIMIT,
                 },
             )
             if resp.status_code != 200:
+                _set_sync_error(tenant_id, f"pagerduty api returned HTTP {resp.status_code}")
                 logger.warning("bg_pd_sync_api_error", status=resp.status_code, tenant_id=tenant_id)
-                return
+                return False
 
             pd_incidents = resp.json().get("incidents", [])
 
@@ -274,19 +332,27 @@ async def _background_pd_sync(tenant_id: str) -> None:
 
         # 4. Update timestamp on success
         _pd_sync_timestamps[tenant_id] = time.time()
+        _set_sync_success(tenant_id)
         logger.info("bg_pd_sync_complete", tenant_id=tenant_id, synced=len(pd_incidents))
+        return True
 
     except Exception as exc:
+        _set_sync_error(tenant_id, f"{type(exc).__name__}: {exc}")
         logger.warning(
             "bg_pd_sync_failed",
             tenant_id=tenant_id,
             error=str(exc),
             error_type=type(exc).__name__,
         )
+        return False
 
 
 async def _maybe_trigger_pd_sync(tenant_id: str) -> bool:
     """Sync PD incidents if stale. Returns True if sync was awaited (first time)."""
+    status = _ensure_sync_status(tenant_id)
+    if bool(status.get("in_progress")):
+        return False
+
     now = time.time()
     last = _pd_sync_timestamps.get(tenant_id, 0)
     if now - last < _PD_SYNC_INTERVAL:
@@ -299,13 +365,14 @@ async def _maybe_trigger_pd_sync(tenant_id: str) -> bool:
     if first_sync:
         # First sync: await with a timeout so we don't block too long
         try:
-            await asyncio.wait_for(_background_pd_sync(tenant_id), timeout=10.0)
-        except TimeoutError as exc:
+            await asyncio.wait_for(_background_pd_sync(tenant_id), timeout=20.0)
+        except asyncio.TimeoutError:
+            _set_sync_error(tenant_id, "first sync timed out after 20 seconds")
             logger.warning(
                 "pd_first_sync_timeout",
                 tenant_id=tenant_id,
-                error=str(exc),
-                error_type=type(exc).__name__,
+                error="first sync timed out after 20 seconds",
+                error_type="TimeoutError",
             )
         return True
 
@@ -324,8 +391,30 @@ async def trigger_pd_sync_best_effort(tenant_id: str) -> bool:
     try:
         return await maybe_trigger_pd_sync(tenant_id)
     except Exception as exc:
+        _set_sync_error(tenant_id, f"trigger failed: {type(exc).__name__}: {exc}")
         logger.warning(
             "pd_trigger_best_effort_failed",
+            tenant_id=tenant_id,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
+        return False
+
+
+async def force_pd_sync(tenant_id: str) -> None:
+    """Force a PagerDuty sync now, bypassing stale/throttle checks."""
+    await _background_pd_sync(tenant_id)
+
+
+async def force_pd_sync_best_effort(tenant_id: str) -> bool:
+    """Force a PagerDuty sync now, bypassing throttle, and never raise."""
+    try:
+        await force_pd_sync(tenant_id)
+        return True
+    except Exception as exc:
+        _set_sync_error(tenant_id, f"forced sync failed: {type(exc).__name__}: {exc}")
+        logger.warning(
+            "pd_force_sync_best_effort_failed",
             tenant_id=tenant_id,
             error=str(exc),
             error_type=type(exc).__name__,
@@ -336,8 +425,11 @@ async def trigger_pd_sync_best_effort(tenant_id: str) -> bool:
 def trigger_manual_pd_sync(tenant_id: str) -> None:
     """Fire-and-forget explicit PagerDuty sync."""
     try:
+        if bool(_ensure_sync_status(tenant_id).get("in_progress")):
+            return
         asyncio.create_task(_background_pd_sync(tenant_id))
     except Exception as exc:
+        _set_sync_error(tenant_id, f"manual trigger failed: {type(exc).__name__}: {exc}")
         logger.warning(
             "pd_manual_trigger_failed",
             tenant_id=tenant_id,
