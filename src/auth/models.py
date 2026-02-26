@@ -35,11 +35,11 @@ class Tenant(BaseModel):
 
     # Usage tracking
     incidents_this_month: int = 0
-    billing_cycle_start: datetime = Field(default_factory=datetime.utcnow)
+    billing_cycle_start: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Integration configs (encrypted in production)
     integrations: dict = Field(default_factory=dict)
@@ -99,7 +99,7 @@ class User(BaseModel):
     is_active: bool = True
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     last_login: datetime | None = None
 
     def can_manage_integrations(self) -> bool:
@@ -130,7 +130,7 @@ class APIKey(BaseModel):
     scopes: list[str] = Field(default_factory=lambda: ["read", "write"])
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     last_used: datetime | None = None
     expires_at: datetime | None = None
     is_active: bool = True
@@ -177,7 +177,7 @@ class Session(BaseModel):
     )
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     user_agent: str | None = None
     ip_address: str | None = None
 

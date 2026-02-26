@@ -82,7 +82,7 @@ class MaintenanceSchedule(BaseModel):
 
 class ApprovalRecord(BaseModel):
     approver_id: str
-    approved_at: datetime = Field(default_factory=datetime.utcnow)
+    approved_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     approved: bool
     comment: str | None = None
 
@@ -97,8 +97,8 @@ class MaintenanceWindow(BaseModel):
     schedule: MaintenanceSchedule
     status: MaintenanceStatus = MaintenanceStatus.DRAFT
     created_by: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     requires_approval: bool = True
     approvals: list[ApprovalRecord] = Field(default_factory=list)
     required_approvers: list[str] = Field(default_factory=list)

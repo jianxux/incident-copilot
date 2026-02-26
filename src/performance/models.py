@@ -390,7 +390,7 @@ class LeaderboardEntry(BaseModel):
 class PerformanceReport(BaseModel):
     """Comprehensive performance report for management review."""
 
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     period: PerformancePeriod
     team_metrics: TeamMetrics
     engineer_metrics: list[EngineerMetrics] = Field(default_factory=list)

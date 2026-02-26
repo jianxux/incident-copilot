@@ -6,7 +6,7 @@ Role-based access control models for fine-grained permissions.
 Supports resource-level, team-level, and organization-level scoping.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
 
@@ -173,8 +173,8 @@ class Role(BaseModel):
     is_system: bool = Field(default=False, description="System-defined role")
     is_default: bool = Field(default=False, description="Assigned to new users")
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class RoleAssignment(BaseModel):
@@ -193,7 +193,7 @@ class RoleAssignment(BaseModel):
 
     # Assignment metadata
     assigned_by: UUID | None = None
-    assigned_at: datetime = Field(default_factory=datetime.utcnow)
+    assigned_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     expires_at: datetime | None = None
 
     # Status

@@ -1,6 +1,6 @@
 """Data models for rate limiting."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -127,7 +127,7 @@ class RateLimitOverride(BaseModel):
         default=None, description="When this override expires"
     )
     reason: str | None = Field(default=None, description="Reason for the override")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     created_by: str | None = Field(
         default=None, description="User who created override"
     )
@@ -154,7 +154,7 @@ class EndpointRateLimit(BaseModel):
 class RateLimitEvent(BaseModel):
     """Event emitted when rate limit is exceeded."""
 
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     key: str
     scope: RateLimitScope
     ip_address: str | None = None

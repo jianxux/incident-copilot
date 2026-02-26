@@ -172,8 +172,8 @@ class OnCallSchedule(BaseModel):
     timezone: str = "UTC"
     rotations: list[Rotation] = Field(default_factory=list)
     escalation_policy_id: str | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     sync_enabled: bool = True
     last_synced: datetime | None = None
 
@@ -200,7 +200,7 @@ class OnCallOverride(BaseModel):
     reason: str | None = None
     status: OverrideStatus = OverrideStatus.PENDING
     created_by: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     approved_by: str | None = None
     approved_at: datetime | None = None
     notification_sent: bool = False
@@ -258,4 +258,4 @@ class ScheduleSyncResult(BaseModel):
     shifts_synced: int = 0
     overrides_synced: int = 0
     errors: list[str] = Field(default_factory=list)
-    synced_at: datetime = Field(default_factory=datetime.utcnow)
+    synced_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

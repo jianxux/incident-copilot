@@ -1,6 +1,6 @@
 """Status Page Integration - Data Models."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -72,8 +72,8 @@ class StatusPageConfig(BaseModel):
         default_factory=dict, description="Service ID → Component ID"
     )
     default_impact: IncidentImpact = Field(default=IncidentImpact.MINOR)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class Component(BaseModel):
@@ -95,7 +95,7 @@ class StatusUpdate(BaseModel):
     incident_id: str
     status: IncidentStatus
     message: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     author: str | None = None
 
 
@@ -112,8 +112,8 @@ class StatusPageIncident(BaseModel):
     scheduled_for: datetime | None = None
     scheduled_until: datetime | None = None
     updates: list[StatusUpdate] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     external_id: str | None = Field(None, description="ID in external status page")
 
 
@@ -202,7 +202,7 @@ class SyncResult(BaseModel):
     synced_components: int = 0
     synced_incidents: int = 0
     errors: list[str] = Field(default_factory=list)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # Severity Mappings

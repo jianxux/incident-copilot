@@ -1,6 +1,6 @@
 """Data models for incident collaboration."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -57,8 +57,8 @@ class Comment(BaseModel):
     author_avatar_url: str | None = None
     content: str  # Markdown-supported content
     mentions: list[str] = Field(default_factory=list)  # List of mentioned user IDs
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     edited: bool = False
     parent_id: str | None = None  # For threaded comments
     reactions: dict[str, list[str]] = Field(default_factory=dict)  # emoji -> [user_ids]
@@ -96,7 +96,7 @@ class StatusUpdate(BaseModel):
     message: str | None = None  # Optional status message
     updated_by_id: str
     updated_by_name: str
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -128,7 +128,7 @@ class Watcher(BaseModel):
             "war_room": True,
         }
     )
-    subscribed_at: datetime = Field(default_factory=datetime.utcnow)
+    subscribed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -153,7 +153,7 @@ class Activity(BaseModel):
     actor_id: str
     actor_name: str
     description: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     related_id: str | None = None  # ID of related entity (comment_id, etc.)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -171,7 +171,7 @@ class WarRoomLink(BaseModel):
     title: str | None = None
     created_by_id: str
     created_by_name: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     active: bool = True
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -209,4 +209,4 @@ class MentionNotification(BaseModel):
     mentioner_name: str
     content_preview: str
     incident_title: str | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

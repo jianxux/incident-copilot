@@ -5,7 +5,7 @@ PagerDuty Models
 Pydantic models for PagerDuty API integration.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
 
@@ -79,8 +79,8 @@ class PagerDutyConfig(BaseModel):
     auto_create_services: bool = False
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     is_active: bool = True
 
 
@@ -202,7 +202,7 @@ class PDIncident(BaseModel):
     conference_bridge: dict | None = None
 
     # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime | None = None
     resolved_at: datetime | None = None
 
@@ -297,7 +297,7 @@ class PDWebhookMessage(BaseModel):
     log_entries: list[dict] = Field(default_factory=list)
     incident: PDIncident | None = None
     service: PDService | None = None
-    created_on: datetime = Field(default_factory=datetime.utcnow)
+    created_on: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class PDWebhookEvent(BaseModel):

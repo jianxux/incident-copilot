@@ -1,6 +1,6 @@
 """Pydantic models for service dependencies."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -50,8 +50,8 @@ class Service(BaseModel):
     )
     tags: list[str] = Field(default_factory=list, description="Service tags")
     metadata: dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ServiceCreate(BaseModel):
@@ -82,8 +82,8 @@ class Dependency(BaseModel):
     error_rate: float | None = Field(None, description="Error rate (0-1)")
     requests_per_min: float | None = Field(None, description="Request rate")
     health: HealthStatus = Field(default=HealthStatus.UNKNOWN)
-    discovered_at: datetime = Field(default_factory=datetime.utcnow)
-    last_seen: datetime = Field(default_factory=datetime.utcnow)
+    discovered_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    last_seen: datetime = Field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -127,7 +127,7 @@ class BlastRadius(BaseModel):
         default_factory=list, description="Paths to affected services"
     )
     max_depth: int = Field(default=0, description="Max impact depth")
-    analyzed_at: datetime = Field(default_factory=datetime.utcnow)
+    analyzed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class CycleInfo(BaseModel):
@@ -150,7 +150,7 @@ class DependencyGraph(BaseModel):
     dependency_count: int = 0
     has_cycles: bool = False
     max_depth: int = 0
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class GraphStats(BaseModel):

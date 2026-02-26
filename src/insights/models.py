@@ -1,6 +1,6 @@
 """Data models for AI Insights and Pattern Detection."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
@@ -142,7 +142,7 @@ class Insight(BaseModel):
 
     insight_id: str
     insight_type: InsightType
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     severity: Severity
     title: str
     description: str
@@ -190,7 +190,7 @@ class ServiceDependency(BaseModel):
 class ServiceDependencyMap(BaseModel):
     """Map of service dependencies."""
 
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     dependencies: list[ServiceDependency] = Field(default_factory=list)
     services: list[str] = Field(default_factory=list)
 
@@ -213,7 +213,7 @@ class IncidentDigest(BaseModel):
     period: DigestPeriod
     period_start: datetime
     period_end: datetime
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Summary stats
     total_incidents: int

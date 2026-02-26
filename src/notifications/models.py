@@ -1,6 +1,6 @@
 """Notification preference models using Pydantic v2."""
 
-from datetime import datetime, time
+from datetime import UTC, datetime, time
 from enum import StrEnum
 from typing import Any
 
@@ -242,8 +242,8 @@ class NotificationPreference(BaseModel):
     template_overrides: dict[str, str] = Field(default_factory=dict)
 
     # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     def get_enabled_channels(
         self, channel_types: list[ChannelType] | None = None
@@ -374,7 +374,7 @@ class NotificationPayload(BaseModel):
     tags: list[str] = Field(default_factory=list)
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     data: dict[str, Any] = Field(default_factory=dict)
 
     # Delivery tracking

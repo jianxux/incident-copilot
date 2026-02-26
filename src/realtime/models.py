@@ -4,7 +4,7 @@ Realtime WebSocket Models
 Pydantic models for WebSocket messages, subscriptions, presence tracking, and rooms.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -53,7 +53,7 @@ class WebSocketMessage(BaseModel):
 
     type: MessageType
     payload: dict[str, Any] = Field(default_factory=dict)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     request_id: str | None = None  # For request-response correlation
 
 
@@ -76,8 +76,8 @@ class PresenceInfo(BaseModel):
     user_name: str
     status: PresenceStatus = PresenceStatus.VIEWING
     room_key: str
-    joined_at: datetime = Field(default_factory=datetime.utcnow)
-    last_activity: datetime = Field(default_factory=datetime.utcnow)
+    joined_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    last_activity: datetime = Field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -86,7 +86,7 @@ class Room(BaseModel):
 
     room_type: RoomType
     room_id: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def room_key(self) -> str:
@@ -99,12 +99,12 @@ class ConnectionInfo(BaseModel):
     connection_id: str
     user_id: str
     user_name: str
-    connected_at: datetime = Field(default_factory=datetime.utcnow)
-    last_ping: datetime = Field(default_factory=datetime.utcnow)
+    connected_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    last_ping: datetime = Field(default_factory=lambda: datetime.now(UTC))
     subscriptions: set[str] = Field(default_factory=set)
     message_count: int = 0
     rate_limit_remaining: int = 100
-    rate_limit_reset: datetime = Field(default_factory=datetime.utcnow)
+    rate_limit_reset: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     class Config:
         arbitrary_types_allowed = True

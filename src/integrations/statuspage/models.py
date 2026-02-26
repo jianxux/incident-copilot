@@ -1,6 +1,6 @@
 """Data models for status page integrations."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
@@ -96,8 +96,8 @@ class StatusPageConfig(BaseModel):
     )
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     class Config:
         use_enum_values = True
@@ -136,7 +136,7 @@ class StatusIncidentUpdate(BaseModel):
     id: str | None = Field(default=None, description="Update ID from status page")
     status: IncidentStatus
     body: str = Field(description="Update message")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     display_at: datetime | None = None
 
     class Config:
@@ -158,8 +158,8 @@ class StatusIncident(BaseModel):
     )
 
     # Timeline
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     resolved_at: datetime | None = None
     scheduled_for: datetime | None = Field(
         default=None, description="For scheduled maintenance"

@@ -3,7 +3,7 @@ Escalation Policies - Data Models
 Pydantic v2 models for escalation policies, levels, actions, and history.
 """
 
-from datetime import datetime, time
+from datetime import UTC, datetime, time
 from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
@@ -234,8 +234,8 @@ class EscalationPolicy(BaseModel):
     max_repeats: int = Field(default=3)
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     created_by: str | None = None
     tags: list[str] = Field(default_factory=list)
 
@@ -266,7 +266,7 @@ class EscalationHistoryEntry(BaseModel):
     status: EscalationStatus
     action_type: ActionType | None = None
     target: str | None = None
-    triggered_at: datetime = Field(default_factory=datetime.utcnow)
+    triggered_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     acknowledged_at: datetime | None = None
     acknowledged_by: str | None = None
     resolved_at: datetime | None = None
@@ -284,7 +284,7 @@ class EscalationState(BaseModel):
     policy_id: UUID
     current_level: int = 1
     status: EscalationStatus = EscalationStatus.PENDING
-    started_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     last_escalation_at: datetime | None = None
     next_escalation_at: datetime | None = None
     repeat_count: int = 0
