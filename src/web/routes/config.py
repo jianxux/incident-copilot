@@ -71,16 +71,10 @@ async def config_page(request: Request):
             "show_full": True,
         },
         {
-            "name": "Anthropic API Key",
-            "value": settings.anthropic_api_key,
-            "env_var": "ANTHROPIC_API_KEY",
-            "description": "AI-powered log summarization",
-        },
-        {
-            "name": "AI Model",
-            "value": settings.ai_model,
-            "env_var": "AI_MODEL",
-            "description": "Claude model for analysis",
+            "name": "AI Service",
+            "value": "Connected" if settings.ai_service_url else "Not configured",
+            "env_var": "AI_SERVICE_URL",
+            "description": "External AI analysis service",
             "show_full": True,
         },
     ]
