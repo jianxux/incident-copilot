@@ -238,7 +238,63 @@ async def incident_timeline(
     if incident.context_card:
         events = builder.build_from_context_card(incident.context_card, incident_data)
     else:
+        # No context card — build timeline from incident lifecycle timestamps
         events = []
+        meta = incident.metadata or {}
+
+        # Incident triggered/created
+        if incident.triggered_at:
+            builder.add_event(
+                timestamp=incident.triggered_at,
+                event_type=TimelineEventType.ALERT_TRIGGERED,
+                title=f"Incident triggered: {incident.title}",
+                description=f"Severity: {incident.severity.value if hasattr(incident.severity, 'value') else incident.severity}",
+                source=incident.source or "unknown",
+                is_key_event=True,
+            )
+
+        # Acknowledged
+        ack_at = meta.get("acknowledged_at")
+        if ack_at:
+            from dateutil.parser import parse as parse_dt
+            try:
+                ack_dt = parse_dt(ack_at) if isinstance(ack_at, str) else ack_at
+                builder.add_event(
+                    timestamp=ack_dt,
+                    event_type=TimelineEventType.ALERT_ACKNOWLEDGED,
+                    title="Incident acknowledged",
+                    source=incident.source or "unknown",
+                    is_key_event=True,
+                )
+            except (ValueError, TypeError):
+                pass
+
+        # Resolved
+        resolved_at = meta.get("resolved_at")
+        if resolved_at:
+            from dateutil.parser import parse as parse_dt
+            try:
+                res_dt = parse_dt(resolved_at) if isinstance(resolved_at, str) else resolved_at
+                builder.add_event(
+                    timestamp=res_dt,
+                    event_type=TimelineEventType.ALERT_RESOLVED,
+                    title="Incident resolved",
+                    source=incident.source or "unknown",
+                    is_key_event=True,
+                )
+            except (ValueError, TypeError):
+                pass
+
+        # Context assembled (processed_at)
+        if incident.processed_at:
+            builder.add_event(
+                timestamp=incident.processed_at,
+                event_type=TimelineEventType.CONTEXT_ASSEMBLED,
+                title="Copilot context assembled",
+                source="incident-copilot",
+            )
+
+        events = sorted(builder.events, key=lambda e: e.timestamp)
 
     # Calculate duration
     start = incident.triggered_at
