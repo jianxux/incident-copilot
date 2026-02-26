@@ -1,4 +1,4 @@
-"""Dashboard config page route."""
+"""Dashboard settings page route."""
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse
@@ -9,81 +9,60 @@ from .common import router, templates
 
 @router.get("/config", response_class=HTMLResponse)
 async def config_page(request: Request):
-    """Configuration page showing API key status."""
+    """Settings page showing integration status and platform info."""
     settings = get_settings()
 
-    config_items = [
+    integrations = [
         {
-            "name": "PagerDuty API Key",
-            "value": settings.pagerduty_api_key,
-            "env_var": "PAGERDUTY_API_KEY",
-            "description": "Used to fetch incident details",
+            "name": "PagerDuty",
+            "icon": "bell",
+            "connected": bool(settings.pagerduty_api_key),
+            "description": "Alert ingestion and incident sync",
         },
         {
-            "name": "PagerDuty Webhook Secret",
-            "value": settings.pagerduty_webhook_secret,
-            "env_var": "PAGERDUTY_WEBHOOK_SECRET",
-            "description": "Validates webhook signatures",
+            "name": "GitHub",
+            "icon": "code",
+            "connected": bool(settings.github_token),
+            "description": "Recent deploys, commits, and PR context",
         },
         {
-            "name": "GitHub Token",
-            "value": settings.github_token,
-            "env_var": "GITHUB_TOKEN",
-            "description": "Fetches recent deploys and commits",
+            "name": "Datadog",
+            "icon": "chart",
+            "connected": bool(settings.datadog_api_key and settings.datadog_app_key),
+            "description": "Logs, metrics, and APM traces",
         },
         {
-            "name": "GitHub Organization",
-            "value": settings.github_org,
-            "env_var": "GITHUB_ORG",
-            "description": "Organization for repo lookups",
-            "show_full": True,
+            "name": "Slack",
+            "icon": "chat",
+            "connected": bool(settings.slack_bot_token),
+            "description": "Context card delivery and notifications",
         },
         {
-            "name": "Datadog API Key",
-            "value": settings.datadog_api_key,
-            "env_var": "DATADOG_API_KEY",
-            "description": "Fetches logs and metrics",
+            "name": "AI Engine",
+            "icon": "sparkles",
+            "connected": bool(settings.ai_service_url),
+            "description": "AI-powered analysis and verdicts",
         },
         {
-            "name": "Datadog App Key",
-            "value": settings.datadog_app_key,
-            "env_var": "DATADOG_APP_KEY",
-            "description": "Required for Datadog API access",
-        },
-        {
-            "name": "Datadog Site",
-            "value": settings.datadog_site,
-            "env_var": "DATADOG_SITE",
-            "description": "Datadog regional endpoint",
-            "show_full": True,
-        },
-        {
-            "name": "Slack Bot Token",
-            "value": settings.slack_bot_token,
-            "env_var": "SLACK_BOT_TOKEN",
-            "description": "Posts context cards to Slack",
-        },
-        {
-            "name": "Slack Default Channel",
-            "value": settings.slack_default_channel,
-            "env_var": "SLACK_DEFAULT_CHANNEL",
-            "description": "Default channel for notifications",
-            "show_full": True,
-        },
-        {
-            "name": "AI Service",
-            "value": "Connected" if settings.ai_service_url else "Not configured",
-            "env_var": "AI_SERVICE_URL",
-            "description": "External AI analysis service",
-            "show_full": True,
+            "name": "CloudWatch",
+            "icon": "cloud",
+            "connected": bool(settings.aws_region),
+            "description": "AWS logs and metrics",
         },
     ]
+
+    # Platform info
+    db_status = "Supabase" if settings.supabase_db_enabled else "In-memory"
+    auth_status = "Google OAuth" if settings.supabase_auth_enabled else "Demo mode"
 
     return templates.TemplateResponse(
         "config.html",
         {
             "request": request,
-            "config_items": config_items,
-            "page_title": "Configuration",
+            "integrations": integrations,
+            "version": "0.1.0",
+            "db_status": db_status,
+            "auth_status": auth_status,
+            "page_title": "Settings",
         },
     )
