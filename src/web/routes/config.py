@@ -1,5 +1,7 @@
 """Dashboard settings page route."""
 
+import os
+
 from fastapi import Request
 from fastapi.responses import HTMLResponse
 
@@ -40,7 +42,7 @@ async def config_page(request: Request):
         {
             "name": "AI Engine",
             "icon": "sparkles",
-            "connected": bool(settings.ai_service_url),
+            "connected": bool(os.environ.get("AI_SERVICE_URL")),
             "description": "AI-powered analysis and verdicts",
         },
         {
