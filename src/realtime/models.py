@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MessageType(StrEnum):
@@ -106,8 +106,7 @@ class ConnectionInfo(BaseModel):
     rate_limit_remaining: int = 100
     rate_limit_reset: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class AuthPayload(BaseModel):

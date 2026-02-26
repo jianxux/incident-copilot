@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class StatusPageProvider(StrEnum):
@@ -99,8 +99,7 @@ class StatusPageConfig(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class Component(BaseModel):
@@ -126,8 +125,7 @@ class Component(BaseModel):
     # Raw response for debugging
     raw_data: dict = Field(default_factory=dict)
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class StatusIncidentUpdate(BaseModel):
@@ -139,8 +137,7 @@ class StatusIncidentUpdate(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     display_at: datetime | None = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class StatusIncident(BaseModel):
@@ -185,8 +182,7 @@ class StatusIncident(BaseModel):
     # Raw response
     raw_data: dict = Field(default_factory=dict)
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ComponentStatusUpdate(BaseModel):
@@ -195,8 +191,7 @@ class ComponentStatusUpdate(BaseModel):
     component_id: str
     status: ComponentStatus
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class CreateIncidentRequest(BaseModel):
@@ -219,8 +214,7 @@ class CreateIncidentRequest(BaseModel):
         description="Link to internal incident",
     )
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class UpdateIncidentRequest(BaseModel):
@@ -232,5 +226,4 @@ class UpdateIncidentRequest(BaseModel):
     component_ids: list[str] | None = None
     component_status: ComponentStatus | None = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
