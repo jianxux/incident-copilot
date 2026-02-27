@@ -54,6 +54,7 @@ async def start_test_incident(
         severity=severity,
         triggered_at=triggered_at,
         tenant_id=tenant_id,
+        description="Synthetic test incident created by onboarding flow.",
     )
 
     incident = PagerDutyIncident(

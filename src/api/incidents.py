@@ -693,6 +693,7 @@ async def list_incidents(
         return {
             "id": item.incident_id,
             "title": item.title,
+            "description": item.description,
             "service": item.service_name,
             "severity": item.severity.value,
             "status": item.status,
