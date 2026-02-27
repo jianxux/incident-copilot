@@ -14,7 +14,7 @@ def test_dashboard_config_page_renders_without_template_errors():
         response = client.get("/dashboard/config")
 
     assert response.status_code == 200
-    assert "Configuration" in response.text
+    assert "Settings" in response.text
 
 
 def test_dashboard_incidents_page_renders_without_template_errors():
