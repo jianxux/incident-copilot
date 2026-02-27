@@ -32,49 +32,34 @@ class PlanInfo(BaseModel):
     features: list[str]
 
 
-# Plan definitions
+# Plan definitions — three user-facing tiers
 PLANS = {
     PlanTier.FREE: PlanInfo(
         id="free",
         name="Free",
         price_monthly=0,
-        max_incidents=50,
+        max_incidents=5,
         max_users=3,
-        max_integrations=3,
+        max_integrations=1,
         features=[
             "Basic context assembly",
             "Slack notifications",
-            "GitHub deployments",
             "Community support",
-        ],
-    ),
-    PlanTier.STARTER: PlanInfo(
-        id="starter",
-        name="Starter",
-        price_monthly=49,
-        max_incidents=500,
-        max_users=10,
-        max_integrations=5,
-        features=[
-            "Everything in Free",
-            "AI log summaries",
-            "Past incident search",
-            "Email support",
-            "7-day history",
         ],
     ),
     PlanTier.PRO: PlanInfo(
         id="pro",
         name="Pro",
-        price_monthly=149,
-        max_incidents=2000,
+        price_monthly=49,
+        max_incidents=-1,  # Unlimited
         max_users=50,
-        max_integrations=10,
+        max_integrations=-1,  # All integrations
         features=[
-            "Everything in Starter",
-            "Runbook automation",
+            "Everything in Free",
+            "Unlimited incidents",
+            "All integrations",
+            "AI verdicts",
             "Advanced analytics",
-            "SSO/SAML",
             "Priority support",
             "30-day history",
         ],
@@ -88,10 +73,10 @@ PLANS = {
         max_integrations=-1,
         features=[
             "Everything in Pro",
-            "Unlimited everything",
-            "Custom integrations",
-            "Dedicated support",
+            "SSO / SAML",
+            "Audit logs",
             "SLA guarantees",
+            "Dedicated support",
             "On-premise option",
         ],
     ),

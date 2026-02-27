@@ -372,3 +372,45 @@ async def analytics_page(request: Request):
             "page_title": "Analytics",
         },
     )
+
+
+@router.get("/billing", response_class=HTMLResponse)
+async def billing_page(
+    request: Request,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
+    """Billing and pricing page."""
+    from ...billing.routes import PLANS
+    from ...auth.models import PlanTier
+
+    # Current plan — default to free
+    current_plan_id = "free"
+    current_plan = PLANS[PlanTier.FREE]
+
+    plans_list = [
+        {
+            "id": p.id,
+            "name": p.name,
+            "price_monthly": p.price_monthly,
+            "max_incidents": p.max_incidents,
+            "max_users": p.max_users,
+            "max_integrations": p.max_integrations,
+            "features": p.features,
+        }
+        for p in PLANS.values()
+    ]
+
+    return templates.TemplateResponse(
+        "billing.html",
+        {
+            "request": request,
+            "plans": plans_list,
+            "current_plan": current_plan,
+            "current_plan_id": current_plan_id,
+            "has_subscription": False,
+            "usage": {
+                "incidents_this_month": 0,
+            },
+            "page_title": "Billing",
+        },
+    )
