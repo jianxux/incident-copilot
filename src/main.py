@@ -18,6 +18,7 @@ from .api import (
     health_router,
     incidents_router,
     insights_router,
+    predictive_insights_router,
     latency_router,
     memory_advanced_router,
     memory_feedback_router,
@@ -43,9 +44,11 @@ from .auth.oauth_slack import router as slack_oauth_router
 from .auth.routes import router as auth_router
 from .auth.sso.routes import router as sso_router
 from .auth.supabase_auth import router as supabase_auth_router
+from .actions.routes import router as actions_router
 from .billing.routes import router as billing_router
 from .config import get_settings
 from .copilot.adapters.slack_adapter import router as slack_copilot_router
+from .copilot.adapters.teams_adapter import router as teams_copilot_router
 from .copilot.adapters.web_adapter import router as web_copilot_router
 from .metrics import HEALTH_STATUS, set_app_info
 from .metrics.middleware import PrometheusMiddleware
@@ -270,10 +273,12 @@ def create_app() -> FastAPI:
     app.include_router(oncall_handoff_router)
     app.include_router(copilot_router)
     app.include_router(slack_copilot_router)
+    app.include_router(teams_copilot_router)
     app.include_router(web_copilot_router)
     app.include_router(memory_advanced_router)
     app.include_router(service_catalog_router)
     app.include_router(search_router, prefix="/api")
+    app.include_router(actions_router)
     app.include_router(landing_router)
     app.include_router(web_router)
 
