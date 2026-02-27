@@ -155,6 +155,9 @@ class Settings(BaseSettings):
 
     # Microsoft Teams
     teams_webhook_url: str = Field(default="", description="Teams Incoming Webhook URL")
+    teams_app_id: str = Field(default="", description="Teams Bot Framework app/client ID")
+    teams_app_password: str = Field(default="", description="Teams Bot Framework app password/secret")
+    teams_bot_id: str = Field(default="", description="Teams bot user ID (to ignore own messages)")
 
     # Notification Provider (slack | teams | both)
     notification_provider: str = Field(
