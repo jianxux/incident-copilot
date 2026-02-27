@@ -1,6 +1,6 @@
 'use client';
 import { mockAnalytics } from '@/lib/mock-data';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, PieLabelRenderProps } from 'recharts';
 
 const COLORS = ['#dc2626', '#ea580c', '#eab308', '#22c55e'];
 
@@ -31,7 +31,7 @@ export default function AnalyticsPage() {
           <h3 className="font-serif text-lg mb-4">Incidents by Severity</h3>
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
-              <Pie data={incidents_by_severity} dataKey="count" nameKey="severity" cx="50%" cy="50%" outerRadius={90} label={({ severity, count }) => `${severity}: ${count}`}>
+              <Pie data={incidents_by_severity} dataKey="count" nameKey="severity" cx="50%" cy="50%" outerRadius={90} label={(props: PieLabelRenderProps) => `${props.name}: ${props.value}`}>
                 {incidents_by_severity.map((_, i) => (
                   <Cell key={i} fill={COLORS[i % COLORS.length]} />
                 ))}
