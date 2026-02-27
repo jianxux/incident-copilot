@@ -9,6 +9,7 @@ from .email import router as email_router
 from .health import router as health_router
 from .incidents import router as incidents_router
 from .insights import router as insights_router
+from ..insights.routes import router as predictive_insights_router
 from .latency import router as latency_router
 from .memory_advanced import router as memory_advanced_router
 from .memory_feedback import feedback_router as ai_feedback_router
@@ -42,4 +43,5 @@ __all__ = [
     "onboarding_router",
     "memory_advanced_router",
     "latency_router",
+    "predictive_insights_router",
 ]

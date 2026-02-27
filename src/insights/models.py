@@ -273,3 +273,145 @@ class AnalysisResult(BaseModel):
     insights: list[Insight] = Field(default_factory=list)
     service_dependencies: ServiceDependencyMap | None = None
     errors: list[str] = Field(default_factory=list)
+
+
+# --- Predictive Models ---
+
+
+class MetricDataPoint(BaseModel):
+    """A single metric data point."""
+
+    timestamp: datetime
+    value: float
+    metric_name: str
+    service_name: str
+
+
+class MetricTrend(BaseModel):
+    """Detected trend in a metric time series."""
+
+    metric_name: str
+    service_name: str
+    direction: str  # "increasing", "decreasing", "stable"
+    slope: float
+    r_squared: float
+    current_value: float
+    predicted_value_1h: float
+    predicted_value_24h: float
+    breach_threshold: float | None = None
+    estimated_breach_time: datetime | None = None
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class ServiceHealthScore(BaseModel):
+    """Composite health score for a service."""
+
+    service_name: str
+    overall_score: float = Field(ge=0.0, le=100.0)
+    incident_frequency_score: float = Field(ge=0.0, le=100.0)
+    severity_score: float = Field(ge=0.0, le=100.0)
+    mttr_score: float = Field(ge=0.0, le=100.0)
+    trend_score: float = Field(ge=0.0, le=100.0)
+    recent_incidents: int
+    assessed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class EarlyWarning(BaseModel):
+    """An early warning about potential issues."""
+
+    warning_id: str
+    warning_type: str  # "health_degradation", "metric_breach", "pattern_acceleration"
+    severity: Severity
+    title: str
+    description: str
+    service_name: str
+    predicted_impact: str
+    recommended_actions: list[str] = Field(default_factory=list)
+    confidence: float = Field(ge=0.0, le=1.0)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime | None = None
+    metadata: dict = Field(default_factory=dict)
+
+
+# --- Deployment Risk Models ---
+
+
+class DeploymentRiskScore(BaseModel):
+    """Risk score for a deployment."""
+
+    deployment_id: str
+    service_name: str
+    overall_risk: float = Field(ge=0.0, le=100.0)
+    risk_level: str  # "low", "medium", "high", "critical"
+    factors: list["RiskFactor"] = Field(default_factory=list)
+    recommended_actions: list[str] = Field(default_factory=list)
+    assessed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class RiskFactor(BaseModel):
+    """A factor contributing to deployment risk."""
+
+    name: str
+    score: float = Field(ge=0.0, le=100.0)
+    weight: float = Field(ge=0.0, le=1.0)
+    description: str
+    details: dict = Field(default_factory=dict)
+
+
+class DeploymentInfo(BaseModel):
+    """Information about a deployment for risk assessment."""
+
+    deployment_id: str
+    service_name: str
+    services_touched: list[str] = Field(default_factory=list)
+    files_changed: int = 0
+    lines_added: int = 0
+    lines_removed: int = 0
+    deploy_time: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    author: str | None = None
+    is_rollback: bool = False
+
+
+# --- Reliability Feed Models ---
+
+
+class ReliabilityLesson(BaseModel):
+    """A lesson learned from incidents."""
+
+    lesson_id: str
+    service_name: str
+    title: str
+    description: str
+    source_incident_ids: list[str] = Field(default_factory=list)
+    category: str  # "prevention", "detection", "response", "recovery"
+    impact_level: Severity
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class ShiftLeftReport(BaseModel):
+    """Report suggesting preventive measures for dev teams."""
+
+    report_id: str
+    service_name: str
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    period_days: int
+    total_incidents: int
+    preventable_incidents: int
+    top_categories: list[tuple[str, int]] = Field(default_factory=list)
+    lessons: list[ReliabilityLesson] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+
+
+class ReliabilityDigest(BaseModel):
+    """Exportable reliability digest for a team/service."""
+
+    digest_id: str
+    service_name: str | None = None
+    period_start: datetime
+    period_end: datetime
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    health_score: ServiceHealthScore | None = None
+    shift_left_report: ShiftLeftReport | None = None
+    early_warnings: list[EarlyWarning] = Field(default_factory=list)
+    lessons: list[ReliabilityLesson] = Field(default_factory=list)
+    summary: str | None = None
