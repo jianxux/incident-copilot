@@ -103,31 +103,6 @@ async def service_catalog_page(request: Request):
     )
 
 
-@router.get("/billing", response_class=HTMLResponse)
-async def billing_page(request: Request):
-    """Billing and subscription management page."""
-    return templates.TemplateResponse(
-        "billing.html",
-        {
-            "request": request,
-            "page_title": "Billing",
-        },
-    )
-
-
-@router.get("/billing/success", response_class=HTMLResponse)
-async def billing_success_page(request: Request):
-    """Billing success page after checkout."""
-    return templates.TemplateResponse(
-        "billing.html",
-        {
-            "request": request,
-            "page_title": "Billing",
-            "success": True,
-        },
-    )
-
-
 @router.get("/handoff", response_class=HTMLResponse)
 async def handoff_page(request: Request):
     """On-call handoff dashboard page."""
