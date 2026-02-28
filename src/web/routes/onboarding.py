@@ -12,13 +12,13 @@ from ...integrations.slack_manifest import generate_manifest, generate_manifest_
 from .common import logger, router, tenant_slug_from_auth
 
 
-@router.get("/api/integrations/slack/manifest")
+@router.get("/integrations/slack/manifest")
 async def slack_manifest():
     """Return the Slack App Manifest JSON for this deployment."""
     return generate_manifest(get_settings().app_url)
 
 
-@router.get("/api/integrations/slack/install")
+@router.get("/integrations/slack/install")
 async def slack_install():
     """Redirect to Slack's app creation page with the manifest pre-filled."""
     return RedirectResponse(url=generate_manifest_url(get_settings().app_url))
