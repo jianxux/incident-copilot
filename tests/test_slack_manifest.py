@@ -92,7 +92,7 @@ class TestGenerateManifestUrl:
 class TestManifestEndpoints:
     @pytest.mark.asyncio
     async def test_manifest_endpoint(self):
-        """Test GET /api/integrations/slack/manifest returns manifest JSON."""
+        """Test GET /dashboard/integrations/slack/manifest returns manifest JSON."""
         try:
             import httpx
             from src.web.app import create_app
@@ -104,7 +104,7 @@ class TestManifestEndpoints:
             transport=httpx.ASGITransport(app=app),
             base_url="http://test",
         ) as client:
-            resp = await client.get("/api/integrations/slack/manifest")
+            resp = await client.get("/dashboard/integrations/slack/manifest")
             # May get 401 if auth required — that's fine, endpoint exists
             assert resp.status_code in (200, 401, 403)
             if resp.status_code == 200:
@@ -113,7 +113,7 @@ class TestManifestEndpoints:
 
     @pytest.mark.asyncio
     async def test_install_redirect(self):
-        """Test GET /api/integrations/slack/install redirects."""
+        """Test GET /dashboard/integrations/slack/install redirects."""
         try:
             import httpx
             from src.web.app import create_app
@@ -126,7 +126,7 @@ class TestManifestEndpoints:
             base_url="http://test",
             follow_redirects=False,
         ) as client:
-            resp = await client.get("/api/integrations/slack/install")
+            resp = await client.get("/dashboard/integrations/slack/install")
             assert resp.status_code in (307, 401, 403)
             if resp.status_code == 307:
                 assert "api.slack.com" in resp.headers["location"]
