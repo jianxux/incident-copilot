@@ -6,200 +6,262 @@
     <p class="text-muted">Import your services, teams, schedules, escalation policies, and alert history from Opsgenie.</p>
 </div>
 
-<div x-data="migrationWizard()" x-init="init()">
-
-    <!-- Step indicators -->
-    <div class="flex items-center mb-8">
-        <template x-for="(label, i) in ['Connect', 'Preview', 'Import', 'Results']" :key="i">
-            <div class="flex items-center">
-                <div class="flex items-center gap-2">
-                    <div :class="step > i ? 'bg-green-500 text-white' : step === i ? 'bg-brand text-white' : 'bg-slate-200 text-slate-500'"
-                         class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors" x-text="i + 1"></div>
-                    <span class="text-sm font-medium" :class="step >= i ? 'text-slate-900' : 'text-slate-400'" x-text="label"></span>
-                </div>
-                <div x-show="i < 3" class="w-12 h-px mx-3" :class="step > i ? 'bg-green-500' : 'bg-slate-200'"></div>
-            </div>
-        </template>
+<!-- Step indicators -->
+<div id="step-indicators" class="flex items-center mb-8">
+    <div class="flex items-center">
+        <div id="ind-0" class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-brand text-white">1</div>
+        <span id="ind-label-0" class="text-sm font-medium text-slate-900 ml-2">Connect</span>
     </div>
-
-    <!-- Step 1: API Key -->
-    <div x-show="step === 0" class="bg-white rounded-xl border border-slate-200 card-shadow p-6">
-        <h2 class="text-lg font-bold text-slate-900 mb-1">Connect to Opsgenie</h2>
-        <p class="text-muted text-sm mb-5">Enter your Opsgenie API key. You can find it in Opsgenie → Settings → API key management.</p>
-        <div class="flex gap-3">
-            <input x-model="apiKey" type="password" placeholder="Opsgenie API Key"
-                   class="flex-1 border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand" />
-            <button @click="validate()" :disabled="!apiKey || validating"
-                    class="bg-brand hover:bg-brand/90 disabled:opacity-50 text-white px-6 py-2.5 rounded-lg font-medium transition-colors">
-                <span x-show="!validating">Validate</span>
-                <span x-show="validating"><i class="fa fa-spinner fa-spin"></i> Checking…</span>
-            </button>
-        </div>
-        <p x-show="error" x-cloak class="text-red-600 text-sm mt-3" x-text="error"></p>
+    <div class="w-12 h-px mx-3 bg-slate-200" id="line-0"></div>
+    <div class="flex items-center">
+        <div id="ind-1" class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-slate-200 text-slate-500">2</div>
+        <span id="ind-label-1" class="text-sm font-medium text-slate-400 ml-2">Preview</span>
     </div>
-
-    <!-- Step 2: Preview -->
-    <div x-show="step === 1" x-cloak class="bg-white rounded-xl border border-slate-200 card-shadow p-6">
-        <h2 class="text-lg font-bold text-slate-900 mb-1">Preview Entities</h2>
-        <p class="text-muted text-sm mb-5">Select which entities to import from Opsgenie.</p>
-        <div class="space-y-2">
-            <template x-for="p in previews" :key="p.entity_type">
-                <label class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
-                    <input type="checkbox" :value="p.entity_type" x-model="selectedEntities"
-                           class="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />
-                    <div class="flex-1">
-                        <span class="font-medium text-slate-900 capitalize" x-text="p.entity_type"></span>
-                        <span class="text-muted text-sm ml-1" x-text="'(' + p.count + ' found)'"></span>
-                        <div x-show="p.sample_names.length" class="text-xs text-slate-400 mt-0.5" x-text="p.sample_names.join(', ')"></div>
-                    </div>
-                </label>
-            </template>
-        </div>
-        <div class="flex gap-3 mt-6">
-            <button @click="step = 0" class="px-4 py-2.5 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium transition-colors">Back</button>
-            <button @click="startMigration()" :disabled="!selectedEntities.length"
-                    class="px-6 py-2.5 bg-brand hover:bg-brand/90 disabled:opacity-50 rounded-lg text-white font-medium transition-colors">Start Import</button>
-        </div>
+    <div class="w-12 h-px mx-3 bg-slate-200" id="line-1"></div>
+    <div class="flex items-center">
+        <div id="ind-2" class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-slate-200 text-slate-500">3</div>
+        <span id="ind-label-2" class="text-sm font-medium text-slate-400 ml-2">Import</span>
     </div>
-
-    <!-- Step 3: Progress -->
-    <div x-show="step === 2" x-cloak class="bg-white rounded-xl border border-slate-200 card-shadow p-6">
-        <h2 class="text-lg font-bold text-slate-900 mb-4">Importing…</h2>
-        <div class="w-full bg-slate-100 rounded-full h-3 mb-3">
-            <div class="bg-brand h-3 rounded-full transition-all duration-500" :style="'width:' + progress + '%'"></div>
-        </div>
-        <p class="text-muted text-sm" x-text="Math.round(progress) + '% complete'"></p>
-        <button @click="cancelMigration()" class="mt-5 px-4 py-2 border border-red-300 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors">Cancel</button>
+    <div class="w-12 h-px mx-3 bg-slate-200" id="line-2"></div>
+    <div class="flex items-center">
+        <div id="ind-3" class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-slate-200 text-slate-500">3</div>
+        <span id="ind-label-3" class="text-sm font-medium text-slate-400 ml-2">Results</span>
     </div>
+</div>
 
-    <!-- Step 4: Results -->
-    <div x-show="step === 3" x-cloak class="bg-white rounded-xl border border-slate-200 card-shadow p-6">
-        <h2 class="text-lg font-bold mb-4">
-            <span x-show="jobStatus === 'completed'" class="text-green-600"><i class="fa fa-check-circle"></i> Migration Complete</span>
-            <span x-show="jobStatus === 'failed'" class="text-red-600"><i class="fa fa-times-circle"></i> Migration Failed</span>
-            <span x-show="jobStatus === 'cancelled'" class="text-amber-600"><i class="fa fa-ban"></i> Migration Cancelled</span>
-        </h2>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="border-b border-slate-200">
-                        <th class="text-left py-2.5 text-slate-500 font-medium">Entity</th>
-                        <th class="text-right py-2.5 text-slate-500 font-medium">Total</th>
-                        <th class="text-right py-2.5 text-slate-500 font-medium">Succeeded</th>
-                        <th class="text-right py-2.5 text-slate-500 font-medium">Failed</th>
-                        <th class="text-right py-2.5 text-slate-500 font-medium">Skipped</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <template x-for="r in results" :key="r.entity_type">
-                        <tr class="border-b border-slate-100">
-                            <td class="py-2.5 font-medium text-slate-900 capitalize" x-text="r.entity_type"></td>
-                            <td class="py-2.5 text-right text-slate-700" x-text="r.total"></td>
-                            <td class="py-2.5 text-right text-green-600 font-medium" x-text="r.succeeded"></td>
-                            <td class="py-2.5 text-right text-red-600 font-medium" x-text="r.failed"></td>
-                            <td class="py-2.5 text-right text-slate-400" x-text="r.skipped"></td>
-                        </tr>
-                    </template>
-                </tbody>
-            </table>
-        </div>
-        <button @click="reset()" class="mt-6 px-4 py-2.5 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium transition-colors">Start New Migration</button>
+<!-- Step 1: Connect -->
+<div id="step-0" class="bg-white rounded-xl border border-slate-200 card-shadow p-6">
+    <h2 class="text-lg font-bold text-slate-900 mb-1">Connect to Opsgenie</h2>
+    <p class="text-muted text-sm mb-5">Enter your Opsgenie API key. You can find it in Opsgenie → Settings → API key management.</p>
+    <div class="flex gap-3">
+        <input id="api-key-input" type="password" placeholder="Opsgenie API Key"
+               class="flex-1 border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand" />
+        <button id="validate-btn" onclick="validateKey()"
+                class="bg-brand hover:bg-brand/90 disabled:opacity-50 text-white px-6 py-2.5 rounded-lg font-medium transition-colors">
+            Validate
+        </button>
     </div>
+    <p id="error-msg" class="text-red-600 text-sm mt-3" style="display:none"></p>
+</div>
 
+<!-- Step 2: Preview -->
+<div id="step-1" class="bg-white rounded-xl border border-slate-200 card-shadow p-6" style="display:none">
+    <h2 class="text-lg font-bold text-slate-900 mb-1">Preview Entities</h2>
+    <p class="text-muted text-sm mb-5">Select which entities to import from Opsgenie.</p>
+    <div id="entity-list" class="space-y-2"></div>
+    <div class="flex gap-3 mt-6">
+        <button onclick="goToStep(0)" class="px-4 py-2.5 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium transition-colors">Back</button>
+        <button id="start-import-btn" onclick="startMigration()"
+                class="px-6 py-2.5 bg-brand hover:bg-brand/90 disabled:opacity-50 rounded-lg text-white font-medium transition-colors">Start Import</button>
+    </div>
+</div>
+
+<!-- Step 3: Importing -->
+<div id="step-2" class="bg-white rounded-xl border border-slate-200 card-shadow p-6" style="display:none">
+    <h2 class="text-lg font-bold text-slate-900 mb-4">Importing…</h2>
+    <div class="w-full bg-slate-100 rounded-full h-3 mb-3">
+        <div id="progress-bar" class="bg-brand h-3 rounded-full transition-all duration-500" style="width:0%"></div>
+    </div>
+    <p id="progress-text" class="text-muted text-sm">0% complete</p>
+    <button onclick="cancelMigration()" class="mt-5 px-4 py-2 border border-red-300 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors">Cancel</button>
+</div>
+
+<!-- Step 4: Results -->
+<div id="step-3" class="bg-white rounded-xl border border-slate-200 card-shadow p-6" style="display:none">
+    <h2 id="result-heading" class="text-lg font-bold mb-4"></h2>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-slate-200">
+                    <th class="text-left py-2.5 text-slate-500 font-medium">Entity</th>
+                    <th class="text-right py-2.5 text-slate-500 font-medium">Total</th>
+                    <th class="text-right py-2.5 text-slate-500 font-medium">Succeeded</th>
+                    <th class="text-right py-2.5 text-slate-500 font-medium">Failed</th>
+                    <th class="text-right py-2.5 text-slate-500 font-medium">Skipped</th>
+                </tr>
+            </thead>
+            <tbody id="results-body"></tbody>
+        </table>
+    </div>
+    <button onclick="resetWizard()" class="mt-6 px-4 py-2.5 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium transition-colors">Start New Migration</button>
 </div>
 
 <script>
-function migrationWizard() {
-    return {
-        step: 0,
-        apiKey: '',
-        validating: false,
-        error: '',
-        previews: [],
-        selectedEntities: [],
-        jobId: null,
-        progress: 0,
-        jobStatus: '',
-        results: [],
-        pollTimer: null,
+(function() {
+    let currentStep = 0;
+    let apiKey = '';
+    let previews = [];
+    let selectedEntities = [];
+    let jobId = null;
+    let pollTimer = null;
 
-        init() {},
+    window.goToStep = function(step) {
+        // Hide all steps
+        for (let i = 0; i < 4; i++) {
+            document.getElementById('step-' + i).style.display = 'none';
+        }
+        // Show target step
+        document.getElementById('step-' + step).style.display = 'block';
+        currentStep = step;
 
-        async validate() {
-            this.validating = true;
-            this.error = '';
-            try {
-                const res = await fetch('/api/migrations/opsgenie/validate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ api_key: this.apiKey })
-                });
-                const data = await res.json();
-                if (!res.ok) { this.error = data.detail || 'Validation failed'; return; }
-                this.previews = data.previews || [];
-                this.selectedEntities = this.previews.map(p => p.entity_type);
-                this.step = 1;
-            } catch (e) {
-                this.error = 'Connection error: ' + e.message;
-            } finally {
-                this.validating = false;
+        // Update indicators
+        for (let i = 0; i < 4; i++) {
+            const ind = document.getElementById('ind-' + i);
+            const label = document.getElementById('ind-label-' + i);
+            if (i < step) {
+                ind.className = 'w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-green-500 text-white';
+                label.className = 'text-sm font-medium text-slate-900 ml-2';
+            } else if (i === step) {
+                ind.className = 'w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-brand text-white';
+                label.className = 'text-sm font-medium text-slate-900 ml-2';
+            } else {
+                ind.className = 'w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-slate-200 text-slate-500';
+                label.className = 'text-sm font-medium text-slate-400 ml-2';
             }
-        },
-
-        async startMigration() {
-            this.step = 2;
-            this.progress = 0;
-            try {
-                const res = await fetch('/api/migrations/opsgenie/start', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ api_key: this.apiKey, entities: this.selectedEntities })
-                });
-                const data = await res.json();
-                this.jobId = data.job_id;
-                this.pollProgress();
-            } catch (e) {
-                this.error = 'Failed to start migration: ' + e.message;
-                this.step = 1;
+            if (i < 3) {
+                document.getElementById('line-' + i).className = i < step ? 'w-12 h-px mx-3 bg-green-500' : 'w-12 h-px mx-3 bg-slate-200';
             }
-        },
-
-        pollProgress() {
-            this.pollTimer = setInterval(async () => {
-                try {
-                    const res = await fetch('/api/migrations/' + this.jobId + '/status');
-                    const data = await res.json();
-                    this.progress = data.progress || 0;
-                    if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
-                        clearInterval(this.pollTimer);
-                        this.jobStatus = data.status;
-                        this.results = data.results || [];
-                        this.step = 3;
-                    }
-                } catch (e) {
-                    clearInterval(this.pollTimer);
-                }
-            }, 1500);
-        },
-
-        async cancelMigration() {
-            if (this.jobId) {
-                await fetch('/api/migrations/' + this.jobId + '/cancel', { method: 'POST' });
-            }
-        },
-
-        reset() {
-            this.step = 0;
-            this.apiKey = '';
-            this.error = '';
-            this.previews = [];
-            this.selectedEntities = [];
-            this.jobId = null;
-            this.progress = 0;
-            this.jobStatus = '';
-            this.results = [];
         }
     };
-}
+
+    window.validateKey = async function() {
+        apiKey = document.getElementById('api-key-input').value;
+        if (!apiKey) return;
+
+        const btn = document.getElementById('validate-btn');
+        const errMsg = document.getElementById('error-msg');
+        btn.disabled = true;
+        btn.textContent = 'Validating…';
+        errMsg.style.display = 'none';
+
+        try {
+            const res = await fetch('/api/migrations/opsgenie/validate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: apiKey })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                errMsg.textContent = data.detail || 'Validation failed';
+                errMsg.style.display = 'block';
+                return;
+            }
+            previews = data.previews || [];
+            selectedEntities = previews.map(p => p.entity_type);
+            renderPreviews();
+            goToStep(1);
+        } catch (e) {
+            errMsg.textContent = 'Connection error: ' + e.message;
+            errMsg.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Validate';
+        }
+    };
+
+    function renderPreviews() {
+        const list = document.getElementById('entity-list');
+        list.innerHTML = previews.map(p => `
+            <label class="flex items-center gap-3 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                <input type="checkbox" value="${p.entity_type}" checked
+                       onchange="toggleEntity('${p.entity_type}', this.checked)"
+                       class="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />
+                <div class="flex-1">
+                    <span class="font-medium text-slate-900 capitalize">${p.entity_type}</span>
+                    <span class="text-muted text-sm ml-1">(${p.count} found)</span>
+                    ${p.sample_names && p.sample_names.length ? `<div class="text-xs text-slate-400 mt-0.5">${p.sample_names.join(', ')}</div>` : ''}
+                </div>
+            </label>
+        `).join('');
+    }
+
+    window.toggleEntity = function(type, checked) {
+        if (checked && !selectedEntities.includes(type)) {
+            selectedEntities.push(type);
+        } else if (!checked) {
+            selectedEntities = selectedEntities.filter(t => t !== type);
+        }
+        document.getElementById('start-import-btn').disabled = selectedEntities.length === 0;
+    };
+
+    window.startMigration = async function() {
+        goToStep(2);
+        try {
+            const res = await fetch('/api/migrations/opsgenie/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: apiKey, entities: selectedEntities })
+            });
+            const data = await res.json();
+            jobId = data.job_id;
+            pollProgress();
+        } catch (e) {
+            goToStep(1);
+        }
+    };
+
+    function pollProgress() {
+        pollTimer = setInterval(async () => {
+            try {
+                const res = await fetch('/api/migrations/' + jobId + '/status');
+                const data = await res.json();
+                const progress = data.progress || 0;
+                document.getElementById('progress-bar').style.width = progress + '%';
+                document.getElementById('progress-text').textContent = Math.round(progress) + '% complete';
+
+                if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
+                    clearInterval(pollTimer);
+                    showResults(data.status, data.results || []);
+                }
+            } catch (e) {
+                clearInterval(pollTimer);
+            }
+        }, 1500);
+    }
+
+    window.cancelMigration = async function() {
+        if (jobId) {
+            await fetch('/api/migrations/' + jobId + '/cancel', { method: 'POST' });
+        }
+    };
+
+    function showResults(status, results) {
+        const heading = document.getElementById('result-heading');
+        if (status === 'completed') {
+            heading.innerHTML = '<span class="text-green-600"><i class="fa fa-check-circle"></i> Migration Complete</span>';
+        } else if (status === 'failed') {
+            heading.innerHTML = '<span class="text-red-600"><i class="fa fa-times-circle"></i> Migration Failed</span>';
+        } else {
+            heading.innerHTML = '<span class="text-amber-600"><i class="fa fa-ban"></i> Migration Cancelled</span>';
+        }
+
+        const tbody = document.getElementById('results-body');
+        tbody.innerHTML = results.map(r => `
+            <tr class="border-b border-slate-100">
+                <td class="py-2.5 font-medium text-slate-900 capitalize">${r.entity_type}</td>
+                <td class="py-2.5 text-right text-slate-700">${r.total}</td>
+                <td class="py-2.5 text-right text-green-600 font-medium">${r.succeeded}</td>
+                <td class="py-2.5 text-right text-red-600 font-medium">${r.failed}</td>
+                <td class="py-2.5 text-right text-slate-400">${r.skipped}</td>
+            </tr>
+        `).join('');
+
+        goToStep(3);
+    }
+
+    window.resetWizard = function() {
+        document.getElementById('api-key-input').value = '';
+        document.getElementById('error-msg').style.display = 'none';
+        document.getElementById('entity-list').innerHTML = '';
+        document.getElementById('progress-bar').style.width = '0%';
+        document.getElementById('progress-text').textContent = '0% complete';
+        document.getElementById('results-body').innerHTML = '';
+        apiKey = '';
+        previews = [];
+        selectedEntities = [];
+        jobId = null;
+        goToStep(0);
+    };
+})();
 </script>
 {% endblock %}
