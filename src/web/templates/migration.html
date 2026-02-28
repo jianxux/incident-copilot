@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-8 px-4">
+    <h1 class="text-3xl font-bold mb-2">Opsgenie Migration</h1>
+    <p class="text-gray-400 mb-8">Import your services, teams, schedules, escalation policies, and alert history from Opsgenie in one click.</p>
+
+    <!-- Step indicators -->
+    <div class="flex items-center mb-8 gap-2">
+        <template x-for="(label, i) in ['Connect', 'Preview', 'Import', 'Results']" :key="i">
+            <div class="flex items-center gap-2">
+                <div :class="step > i ? 'bg-green-500' : step === i ? 'bg-blue-500' : 'bg-gray-600'" class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold transition-colors" x-text="i + 1"></div>
+                <span class="text-sm text-gray-300 mr-4" x-text="label"></span>
+            </div>
+        </template>
+    </div>
+
+    <div x-data="migrationWizard()" x-init="init()">
+
+        <!-- Step 1: API Key -->
+        <div x-show="step === 0" class="bg-gray-800 rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">Connect to Opsgenie</h2>
+            <p class="text-gray-400 text-sm mb-4">Enter your Opsgenie API key. You can find it in Opsgenie → Settings → API key management.</p>
+            <div class="flex gap-3">
+                <input x-model="apiKey" type="password" placeholder="Opsgenie API Key" class="flex-1 bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white focus:outline-none focus:border-blue-500" />
+                <button @click="validate()" :disabled="!apiKey || validating" class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-6 py-2 rounded font-medium">
+                    <span x-show="!validating">Validate</span>
+                    <span x-show="validating"><i class="fa fa-spinner fa-spin"></i> Checking...</span>
+                </button>
+            </div>
+            <p x-show="error" class="text-red-400 text-sm mt-3" x-text="error"></p>
+        </div>
+
+        <!-- Step 2: Preview -->
+        <div x-show="step === 1" class="bg-gray-800 rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">Preview Entities</h2>
+            <p class="text-gray-400 text-sm mb-4">Select which entities to import from Opsgenie.</p>
+            <div class="space-y-3">
+                <template x-for="p in previews" :key="p.entity_type">
+                    <label class="flex items-center gap-3 p-3 bg-gray-700 rounded cursor-pointer hover:bg-gray-650">
+                        <input type="checkbox" :value="p.entity_type" x-model="selectedEntities" class="w-4 h-4" />
+                        <div class="flex-1">
+                            <span class="font-medium capitalize" x-text="p.entity_type"></span>
+                            <span class="text-gray-400 ml-2" x-text="'(' + p.count + ' found)'"></span>
+                            <div x-show="p.sample_names.length" class="text-xs text-gray-500 mt-1" x-text="p.sample_names.join(', ')"></div>
+                        </div>
+                    </label>
+                </template>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button @click="step = 0" class="px-4 py-2 bg-gray-600 rounded text-white">Back</button>
+                <button @click="startMigration()" :disabled="!selectedEntities.length" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded text-white font-medium">Start Import</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Progress -->
+        <div x-show="step === 2" class="bg-gray-800 rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">Importing...</h2>
+            <div class="w-full bg-gray-700 rounded-full h-4 mb-4">
+                <div class="bg-blue-500 h-4 rounded-full transition-all" :style="'width:' + progress + '%'"></div>
+            </div>
+            <p class="text-gray-400 text-sm" x-text="Math.round(progress) + '% complete'"></p>
+            <button @click="cancelMigration()" class="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-white text-sm">Cancel</button>
+        </div>
+
+        <!-- Step 4: Results -->
+        <div x-show="step === 3" class="bg-gray-800 rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">
+                <span x-show="jobStatus === 'completed'" class="text-green-400"><i class="fa fa-check-circle"></i> Migration Complete</span>
+                <span x-show="jobStatus === 'failed'" class="text-red-400"><i class="fa fa-times-circle"></i> Migration Failed</span>
+                <span x-show="jobStatus === 'cancelled'" class="text-yellow-400"><i class="fa fa-ban"></i> Migration Cancelled</span>
+            </h2>
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-gray-400 border-b border-gray-700">
+                        <th class="text-left py-2">Entity</th>
+                        <th class="text-right py-2">Total</th>
+                        <th class="text-right py-2">Succeeded</th>
+                        <th class="text-right py-2">Failed</th>
+                        <th class="text-right py-2">Skipped</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="(r, key) in results" :key="key">
+                        <tr class="border-b border-gray-700">
+                            <td class="py-2 capitalize" x-text="key"></td>
+                            <td class="text-right" x-text="r.total"></td>
+                            <td class="text-right text-green-400" x-text="r.succeeded"></td>
+                            <td class="text-right text-red-400" x-text="r.failed"></td>
+                            <td class="text-right text-gray-400" x-text="r.skipped"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+            <button @click="reset()" class="mt-6 px-4 py-2 bg-gray-600 rounded text-white">Start New Migration</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function migrationWizard() {
+    return {
+        step: 0,
+        apiKey: '',
+        validating: false,
+        error: '',
+        previews: [],
+        selectedEntities: [],
+        jobId: null,
+        progress: 0,
+        jobStatus: '',
+        results: {},
+        pollTimer: null,
+
+        init() {},
+
+        async validate() {
+            this.validating = true;
+            this.error = '';
+            try {
+                const res = await fetch('/api/migrations/opsgenie/validate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({api_key: this.apiKey}),
+                });
+                const data = await res.json();
+                if (data.valid) {
+                    this.previews = data.previews;
+                    this.selectedEntities = data.previews.map(p => p.entity_type);
+                    this.step = 1;
+                } else {
+                    this.error = data.message || 'Validation failed';
+                }
+            } catch (e) {
+                this.error = 'Connection error: ' + e.message;
+            }
+            this.validating = false;
+        },
+
+        async startMigration() {
+            this.step = 2;
+            this.progress = 0;
+            try {
+                const res = await fetch('/api/migrations/opsgenie/start', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({api_key: this.apiKey, selected_entities: this.selectedEntities}),
+                });
+                const data = await res.json();
+                this.jobId = data.job_id;
+                this.pollProgress();
+            } catch (e) {
+                this.error = e.message;
+            }
+        },
+
+        pollProgress() {
+            this.pollTimer = setInterval(async () => {
+                try {
+                    const res = await fetch('/api/migrations/' + this.jobId + '/status');
+                    const job = await res.json();
+                    this.progress = job.progress_pct;
+                    if (['completed', 'failed', 'cancelled'].includes(job.status)) {
+                        clearInterval(this.pollTimer);
+                        this.jobStatus = job.status;
+                        this.results = job.results;
+                        this.step = 3;
+                    }
+                } catch (e) {}
+            }, 1000);
+        },
+
+        async cancelMigration() {
+            await fetch('/api/migrations/' + this.jobId + '/cancel', {method: 'POST'});
+        },
+
+        reset() {
+            this.step = 0;
+            this.apiKey = '';
+            this.previews = [];
+            this.selectedEntities = [];
+            this.jobId = null;
+            this.progress = 0;
+            this.results = {};
+            this.error = '';
+        }
+    };
+}
+</script>
+{% endblock %}
