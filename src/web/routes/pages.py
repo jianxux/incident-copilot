@@ -103,6 +103,18 @@ async def service_catalog_page(request: Request):
     )
 
 
+@router.get("/migration", response_class=HTMLResponse)
+async def migration_page(request: Request):
+    """Opsgenie migration wizard page."""
+    return templates.TemplateResponse(
+        "migration.html",
+        {
+            "request": request,
+            "page_title": "Migration",
+        },
+    )
+
+
 @router.get("/handoff", response_class=HTMLResponse)
 async def handoff_page(request: Request):
     """On-call handoff dashboard page."""
