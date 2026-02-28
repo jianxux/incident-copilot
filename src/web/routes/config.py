@@ -22,40 +22,61 @@ async def config_page(
     settings = get_settings()
     tenant_id = auth_data.get("tenant_id", "default")
 
-    # Check OAuth token store (per-tenant) first, fall back to env vars
-    async def is_connected(provider: str, env_fallback: bool = False) -> bool:
-        """Check if a provider is connected via OAuth store or env var."""
+    # Collect connected providers from both stores (same logic as onboarding)
+    connected_providers: set[str] = set()
+
+    # 1. Check OAuth token store
+    for p in ("pagerduty", "slack", "github", "datadog", "cloudwatch", "gitlab"):
         try:
-            token_rec = await oauth_token_store.get_token(tenant_id, provider)
+            token_rec = await oauth_token_store.get_token(tenant_id, p)
             if token_rec and token_rec.access_token:
-                return True
+                connected_providers.add(p)
         except Exception as e:
-            logger.warning("config_page_token_check_failed", provider=provider, error=str(e))
-        return env_fallback
+            logger.debug("config_token_check_failed", provider=p, error=str(e))
+
+    # 2. Check integration_configs table (some integrations stored here instead)
+    try:
+        from ...db.supabase_db import get_db
+
+        db = get_db(use_admin=True)
+        rows = (
+            db.client.table("integration_configs")
+            .select("type")
+            .eq("tenant_id", tenant_id)
+            .eq("is_active", True)
+            .execute()
+        )
+        if rows.data:
+            connected_providers.update(r["type"] for r in rows.data if r.get("type"))
+    except Exception as e:
+        logger.debug("config_integration_configs_check_failed", error=str(e))
+
+    def is_connected(provider: str, env_fallback: bool = False) -> bool:
+        return provider in connected_providers or env_fallback
 
     integrations = [
         {
             "name": "PagerDuty",
             "icon": "bell",
-            "connected": await is_connected("pagerduty", bool(settings.pagerduty_api_key)),
+            "connected": is_connected("pagerduty", bool(settings.pagerduty_api_key)),
             "description": "Alert ingestion and incident sync",
         },
         {
             "name": "GitHub",
             "icon": "code",
-            "connected": await is_connected("github", bool(settings.github_token)),
+            "connected": is_connected("github", bool(settings.github_token)),
             "description": "Recent deploys, commits, and PR context",
         },
         {
             "name": "Datadog",
             "icon": "chart",
-            "connected": await is_connected("datadog", bool(settings.datadog_api_key and settings.datadog_app_key)),
+            "connected": is_connected("datadog", bool(settings.datadog_api_key and settings.datadog_app_key)),
             "description": "Logs, metrics, and APM traces",
         },
         {
             "name": "Slack",
             "icon": "chat",
-            "connected": await is_connected("slack", bool(settings.slack_bot_token)),
+            "connected": is_connected("slack", bool(settings.slack_bot_token)),
             "description": "Context card delivery and notifications",
         },
         {
@@ -67,7 +88,7 @@ async def config_page(
         {
             "name": "CloudWatch",
             "icon": "cloud",
-            "connected": await is_connected("cloudwatch", bool(settings.aws_region)),
+            "connected": is_connected("cloudwatch", bool(settings.aws_region)),
             "description": "AWS logs and metrics",
         },
     ]
