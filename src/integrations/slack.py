@@ -9,6 +9,7 @@ from ..config import Settings
 from ..copilot.thread_registry import thread_registry
 from ..memory.feedback import FeedbackStore, ResolutionFeedback
 from ..models import ContextCard
+from .oauth_tokens import oauth_token_store
 
 logger = structlog.get_logger()
 
@@ -25,21 +26,50 @@ class SlackAdapter:
         )
         self.default_channel = settings.slack_default_channel
 
+    async def _get_client(self, tenant_id: str | None = None) -> AsyncWebClient | None:
+        """Get Slack client with tenant-aware token resolution.
+
+        Priority: OAuth token store (per-tenant) → env var fallback.
+        """
+        token: str | None = None
+
+        if tenant_id:
+            try:
+                token = await oauth_token_store.get_access_token(tenant_id, "slack")
+            except Exception as e:
+                logger.warning(
+                    "slack_oauth_token_lookup_failed",
+                    tenant_id=tenant_id,
+                    error=str(e),
+                )
+
+        if token:
+            return AsyncWebClient(token=token)
+
+        # Fallback to env-var-based client
+        return self.client
+
     async def send_context_card(
-        self, card: ContextCard, channel: str | None = None
-    ) -> bool:
-        """Send a context card to Slack."""
-        if not self.client:
-            # Slack is optional; avoid warning spam per incident.
+        self,
+        card: ContextCard,
+        channel: str | None = None,
+        tenant_id: str | None = None,
+    ) -> dict | None:
+        """Send a context card to Slack.
+
+        Returns {"ts": message_ts, "channel": channel_id} on success, None on failure.
+        """
+        client = await self._get_client(tenant_id)
+        if not client:
             logger.debug("slack_not_configured")
-            return False
+            return None
 
         target_channel = channel or self.default_channel
 
         try:
             blocks = self._build_blocks(card)
 
-            response = await self.client.chat_postMessage(
+            response = await client.chat_postMessage(
                 channel=target_channel,
                 text=f"🚨 Incident: {card.title}",  # Fallback text
                 blocks=blocks,
@@ -60,11 +90,11 @@ class SlackAdapter:
             logger.info(
                 "slack_message_sent", channel=target_channel, incident=card.incident_id
             )
-            return True
+            return {"ts": thread_ts, "channel": channel_id}
 
         except Exception as e:
             logger.error("slack_send_failed", error=str(e))
-            return False
+            return None
 
     def _build_blocks(self, card: ContextCard) -> list[dict]:
         """Build self-contained Slack Block Kit blocks.

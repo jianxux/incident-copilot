@@ -17,6 +17,7 @@ from .integrations import (
     GitLabAdapter,
     SlackAdapter,
 )
+from .integrations import slack_lifecycle
 from .integrations.oncall_legacy import OnCallAdapter
 from .memory import (
     IncidentCapture,
@@ -138,7 +139,8 @@ class ContextOrchestrator:
             return "none"
 
     async def process_incident(
-        self, incident: PagerDutyIncident, slack_channel: str | None = None
+        self, incident: PagerDutyIncident, slack_channel: str | None = None,
+        tenant_id: str | None = None,
     ) -> ContextCard:
         """
         Process an incident and deliver context card.
@@ -433,9 +435,64 @@ class ContextOrchestrator:
             error_count=len(errors),
         )
 
-        # Deliver to Slack
+        # Deliver to Slack — auto-create incident channel if no explicit channel
         tracker.start(Phase.CARD_DELIVERED)
-        await self.slack.send_context_card(card, channel=slack_channel)
+
+        incident_channel_id: str | None = slack_channel
+        card_message_ts: str | None = None
+
+        if not slack_channel:
+            # Auto-create dedicated incident channel
+            short_id = incident.incident_id[:8]
+            responder_ids: list[str] = []
+            if oncall_roster:
+                for person in oncall_roster.oncall_persons:
+                    if hasattr(person, "slack_user_id") and person.slack_user_id:
+                        responder_ids.append(person.slack_user_id)
+
+            channel_info = await slack_lifecycle.create_incident_channel(
+                tenant_id=tenant_id,
+                short_id=short_id,
+                service_name=incident.service_name,
+                title=f"{incident.title} — {incident.description or ''}",
+                responder_slack_ids=responder_ids or None,
+            )
+            if channel_info:
+                incident_channel_id = channel_info["channel_id"]
+                card.slack_channel_id = incident_channel_id  # type: ignore[attr-defined]
+
+        if incident_channel_id:
+            result = await self.slack.send_context_card(
+                card, channel=incident_channel_id, tenant_id=tenant_id
+            )
+            if result:
+                card_message_ts = result.get("ts")
+                card.slack_message_ts = card_message_ts  # type: ignore[attr-defined]
+
+            # Post suggested actions if verdict generated actions
+            if verdict and incident_channel_id:
+                try:
+                    from .actions.engine import ActionEngine
+
+                    action_engine = ActionEngine()
+                    verdict_data = verdict.model_dump() if hasattr(verdict, "model_dump") else verdict
+                    suggested = action_engine.generate_actions(
+                        verdict_data,
+                        {"incident_id": incident.incident_id, "service": incident.service_name},
+                    )
+                    if suggested:
+                        await slack_lifecycle.post_suggested_actions(
+                            tenant_id=tenant_id,
+                            channel_id=incident_channel_id,
+                            actions=suggested,
+                            incident_id=incident.incident_id,
+                        )
+                except Exception as e:
+                    logger.warning("slack_suggested_actions_failed", error=str(e))
+        else:
+            # Fallback: post to default channel
+            await self.slack.send_context_card(card, tenant_id=tenant_id)
+
         tracker.end(Phase.CARD_DELIVERED)
 
         # Fire-and-forget: memory capture should never block delivery path.
