@@ -92,9 +92,15 @@ def verify_slack_signature(
     return hmac.compare_digest(expected_sig, signature)
 
 
-def _get_slack_client() -> AsyncWebClient:
-    """Create a Slack web client using configured bot token."""
+async def _get_slack_client(team_id: str | None = None) -> AsyncWebClient:
+    """Create a Slack web client using OAuth store first, env var fallback."""
+    from ...integrations.slack_lifecycle import get_slack_client
+
     settings = get_settings()
+    client = await get_slack_client(team_id, settings)
+    if client:
+        return client
+    # Ultimate fallback
     return AsyncWebClient(token=settings.slack_bot_token)
 
 
@@ -141,7 +147,7 @@ async def _handle_thread_message(payload: dict) -> None:
     copilot = get_copilot()
     response = await copilot.chat(incident_id=incident_id, user_message=text)
 
-    client = _get_slack_client()
+    client = await _get_slack_client(team_id)
     await client.chat_postMessage(
         channel=channel_id,
         thread_ts=thread_ts,
@@ -295,3 +301,53 @@ async def handle_slack_commands(
 
     suggestions = await copilot.suggest_next_steps(incident_id)
     return SlackCommandResponse(text=_format_suggestions(suggestions))
+
+
+@router.post("/interactions")
+async def handle_slack_interactions(
+    request: Request,
+    x_slack_signature: str | None = Header(None, alias="X-Slack-Signature"),
+    x_slack_request_timestamp: str | None = Header(
+        None, alias="X-Slack-Request-Timestamp"
+    ),
+):
+    """Handle Slack interactive component payloads (button clicks, etc.)."""
+    import json as _json
+    from urllib.parse import parse_qs as _parse_qs
+
+    from ...integrations.slack_interactions import handle_interaction
+    from ...integrations.slack import SlackAdapter
+    from ...memory.feedback import FeedbackStore
+
+    body = await request.body()
+    settings = get_settings()
+
+    if not verify_slack_signature(
+        body=body,
+        timestamp=x_slack_request_timestamp,
+        signature=x_slack_signature,
+        signing_secret=settings.slack_signing_secret,
+    ):
+        raise HTTPException(status_code=401, detail="Invalid Slack signature")
+
+    # Slack sends interaction payloads as URL-encoded form with a "payload" field
+    parsed = _parse_qs(body.decode("utf-8"), keep_blank_values=True)
+    payload_raw = parsed.get("payload", [""])[0]
+    if not payload_raw:
+        return JSONResponse(content={"ok": True})
+
+    payload = _json.loads(payload_raw)
+
+    # Try memory feedback handler first
+    slack_adapter = SlackAdapter(settings)
+    feedback_store = FeedbackStore()
+    handled = await slack_adapter.handle_feedback_interaction(payload, feedback_store)
+    if handled:
+        return JSONResponse(content={"ok": True})
+
+    # Route to general interaction handler
+    result = await handle_interaction(payload)
+    if result:
+        return JSONResponse(content=result)
+
+    return JSONResponse(content={"ok": True})

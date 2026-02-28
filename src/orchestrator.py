@@ -17,6 +17,7 @@ from .integrations import (
     GitLabAdapter,
     SlackAdapter,
 )
+from .integrations import slack_lifecycle
 from .integrations.oncall_legacy import OnCallAdapter
 from .memory import (
     IncidentCapture,
@@ -138,7 +139,8 @@ class ContextOrchestrator:
             return "none"
 
     async def process_incident(
-        self, incident: PagerDutyIncident, slack_channel: str | None = None
+        self, incident: PagerDutyIncident, slack_channel: str | None = None,
+        tenant_id: str | None = None,
     ) -> ContextCard:
         """
         Process an incident and deliver context card.
@@ -433,9 +435,71 @@ class ContextOrchestrator:
             error_count=len(errors),
         )
 
-        # Deliver to Slack
+        # Deliver to Slack — post notification to shared #incidents channel
         tracker.start(Phase.CARD_DELIVERED)
-        await self.slack.send_context_card(card, channel=slack_channel)
+
+        incident_channel_id: str | None = slack_channel
+        card_message_ts: str | None = None
+
+        if not slack_channel:
+            # Post notification card to shared incidents channel (no auto-channel)
+            ai_summary_text: str | None = None
+            if ai_summary:
+                ai_summary_text = getattr(ai_summary, "explanation", None) or getattr(ai_summary, "likely_cause", None)
+            if not ai_summary_text and verdict:
+                ai_summary_text = getattr(verdict, "summary", None)
+
+            notification_result = await slack_lifecycle.post_incident_notification(
+                tenant_id=tenant_id,
+                channel=self.settings.slack_incidents_channel,
+                incident_id=incident.incident_id,
+                title=incident.title,
+                service=incident.service_name,
+                severity=incident.severity.value,
+                triggered_at=incident.triggered_at.isoformat(),
+                summary=ai_summary_text,
+            )
+            if notification_result:
+                incident_channel_id = notification_result["channel_id"]
+                card_message_ts = notification_result["ts"]
+                card.slack_channel_id = incident_channel_id  # type: ignore[attr-defined]
+                card.slack_message_ts = card_message_ts  # type: ignore[attr-defined]
+
+        if slack_channel and incident_channel_id:
+            # Explicit channel provided — use legacy full context card delivery
+            result = await self.slack.send_context_card(
+                card, channel=incident_channel_id, tenant_id=tenant_id
+            )
+            if result:
+                card_message_ts = result.get("ts")
+                card.slack_message_ts = card_message_ts  # type: ignore[attr-defined]
+
+        # Post suggested actions (threaded under notification or in explicit channel)
+        target_for_actions = incident_channel_id
+        if target_for_actions and verdict:
+            try:
+                from .actions.engine import ActionEngine
+
+                action_engine = ActionEngine()
+                verdict_data = verdict.model_dump() if hasattr(verdict, "model_dump") else verdict
+                suggested = action_engine.generate_actions(
+                    verdict_data,
+                    {"incident_id": incident.incident_id, "service": incident.service_name},
+                )
+                if suggested:
+                    await slack_lifecycle.post_suggested_actions(
+                        tenant_id=tenant_id,
+                        channel_id=target_for_actions,
+                        actions=suggested,
+                        incident_id=incident.incident_id,
+                    )
+            except Exception as e:
+                logger.warning("slack_suggested_actions_failed", error=str(e))
+
+        if not incident_channel_id:
+            # Fallback: post to default channel
+            await self.slack.send_context_card(card, tenant_id=tenant_id)
+
         tracker.end(Phase.CARD_DELIVERED)
 
         # Fire-and-forget: memory capture should never block delivery path.
