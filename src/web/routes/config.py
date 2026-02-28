@@ -2,41 +2,57 @@
 
 import os
 
-from fastapi import Request
+from fastapi import Depends, Request
 from fastapi.responses import HTMLResponse
 
 from ...config import get_settings
-from .common import router, templates
+from ...integrations.oauth_tokens import oauth_token_store
+from .common import require_dashboard_auth, router, templates
 
 
 @router.get("/config", response_class=HTMLResponse)
-async def config_page(request: Request):
+async def config_page(
+    request: Request,
+    auth_data: dict[str, str] = Depends(require_dashboard_auth),
+):
     """Settings page showing integration status and platform info."""
     settings = get_settings()
+    tenant_id = auth_data.get("tenant_id", "default")
+
+    # Check OAuth token store (per-tenant) first, fall back to env vars
+    async def is_connected(provider: str, env_fallback: bool = False) -> bool:
+        """Check if a provider is connected via OAuth store or env var."""
+        try:
+            token_rec = await oauth_token_store.get_token(tenant_id, provider)
+            if token_rec and token_rec.get("access_token"):
+                return True
+        except Exception:
+            pass
+        return env_fallback
 
     integrations = [
         {
             "name": "PagerDuty",
             "icon": "bell",
-            "connected": bool(settings.pagerduty_api_key),
+            "connected": await is_connected("pagerduty", bool(settings.pagerduty_api_key)),
             "description": "Alert ingestion and incident sync",
         },
         {
             "name": "GitHub",
             "icon": "code",
-            "connected": bool(settings.github_token),
+            "connected": await is_connected("github", bool(settings.github_token)),
             "description": "Recent deploys, commits, and PR context",
         },
         {
             "name": "Datadog",
             "icon": "chart",
-            "connected": bool(settings.datadog_api_key and settings.datadog_app_key),
+            "connected": await is_connected("datadog", bool(settings.datadog_api_key and settings.datadog_app_key)),
             "description": "Logs, metrics, and APM traces",
         },
         {
             "name": "Slack",
             "icon": "chat",
-            "connected": bool(settings.slack_bot_token),
+            "connected": await is_connected("slack", bool(settings.slack_bot_token)),
             "description": "Context card delivery and notifications",
         },
         {
@@ -48,7 +64,7 @@ async def config_page(request: Request):
         {
             "name": "CloudWatch",
             "icon": "cloud",
-            "connected": bool(settings.aws_region),
+            "connected": await is_connected("cloudwatch", bool(settings.aws_region)),
             "description": "AWS logs and metrics",
         },
     ]
