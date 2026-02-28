@@ -2,12 +2,15 @@
 
 import os
 
+import structlog
 from fastapi import Depends, Request
 from fastapi.responses import HTMLResponse
 
 from ...config import get_settings
 from ...integrations.oauth_tokens import oauth_token_store
 from .common import require_dashboard_auth, router, templates
+
+logger = structlog.get_logger()
 
 
 @router.get("/config", response_class=HTMLResponse)
@@ -24,10 +27,10 @@ async def config_page(
         """Check if a provider is connected via OAuth store or env var."""
         try:
             token_rec = await oauth_token_store.get_token(tenant_id, provider)
-            if token_rec and token_rec.get("access_token"):
+            if token_rec and token_rec.access_token:
                 return True
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("config_page_token_check_failed", provider=provider, error=str(e))
         return env_fallback
 
     integrations = [
