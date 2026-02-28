@@ -302,6 +302,220 @@ async def archive_channel(tenant_id: str | None, channel_id: str) -> bool:
         return False
 
 
+def _severity_badge(severity: str) -> str:
+    """Return emoji badge for severity level."""
+    s = severity.upper()
+    if s in ("P1", "SEV1", "CRITICAL"):
+        return "🔴"
+    if s in ("P2", "SEV2", "HIGH"):
+        return "🟠"
+    if s in ("P3", "SEV3", "MEDIUM", "WARNING"):
+        return "🟡"
+    return "🟢"
+
+
+def build_incident_notification_blocks(
+    incident_id: str,
+    title: str,
+    service: str,
+    severity: str,
+    triggered_at: str,
+    summary: str | None = None,
+) -> list[dict]:
+    """Build Block Kit blocks for the shared-channel incident notification card."""
+    badge = _severity_badge(severity)
+    header_text = f"{badge} {severity.upper()} — {title}"
+
+    blocks: list[dict] = [
+        {
+            "type": "header",
+            "text": {"type": "plain_text", "text": header_text[:150], "emoji": True},
+        },
+        {
+            "type": "section",
+            "fields": [
+                {"type": "mrkdwn", "text": f"*Service:* `{service}`"},
+                {"type": "mrkdwn", "text": f"*Severity:* {badge} {severity.upper()}"},
+                {"type": "mrkdwn", "text": f"*Incident:* `{incident_id[:12]}`"},
+                {"type": "mrkdwn", "text": f"*Time:* {triggered_at}"},
+            ],
+        },
+    ]
+
+    if summary:
+        blocks.append(
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": summary[:500]},
+            }
+        )
+
+    # War room button
+    blocks.append(
+        {
+            "type": "actions",
+            "block_id": f"warroom_actions:{incident_id[:12]}",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "🚨 Start War Room", "emoji": True},
+                    "action_id": "start_warroom",
+                    "value": json.dumps({"incident_id": incident_id, "service": service}),
+                    "style": "danger",
+                },
+            ],
+        }
+    )
+
+    return blocks
+
+
+async def post_incident_notification(
+    tenant_id: str | None,
+    channel: str,
+    incident_id: str,
+    title: str,
+    service: str,
+    severity: str,
+    triggered_at: str,
+    summary: str | None = None,
+) -> dict | None:
+    """Post an incident notification card to the shared incidents channel.
+
+    Returns ``{'channel_id': str, 'ts': str}`` on success or ``None``.
+    """
+    client = await get_slack_client(tenant_id)
+    if not client:
+        return None
+
+    blocks = build_incident_notification_blocks(
+        incident_id=incident_id,
+        title=title,
+        service=service,
+        severity=severity,
+        triggered_at=triggered_at,
+        summary=summary,
+    )
+    fallback = f"{_severity_badge(severity)} {severity.upper()} | {title} | {service}"
+
+    try:
+        resp = await client.chat_postMessage(
+            channel=channel,
+            text=fallback,
+            blocks=blocks,
+            unfurl_links=False,
+        )
+        ts = resp.get("ts")
+        channel_id = resp.get("channel")
+        logger.info(
+            "slack_incident_notification_posted",
+            channel=channel,
+            channel_id=channel_id,
+            ts=ts,
+            incident_id=incident_id,
+        )
+        return {"channel_id": channel_id, "ts": ts}
+    except Exception as e:
+        logger.error("slack_incident_notification_failed", channel=channel, error=str(e))
+        return None
+
+
+async def create_warroom_from_notification(
+    tenant_id: str | None,
+    incident_id: str,
+    service: str,
+    original_channel_id: str | None = None,
+    original_ts: str | None = None,
+    context_blocks: list[dict] | None = None,
+) -> dict | None:
+    """Create a war room channel on demand and link it back.
+
+    Returns ``{'channel_id': str, 'channel_name': str}`` or ``None``.
+    """
+    short_id = incident_id[:8]
+    channel_info = await create_incident_channel(
+        tenant_id=tenant_id,
+        short_id=short_id,
+        service_name=service,
+        title=f"War room for {incident_id}",
+    )
+    if not channel_info:
+        return None
+
+    warroom_id = channel_info["channel_id"]
+    warroom_name = channel_info["channel_name"]
+    client = await get_slack_client(tenant_id)
+
+    if client:
+        # Copy context card into war room
+        if context_blocks:
+            try:
+                await client.chat_postMessage(
+                    channel=warroom_id,
+                    text=f"Incident context for {incident_id}",
+                    blocks=context_blocks,
+                    unfurl_links=False,
+                )
+            except Exception as e:
+                logger.warning("slack_warroom_context_copy_failed", error=str(e))
+
+        # Post link back to #incidents channel
+        if original_channel_id and original_ts:
+            try:
+                await client.chat_postMessage(
+                    channel=original_channel_id,
+                    text=f"🏠 War room created: <#{warroom_id}|{warroom_name}>",
+                    thread_ts=original_ts,
+                    unfurl_links=False,
+                )
+            except Exception as e:
+                logger.warning("slack_warroom_backlink_failed", error=str(e))
+
+    logger.info(
+        "slack_warroom_created",
+        incident_id=incident_id,
+        warroom_channel_id=warroom_id,
+        warroom_name=warroom_name,
+    )
+    return {"channel_id": warroom_id, "channel_name": warroom_name}
+
+
+async def post_update_to_incident(
+    tenant_id: str | None,
+    warroom_channel_id: str | None,
+    incidents_channel_id: str | None,
+    original_ts: str | None,
+    text: str,
+    blocks: list[dict] | None = None,
+) -> bool:
+    """Post an update to the war room or thread under the original notification."""
+    client = await get_slack_client(tenant_id)
+    if not client:
+        return False
+
+    target_channel = warroom_channel_id or incidents_channel_id
+    if not target_channel:
+        return False
+
+    kwargs: dict = {
+        "channel": target_channel,
+        "text": text,
+        "unfurl_links": False,
+    }
+    if blocks:
+        kwargs["blocks"] = blocks
+    # Thread under original message when posting to incidents channel (no war room)
+    if not warroom_channel_id and original_ts:
+        kwargs["thread_ts"] = original_ts
+
+    try:
+        await client.chat_postMessage(**kwargs)
+        return True
+    except Exception as e:
+        logger.error("slack_update_post_failed", channel=target_channel, error=str(e))
+        return False
+
+
 async def schedule_archive(
     tenant_id: str | None, channel_id: str, delay_hours: int = 24
 ) -> None:

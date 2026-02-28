@@ -435,33 +435,38 @@ class ContextOrchestrator:
             error_count=len(errors),
         )
 
-        # Deliver to Slack — auto-create incident channel if no explicit channel
+        # Deliver to Slack — post notification to shared #incidents channel
         tracker.start(Phase.CARD_DELIVERED)
 
         incident_channel_id: str | None = slack_channel
         card_message_ts: str | None = None
 
         if not slack_channel:
-            # Auto-create dedicated incident channel
-            short_id = incident.incident_id[:8]
-            responder_ids: list[str] = []
-            if oncall_roster:
-                for person in oncall_roster.oncall_persons:
-                    if hasattr(person, "slack_user_id") and person.slack_user_id:
-                        responder_ids.append(person.slack_user_id)
+            # Post notification card to shared incidents channel (no auto-channel)
+            ai_summary_text: str | None = None
+            if ai_summary:
+                ai_summary_text = getattr(ai_summary, "explanation", None) or getattr(ai_summary, "likely_cause", None)
+            if not ai_summary_text and verdict:
+                ai_summary_text = getattr(verdict, "summary", None)
 
-            channel_info = await slack_lifecycle.create_incident_channel(
+            notification_result = await slack_lifecycle.post_incident_notification(
                 tenant_id=tenant_id,
-                short_id=short_id,
-                service_name=incident.service_name,
-                title=f"{incident.title} — {incident.description or ''}",
-                responder_slack_ids=responder_ids or None,
+                channel=self.settings.slack_incidents_channel,
+                incident_id=incident.incident_id,
+                title=incident.title,
+                service=incident.service_name,
+                severity=incident.severity.value,
+                triggered_at=incident.triggered_at.isoformat(),
+                summary=ai_summary_text,
             )
-            if channel_info:
-                incident_channel_id = channel_info["channel_id"]
+            if notification_result:
+                incident_channel_id = notification_result["channel_id"]
+                card_message_ts = notification_result["ts"]
                 card.slack_channel_id = incident_channel_id  # type: ignore[attr-defined]
+                card.slack_message_ts = card_message_ts  # type: ignore[attr-defined]
 
-        if incident_channel_id:
+        if slack_channel and incident_channel_id:
+            # Explicit channel provided — use legacy full context card delivery
             result = await self.slack.send_context_card(
                 card, channel=incident_channel_id, tenant_id=tenant_id
             )
@@ -469,27 +474,29 @@ class ContextOrchestrator:
                 card_message_ts = result.get("ts")
                 card.slack_message_ts = card_message_ts  # type: ignore[attr-defined]
 
-            # Post suggested actions if verdict generated actions
-            if verdict and incident_channel_id:
-                try:
-                    from .actions.engine import ActionEngine
+        # Post suggested actions (threaded under notification or in explicit channel)
+        target_for_actions = incident_channel_id
+        if target_for_actions and verdict:
+            try:
+                from .actions.engine import ActionEngine
 
-                    action_engine = ActionEngine()
-                    verdict_data = verdict.model_dump() if hasattr(verdict, "model_dump") else verdict
-                    suggested = action_engine.generate_actions(
-                        verdict_data,
-                        {"incident_id": incident.incident_id, "service": incident.service_name},
+                action_engine = ActionEngine()
+                verdict_data = verdict.model_dump() if hasattr(verdict, "model_dump") else verdict
+                suggested = action_engine.generate_actions(
+                    verdict_data,
+                    {"incident_id": incident.incident_id, "service": incident.service_name},
+                )
+                if suggested:
+                    await slack_lifecycle.post_suggested_actions(
+                        tenant_id=tenant_id,
+                        channel_id=target_for_actions,
+                        actions=suggested,
+                        incident_id=incident.incident_id,
                     )
-                    if suggested:
-                        await slack_lifecycle.post_suggested_actions(
-                            tenant_id=tenant_id,
-                            channel_id=incident_channel_id,
-                            actions=suggested,
-                            incident_id=incident.incident_id,
-                        )
-                except Exception as e:
-                    logger.warning("slack_suggested_actions_failed", error=str(e))
-        else:
+            except Exception as e:
+                logger.warning("slack_suggested_actions_failed", error=str(e))
+
+        if not incident_channel_id:
             # Fallback: post to default channel
             await self.slack.send_context_card(card, tenant_id=tenant_id)
 

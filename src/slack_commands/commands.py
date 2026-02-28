@@ -66,6 +66,7 @@ class CommandHandler:
             "ask": self._handle_ask,
             "summarize": self._handle_summarize,
             "suggest": self._handle_suggest,
+            "warroom": self._handle_warroom,
             "help": self._handle_help,
         }
         handler = handlers.get(subcommand)
@@ -256,6 +257,46 @@ class CommandHandler:
         except Exception as e:
             logger.error("copilot_suggest_error", error=str(e))
             return BlockKitBuilder.error_response("Suggestions error", str(e))
+
+    async def _handle_warroom(self, ctx, args=""):
+        """Handle /incident warroom <incident_id>."""
+        incident_id = args.strip()
+        if not incident_id:
+            return BlockKitBuilder.error_response(
+                "Incident ID required",
+                "Usage: /incident warroom <incident_id>",
+            )
+
+        # Look up the incident for service name
+        incidents = await incident_store.get_all_incidents()
+        incident = next(
+            (i for i in incidents if i.incident_id == incident_id), None
+        )
+        service = incident.service_name if incident else "unknown"
+
+        from ..integrations.slack_lifecycle import create_warroom_from_notification
+
+        try:
+            result = await create_warroom_from_notification(
+                tenant_id=None,
+                incident_id=incident_id,
+                service=service,
+                original_channel_id=ctx.channel_id,
+                original_ts=None,
+                context_blocks=None,
+            )
+            if result:
+                return BlockKitBuilder.warroom_response(
+                    incident_id, result["channel_id"], result["channel_name"]
+                )
+            else:
+                return BlockKitBuilder.error_response(
+                    "War room creation failed",
+                    "Check Slack bot permissions and try again.",
+                )
+        except Exception as e:
+            logger.error("warroom_command_error", error=str(e))
+            return BlockKitBuilder.error_response("War room error", str(e))
 
     async def _handle_help(self, ctx, args=""):
         return BlockKitBuilder.help_response()

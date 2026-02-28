@@ -269,6 +269,22 @@ class BlockKitBuilder:
         }
 
     @classmethod
+    def warroom_response(cls, incident_id: str, channel_id: str, channel_name: str) -> dict[str, Any]:
+        return {
+            "response_type": "in_channel",
+            "text": f"🏠 War room created for `{incident_id}`",
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"🏠 War room created: <#{channel_id}|{channel_name}>\nIncident: `{incident_id}`",
+                    },
+                },
+            ],
+        }
+
+    @classmethod
     def make_public(cls, response) -> dict[str, Any]:
         response = response.copy()
         response["response_type"] = "in_channel"

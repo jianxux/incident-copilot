@@ -152,6 +152,14 @@ class Settings(BaseSettings):
     slack_default_channel: str = Field(
         default="#incidents", description="Default Slack channel"
     )
+    slack_incidents_channel: str = Field(
+        default="#incidents",
+        description="Shared Slack channel where all incident notification cards are posted",
+    )
+    slack_warroom_on_escalation: bool = Field(
+        default=True,
+        description="Automatically create war room channel when an incident is escalated",
+    )
 
     # Microsoft Teams
     teams_webhook_url: str = Field(default="", description="Teams Incoming Webhook URL")
