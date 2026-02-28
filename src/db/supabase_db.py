@@ -330,6 +330,7 @@ class SupabaseDB:
         source_url: str | None = None,
         source_id: str | None = None,
         metadata: dict | None = None,
+        description: str | None = None,
     ) -> dict:
         """Upsert an incident row used by the web dashboard."""
         self._check_enabled()
@@ -338,6 +339,7 @@ class SupabaseDB:
             "id": incident_id,
             "tenant_id": tenant_id,
             "title": title,
+            "description": description,
             "service": service_name,
             "severity": severity,
             "status": status,
