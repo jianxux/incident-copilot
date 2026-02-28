@@ -35,6 +35,7 @@ class StoredIncident:
     source: str = "manual"
     source_url: str | None = None
     source_id: str | None = None
+    description: str | None = None
     metadata: dict = field(default_factory=dict)
 
 
@@ -73,6 +74,7 @@ class _BaseIncidentStore:
         source_id: str | None = None,
         metadata: dict | None = None,
         tenant_id: str | None = None,
+        description: str | None = None,
     ) -> StoredIncident:
         raise NotImplementedError
 
@@ -132,6 +134,7 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         source_id: str | None = None,
         metadata: dict | None = None,
         tenant_id: str | None = None,
+        description: str | None = None,
     ) -> StoredIncident:
         _ = tenant_id
         async with self._lock:
@@ -145,6 +148,7 @@ class InMemoryIncidentStore(_BaseIncidentStore):
                 source=source,
                 source_url=source_url,
                 source_id=source_id or incident_id,
+                description=description,
                 metadata=metadata or {},
             )
             self._incidents[incident_id] = incident
@@ -348,6 +352,7 @@ class SupabaseIncidentStore(_BaseIncidentStore):
             source=row.get("source") or "manual",
             source_url=row.get("source_url"),
             source_id=row.get("source_id"),
+            description=row.get("description"),
             metadata=metadata,
         )
 
@@ -363,6 +368,7 @@ class SupabaseIncidentStore(_BaseIncidentStore):
         source_id: str | None = None,
         metadata: dict | None = None,
         tenant_id: str | None = None,
+        description: str | None = None,
     ) -> StoredIncident:
         from ..db.supabase_db import get_db
 
@@ -385,6 +391,7 @@ class SupabaseIncidentStore(_BaseIncidentStore):
                 source_url=source_url,
                 source_id=source_id or incident_id,
                 metadata=metadata or {},
+                description=description,
             )
 
             await self._notify_subscribers(
@@ -410,6 +417,7 @@ class SupabaseIncidentStore(_BaseIncidentStore):
                 source=source,
                 source_url=source_url,
                 source_id=source_id or incident_id,
+                description=description,
                 metadata=metadata or {},
             )
 
@@ -641,6 +649,7 @@ class HybridIncidentStore(_BaseIncidentStore):
         source_id: str | None = None,
         metadata: dict | None = None,
         tenant_id: str | None = None,
+        description: str | None = None,
     ) -> StoredIncident:
         incident = await self._memory.add_incident(
             incident_id=incident_id,
@@ -653,6 +662,7 @@ class HybridIncidentStore(_BaseIncidentStore):
             source_id=source_id,
             metadata=metadata,
             tenant_id=tenant_id,
+            description=description,
         )
         try:
             await self._supabase.add_incident(
@@ -666,6 +676,7 @@ class HybridIncidentStore(_BaseIncidentStore):
                 source_id=source_id,
                 metadata=metadata,
                 tenant_id=tenant_id,
+                description=description,
             )
         except Exception as e:
             logger.warning(
