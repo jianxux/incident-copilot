@@ -95,10 +95,10 @@ def format_datetime(dt: datetime | None) -> str:
 
 
 def format_datetime_short(dt: datetime | None) -> str:
-    """Format datetime as compact relative or short time."""
+    """Format datetime as compact but complete."""
     if not dt:
         return ""
-    return dt.strftime("%H:%M:%S")
+    return dt.strftime("%b %d, %H:%M:%S UTC")
 
 
 def severity_color(severity: Severity) -> str:
