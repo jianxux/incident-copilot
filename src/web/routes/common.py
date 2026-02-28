@@ -94,6 +94,13 @@ def format_datetime(dt: datetime | None) -> str:
     return dt.strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
+def format_datetime_short(dt: datetime | None) -> str:
+    """Format datetime as compact relative or short time."""
+    if not dt:
+        return ""
+    return dt.strftime("%H:%M:%S")
+
+
 def severity_color(severity: Severity) -> str:
     """Get Tailwind color class for severity."""
     colors = {
@@ -130,6 +137,7 @@ def tenant_slug_from_auth(auth: AuthContext) -> str:
 
 # Add template filters
 templates.env.filters["format_datetime"] = format_datetime
+templates.env.filters["format_datetime_short"] = format_datetime_short
 templates.env.filters["severity_color"] = severity_color
 templates.env.filters["status_color"] = status_color
 templates.env.filters["mask_secret"] = mask_secret
