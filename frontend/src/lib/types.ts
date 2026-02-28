@@ -2,17 +2,32 @@ export interface Incident {
   id: string;
   incident_id: string;
   title: string;
+  description?: string | null;
   service: string;
   service_name: string;
-  severity: 'P1' | 'P2' | 'P3' | 'P4';
-  status: 'open' | 'investigating' | 'resolved' | 'closed';
+  severity: string;
+  status: string;
   source: string;
   source_url: string;
-  source_id: string;
+  source_id?: string;
+  assignee?: string | null;
+  team?: string | null;
   created_at: string;
   updated_at: string;
   triggered_at: string;
   processed_at: string | null;
+  acknowledged_at?: string | null;
+  resolved_at?: string | null;
+  duration_seconds?: number | null;
+  verdict_summary?: string | null;
+  ttd?: number | null;
+  tta?: number | null;
+  ttr?: number | null;
+  tags?: string[];
+  labels?: Record<string, string>;
+  related_incidents?: string[];
+  runbooks?: string[];
+  context?: Record<string, unknown> | null;
 }
 
 export interface Service {
@@ -26,10 +41,23 @@ export interface Service {
 
 export interface TimelineEvent {
   id: string;
+  incident_id?: string;
   timestamp: string;
-  type: 'alert' | 'investigation' | 'action' | 'resolution' | 'deployment';
-  title: string;
+  type: string;
+  title?: string;
   description: string;
+  actor?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+export interface IncidentContext {
+  id?: string;
+  incident_id?: string;
+  created_at?: string;
+  github_context?: Record<string, unknown>;
+  datadog_context?: Record<string, unknown>;
+  on_call?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 export interface Verdict {
