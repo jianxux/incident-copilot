@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
 from ...auth.middleware import AuthContext, get_auth_context
-from ...config import settings
+from ...config import get_settings
 from ...integrations.slack_manifest import generate_manifest, generate_manifest_url
 from .common import logger, router, tenant_slug_from_auth
 
@@ -15,13 +15,13 @@ from .common import logger, router, tenant_slug_from_auth
 @router.get("/api/integrations/slack/manifest")
 async def slack_manifest():
     """Return the Slack App Manifest JSON for this deployment."""
-    return generate_manifest(settings.app_url)
+    return generate_manifest(get_settings().app_url)
 
 
 @router.get("/api/integrations/slack/install")
 async def slack_install():
     """Redirect to Slack's app creation page with the manifest pre-filled."""
-    return RedirectResponse(url=generate_manifest_url(settings.app_url))
+    return RedirectResponse(url=generate_manifest_url(get_settings().app_url))
 
 
 class DashboardServiceCreateRequest(BaseModel):
