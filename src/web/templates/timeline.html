@@ -2,125 +2,116 @@
 
 {% block content %}
 <!-- Back Link -->
-<a href="/dashboard/incidents/{{ incident_id }}" class="inline-flex items-center text-muted hover:text-slate-900 transition mb-6">
-    <i class="fas fa-arrow-left mr-2"></i>
+<a href="/dashboard/incidents/{{ incident_id }}" class="inline-flex items-center text-muted hover:text-slate-900 transition mb-6 text-sm">
+    <i class="fas fa-arrow-left mr-2 text-xs"></i>
     Back to Incident
 </a>
 
 <!-- Timeline Header -->
-<div class="bg-white rounded-xl border border-slate-200 p-6 mb-6">
+<div class="bg-white rounded-xl border border-slate-200 card-shadow p-5 mb-5">
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-slate-900 flex items-center">
-                <i class="fas fa-stream mr-3 text-[#e05a3a]"></i>
-                Incident Timeline
-            </h1>
-            <p class="text-muted mt-1">{{ incident_title }}</p>
+            <h1 class="text-xl font-bold text-slate-900">Incident Timeline</h1>
+            <p class="text-muted text-sm mt-0.5">{{ incident_title }}</p>
         </div>
-        <div class="flex items-center space-x-4">
-            <div class="text-right">
-                <span class="text-muted text-sm">Duration</span>
-                <p class="text-slate-900 font-medium">{{ duration }}</p>
+        <div class="flex items-center gap-6">
+            <div class="text-center">
+                <p class="text-2xl font-bold text-slate-900">{{ duration }}</p>
+                <span class="text-muted text-xs uppercase tracking-wide">Duration</span>
             </div>
-            <div class="text-right">
-                <span class="text-muted text-sm">Events</span>
-                <p class="text-slate-900 font-medium">{{ events | length }}</p>
+            <div class="text-center">
+                <p class="text-2xl font-bold text-slate-900">{{ events | length }}</p>
+                <span class="text-muted text-xs uppercase tracking-wide">Events</span>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Filter Buttons -->
-<div class="flex flex-wrap gap-2 mb-6">
-    <button class="timeline-filter active px-4 py-2 rounded-lg bg-brand text-white text-sm font-medium" data-filter="all">
+<!-- Filter Pills -->
+<div class="flex flex-wrap gap-1.5 mb-5">
+    <button class="timeline-filter active px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-medium transition-colors" data-filter="all">
         All Events
     </button>
-    <button class="timeline-filter px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-100" data-filter="key">
-        Key Events Only
+    <button class="timeline-filter px-3 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50 transition-colors" data-filter="key">
+        ⭐ Key Events
     </button>
-    <button class="timeline-filter px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-100" data-filter="alert">
-        Alerts
+    <button class="timeline-filter px-3 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50 transition-colors" data-filter="alert">
+        🔔 Alerts
     </button>
-    <button class="timeline-filter px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-100" data-filter="deployment">
-        Deployments
+    <button class="timeline-filter px-3 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50 transition-colors" data-filter="deployment">
+        🚀 Deploys
     </button>
-    <button class="timeline-filter px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-100" data-filter="log">
-        Logs
+    <button class="timeline-filter px-3 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50 transition-colors" data-filter="log">
+        📋 Logs
     </button>
 </div>
 
-<!-- Timeline View -->
-<div class="bg-white rounded-xl border border-slate-200 p-6">
+<!-- Timeline -->
+<div class="bg-white rounded-xl border border-slate-200 card-shadow px-5 py-4">
     <div class="relative">
         <!-- Vertical Line -->
-        <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-[#e05a3a]/20"></div>
+        <div class="absolute left-[15px] top-2 bottom-2 w-px bg-slate-200"></div>
 
-        <!-- Events -->
-        <div class="space-y-6">
+        <div class="space-y-0">
             {% for event in events %}
-            <div class="timeline-event relative flex items-start" 
+            <div class="timeline-event relative flex items-start group py-3 {% if not loop.last %}border-b border-slate-100{% endif %}"
                  data-type="{{ event.event_type }}"
                  data-key="{{ 'true' if event.is_key_event else 'false' }}">
 
-                <!-- Event Icon -->
-                <div class="relative z-10 flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center
-                    {% if event.color == 'red' %}bg-red-500/20 text-red-400
-                    {% elif event.color == 'green' %}bg-green-500/20 text-green-400
-                    {% elif event.color == 'blue' %}bg-[#e05a3a]/20 text-[#e05a3a]
-                    {% elif event.color == 'yellow' %}bg-yellow-500/20 text-yellow-400
-                    {% elif event.color == 'orange' %}bg-orange-500/20 text-orange-400
-                    {% elif event.color == 'purple' %}bg-[#e05a3a]/20 text-[#e05a3a]
-                    {% else %}bg-slate-100 text-muted
+                <!-- Dot -->
+                <div class="relative z-10 flex-shrink-0 mt-1.5">
+                    {% if event.is_key_event %}
+                    <div class="w-[10px] h-[10px] rounded-full bg-brand ring-4 ring-brand/15"></div>
+                    {% elif event.color == 'red' %}
+                    <div class="w-[10px] h-[10px] rounded-full bg-red-500 ring-4 ring-red-500/10"></div>
+                    {% elif event.color == 'green' %}
+                    <div class="w-[10px] h-[10px] rounded-full bg-green-500 ring-4 ring-green-500/10"></div>
+                    {% elif event.color == 'yellow' or event.color == 'orange' %}
+                    <div class="w-[10px] h-[10px] rounded-full bg-amber-500 ring-4 ring-amber-500/10"></div>
+                    {% else %}
+                    <div class="w-[10px] h-[10px] rounded-full bg-slate-300 ring-4 ring-slate-100"></div>
                     {% endif %}
-                    border-2 border-[#e05a3a] {% if event.is_key_event %}ring-2 ring-offset-2 ring-offset-white ring-[#e05a3a]{% endif %}">
-                    <i class="fas fa-{{ event.icon }}"></i>
                 </div>
 
-                <!-- Event Content -->
-                <div class="ml-4 flex-1 bg-slate-50/50 rounded-lg p-4 border border-slate-200 hover:border-slate-200 transition">
-                    <div class="flex items-start justify-between">
-                        <div>
-                            <h3 class="text-slate-900 font-medium {% if event.is_key_event %}text-lg{% endif %}">
+                <!-- Content -->
+                <div class="ml-5 flex-1 min-w-0">
+                    <div class="flex items-baseline justify-between gap-3">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="text-slate-900 text-sm {% if event.is_key_event %}font-semibold{% else %}font-medium{% endif %} truncate">
                                 {{ event.title }}
-                                {% if event.is_key_event %}
-                                <span class="ml-2 px-2 py-0.5 text-xs rounded-full bg-yellow-500/20 text-yellow-400">Key Event</span>
-                                {% endif %}
-                            </h3>
-                            {% if event.description %}
-                            <p class="text-muted mt-1 text-sm">{{ event.description }}</p>
+                            </span>
+                            {% if event.is_key_event %}
+                            <span class="flex-shrink-0 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-brand/10 text-brand uppercase tracking-wide">Key</span>
                             {% endif %}
-                        </div>
-                        <div class="flex-shrink-0 text-right">
-                            <span class="text-muted text-sm">{{ event.timestamp | format_datetime }}</span>
                             {% if event.source %}
-                            <div class="mt-1">
-                                <span class="px-2 py-0.5 text-xs rounded bg-slate-100 text-slate-700">{{ event.source }}</span>
-                            </div>
+                            <span class="flex-shrink-0 px-1.5 py-0.5 text-[10px] rounded bg-slate-100 text-slate-500">{{ event.source }}</span>
                             {% endif %}
                         </div>
+                        <span class="flex-shrink-0 text-xs text-slate-400 tabular-nums">{{ event.timestamp | format_datetime_short }}</span>
                     </div>
 
+                    {% if event.description %}
+                    <p class="text-slate-500 text-xs mt-0.5">{{ event.description }}</p>
+                    {% endif %}
+
                     {% if event.actor %}
-                    <div class="mt-2 flex items-center text-sm text-muted">
-                        <i class="fas fa-user mr-2"></i>
-                        {{ event.actor }}
+                    <div class="mt-1 flex items-center text-xs text-slate-400">
+                        <i class="fas fa-user mr-1.5 text-[10px]"></i>{{ event.actor }}
                     </div>
                     {% endif %}
 
                     {% if event.metadata %}
-                    <div class="mt-3 pt-3 border-t border-slate-200 grid grid-cols-2 gap-2 text-sm">
+                    <div class="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-xs">
                         {% for key, value in event.metadata.items() %}
                         {% if value %}
                         <div>
-                            <span class="text-muted">{{ key }}:</span>
+                            <span class="text-slate-400">{{ key }}:</span>
                             {% if key == 'url' %}
-                            <a href="{{ value }}" target="_blank" class="text-[#e05a3a] hover:text-[#c94f34]">
-                                View <i class="fas fa-external-link-alt text-xs ml-1"></i>
-                            </a>
+                            <a href="{{ value }}" target="_blank" class="text-brand hover:underline">View ↗</a>
                             {% elif key == 'sha' %}
-                            <code class="text-slate-700 bg-white px-1 rounded">{{ value[:7] }}</code>
+                            <code class="text-slate-600 bg-slate-50 px-1 rounded text-[11px]">{{ value[:7] }}</code>
                             {% else %}
-                            <span class="text-slate-700">{{ value }}</span>
+                            <span class="text-slate-600">{{ value }}</span>
                             {% endif %}
                         </div>
                         {% endif %}
@@ -134,58 +125,43 @@
     </div>
 </div>
 
-<!-- Timeline Stats -->
-<div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-    <div class="bg-white rounded-lg p-4 border border-slate-200">
-        <div class="text-muted text-sm">Alerts</div>
-        <div class="text-2xl font-bold text-slate-900">{{ stats.alerts }}</div>
+<!-- Stats Bar -->
+<div class="mt-4 grid grid-cols-4 gap-3">
+    <div class="bg-white rounded-lg px-4 py-3 border border-slate-200 text-center">
+        <p class="text-lg font-bold text-slate-900">{{ stats.alerts }}</p>
+        <span class="text-muted text-xs">Alerts</span>
     </div>
-    <div class="bg-white rounded-lg p-4 border border-slate-200">
-        <div class="text-muted text-sm">Deployments</div>
-        <div class="text-2xl font-bold text-slate-900">{{ stats.deployments }}</div>
+    <div class="bg-white rounded-lg px-4 py-3 border border-slate-200 text-center">
+        <p class="text-lg font-bold text-slate-900">{{ stats.deployments }}</p>
+        <span class="text-muted text-xs">Deploys</span>
     </div>
-    <div class="bg-white rounded-lg p-4 border border-slate-200">
-        <div class="text-muted text-sm">Log Errors</div>
-        <div class="text-2xl font-bold text-slate-900">{{ stats.errors }}</div>
+    <div class="bg-white rounded-lg px-4 py-3 border border-slate-200 text-center">
+        <p class="text-lg font-bold text-slate-900">{{ stats.errors }}</p>
+        <span class="text-muted text-xs">Errors</span>
     </div>
-    <div class="bg-white rounded-lg p-4 border border-slate-200">
-        <div class="text-muted text-sm">Key Events</div>
-        <div class="text-2xl font-bold text-slate-900">{{ stats.key_events }}</div>
+    <div class="bg-white rounded-lg px-4 py-3 border border-slate-200 text-center">
+        <p class="text-lg font-bold text-slate-900">{{ stats.key_events }}</p>
+        <span class="text-muted text-xs">Key Events</span>
     </div>
 </div>
 
 <script>
-// Timeline filtering
 document.querySelectorAll('.timeline-filter').forEach(button => {
     button.addEventListener('click', function() {
-        // Update active button
         document.querySelectorAll('.timeline-filter').forEach(b => {
-            b.classList.remove('active', 'bg-brand');
-            b.classList.add('bg-slate-100', 'text-slate-700');
+            b.className = 'timeline-filter px-3 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50 transition-colors';
         });
-        this.classList.add('active', 'bg-brand');
-        this.classList.remove('bg-slate-100', 'text-slate-700');
+        this.className = 'timeline-filter active px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-medium transition-colors';
 
         const filter = this.dataset.filter;
-
         document.querySelectorAll('.timeline-event').forEach(event => {
             const type = event.dataset.type;
             const isKey = event.dataset.key === 'true';
-
-            let show = false;
-
-            if (filter === 'all') {
-                show = true;
-            } else if (filter === 'key') {
-                show = isKey;
-            } else if (filter === 'alert') {
-                show = type.includes('alert');
-            } else if (filter === 'deployment') {
-                show = type.includes('deployment') || type.includes('rollback');
-            } else if (filter === 'log') {
-                show = type.includes('log');
-            }
-
+            let show = filter === 'all' ||
+                       (filter === 'key' && isKey) ||
+                       (filter === 'alert' && type.includes('alert')) ||
+                       (filter === 'deployment' && (type.includes('deployment') || type.includes('rollback'))) ||
+                       (filter === 'log' && type.includes('log'));
             event.style.display = show ? 'flex' : 'none';
         });
     });
