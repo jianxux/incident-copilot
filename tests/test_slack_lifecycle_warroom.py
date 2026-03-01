@@ -191,13 +191,13 @@ class TestHandleStartWarroom:
                         {
                             "incident_id": "INC-123",
                             "service": "payments-api",
-                            "tenant_id": "tenant-1",
                         }
                     ),
                 }
             ],
             "user": {"username": "alice"},
             "channel": {"id": "C_ORIG"},
+            "team": {"id": "T_TEAM1"},
             "message": {"ts": "123.456"},
         }
 
@@ -209,6 +209,7 @@ class TestHandleStartWarroom:
 
         mock_create.assert_awaited_once()
         assert mock_create.call_args.kwargs["original_ts"] == "123.456"
+        assert mock_create.call_args.kwargs["tenant_id"] == "T_TEAM1"
 
     @pytest.mark.asyncio
     async def test_shows_error_detail_on_failure(self):
@@ -220,13 +221,13 @@ class TestHandleStartWarroom:
                         {
                             "incident_id": "INC-123",
                             "service": "payments-api",
-                            "tenant_id": "tenant-1",
                         }
                     ),
                 }
             ],
             "user": {"username": "alice"},
             "channel": {"id": "C_ORIG"},
+            "team": {"id": "T_TEAM1"},
             "message": {"ts": "123.456"},
         }
 
@@ -249,13 +250,13 @@ class TestHandleStartWarroom:
                         {
                             "incident_id": "INC-123",
                             "service": "payments-api",
-                            "tenant_id": "tenant-1",
                         }
                     ),
                 }
             ],
             "user": {"username": "alice"},
             "channel": {"id": "C_ORIG"},
+            "team": {"id": "T_TEAM1"},
             "container": {"message_ts": "789.012"},
         }
 
