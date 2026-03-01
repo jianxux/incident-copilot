@@ -81,7 +81,7 @@ async def _process(
     try:
         orchestrator = ContextOrchestrator(settings)
         card = await orchestrator.process_incident(
-            incident, slack_channel=slack_channel
+            incident, slack_channel=slack_channel, tenant_id=tenant_id
         )
         await incident_store.complete_incident(
             incident.incident_id, card, tenant_id=tenant_id
