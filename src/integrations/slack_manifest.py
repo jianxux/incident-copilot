@@ -19,7 +19,7 @@ def generate_manifest(app_url: str) -> dict:
     return {
         "_metadata": {
             "major_version": 2,
-            "minor_version": 0,
+            "minor_version": 1,
         },
         "display_information": {
             "name": "Incident Copilot",
@@ -28,7 +28,7 @@ def generate_manifest(app_url: str) -> dict:
                 "Incident Copilot helps on-call engineers troubleshoot faster "
                 "by auto-assembling context when alerts fire. It fetches logs, "
                 "metrics, and deployment history, then synthesizes an analysis "
-                "with actionable recommendations — all within Slack."
+                "with actionable recommendations - all within Slack."
             ),
             "background_color": "#e05a3a",
         },
