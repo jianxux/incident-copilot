@@ -76,13 +76,14 @@ async def _handle_start_warroom(
 
     incident_id = value.get("incident_id", "")
     service = value.get("service", "unknown")
+    tenant_id = value.get("tenant_id")
 
     # The original message ts comes from the payload's message
     original_ts = None  # Will be populated from the interaction payload container
 
     try:
         result = await create_warroom_from_notification(
-            tenant_id=None,
+            tenant_id=tenant_id,
             incident_id=incident_id,
             service=service,
             original_channel_id=channel_id,
