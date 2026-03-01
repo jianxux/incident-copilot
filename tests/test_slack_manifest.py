@@ -13,7 +13,7 @@ APP_URL = "https://app.example.com"
 class TestGenerateManifest:
     def test_structure(self):
         m = generate_manifest(APP_URL)
-        assert m["_metadata"]["major_version"] == 2
+        assert m["_metadata"]["major_version"] == 1
         assert "display_information" in m
         assert "features" in m
         assert "oauth_config" in m
@@ -85,7 +85,7 @@ class TestGenerateManifestUrl:
         params = urllib.parse.parse_qs(query)
         manifest_json = params["manifest_json"][0]
         manifest = json.loads(manifest_json)
-        assert manifest["_metadata"]["major_version"] == 2
+        assert manifest["_metadata"]["major_version"] == 1
         assert manifest["display_information"]["name"] == "Incident Copilot"
 
 
@@ -109,7 +109,7 @@ class TestManifestEndpoints:
             assert resp.status_code in (200, 401, 403)
             if resp.status_code == 200:
                 data = resp.json()
-                assert data["_metadata"]["major_version"] == 2
+                assert data["_metadata"]["major_version"] == 1
 
     @pytest.mark.asyncio
     async def test_install_redirect(self):
