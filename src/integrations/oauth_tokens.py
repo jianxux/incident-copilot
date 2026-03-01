@@ -135,7 +135,7 @@ class OAuthTokenStore:
         existing = self._tokens.get(key)
         if existing:
             row["id"] = existing["id"]
-            row["created_at"] = existing["created_at"]
+            # Don't preserve old created_at — on reconnect, the date should reflect now
         self._tokens[key] = row
         return self._to_record(row)
 
