@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
+from src.models import ContextCard
+
 import pytest
 
 
@@ -59,7 +61,7 @@ async def test_process_uses_fallback_context_and_never_fails_incident(monkeypatc
         def __init__(self, _settings):
             pass
 
-        async def process_incident(self, incident, slack_channel=None):
+        async def process_incident(self, incident, slack_channel=None, tenant_id=None):
             raise RuntimeError("fallback path boom")
 
     complete_mock = AsyncMock()
@@ -92,3 +94,45 @@ async def test_process_uses_fallback_context_and_never_fails_incident(monkeypatc
     assert kwargs["metadata"]["fallback"] is True
     assert "fallback path boom" in kwargs["metadata"]["error"]
     fail_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_process_passes_tenant_id_to_orchestrator(monkeypatch):
+    """Verify _process forwards tenant_id to orchestrator.process_incident."""
+    import src.onboarding.test_incident as test_incident_module
+    from src.models import PagerDutyIncident, Severity
+
+    captured = {}
+
+    class _CapturingOrchestrator:
+        def __init__(self, _settings):
+            pass
+
+        async def process_incident(self, incident, slack_channel=None, tenant_id=None):
+            captured["tenant_id"] = tenant_id
+            return ContextCard(
+                incident_id=incident.incident_id,
+                title=incident.title,
+                severity=incident.severity,
+                service_name=incident.service_name,
+                triggered_at=incident.triggered_at,
+                alert_url="https://example.com",
+                assembly_time_ms=0,
+            )
+
+    monkeypatch.setattr(test_incident_module, "ContextOrchestrator", _CapturingOrchestrator)
+    monkeypatch.setattr(test_incident_module.incident_store, "complete_incident", AsyncMock())
+
+    incident = PagerDutyIncident(
+        incident_id="inc-tenant-test",
+        title="Tenant forwarding test",
+        description="test",
+        severity=Severity.HIGH,
+        service_name="payments-api",
+        triggered_at=datetime.now(UTC),
+        html_url="https://example.com/inc-tenant-test",
+    )
+
+    await test_incident_module._process(incident, None, "tenant-abc-123")
+
+    assert captured["tenant_id"] == "tenant-abc-123"
