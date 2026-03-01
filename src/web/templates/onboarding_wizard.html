@@ -371,6 +371,10 @@ async function loadStatus() {
       if (st.integrations[p]) {
         conn.textContent = `Reconnect ${conn.textContent.replace('Connect ', '').replace('Reconnect ', '')}`;
         conn.style.opacity = '0.8';
+        // On reconnect, Slack should use OAuth flow (not manifest install)
+        if (p === 'slack') {
+          conn.onclick = () => startOAuth('slack');
+        }
       }
       // Always show the button so users can reconnect
     }
