@@ -18,7 +18,7 @@ def generate_manifest(app_url: str) -> dict:
 
     return {
         "_metadata": {
-            "major_version": 2,
+            "major_version": 1,
             "minor_version": 1,
         },
         "display_information": {
