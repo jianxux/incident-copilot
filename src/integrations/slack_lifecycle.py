@@ -36,9 +36,10 @@ async def get_slack_client(
         token = settings.slack_bot_token or None
 
     if not token:
-        logger.debug("slack_no_token_available", tenant_id=tenant_id)
+        logger.warning("slack_no_token_available", tenant_id=tenant_id)
         return None
 
+    logger.info("slack_client_resolved", tenant_id=tenant_id, token_prefix=token[:10] + "...")
     return AsyncWebClient(token=token)
 
 
