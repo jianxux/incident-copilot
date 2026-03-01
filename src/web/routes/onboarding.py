@@ -224,20 +224,20 @@ async def get_onboarding_status(
 
     # Check oauth_token_store (new normalized store used by generic OAuth flow)
     details: dict[str, dict] = {}
+    oauth_dates: dict[str, str] = {}  # track oauth_token_store dates (authoritative)
     try:
         from ...integrations.oauth_tokens import oauth_token_store
 
         for provider_name in result:
-            if not result[provider_name]:
-                token_rec = await oauth_token_store.get_token(tenant_id, provider_name)
-                if token_rec and token_rec.access_token:
-                    result[provider_name] = True
-                    details[provider_name] = {
-                        "scopes": token_rec.scopes,
-                        "connected_at": token_rec.created_at.isoformat()
-                        if token_rec.created_at
-                        else "",
-                    }
+            token_rec = await oauth_token_store.get_token(tenant_id, provider_name)
+            if token_rec and token_rec.access_token:
+                result[provider_name] = True
+                date_str = token_rec.created_at.isoformat() if token_rec.created_at else ""
+                oauth_dates[provider_name] = date_str
+                details[provider_name] = {
+                    "scopes": token_rec.scopes,
+                    "connected_at": date_str,
+                }
     except Exception as e:
         logger.warning("oauth_token_store_check_failed", error=str(e))
 
@@ -276,7 +276,10 @@ async def get_onboarding_status(
                                 detail["subdomain"] = decrypted["subdomain"]
                             if oauth.get("scope"):
                                 detail["scopes"] = oauth["scope"]
-                            detail["connected_at"] = decrypted.get("connected_at", "")
+                            # Prefer oauth_token_store date (updated on reconnect)
+                            detail["connected_at"] = oauth_dates.get(
+                                provider, decrypted.get("connected_at", "")
+                            )
                             details[provider] = detail
                     except Exception:
                         details[provider] = {}
