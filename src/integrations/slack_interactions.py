@@ -82,13 +82,17 @@ async def _handle_start_warroom(payload: dict) -> dict:
     incident_id = value.get("incident_id", "")
     service = value.get("service", "unknown")
 
+    # Extract tenant/team context from the interaction payload
+    team = payload.get("team", {})
+    tenant_id = team.get("id") if isinstance(team, dict) else None
+
     original_ts = payload.get("message", {}).get("ts")
     if not original_ts:
         original_ts = payload.get("container", {}).get("message_ts")
 
     try:
         result = await create_warroom_from_notification(
-            tenant_id=None,
+            tenant_id=tenant_id,
             incident_id=incident_id,
             service=service,
             original_channel_id=channel_id,
