@@ -333,3 +333,46 @@ def test_reconnect_updates_created_at():
 
     assert token_v2.created_at > first_created
     assert token_v2.access_token == "token-v2"
+
+
+@pytest.mark.unit
+def test_onboarding_status_shows_reconnect_date():
+    """Onboarding status endpoint should return the reconnect date, not the original."""
+    import time
+
+    app = create_app()
+    client = TestClient(app, raise_server_exceptions=False)
+    headers, tenant_id = _run(_create_headers_and_tenant())
+
+    # First connection
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id=tenant_id,
+            provider="pagerduty",
+            access_token="token-v1",
+        )
+    )
+    token_v1 = _run(oauth_token_store.get_token(tenant_id, "pagerduty"))
+    first_date = token_v1.created_at.isoformat()
+
+    time.sleep(0.05)
+
+    # Reconnect
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id=tenant_id,
+            provider="pagerduty",
+            access_token="token-v2",
+        )
+    )
+    token_v2 = _run(oauth_token_store.get_token(tenant_id, "pagerduty"))
+    reconnect_date = token_v2.created_at.isoformat()
+
+    assert reconnect_date > first_date
+
+    # Onboarding status should show the reconnect date
+    response = client.get("/dashboard/api/onboarding/status", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    details = data.get("details", {}).get("pagerduty", {})
+    assert details.get("connected_at") == reconnect_date
