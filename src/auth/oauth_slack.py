@@ -58,15 +58,20 @@ class SlackOAuth:
         return bool(self.client_id and self.client_secret)
 
     def get_authorization_url(self, state: str, redirect_uri: str) -> str:
-        # Bot scopes (what we need to post + react)
+        # Bot scopes (workspace-level bot token permissions)
         bot_scopes = [
-            "chat:write",
-            "channels:read",
-            "channels:join",
-            "groups:read",
-            "im:read",
-            "mpim:read",
-            "reactions:write",
+            "chat:write",  # Post incident updates and responses
+            "channels:read",  # Discover public channels
+            "channels:join",  # Join public incident channels
+            "channels:write",  # Create/rename/archive public war-room channels
+            "channels:manage",  # Manage public channel settings (including archive flows)
+            "groups:read",  # Read private channel metadata
+            "groups:write",  # Manage private war-room channels
+            "im:read",  # Read direct-message conversation metadata
+            "mpim:read",  # Read multi-party DM metadata
+            "reactions:write",  # Add emoji reactions to workflow messages
+            "users:read",  # Look up Slack users for assignment/mentions
+            "team:read",  # Read workspace/team metadata
         ]
         # User scopes (optional; Slack returns authed_user.access_token)
         user_scopes = [

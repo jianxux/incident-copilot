@@ -59,19 +59,22 @@ async def create_incident_channel(
     service_name: str,
     title: str,
     responder_slack_ids: list[str] | None = None,
-) -> dict | None:
+) -> dict:
     """Create a dedicated Slack channel for an incident."""
     client = await get_slack_client(tenant_id)
     if not client:
-        return None
+        msg = "No Slack token available"
+        logger.error("slack_channel_create_failed", error=msg)
+        raise RuntimeError(msg)
 
     channel_name = sanitize_channel_name(short_id, service_name)
 
     try:
         resp = await client.conversations_create(name=channel_name)
         if not resp.get("ok"):
-            logger.error("slack_channel_create_failed", error=resp.get("error"), name=channel_name)
-            return None
+            error_msg = resp.get("error") or "unknown_error"
+            logger.error("slack_channel_create_failed", error=error_msg, name=channel_name)
+            raise RuntimeError(error_msg)
 
         channel_id = resp["channel"]["id"]
         logger.info("slack_channel_created", channel_id=channel_id, name=channel_name)
@@ -98,9 +101,11 @@ async def create_incident_channel(
 
         return {"channel_id": channel_id, "channel_name": channel_name}
 
+    except RuntimeError:
+        raise
     except Exception as e:
         logger.error("slack_channel_create_error", error=str(e), name=channel_name)
-        return None
+        raise RuntimeError(str(e)) from e
 
 
 async def post_context_card(
@@ -430,10 +435,10 @@ async def create_warroom_from_notification(
     original_channel_id: str | None = None,
     original_ts: str | None = None,
     context_blocks: list[dict] | None = None,
-) -> dict | None:
+) -> dict:
     """Create a war room channel on demand and link it back.
 
-    Returns ``{'channel_id': str, 'channel_name': str}`` or ``None``.
+    Returns ``{'channel_id': str, 'channel_name': str}``.
     """
     short_id = incident_id[:8]
     channel_info = await create_incident_channel(
@@ -442,9 +447,6 @@ async def create_warroom_from_notification(
         service_name=service,
         title=f"War room for {incident_id}",
     )
-    if not channel_info:
-        return None
-
     warroom_id = channel_info["channel_id"]
     warroom_name = channel_info["channel_name"]
     client = await get_slack_client(tenant_id)
