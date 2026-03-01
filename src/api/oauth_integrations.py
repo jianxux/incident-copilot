@@ -230,7 +230,6 @@ async def provider_status(
     return {
         "provider": resolved,
         "connected": bool(token),
-        "connected_at": token.updated_at.isoformat() if token and token.updated_at else None,
         "token_expiry": token.token_expiry.isoformat() if token and token.token_expiry else None,
         "scopes": token.scopes if token else [],
     }

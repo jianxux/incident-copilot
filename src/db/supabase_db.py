@@ -582,8 +582,6 @@ class SupabaseDB:
 
         existing = await self.get_integration_token(tenant_id=tenant_id, provider=provider)
         if existing:
-            # Update created_at on reconnect so "Connected" date reflects latest connection
-            payload["created_at"] = now
             result = (
                 self.client.table("integration_tokens")
                 .update(payload)
