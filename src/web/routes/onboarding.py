@@ -806,7 +806,16 @@ async def get_test_incident_status(
     incident_id: str,
     auth: AuthContext = Depends(get_auth_context),
 ):
-    """Poll for test incident processing status."""
+    """Poll for test incident processing status.
+
+    Checks both the Supabase DB directly and the in-memory incident store
+    to handle cases where one persistence layer succeeded but the other didn't.
+    """
+    resolved_status = "processing"
+    resolved_title = None
+    resolved_verdict = None
+
+    # 1. Try Supabase DB directly
     try:
         from ...db.supabase_db import get_db
 
@@ -819,25 +828,39 @@ async def get_test_incident_status(
             .execute()
         )
 
-        if not rows.data:
-            return {"incident_id": incident_id, "status": "processing"}
-
-        incident = rows.data[0]
-        db_status = (incident.get("status") or "").lower()
-        if db_status in ("completed", "resolved"):
-            status = "completed"
-        elif db_status == "error":
-            status = "error"
-        else:
-            status = "processing"
-        return {
-            "incident_id": incident_id,
-            "status": status,
-            "title": incident.get("title"),
-            "verdict": incident.get("verdict"),
-        }
+        if rows.data:
+            incident = rows.data[0]
+            db_status = (incident.get("status") or "").lower()
+            resolved_title = incident.get("title")
+            resolved_verdict = incident.get("verdict")
+            if db_status in ("completed", "resolved"):
+                resolved_status = "completed"
+            elif db_status == "error":
+                resolved_status = "error"
     except Exception:
-        return {"incident_id": incident_id, "status": "processing"}
+        pass
+
+    # 2. Also check the incident_store (covers in-memory fallback)
+    if resolved_status == "processing":
+        try:
+            from ...web.store import incident_store
+
+            stored = await incident_store.get_incident(incident_id)
+            if stored:
+                resolved_title = resolved_title or stored.title
+                if stored.status == "completed":
+                    resolved_status = "completed"
+                elif stored.status == "error":
+                    resolved_status = "error"
+        except Exception:
+            pass
+
+    return {
+        "incident_id": incident_id,
+        "status": resolved_status,
+        "title": resolved_title,
+        "verdict": resolved_verdict,
+    }
 
 
 @router.post("/api/onboarding/disconnect/{provider}")
