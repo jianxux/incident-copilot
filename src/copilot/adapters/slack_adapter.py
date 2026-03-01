@@ -162,6 +162,62 @@ async def _handle_thread_message(payload: dict) -> None:
     )
 
 
+async def _handle_app_mention(payload: dict) -> None:
+    """Handle an @app_mention event — works in channels and threads."""
+    event = payload.get("event", {})
+    team_id = payload.get("team_id", "")
+    channel_id = event.get("channel", "")
+    thread_ts = event.get("thread_ts") or event.get("ts", "")
+    text = (event.get("text") or "").strip()
+
+    if event.get("bot_id") or event.get("subtype") == "bot_message":
+        logger.debug("copilot_slack_mention_ignored_bot")
+        return
+
+    if not text:
+        logger.debug("copilot_slack_mention_ignored_empty_text")
+        return
+
+    # Strip the bot mention from the text (e.g. "<@U12345> summarize" → "summarize")
+    import re as _re
+
+    text = _re.sub(r"<@[A-Z0-9]+>\s*", "", text).strip()
+    if not text:
+        text = "help"
+
+    # Try to find an incident context from thread registry
+    incident_id = None
+    if thread_ts:
+        incident_id = await thread_registry.get_incident_id(team_id, channel_id, thread_ts)
+
+    if incident_id:
+        if not _rate_limiter.allow(incident_id):
+            logger.warning("copilot_slack_mention_rate_limited", incident_id=incident_id)
+            return
+
+        copilot = get_copilot()
+        response = await copilot.chat(incident_id=incident_id, user_message=text)
+    else:
+        response = (
+            "👋 I'm the Incident Copilot! Mention me in an incident thread to ask questions, "
+            "or use `/copilot summary <incident_id>` to get a summary."
+        )
+
+    client = await _get_slack_client(team_id)
+    await client.chat_postMessage(
+        channel=channel_id,
+        thread_ts=thread_ts,
+        text=response[:3500],
+    )
+
+    logger.info(
+        "copilot_slack_mention_response_sent",
+        incident_id=incident_id,
+        channel_id=channel_id,
+        thread_ts=thread_ts,
+    )
+
+
 @router.post("/events")
 async def handle_slack_events(
     request: Request,
@@ -193,11 +249,19 @@ async def handle_slack_events(
         return JSONResponse(content={"ok": True})
 
     event = payload.get("event", {})
-    if event.get("type") == "message":
+    event_subtype = event.get("type")
+
+    if event_subtype == "message":
         try:
             await _handle_thread_message(payload)
         except Exception as exc:
             logger.error("copilot_slack_message_error", error=str(exc))
+
+    elif event_subtype == "app_mention":
+        try:
+            await _handle_app_mention(payload)
+        except Exception as exc:
+            logger.error("copilot_slack_app_mention_error", error=str(exc))
 
     return JSONResponse(content={"ok": True})
 
