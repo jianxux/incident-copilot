@@ -46,7 +46,7 @@ async def handle_interaction(payload: dict) -> dict | None:
 
     # War room creation
     if action_id == "start_warroom":
-        return await _handle_start_warroom(action, user_name, channel_id)
+        return await _handle_start_warroom(payload)
 
     # Action approval
     if action_id.startswith("action_approve:"):
@@ -64,10 +64,15 @@ async def handle_interaction(payload: dict) -> dict | None:
     return None
 
 
-async def _handle_start_warroom(
-    action: dict, user_name: str, channel_id: str
-) -> dict:
+async def _handle_start_warroom(payload: dict) -> dict:
     """Handle 🚨 Start War Room button click."""
+    actions = payload.get("actions") or []
+    action = actions[0] if actions else {}
+    user = payload.get("user", {})
+    user_name = user.get("username") or user.get("name") or user.get("id", "unknown")
+    channel = payload.get("channel", {})
+    channel_id = channel.get("id", "")
+
     value_raw = action.get("value", "{}")
     try:
         value = json.loads(value_raw)
@@ -78,8 +83,9 @@ async def _handle_start_warroom(
     service = value.get("service", "unknown")
     tenant_id = value.get("tenant_id")
 
-    # The original message ts comes from the payload's message
-    original_ts = None  # Will be populated from the interaction payload container
+    original_ts = payload.get("message", {}).get("ts")
+    if not original_ts:
+        original_ts = payload.get("container", {}).get("message_ts")
 
     try:
         result = await create_warroom_from_notification(
@@ -90,18 +96,12 @@ async def _handle_start_warroom(
             original_ts=original_ts,
             context_blocks=None,
         )
-        if result:
-            warroom_name = result["channel_name"]
-            return {
-                "response_type": "in_channel",
-                "replace_original": False,
-                "text": f"🏠 War room <#{result['channel_id']}|{warroom_name}> created by {user_name} for `{incident_id}`",
-            }
-        else:
-            return {
-                "response_type": "ephemeral",
-                "text": f"❌ Failed to create war room for `{incident_id}`. Check bot permissions.",
-            }
+        warroom_name = result["channel_name"]
+        return {
+            "response_type": "in_channel",
+            "replace_original": False,
+            "text": f"🏠 War room <#{result['channel_id']}|{warroom_name}> created by {user_name} for `{incident_id}`",
+        }
     except Exception as e:
         logger.error("slack_warroom_creation_error", error=str(e), incident_id=incident_id)
         return {

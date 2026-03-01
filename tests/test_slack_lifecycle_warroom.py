@@ -6,6 +6,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from slack_sdk.errors import SlackApiError
 
 from src.integrations.slack_lifecycle import (
     build_incident_notification_blocks,
@@ -13,6 +14,7 @@ from src.integrations.slack_lifecycle import (
     post_incident_notification,
     post_update_to_incident,
 )
+from src.integrations.slack_interactions import _handle_start_warroom
 
 
 class TestBuildIncidentNotificationBlocks:
@@ -134,17 +136,137 @@ class TestCreateWarroomFromNotification:
         assert mock_client.chat_postMessage.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_returns_none_on_failure(self):
+    async def test_raises_on_failure(self):
         mock_client = AsyncMock()
         mock_client.conversations_create.return_value = {"ok": False, "error": "name_taken"}
 
         with patch("src.integrations.slack_lifecycle.get_slack_client", return_value=mock_client):
-            result = await create_warroom_from_notification(
-                tenant_id=None,
-                incident_id="INC-001",
-                service="svc",
-            )
-        assert result is None
+            with pytest.raises(RuntimeError, match="name_taken"):
+                await create_warroom_from_notification(
+                    tenant_id=None,
+                    incident_id="INC-001",
+                    service="svc",
+                )
+
+    @pytest.mark.asyncio
+    async def test_missing_scopes_error_surfaces(self):
+        mock_client = AsyncMock()
+        mock_response = MagicMock()
+        mock_response.data = {"ok": False, "error": "missing_scope"}
+        mock_client.conversations_create.side_effect = SlackApiError(
+            message="missing_scope",
+            response=mock_response,
+        )
+
+        with patch("src.integrations.slack_lifecycle.get_slack_client", return_value=mock_client):
+            with pytest.raises(RuntimeError, match="missing_scope"):
+                await create_warroom_from_notification(
+                    tenant_id=None,
+                    incident_id="INC-001",
+                    service="svc",
+                )
+
+    @pytest.mark.asyncio
+    async def test_raises_on_api_failure(self):
+        mock_client = AsyncMock()
+        mock_client.conversations_create.return_value = {"ok": False, "error": "restricted_action"}
+
+        with patch("src.integrations.slack_lifecycle.get_slack_client", return_value=mock_client):
+            with pytest.raises(RuntimeError, match="restricted_action"):
+                await create_warroom_from_notification(
+                    tenant_id=None,
+                    incident_id="INC-001",
+                    service="svc",
+                )
+
+
+class TestHandleStartWarroom:
+    @pytest.mark.asyncio
+    async def test_extracts_original_ts_from_payload(self):
+        payload = {
+            "actions": [
+                {
+                    "action_id": "start_warroom",
+                    "value": json.dumps(
+                        {
+                            "incident_id": "INC-123",
+                            "service": "payments-api",
+                            "tenant_id": "tenant-1",
+                        }
+                    ),
+                }
+            ],
+            "user": {"username": "alice"},
+            "channel": {"id": "C_ORIG"},
+            "message": {"ts": "123.456"},
+        }
+
+        with patch(
+            "src.integrations.slack_interactions.create_warroom_from_notification",
+            new=AsyncMock(return_value={"channel_id": "C_WAR", "channel_name": "inc-inc-123-payments-api"}),
+        ) as mock_create:
+            await _handle_start_warroom(payload)
+
+        mock_create.assert_awaited_once()
+        assert mock_create.call_args.kwargs["original_ts"] == "123.456"
+
+    @pytest.mark.asyncio
+    async def test_shows_error_detail_on_failure(self):
+        payload = {
+            "actions": [
+                {
+                    "action_id": "start_warroom",
+                    "value": json.dumps(
+                        {
+                            "incident_id": "INC-123",
+                            "service": "payments-api",
+                            "tenant_id": "tenant-1",
+                        }
+                    ),
+                }
+            ],
+            "user": {"username": "alice"},
+            "channel": {"id": "C_ORIG"},
+            "message": {"ts": "123.456"},
+        }
+
+        with patch(
+            "src.integrations.slack_interactions.create_warroom_from_notification",
+            new=AsyncMock(side_effect=RuntimeError("missing_scope: channels:write")),
+        ):
+            result = await _handle_start_warroom(payload)
+
+        assert result is not None
+        assert "missing_scope: channels:write" in result["text"]
+
+    @pytest.mark.asyncio
+    async def test_extracts_ts_from_container_fallback(self):
+        payload = {
+            "actions": [
+                {
+                    "action_id": "start_warroom",
+                    "value": json.dumps(
+                        {
+                            "incident_id": "INC-123",
+                            "service": "payments-api",
+                            "tenant_id": "tenant-1",
+                        }
+                    ),
+                }
+            ],
+            "user": {"username": "alice"},
+            "channel": {"id": "C_ORIG"},
+            "container": {"message_ts": "789.012"},
+        }
+
+        with patch(
+            "src.integrations.slack_interactions.create_warroom_from_notification",
+            new=AsyncMock(return_value={"channel_id": "C_WAR", "channel_name": "inc-inc-123-payments-api"}),
+        ) as mock_create:
+            await _handle_start_warroom(payload)
+
+        mock_create.assert_awaited_once()
+        assert mock_create.call_args.kwargs["original_ts"] == "789.012"
 
 
 class TestPostUpdateToIncident:
