@@ -327,6 +327,7 @@ def build_incident_notification_blocks(
     severity: str,
     triggered_at: str,
     summary: str | None = None,
+    tenant_id: str | None = None,
 ) -> list[dict]:
     """Build Block Kit blocks for the shared-channel incident notification card."""
     badge = _severity_badge(severity)
@@ -366,7 +367,7 @@ def build_incident_notification_blocks(
                     "type": "button",
                     "text": {"type": "plain_text", "text": "🚨 Start War Room", "emoji": True},
                     "action_id": "start_warroom",
-                    "value": json.dumps({"incident_id": incident_id, "service": service}),
+                    "value": json.dumps({"incident_id": incident_id, "service": service, "tenant_id": tenant_id}),
                     "style": "danger",
                 },
             ],
@@ -401,6 +402,7 @@ async def post_incident_notification(
         severity=severity,
         triggered_at=triggered_at,
         summary=summary,
+        tenant_id=tenant_id,
     )
     fallback = f"{_severity_badge(severity)} {severity.upper()} | {title} | {service}"
 

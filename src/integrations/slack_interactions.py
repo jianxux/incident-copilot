@@ -81,6 +81,7 @@ async def _handle_start_warroom(payload: dict) -> dict:
 
     incident_id = value.get("incident_id", "")
     service = value.get("service", "unknown")
+    tenant_id = value.get("tenant_id")
 
     # Extract tenant/team context from the interaction payload
     team = payload.get("team", {})
