@@ -135,7 +135,6 @@ class OAuthTokenStore:
         existing = self._tokens.get(key)
         if existing:
             row["id"] = existing["id"]
-            row["created_at"] = existing["created_at"]
         self._tokens[key] = row
         return self._to_record(row)
 
