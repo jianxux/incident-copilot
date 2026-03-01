@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from ..auth.middleware import AuthContext, get_auth_context
 from ..config import get_settings
 from ..integrations import GitHubAdapter
+from ..integrations.github import resolve_github_creds
 from ..models import Severity
 from ..supabase_client import is_supabase_db_enabled
 from ..web.store import incident_store
@@ -215,17 +216,22 @@ def _map_context_payload(
     return data
 
 
-async def _try_ondemand_enrichment(incident_row: dict[str, Any]) -> dict[str, Any]:
+async def _try_ondemand_enrichment(
+    incident_row: dict[str, Any],
+    tenant_id: str | None = None,
+) -> dict[str, Any]:
     service = incident_row.get("service") or incident_row.get("service_name")
     if not service:
         return {}
 
     settings = get_settings()
-    if not settings.github_token:
+    token, org = await resolve_github_creds(tenant_id)
+    if not token:
         return {}
 
     try:
-        github_context = await GitHubAdapter(settings).get_context(service)
+        adapter = GitHubAdapter.from_credentials(token, org, settings)
+        github_context = await adapter.get_context(service)
         if not github_context:
             return {}
 
@@ -352,10 +358,11 @@ async def _github_timeline_events_from_context(
     *,
     incident_row: dict[str, Any] | None,
     stored_context_payload: dict[str, Any] | None,
+    tenant_id: str | None = None,
 ) -> list[dict[str, Any]]:
     github_context = _extract_github_context(stored_context_payload)
     if not github_context and incident_row:
-        enriched_payload = await _try_ondemand_enrichment(incident_row)
+        enriched_payload = await _try_ondemand_enrichment(incident_row, tenant_id=tenant_id)
         github_context = _extract_github_context(enriched_payload)
 
     if not github_context:
@@ -607,6 +614,7 @@ async def _build_timeline_from_inmemory(
     *,
     incident_row: dict[str, Any] | None = None,
     stored_context_payload: dict[str, Any] | None = None,
+    tenant_id: str | None = None,
 ) -> list[dict[str, Any]]:
     events = list(_IN_MEMORY_TIMELINE.get(incident_id, []))
 
@@ -652,6 +660,7 @@ async def _build_timeline_from_inmemory(
             incident_id,
             incident_row=incident_row,
             stored_context_payload=stored_context_payload,
+            tenant_id=tenant_id,
         )
     )
     timeline.sort(key=lambda item: item.get("timestamp") or "")
@@ -1172,7 +1181,7 @@ async def get_incident_context(
             card_row = None
 
         if not card_row:
-            enriched_payload = await _try_ondemand_enrichment(row)
+            enriched_payload = await _try_ondemand_enrichment(row, tenant_id=tenant_id)
             return _map_context_payload(
                 incident_id=incident_id,
                 payload=enriched_payload,
@@ -1197,7 +1206,8 @@ async def get_incident_context(
                 "id": item.incident_id,
                 "service": item.service_name,
                 "service_name": item.service_name,
-            }
+            },
+            tenant_id=tenant_id,
         )
         return _map_context_payload(
             incident_id=incident_id,
@@ -1253,6 +1263,7 @@ async def get_incident_timeline(
                 incident_id,
                 incident_row=row,
                 stored_context_payload=card_row.get("data") if isinstance(card_row, dict) else None,
+                tenant_id=tenant_id,
             )
         )
 
@@ -1280,6 +1291,7 @@ async def get_incident_timeline(
         stored_context_payload=(
             item.context_card.model_dump(mode="json") if item.context_card else None
         ),
+        tenant_id=tenant_id,
     )
 
 
