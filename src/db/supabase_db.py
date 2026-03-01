@@ -582,6 +582,7 @@ class SupabaseDB:
 
         existing = await self.get_integration_token(tenant_id=tenant_id, provider=provider)
         if existing:
+            payload["created_at"] = now
             result = (
                 self.client.table("integration_tokens")
                 .update(payload)
