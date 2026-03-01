@@ -24,12 +24,6 @@ def generate_manifest(app_url: str) -> dict:
         "display_information": {
             "name": "Incident Copilot",
             "description": "AI-powered incident management copilot",
-            "long_description": (
-                "Incident Copilot helps on-call engineers troubleshoot faster "
-                "by auto-assembling context when alerts fire. It fetches logs, "
-                "metrics, and deployment history, then synthesizes an analysis "
-                "with actionable recommendations - all within Slack."
-            ),
             "background_color": "#e05a3a",
         },
         "features": {
