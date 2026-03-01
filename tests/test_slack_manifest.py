@@ -25,7 +25,7 @@ class TestGenerateManifest:
         assert d["name"] == "Incident Copilot"
         assert d["background_color"] == "#e05a3a"
         assert len(d["description"]) > 0
-        assert len(d["long_description"]) > 50
+        assert "long_description" not in d  # removed to avoid manifest creation errors
 
     def test_scopes(self):
         m = generate_manifest(APP_URL)
