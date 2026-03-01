@@ -301,3 +301,35 @@ def test_provider_test_pagerduty_expired_refresh_failed(monkeypatch):
     assert data["provider"] == "pagerduty"
     assert data["ok"] is False
     assert "refresh failed" in data["details"].lower()
+
+
+@pytest.mark.unit
+def test_reconnect_updates_created_at():
+    """On reconnect (upsert), created_at should reflect the new connection time."""
+    import time
+
+    headers, tenant_id = _run(_create_headers_and_tenant())
+
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id=tenant_id,
+            provider="pagerduty",
+            access_token="token-v1",
+        )
+    )
+    token_v1 = _run(oauth_token_store.get_token(tenant_id, "pagerduty"))
+    first_created = token_v1.created_at
+
+    time.sleep(0.05)
+
+    _run(
+        oauth_token_store.upsert_token(
+            tenant_id=tenant_id,
+            provider="pagerduty",
+            access_token="token-v2",
+        )
+    )
+    token_v2 = _run(oauth_token_store.get_token(tenant_id, "pagerduty"))
+
+    assert token_v2.created_at > first_created
+    assert token_v2.access_token == "token-v2"
