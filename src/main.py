@@ -50,6 +50,7 @@ from .config import get_settings
 from .copilot.adapters.slack_adapter import router as slack_copilot_router
 from .copilot.adapters.teams_adapter import router as teams_copilot_router
 from .copilot.adapters.web_adapter import router as web_copilot_router
+from .db.migrate import run_pending_migrations
 from .metrics import HEALTH_STATUS, set_app_info
 from .metrics.middleware import PrometheusMiddleware
 from .oncall.scheduler import (
@@ -104,6 +105,7 @@ def create_app() -> FastAPI:
     async def lifespan(_: FastAPI):
         logger.info("incident_copilot_starting", debug=settings.debug)
         set_app_start_time()
+        await run_pending_migrations(settings=settings)
 
         # Log integration/config status once at startup (avoid per-request warning spam).
         logger.info(
