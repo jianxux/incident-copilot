@@ -128,6 +128,24 @@ class SupabaseDB:
         )
         return result.data[0] if result.data else None
 
+    async def list_tenants_with_slack_integration(self) -> list[dict]:
+        """List tenant IDs and Slack integration payloads for team ID resolution."""
+        self._check_enabled()
+
+        def _query():
+            return self.client.table("tenants").select("id,integrations").execute()
+
+        result = await self._to_thread(_query)
+        rows: list[dict] = []
+        for row in result.data or []:
+            integrations = row.get("integrations") or {}
+            if not isinstance(integrations, dict):
+                continue
+            if "slack" not in integrations:
+                continue
+            rows.append({"id": row.get("id"), "integrations": integrations})
+        return rows
+
     # ==================== Users ====================
 
     async def create_user(
