@@ -72,6 +72,9 @@ async def start_test_incident(
     return incident_id
 
 
+_PROCESS_TIMEOUT_SECONDS = 120  # Max time for orchestrator processing
+
+
 async def _process(
     incident: PagerDutyIncident,
     slack_channel: str | None,
@@ -80,8 +83,12 @@ async def _process(
     settings = get_settings()
     try:
         orchestrator = ContextOrchestrator(settings)
-        card = await orchestrator.process_incident(
-            incident, slack_channel=slack_channel, tenant_id=tenant_id
+        # Apply a timeout so we don't hang forever
+        card = await asyncio.wait_for(
+            orchestrator.process_incident(
+                incident, slack_channel=slack_channel, tenant_id=tenant_id
+            ),
+            timeout=_PROCESS_TIMEOUT_SECONDS,
         )
         await incident_store.complete_incident(
             incident.incident_id, card, tenant_id=tenant_id
@@ -89,6 +96,9 @@ async def _process(
         logger.info("test_incident_completed", incident_id=incident.incident_id)
     except Exception as e:
         error_message = str(e)
+        if isinstance(e, asyncio.TimeoutError):
+            error_message = f"Processing timed out after {_PROCESS_TIMEOUT_SECONDS}s"
+
         fallback_card = ContextCard(
             incident_id=incident.incident_id,
             title=incident.title,
@@ -113,9 +123,29 @@ async def _process(
             incident_id=incident.incident_id,
             error=error_message,
         )
-        await incident_store.complete_incident(
-            incident.incident_id,
-            fallback_card,
-            metadata={"fallback": True, "error": error_message},
-            tenant_id=tenant_id,
-        )
+        try:
+            await incident_store.complete_incident(
+                incident.incident_id,
+                fallback_card,
+                metadata={"fallback": True, "error": error_message},
+                tenant_id=tenant_id,
+            )
+        except Exception as store_err:
+            # Last resort: try to mark as error so it doesn't stay "processing" forever
+            logger.error(
+                "test_incident_fallback_store_failed",
+                incident_id=incident.incident_id,
+                error=str(store_err),
+            )
+            try:
+                await incident_store.fail_incident(
+                    incident.incident_id,
+                    error_message=error_message,
+                    metadata={"fallback": True},
+                    tenant_id=tenant_id,
+                )
+            except Exception:
+                logger.error(
+                    "test_incident_fail_store_also_failed",
+                    incident_id=incident.incident_id,
+                )
