@@ -57,7 +57,7 @@ class AuthService:
     ) -> Tenant:
         """Create a new tenant."""
         if is_supabase_db_enabled():
-            db = get_db()
+            db = get_db(use_admin=True)
             existing = await db.get_tenant_by_slug(slug)
             if existing:
                 raise ValueError(f"Tenant with slug '{slug}' already exists")
@@ -107,7 +107,7 @@ class AuthService:
             return cached
 
         if is_supabase_db_enabled():
-            row = await get_db().get_tenant(tenant_id)
+            row = await get_db(use_admin=True).get_tenant(tenant_id)
             if row:
                 return self._tenant_from_row(row)
             return None
@@ -121,7 +121,7 @@ class AuthService:
             return self._tenants.get(tenant_id)
 
         if is_supabase_db_enabled():
-            row = await get_db().get_tenant_by_slug(slug)
+            row = await get_db(use_admin=True).get_tenant_by_slug(slug)
             if row:
                 return self._tenant_from_row(row)
         return None
@@ -140,7 +140,7 @@ class AuthService:
         tenant.updated_at = datetime.now(UTC)
 
         if is_supabase_db_enabled():
-            row = await get_db().update_tenant(
+            row = await get_db(use_admin=True).update_tenant(
                 tenant_id,
                 plan=tenant.plan.value,
                 max_incidents_per_month=tenant.max_incidents_per_month,
@@ -171,7 +171,7 @@ class AuthService:
         tenant.updated_at = datetime.now(UTC)
 
         if is_supabase_db_enabled():
-            row = await get_db().update_tenant(
+            row = await get_db(use_admin=True).update_tenant(
                 tenant_id, integrations=merged_integrations
             )
             if not row:
