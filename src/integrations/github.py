@@ -6,10 +6,71 @@ from datetime import datetime, timedelta, UTC
 import httpx
 import structlog
 
-from ..config import Settings
+from ..config import Settings, get_settings
+from ..db.supabase_db import get_db
 from ..models import Deployment, GitHubContext, GitHubDeployment, GitHubPullRequest
+from ..security.crypto import decrypt_json
 
 logger = structlog.get_logger()
+
+
+async def resolve_github_creds(tenant_id: str | None) -> tuple[str, str]:
+    """Resolve GitHub token/org from env first, then tenant integration config."""
+    settings = get_settings()
+    token = settings.github_token or ""
+    org = settings.github_org or ""
+    if token:
+        return token, org
+
+    if tenant_id is None:
+        return "", ""
+
+    try:
+        db = get_db(use_admin=True)
+
+        def _fetch():
+            return (
+                db.client.table("integration_configs")
+                .select("config")
+                .eq("type", "github")
+                .eq("tenant_id", tenant_id)
+                .limit(1)
+                .execute()
+            )
+
+        result = await db._to_thread(_fetch)
+        if not result.data:
+            return "", ""
+
+        config = result.data[0].get("config")
+        if not isinstance(config, dict):
+            return "", ""
+
+        encrypted = config.get("encrypted")
+        if not encrypted:
+            return "", ""
+
+        decrypted = decrypt_json(encrypted)
+        token = decrypted.get("token", "") if isinstance(decrypted, dict) else ""
+        org = decrypted.get("org", "") if isinstance(decrypted, dict) else ""
+        return token, org
+    except Exception as exc:
+        logger.warning(
+            "github_credentials_resolution_failed",
+            tenant_id=tenant_id,
+            error=str(exc),
+        )
+        return "", ""
+
+
+async def resolve_github_credentials(
+    settings: Settings,
+    tenant_id: str | None = None,
+) -> tuple[str, str]:
+    """Backward-compatible wrapper for older call sites."""
+    if settings.github_token:
+        return settings.github_token, settings.github_org
+    return await resolve_github_creds(tenant_id)
 
 
 class GitHubAdapter:
@@ -17,11 +78,15 @@ class GitHubAdapter:
 
     BASE_URL = "https://api.github.com"
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, *, token: str | None = None, org: str | None = None):
         self.settings = settings
-        self.token = settings.github_token
-        self.org = settings.github_org
+        self.token = token if token is not None else settings.github_token
+        self.org = org if org is not None else settings.github_org
         self.service_repo_map = settings.service_repo_map
+
+    @classmethod
+    def from_credentials(cls, token: str, org: str, settings: Settings) -> "GitHubAdapter":
+        return cls(settings, token=token, org=org)
 
     def _get_headers(self) -> dict:
         """Get auth headers for GitHub API."""
