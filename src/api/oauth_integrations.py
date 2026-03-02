@@ -185,6 +185,7 @@ async def callback_provider(
     )
 
     # Slack-specific: store integration record + register team mapping
+    logger.info("oauth_callback_post_upsert", provider=resolved, tenant_id=state_data.tenant_id, token_prefix=token_data["access_token"][:10])
     if resolved == "slack":
         team = token_data.get("team")
         team_id_str = team.get("id") if isinstance(team, dict) else None
