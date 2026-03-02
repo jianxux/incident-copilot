@@ -24,4 +24,6 @@ export const api = {
   incidentTimeline: (id: string) => fetchJSON<TimelineEvent[]>(`/api/incidents/${id}/timeline`),
   incidentContext: (id: string) => fetchJSON<IncidentContext>(`/api/incidents/${id}/context`),
   analytics: () => fetchJSON<AnalyticsData>('/api/analytics'),
+  syncStatus: () => fetchJSON<{ last_attempt: string | null; last_success: string | null; last_error: string | null; status: string }>('/api/incidents/sync-status'),
+  forceSync: () => fetch(`${BASE}/api/incidents/sync`, { method: 'POST', credentials: 'include' }).then(res => res.json()),
 };

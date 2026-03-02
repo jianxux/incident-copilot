@@ -136,7 +136,6 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         tenant_id: str | None = None,
         description: str | None = None,
     ) -> StoredIncident:
-        _ = tenant_id
         async with self._lock:
             incident = StoredIncident(
                 incident_id=incident_id,
@@ -152,11 +151,16 @@ class InMemoryIncidentStore(_BaseIncidentStore):
                 metadata=metadata or {},
             )
             self._incidents[incident_id] = incident
+            if tenant_id is not None:
+                self._tenant_map[incident_id] = tenant_id
+            else:
+                self._tenant_map.pop(incident_id, None)
             self._order.insert(0, incident_id)
 
             while len(self._order) > self._max_incidents:
                 old_id = self._order.pop()
                 self._incidents.pop(old_id, None)
+                self._tenant_map.pop(old_id, None)
 
             await self._notify_subscribers(
                 {
@@ -180,10 +184,11 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         metadata: dict | None = None,
         tenant_id: str | None = None,
     ) -> StoredIncident | None:
-        _ = tenant_id
         async with self._lock:
             incident = self._incidents.get(incident_id)
             if not incident:
+                return None
+            if tenant_id is not None and self._tenant_map.get(incident_id) != tenant_id:
                 return None
 
             incident.status = "completed"
@@ -209,10 +214,11 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         metadata: dict | None = None,
         tenant_id: str | None = None,
     ) -> StoredIncident | None:
-        _ = tenant_id
         async with self._lock:
             incident = self._incidents.get(incident_id)
             if not incident:
+                return None
+            if tenant_id is not None and self._tenant_map.get(incident_id) != tenant_id:
                 return None
 
             incident.status = "error"
@@ -240,15 +246,25 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         incident_id: str,
         tenant_id: str | None = None,
     ) -> StoredIncident | None:
-        _ = tenant_id
-        return self._incidents.get(incident_id)
+        incident = self._incidents.get(incident_id)
+        if not incident:
+            return None
+        if tenant_id is not None and self._tenant_map.get(incident_id) != tenant_id:
+            return None
+        return incident
 
     async def get_all_incidents(
         self,
         tenant_id: str | None = None,
     ) -> list[StoredIncident]:
-        _ = tenant_id
-        return [self._incidents[iid] for iid in self._order if iid in self._incidents]
+        incidents = [self._incidents[iid] for iid in self._order if iid in self._incidents]
+        if tenant_id is None:
+            return incidents
+        return [
+            incident
+            for incident in incidents
+            if self._tenant_map.get(incident.incident_id) == tenant_id
+        ]
 
     async def get_stats(self) -> dict:
         total = len(self._incidents)
@@ -682,6 +698,8 @@ class HybridIncidentStore(_BaseIncidentStore):
             logger.warning(
                 "hybrid_store_supabase_add_failed",
                 incident_id=incident_id,
+                tenant_id=tenant_id,
+                title=title,
                 error=str(e),
                 error_type=type(e).__name__,
             )
@@ -781,6 +799,7 @@ class HybridIncidentStore(_BaseIncidentStore):
         except Exception as e:
             logger.warning(
                 "hybrid_store_supabase_list_failed",
+                tenant_id=tenant_id,
                 error=str(e),
                 error_type=type(e).__name__,
             )
