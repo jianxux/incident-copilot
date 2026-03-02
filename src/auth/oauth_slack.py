@@ -10,8 +10,7 @@ Docs: https://api.slack.com/authentication/oauth-v2
 
 from __future__ import annotations
 
-import secrets
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from urllib.parse import urlencode
 
 import httpx
@@ -139,18 +138,13 @@ async def start_slack_oauth(
             detail="Slack OAuth is not configured. Set SLACK_OAUTH_CLIENT_ID and SLACK_OAUTH_CLIENT_SECRET environment variables.",
         )
 
-    state = secrets.token_urlsafe(32)
     redirect_uri = f"{settings.app_url}/api/integrations/oauth/slack/callback"
-
-    await oauth_state_store.cleanup_expired()
-    await oauth_state_store.save(
+    state = await oauth_token_store.save_state(
         provider="slack",
-        state=state,
         tenant_id=str(auth.tenant_id),
         user_id=str(auth.user_id),
         redirect_uri=redirect_uri,
         return_to=return_to or f"{settings.app_url}/dashboard/onboarding-wizard",
-        expires_at=datetime.now(UTC) + timedelta(minutes=15),
     )
 
     authorize_url = oauth.get_authorization_url(state, redirect_uri)

@@ -12,6 +12,7 @@ from src.auth.models import UserRole
 from src.auth.service import auth_service
 from src.integrations.oauth_tokens import oauth_token_store
 from src.main import create_app
+from src.security import decrypt_json
 
 
 class _DummyResponse:
@@ -77,6 +78,7 @@ def test_slack_oauth_connect_callback_status_disconnect(monkeypatch):
                     "refresh_token": "refresh-token",
                     "expires_in": 3600,
                     "scope": "channels:read,chat:write,users:read,team:read",
+                    "team": {"id": "T123SLACK", "name": "Workspace"},
                 },
             )
         if "auth.revoke" in url:
@@ -87,7 +89,16 @@ def test_slack_oauth_connect_callback_status_disconnect(monkeypatch):
 
     app = create_app()
     client = TestClient(app)
-    headers = _run(_create_headers())
+    headers, tenant_id = _run(_create_headers_and_tenant())
+    register_calls: list[tuple[str, str]] = []
+
+    def _record_register(team_id: str, tenant_id: str):
+        register_calls.append((team_id, tenant_id))
+
+    monkeypatch.setattr(
+        "src.integrations.slack_lifecycle.register_slack_team_mapping",
+        _record_register,
+    )
 
     connect = client.get("/api/integrations/slack/connect", headers=headers, follow_redirects=False)
     assert connect.status_code in (302, 307)
@@ -101,6 +112,15 @@ def test_slack_oauth_connect_callback_status_disconnect(monkeypatch):
     )
     assert callback.status_code in (302, 307)
     assert "oauth_result=success" in callback.headers["location"]
+    assert register_calls == [("T123SLACK", tenant_id)]
+
+    tenant = _run(auth_service.get_tenant(tenant_id))
+    assert tenant is not None
+    encrypted = tenant.integrations["slack"]["encrypted"]
+    decrypted = decrypt_json(encrypted)
+    oauth_data = decrypted["oauth"]
+    assert oauth_data["bot_token"] == "xoxb-test-token"
+    assert oauth_data["team"]["id"] == "T123SLACK"
 
     status_connected = client.get("/api/integrations/slack/status", headers=headers)
     assert status_connected.status_code == 200

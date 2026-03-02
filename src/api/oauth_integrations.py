@@ -10,6 +10,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 
+from ..auth.service import auth_service
 from ..auth.middleware import AuthContext, get_auth_context, require_role
 from ..auth.models import UserRole
 from ..config import get_settings
@@ -19,6 +20,7 @@ from ..integrations.oauth_providers import (
     normalize_provider,
 )
 from ..integrations.oauth_tokens import OAuthStateRecord, oauth_token_store
+from ..security import encrypt_json
 
 logger = structlog.get_logger()
 
@@ -182,6 +184,40 @@ async def callback_provider(
         token_expiry=expiry,
         scopes=scopes,
     )
+
+    if resolved == "slack":
+        authed_user = token_data.get("authed_user")
+        authed_user_token = (
+            authed_user.get("access_token") if isinstance(authed_user, dict) else None
+        )
+        integration_record = {
+            "oauth": {
+                "bot_token": token_data["access_token"],
+                "authed_user_token": authed_user_token,
+                "scope": token_data.get("scope"),
+                "team": token_data.get("team"),
+                "bot_user_id": token_data.get("bot_user_id"),
+                "app_id": token_data.get("app_id"),
+            },
+            "connected_at": datetime.now(UTC).isoformat(),
+        }
+        await auth_service.update_tenant_integrations(
+            state_data.tenant_id,
+            {"slack": {"encrypted": encrypt_json(integration_record)}},
+        )
+
+        team_id_str = (
+            token_data.get("team", {}).get("id")
+            if isinstance(token_data.get("team"), dict)
+            else None
+        )
+        if team_id_str:
+            from ..integrations.slack_lifecycle import register_slack_team_mapping
+
+            register_slack_team_mapping(
+                team_id=team_id_str,
+                tenant_id=state_data.tenant_id,
+            )
 
     # Update onboarding checklist if applicable
     checklist_map = {
@@ -559,6 +595,10 @@ async def _exchange_code_for_token(
             "refresh_token": body.get("refresh_token"),
             "expires_in": body.get("expires_in"),
             "scope": body.get("scope"),
+            "team": body.get("team"),
+            "authed_user": body.get("authed_user"),
+            "bot_user_id": body.get("bot_user_id"),
+            "app_id": body.get("app_id"),
         }
 
     if not body.get("access_token"):
