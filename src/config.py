@@ -233,10 +233,12 @@ class Settings(BaseSettings):
         default="", description="Supabase service role key (for server-side operations)"
     )
     supabase_auth_enabled: bool = Field(
-        default=False, description="Use Supabase Auth instead of built-in auth"
+        default=True,
+        description="Opt-out flag for Supabase Auth when keys are configured",
     )
     supabase_db_enabled: bool = Field(
-        default=False, description="Use Supabase PostgreSQL as the database backend"
+        default=True,
+        description="Opt-out flag for Supabase PostgreSQL when URL/keys are configured",
     )
 
     # Auth
