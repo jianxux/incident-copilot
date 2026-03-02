@@ -13,12 +13,76 @@ import re
 import structlog
 from slack_sdk.web.async_client import AsyncWebClient
 
-from ..config import Settings, get_settings
-from ..security import decrypt_json
 from ..auth.service import auth_service
+from ..config import Settings, get_settings
+from ..db.supabase_db import get_db
+from ..security import decrypt_json
+from ..supabase_client import is_supabase_db_enabled
 from .oauth_tokens import oauth_token_store
 
 logger = structlog.get_logger()
+_slack_team_to_tenant: dict[str, str] = {}
+_SLACK_TEAM_ID_RE = re.compile(r"^T[A-Z0-9]+$")
+_UUID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+)
+
+
+def register_slack_team_mapping(team_id: str, tenant_id: str) -> None:
+    """Cache Slack team_id -> app tenant_id mapping."""
+    if not team_id or not tenant_id:
+        return
+    _slack_team_to_tenant[team_id] = tenant_id
+
+
+def _looks_like_slack_team_id(value: str) -> bool:
+    return bool(_SLACK_TEAM_ID_RE.match(value)) and not _looks_like_uuid(value)
+
+
+def _looks_like_uuid(value: str) -> bool:
+    return bool(_UUID_RE.match(value))
+
+
+async def _resolve_tenant_id_from_slack_team_id(team_id: str) -> str | None:
+    cached = _slack_team_to_tenant.get(team_id)
+    if cached:
+        return cached
+
+    if not is_supabase_db_enabled():
+        return None
+
+    try:
+        rows = await get_db(use_admin=True).list_tenants_with_slack_integration()
+    except Exception as e:
+        logger.warning("slack_team_mapping_query_failed", team_id=team_id, error=str(e))
+        return None
+
+    for row in rows:
+        tenant_id = row.get("id")
+        if not tenant_id:
+            continue
+        integrations = row.get("integrations") or {}
+        if not isinstance(integrations, dict):
+            continue
+        slack = integrations.get("slack") or {}
+        if not isinstance(slack, dict):
+            continue
+        encrypted = slack.get("encrypted")
+        if not encrypted:
+            continue
+        try:
+            payload = decrypt_json(encrypted)
+        except Exception:
+            continue
+        oauth = payload.get("oauth") if isinstance(payload, dict) else None
+        team = oauth.get("team") if isinstance(oauth, dict) else None
+        mapped_team_id = team.get("id") if isinstance(team, dict) else None
+        if mapped_team_id and tenant_id:
+            _slack_team_to_tenant[mapped_team_id] = tenant_id
+        if mapped_team_id == team_id:
+            return str(tenant_id)
+
+    return None
 
 
 async def get_slack_client(
@@ -27,6 +91,7 @@ async def get_slack_client(
     """Resolve a Slack client using OAuth store first, env var fallback."""
     settings = settings or get_settings()
     token: str | None = None
+    resolved_tenant_id = tenant_id
 
     if tenant_id:
         try:
@@ -34,19 +99,37 @@ async def get_slack_client(
         except Exception as e:
             logger.warning("slack_oauth_token_lookup_failed", tenant_id=tenant_id, error=str(e))
 
-    if not token and tenant_id:
+    if not token and tenant_id and _looks_like_slack_team_id(tenant_id):
+        mapped_tenant_id = await _resolve_tenant_id_from_slack_team_id(tenant_id)
+        if mapped_tenant_id:
+            resolved_tenant_id = mapped_tenant_id
+            try:
+                token = await oauth_token_store.get_access_token(mapped_tenant_id, "slack")
+            except Exception as e:
+                logger.warning(
+                    "slack_oauth_token_lookup_failed",
+                    tenant_id=mapped_tenant_id,
+                    team_id=tenant_id,
+                    error=str(e),
+                )
+
+    if not token and resolved_tenant_id:
         try:
-            tenant = await auth_service.get_tenant(tenant_id)
+            tenant = await auth_service.get_tenant(resolved_tenant_id)
             if tenant:
                 encrypted = (tenant.integrations.get("slack") or {}).get("encrypted")
                 if encrypted:
                     slack_integration = decrypt_json(encrypted)
                     oauth_data = slack_integration.get("oauth", {}) if isinstance(slack_integration, dict) else {}
                     token = oauth_data.get("bot_token")
+                    team = oauth_data.get("team") if isinstance(oauth_data, dict) else None
+                    mapped_team_id = team.get("id") if isinstance(team, dict) else None
+                    if mapped_team_id:
+                        register_slack_team_mapping(mapped_team_id, resolved_tenant_id)
         except Exception as e:
             logger.warning(
                 "slack_tenant_integration_token_lookup_failed",
-                tenant_id=tenant_id,
+                tenant_id=resolved_tenant_id,
                 error=str(e),
             )
 
@@ -57,7 +140,12 @@ async def get_slack_client(
         logger.warning("slack_no_token_available", tenant_id=tenant_id)
         return None
 
-    logger.info("slack_client_resolved", tenant_id=tenant_id, token_prefix=token[:10] + "...")
+    logger.info(
+        "slack_client_resolved",
+        tenant_id=resolved_tenant_id or tenant_id,
+        input_tenant_id=tenant_id,
+        token_prefix=token[:10] + "...",
+    )
     return AsyncWebClient(token=token)
 
 

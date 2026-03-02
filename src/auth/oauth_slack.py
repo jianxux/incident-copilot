@@ -22,6 +22,7 @@ from pydantic import BaseModel
 
 from ..config import get_settings
 from ..integrations.oauth_tokens import oauth_token_store
+from ..integrations.slack_lifecycle import register_slack_team_mapping
 from ..onboarding import oauth_state_store
 from ..security import encrypt_json
 from .middleware import AuthContext, get_auth_context, require_role
@@ -228,16 +229,17 @@ async def slack_oauth_callback(
     team_id = token.team.get("id") if token.team and isinstance(token.team, dict) else None
     if team_id:
         try:
-            # Store using Slack team_id because incoming Slack events carry team_id.
             await oauth_token_store.upsert_token(
-                tenant_id=team_id,
+                tenant_id=state_data["tenant_id"],
                 provider="slack",
                 access_token=bot_token,
             )
+            register_slack_team_mapping(team_id=team_id, tenant_id=state_data["tenant_id"])
         except Exception as e:
             logger.warning(
                 "slack_oauth_token_store_upsert_failed",
                 team_id=team_id,
+                tenant_id=state_data["tenant_id"],
                 error=str(e),
             )
 
