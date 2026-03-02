@@ -291,12 +291,78 @@ async def get_onboarding_status(
             tenant_id=tenant_id,
         )
 
+    # Load Slack channel preference
+    try:
+        from ...db.supabase_db import get_db as _get_db
+
+        _db = _get_db(use_admin=True)
+        slack_settings = (
+            _db.client.table("integration_configs")
+            .select("config")
+            .eq("tenant_id", tenant_id)
+            .eq("type", "slack_settings")
+            .limit(1)
+            .execute()
+        )
+        if slack_settings.data:
+            cfg = slack_settings.data[0].get("config", {})
+            if "slack" not in details:
+                details["slack"] = {}
+            details["slack"]["incidents_channel"] = cfg.get("incidents_channel", "#incidents")
+    except Exception:
+        pass
+
     return {
         "authenticated": True,
         "tenant": {"id": tenant_id},
         "integrations": result,
         "details": details,
     }
+
+
+@router.post("/api/onboarding/integrations/slack/channel")
+async def save_slack_channel(
+    request: Request,
+    auth: AuthContext = Depends(get_auth_context),
+):
+    """Save the Slack incidents channel preference for the tenant."""
+    tenant_id = auth.tenant_id or "default"
+    body = await request.json()
+    channel = (body.get("channel") or "#incidents").strip()
+
+    try:
+        from ...db.supabase_db import get_db
+
+        db = get_db(use_admin=True)
+        # Store channel preference in integration_configs as type=slack_settings
+        existing = (
+            db.client.table("integration_configs")
+            .select("id")
+            .eq("tenant_id", tenant_id)
+            .eq("type", "slack_settings")
+            .limit(1)
+            .execute()
+        )
+        row = {
+            "tenant_id": tenant_id,
+            "type": "slack_settings",
+            "config": {"incidents_channel": channel},
+            "is_active": True,
+        }
+        if existing.data:
+            (
+                db.client.table("integration_configs")
+                .update(row)
+                .eq("tenant_id", tenant_id)
+                .eq("type", "slack_settings")
+                .execute()
+            )
+        else:
+            db.client.table("integration_configs").insert(row).execute()
+        return {"ok": True, "channel": channel}
+    except Exception as e:
+        logger.warning("save_slack_channel_failed", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/api/onboarding/test-integration/{provider}")

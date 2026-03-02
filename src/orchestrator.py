@@ -449,9 +449,30 @@ class ContextOrchestrator:
             if not ai_summary_text and verdict:
                 ai_summary_text = getattr(verdict, "summary", None)
 
+            # Resolve per-tenant Slack channel preference
+            incidents_channel = self.settings.slack_incidents_channel
+            if tenant_id:
+                try:
+                    from .db.supabase_db import get_db
+                    db = get_db(use_admin=True)
+                    rows = (
+                        db.client.table("integration_configs")
+                        .select("config")
+                        .eq("tenant_id", tenant_id)
+                        .eq("type", "slack_settings")
+                        .limit(1)
+                        .execute()
+                    )
+                    if rows.data:
+                        incidents_channel = rows.data[0].get("config", {}).get(
+                            "incidents_channel", incidents_channel
+                        )
+                except Exception:
+                    pass
+
             notification_result = await slack_lifecycle.post_incident_notification(
                 tenant_id=tenant_id,
-                channel=self.settings.slack_incidents_channel,
+                channel=incidents_channel,
                 incident_id=incident.incident_id,
                 title=incident.title,
                 service=incident.service_name,

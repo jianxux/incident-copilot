@@ -83,6 +83,14 @@
             <button class="px-4 py-2 rounded-lg border border-slate-300" onclick="verifyIntegration('slack')">Test Connection</button>
           </div>
           <p class="text-sm text-slate-500 mt-1">Creates a pre-configured Slack app with all required permissions</p>
+          <div class="mt-3 flex items-center gap-2">
+            <label class="text-sm text-slate-600 whitespace-nowrap">Incidents channel:</label>
+            <input id="slack-channel-name" type="text" value="#incidents" placeholder="#incidents"
+              class="px-3 py-1.5 border border-slate-300 rounded-lg text-sm w-40 focus:outline-none focus:ring-2 focus:ring-coral/30 focus:border-coral">
+            <button onclick="saveSlackChannel()" class="px-3 py-1.5 rounded-lg border border-slate-300 text-sm hover:bg-slate-50">Save</button>
+            <span id="slack-channel-saved" class="text-sm text-green-600 hidden">✓ Saved</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">Channel where incident notifications are posted</p>
           <div id="verify-slack" class="verify-line"></div>
         </div>
 
@@ -205,6 +213,27 @@ async function startOAuth(provider) {
     window.location.href = data.redirect_url;
   } catch (e) {
     showToast(`${provider} connect failed: ${e.message}`, 'error');
+  }
+}
+
+async function saveSlackChannel() {
+  try {
+    const channel = document.getElementById('slack-channel-name').value.trim();
+    if (!channel) return;
+    const res = await window.icFetch('/dashboard/api/onboarding/integrations/slack/channel', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({channel})
+    });
+    if (res.ok) {
+      const saved = document.getElementById('slack-channel-saved');
+      saved.classList.remove('hidden');
+      setTimeout(() => saved.classList.add('hidden'), 3000);
+    } else {
+      showToast('Failed to save channel', 'error');
+    }
+  } catch (e) {
+    showToast(`Error: ${e.message}`, 'error');
   }
 }
 
@@ -357,6 +386,11 @@ async function loadStatus() {
       try { parts.push(`· ${new Date(d.connected_at).toLocaleDateString()}`); } catch(e) {}
     }
     return parts.join(' ');
+  }
+
+  // Load saved Slack channel preference
+  if (details.slack && details.slack.incidents_channel) {
+    document.getElementById('slack-channel-name').value = details.slack.incidents_channel;
   }
 
   setChip('status-pagerduty', !!st.integrations.pagerduty, connLabel('pagerduty'));
