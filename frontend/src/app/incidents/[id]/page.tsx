@@ -1,7 +1,7 @@
 'use client';
 import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ExternalLink, GitCommit, GitPullRequest, Rocket } from 'lucide-react';
 import { format } from 'date-fns';
 import { SeverityBadge, StatusBadge } from '@/components/StatusBadge';
 import ContextCard from '@/components/ContextCard';
@@ -91,10 +91,21 @@ export default function IncidentDetailPage({ params }: { params: Promise<{ id: s
   const timelineEvents = timeline.map((evt) => ({
     id: evt.id,
     timestamp: evt.timestamp,
-    type: evt.type as 'alert' | 'investigation' | 'action' | 'resolution' | 'deployment',
+    type: evt.type,
     title: evt.title || evt.type.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
     description: evt.description,
   }));
+
+  const githubContext = context?.github_context as Record<string, unknown> | undefined;
+  const recentCommits = Array.isArray(githubContext?.recent_commits)
+    ? githubContext.recent_commits as Array<Record<string, unknown>>
+    : [];
+  const recentPullRequests = Array.isArray(githubContext?.recent_pull_requests)
+    ? githubContext.recent_pull_requests as Array<Record<string, unknown>>
+    : [];
+  const recentDeployments = Array.isArray(githubContext?.recent_deployments)
+    ? githubContext.recent_deployments as Array<Record<string, unknown>>
+    : [];
 
   return (
     <div className="p-6 md:p-8 space-y-6">
@@ -145,6 +156,85 @@ export default function IncidentDetailPage({ params }: { params: Promise<{ id: s
           ) : (
             <div className="bg-white rounded-xl border border-cream-dark p-6 text-center text-gray-400">
               No AI verdict available
+            </div>
+          )}
+          {githubContext && (
+            <div className="bg-white rounded-xl border border-cream-dark shadow-sm p-6 space-y-5">
+              <h3 className="font-serif text-lg">Code Changes</h3>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <GitCommit size={14} />
+                  <span>Recent commits</span>
+                </div>
+                {recentCommits.length > 0 ? (
+                  <div className="space-y-2">
+                    {recentCommits.map((commit, idx) => {
+                      const sha = String(commit.sha ?? '').slice(0, 7) || 'unknown';
+                      const message = String(commit.message ?? 'No message');
+                      const author = String(commit.author ?? 'Unknown author');
+                      return (
+                        <div key={`${sha}-${idx}`} className="text-sm text-gray-700 border-l-2 border-orange-200 pl-3">
+                          <p className="font-medium font-mono text-xs text-gray-500">{sha}</p>
+                          <p>{message}</p>
+                          <p className="text-xs text-gray-500">{author}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">No recent commits</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <GitPullRequest size={14} />
+                  <span>Recent PRs</span>
+                </div>
+                {recentPullRequests.length > 0 ? (
+                  <div className="space-y-2">
+                    {recentPullRequests.map((pr, idx) => {
+                      const number = pr.number != null ? `#${String(pr.number)}` : '#?';
+                      const title = String(pr.title ?? 'Untitled PR');
+                      const state = String(pr.state ?? 'unknown');
+                      return (
+                        <div key={`${number}-${idx}`} className="text-sm text-gray-700 border-l-2 border-purple-200 pl-3">
+                          <p className="font-medium">{number} {title}</p>
+                          <p className="text-xs uppercase tracking-wide text-gray-500">{state}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">No recent PRs</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <Rocket size={14} />
+                  <span>Recent deployments</span>
+                </div>
+                {recentDeployments.length > 0 ? (
+                  <div className="space-y-2">
+                    {recentDeployments.map((deployment, idx) => {
+                      const environment = String(deployment.environment ?? 'unknown');
+                      const status = String(deployment.status ?? 'unknown');
+                      const createdAt = String(deployment.created_at ?? '');
+                      return (
+                        <div key={`${environment}-${status}-${idx}`} className="text-sm text-gray-700 border-l-2 border-blue-200 pl-3">
+                          <p className="font-medium">{environment}</p>
+                          <p className="text-xs uppercase tracking-wide text-gray-500">{status}</p>
+                          <p className="text-xs text-gray-500">{createdAt || 'No timestamp'}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">No recent deployments</p>
+                )}
+              </div>
             </div>
           )}
         </div>

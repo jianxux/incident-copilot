@@ -23,5 +23,13 @@ export const api = {
   incident: (id: string) => fetchJSON<Incident>(`/api/incidents/${id}`),
   incidentTimeline: (id: string) => fetchJSON<TimelineEvent[]>(`/api/incidents/${id}/timeline`),
   incidentContext: (id: string) => fetchJSON<IncidentContext>(`/api/incidents/${id}/context`),
+  syncStatus: () => fetchJSON<{ status: string; last_sync_at: string | null; error: string | null }>('/api/incidents/sync-status'),
+  forceSync: async () => {
+    const res = await fetch('/api/incidents/sync', { method: 'POST', credentials: 'include' });
+    if (!res.ok) throw new Error(`Sync failed: ${res.status}`);
+    return res.json();
+  },
   analytics: () => fetchJSON<AnalyticsData>('/api/analytics'),
+  syncStatus: () => fetchJSON<{ last_attempt: string | null; last_success: string | null; last_error: string | null; status: string }>('/api/incidents/sync-status'),
+  forceSync: () => fetch(`${BASE}/api/incidents/sync`, { method: 'POST', credentials: 'include' }).then(res => res.json()),
 };
