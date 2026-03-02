@@ -30,6 +30,4 @@ export const api = {
     return res.json();
   },
   analytics: () => fetchJSON<AnalyticsData>('/api/analytics'),
-  syncStatus: () => fetchJSON<{ last_attempt: string | null; last_success: string | null; last_error: string | null; status: string }>('/api/incidents/sync-status'),
-  forceSync: () => fetch(`${BASE}/api/incidents/sync`, { method: 'POST', credentials: 'include' }).then(res => res.json()),
 };
