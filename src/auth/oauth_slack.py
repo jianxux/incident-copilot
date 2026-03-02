@@ -185,7 +185,8 @@ async def slack_oauth_callback(
         )
 
     state_data = await oauth_state_store.consume(provider="slack", state=state)
-    logger.info("slack_oauth_callback_state", state_found=bool(state_data), state=state[:10])
+    import sys
+    print(f"DEBUG_SLACK_CB: state_found={bool(state_data)} state={state[:10]}", flush=True, file=sys.stderr)
     if not state_data:
         return RedirectResponse(
             url=f"{settings.app_url}/dashboard/onboarding-wizard?slack_error=state"
