@@ -175,6 +175,8 @@ async def callback_provider(
 
     scopes = _parse_scopes(token_data.get("scope"), resolved)
 
+    logger.info("oauth_callback_pre_upsert", provider=resolved, tenant_id=state_data.tenant_id)
+
     await oauth_token_store.upsert_token(
         tenant_id=state_data.tenant_id,
         provider=resolved,
