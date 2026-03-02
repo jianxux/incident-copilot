@@ -5,6 +5,8 @@ from datetime import datetime, UTC
 
 import structlog
 
+from ..db.supabase_db import get_db
+from ..supabase_client import is_supabase_db_enabled
 from .models import PLAN_LIMITS, APIKey, PlanTier, Session, Tenant, User, UserRole
 
 logger = structlog.get_logger()
@@ -26,6 +28,25 @@ class AuthService:
         self._session_by_token: dict[str, str] = {}  # access_token -> session_id
         self._api_key_by_hash: dict[str, str] = {}  # key_hash -> api_key_id
 
+    def _cache_tenant(self, tenant: Tenant) -> Tenant:
+        """Update in-memory tenant cache."""
+        self._tenants[tenant.id] = tenant
+        self._tenant_by_slug[tenant.slug] = tenant.id
+        return tenant
+
+    def _tenant_from_row(self, row: dict) -> Tenant:
+        """Convert Supabase tenant row to Tenant model."""
+        payload = dict(row)
+        payload["integrations"] = payload.get("integrations") or {}
+        if payload.get("plan"):
+            payload["plan"] = PlanTier(payload["plan"])
+        tenant = Tenant.model_validate(payload)
+        return self._cache_tenant(tenant)
+
+    def _tenant_to_row(self, tenant: Tenant) -> dict:
+        """Convert Tenant model to Supabase row payload."""
+        return tenant.model_dump(mode="json")
+
     # --- Tenant Management ---
 
     async def create_tenant(
@@ -35,6 +56,32 @@ class AuthService:
         plan: PlanTier = PlanTier.FREE,
     ) -> Tenant:
         """Create a new tenant."""
+        if is_supabase_db_enabled():
+            db = get_db()
+            existing = await db.get_tenant_by_slug(slug)
+            if existing:
+                raise ValueError(f"Tenant with slug '{slug}' already exists")
+
+            limits = PLAN_LIMITS[plan]
+            tenant = Tenant(
+                name=name,
+                slug=slug,
+                plan=plan,
+                max_incidents_per_month=limits["max_incidents_per_month"],
+                max_users=limits["max_users"],
+                max_integrations=limits["max_integrations"],
+            )
+            row = self._tenant_to_row(tenant)
+            created = await db.create_tenant(
+                name=tenant.name,
+                slug=tenant.slug,
+                plan=tenant.plan.value,
+                **{k: v for k, v in row.items() if k not in {"name", "slug", "plan"}},
+            )
+            tenant = self._tenant_from_row(created or row)
+            logger.info("tenant_created", tenant_id=tenant.id, name=name, plan=plan)
+            return tenant
+
         if slug in self._tenant_by_slug:
             raise ValueError(f"Tenant with slug '{slug}' already exists")
 
@@ -48,21 +95,35 @@ class AuthService:
             max_integrations=limits["max_integrations"],
         )
 
-        self._tenants[tenant.id] = tenant
-        self._tenant_by_slug[slug] = tenant.id
+        self._cache_tenant(tenant)
 
         logger.info("tenant_created", tenant_id=tenant.id, name=name, plan=plan)
         return tenant
 
     async def get_tenant(self, tenant_id: str) -> Tenant | None:
         """Get a tenant by ID."""
-        return self._tenants.get(tenant_id)
+        cached = self._tenants.get(tenant_id)
+        if cached:
+            return cached
+
+        if is_supabase_db_enabled():
+            row = await get_db().get_tenant(tenant_id)
+            if row:
+                return self._tenant_from_row(row)
+            return None
+
+        return None
 
     async def get_tenant_by_slug(self, slug: str) -> Tenant | None:
         """Get a tenant by slug."""
         tenant_id = self._tenant_by_slug.get(slug)
         if tenant_id:
             return self._tenants.get(tenant_id)
+
+        if is_supabase_db_enabled():
+            row = await get_db().get_tenant_by_slug(slug)
+            if row:
+                return self._tenant_from_row(row)
         return None
 
     async def update_tenant_plan(self, tenant_id: str, plan: PlanTier) -> Tenant:
@@ -78,6 +139,20 @@ class AuthService:
         tenant.max_integrations = limits["max_integrations"]
         tenant.updated_at = datetime.now(UTC)
 
+        if is_supabase_db_enabled():
+            row = await get_db().update_tenant(
+                tenant_id,
+                plan=tenant.plan.value,
+                max_incidents_per_month=tenant.max_incidents_per_month,
+                max_users=tenant.max_users,
+                max_integrations=tenant.max_integrations,
+            )
+            if not row:
+                raise ValueError(f"Tenant {tenant_id} not found")
+            tenant = self._tenant_from_row(row)
+        else:
+            self._cache_tenant(tenant)
+
         logger.info("tenant_plan_updated", tenant_id=tenant_id, new_plan=plan)
         return tenant
 
@@ -91,8 +166,19 @@ class AuthService:
         if not tenant:
             raise ValueError(f"Tenant {tenant_id} not found")
 
-        tenant.integrations.update(integrations)
+        merged_integrations = {**tenant.integrations, **integrations}
+        tenant.integrations = merged_integrations
         tenant.updated_at = datetime.now(UTC)
+
+        if is_supabase_db_enabled():
+            row = await get_db().update_tenant(
+                tenant_id, integrations=merged_integrations
+            )
+            if not row:
+                raise ValueError(f"Tenant {tenant_id} not found")
+            tenant = self._tenant_from_row(row)
+        else:
+            self._cache_tenant(tenant)
 
         logger.info(
             "tenant_integrations_updated",

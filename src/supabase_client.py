@@ -67,11 +67,15 @@ def is_supabase_configured() -> bool:
 def is_supabase_auth_enabled() -> bool:
     """Check if Supabase Auth is enabled."""
     settings = get_settings()
-    return settings.supabase_auth_enabled and is_supabase_configured()
+    return bool(
+        settings.supabase_auth_enabled
+        and is_supabase_configured()
+        and settings.supabase_service_role_key
+    )
 
 
 @lru_cache
 def is_supabase_db_enabled() -> bool:
     """Check if Supabase database is enabled."""
     settings = get_settings()
-    return settings.supabase_db_enabled and is_supabase_configured()
+    return bool(settings.supabase_db_enabled and is_supabase_configured())
