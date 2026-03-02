@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.security import encrypt_json
 from src.integrations.slack_lifecycle import (
     archive_channel,
     create_incident_channel,
@@ -17,9 +14,9 @@ from src.integrations.slack_lifecycle import (
     post_status_update,
     post_suggested_actions,
     sanitize_channel_name,
-    schedule_archive,
     update_context_card,
 )
+from src.security import encrypt_json
 
 
 class TestSanitizeChannelName:
@@ -97,6 +94,36 @@ class TestGetSlackClient:
             mock_store.get_access_token = AsyncMock(return_value=None)
             client = await get_slack_client(None, settings)
             assert client is None
+
+    @pytest.mark.asyncio
+    async def test_resolves_slack_team_id_to_tenant_id_and_uses_oauth_token(self):
+        settings = MagicMock()
+        settings.slack_bot_token = ""
+
+        with (
+            patch("src.integrations.slack_lifecycle._slack_team_to_tenant", {}),
+            patch("src.integrations.slack_lifecycle.oauth_token_store") as mock_store,
+            patch("src.integrations.slack_lifecycle.is_supabase_db_enabled", return_value=True),
+            patch("src.integrations.slack_lifecycle.get_db") as mock_get_db,
+        ):
+            mock_db = MagicMock()
+            encrypted = encrypt_json({"oauth": {"team": {"id": "T08RLHX3C0S"}}})
+            mock_db.list_tenants_with_slack_integration = AsyncMock(
+                return_value=[{"id": "tenant-uuid-1", "integrations": {"slack": {"encrypted": encrypted}}}]
+            )
+            mock_get_db.return_value = mock_db
+
+            async def _token_lookup(tenant_id, provider):
+                if tenant_id == "T08RLHX3C0S":
+                    return None
+                if tenant_id == "tenant-uuid-1":
+                    return "xoxb-oauth-token"
+                return None
+
+            mock_store.get_access_token = AsyncMock(side_effect=_token_lookup)
+            client = await get_slack_client("T08RLHX3C0S", settings)
+            assert client is not None
+            assert client.token == "xoxb-oauth-token"
 
 
 class TestCreateIncidentChannel:

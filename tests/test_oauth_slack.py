@@ -1,4 +1,4 @@
-"""Tests for legacy Slack OAuth callback behavior."""
+"""Tests for Slack OAuth callback behavior."""
 
 from __future__ import annotations
 
@@ -33,6 +33,7 @@ async def test_slack_oauth_callback_stores_token_in_both_locations():
         patch("src.auth.oauth_slack.SlackOAuth") as mock_oauth_cls,
         patch("src.auth.oauth_slack.auth_service") as mock_auth_service,
         patch("src.auth.oauth_slack.oauth_token_store") as mock_token_store,
+        patch("src.auth.oauth_slack.register_slack_team_mapping") as mock_register_mapping,
     ):
         mock_state_store.consume = AsyncMock(return_value=state_data)
         mock_auth_service.update_tenant_integrations = AsyncMock()
@@ -51,7 +52,11 @@ async def test_slack_oauth_callback_stores_token_in_both_locations():
     auth_args, _ = mock_auth_service.update_tenant_integrations.await_args
     assert auth_args[0] == "app-tenant-123"
     mock_token_store.upsert_token.assert_awaited_once_with(
-        tenant_id="T123SLACK",
+        tenant_id="app-tenant-123",
         provider="slack",
         access_token="xoxb-bot-token",
+    )
+    mock_register_mapping.assert_called_once_with(
+        team_id="T123SLACK",
+        tenant_id="app-tenant-123",
     )
