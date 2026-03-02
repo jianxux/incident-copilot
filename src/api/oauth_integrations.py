@@ -12,6 +12,7 @@ from fastapi.responses import RedirectResponse
 
 from ..auth.middleware import AuthContext, get_auth_context, require_role
 from ..auth.models import UserRole
+from ..auth.service import auth_service
 from ..config import get_settings
 from ..integrations.oauth_providers import (
     get_provider_config,
@@ -182,6 +183,37 @@ async def callback_provider(
         token_expiry=expiry,
         scopes=scopes,
     )
+
+    # Slack-specific: store integration record + register team mapping
+    if resolved == "slack":
+        team = token_data.get("team")
+        team_id_str = team.get("id") if isinstance(team, dict) else None
+        if team_id_str:
+            from ..integrations.slack_lifecycle import register_slack_team_mapping
+            register_slack_team_mapping(team_id=team_id_str, tenant_id=state_data.tenant_id)
+
+        from ..security import encrypt_json
+        authed_user = token_data.get("authed_user")
+        authed_user_token = authed_user.get("access_token") if isinstance(authed_user, dict) else None
+        integration_record = {
+            "oauth": {
+                "bot_token": token_data["access_token"],
+                "authed_user_token": authed_user_token,
+                "scope": token_data.get("scope"),
+                "team": team,
+                "bot_user_id": token_data.get("bot_user_id"),
+                "app_id": token_data.get("app_id"),
+            },
+            "connected_at": datetime.now(UTC).isoformat(),
+        }
+        try:
+            await auth_service.update_tenant_integrations(
+                state_data.tenant_id,
+                {"slack": {"encrypted": encrypt_json(integration_record)}},
+            )
+            logger.info("slack_oauth_tenant_integrations_saved", tenant_id=state_data.tenant_id, team_id=team_id_str)
+        except Exception as e:
+            logger.warning("slack_oauth_tenant_integrations_failed", tenant_id=state_data.tenant_id, error=str(e))
 
     # Update onboarding checklist if applicable
     checklist_map = {
