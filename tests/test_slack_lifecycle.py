@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from src.security import encrypt_json
 from src.integrations.slack_lifecycle import (
     archive_channel,
     create_incident_channel,
@@ -66,6 +67,24 @@ class TestGetSlackClient:
             client = await get_slack_client("tenant-1", settings)
             assert client is not None
             assert client.token == "xoxb-env-token"
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_tenant_integrations_when_oauth_store_empty(self):
+        settings = MagicMock()
+        settings.slack_bot_token = ""
+        encrypted = encrypt_json({"oauth": {"bot_token": "xoxb-integration-token"}})
+        tenant = MagicMock()
+        tenant.integrations = {"slack": {"encrypted": encrypted}}
+
+        with (
+            patch("src.integrations.slack_lifecycle.oauth_token_store") as mock_store,
+            patch("src.integrations.slack_lifecycle.auth_service") as mock_auth_service,
+        ):
+            mock_store.get_access_token = AsyncMock(return_value=None)
+            mock_auth_service.get_tenant = AsyncMock(return_value=tenant)
+            client = await get_slack_client("tenant-1", settings)
+            assert client is not None
+            assert client.token == "xoxb-integration-token"
 
     @pytest.mark.asyncio
     async def test_returns_none_when_no_token(self):
@@ -129,13 +148,13 @@ class TestCreateIncidentChannel:
         assert mock_client.conversations_invite.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_returns_none_when_no_client(self):
+    async def test_raises_when_no_client(self):
         with patch(
             "src.integrations.slack_lifecycle.get_slack_client",
             return_value=None,
         ):
-            result = await create_incident_channel(None, "x", "svc", "t")
-            assert result is None
+            with pytest.raises(RuntimeError, match="No Slack token available"):
+                await create_incident_channel(None, "x", "svc", "t")
 
 
 class TestPostContextCard:

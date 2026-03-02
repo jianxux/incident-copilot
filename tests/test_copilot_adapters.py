@@ -73,8 +73,15 @@ def slack_app(monkeypatch):
 
     fake_copilot = FakeCopilot()
     fake_client = FakeSlackClient()
+    async def _fake_get_slack_client(team_id=None):
+        return fake_client
+
     monkeypatch.setattr(slack_adapter, "get_copilot", lambda: fake_copilot)
-    monkeypatch.setattr(slack_adapter, "_get_slack_client", lambda: fake_client)
+    monkeypatch.setattr(
+        slack_adapter,
+        "_get_slack_client",
+        _fake_get_slack_client,
+    )
 
     client = TestClient(app)
     return client, fake_copilot, fake_client

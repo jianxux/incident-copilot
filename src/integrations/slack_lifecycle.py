@@ -14,6 +14,8 @@ import structlog
 from slack_sdk.web.async_client import AsyncWebClient
 
 from ..config import Settings, get_settings
+from ..security import decrypt_json
+from ..auth.service import auth_service
 from .oauth_tokens import oauth_token_store
 
 logger = structlog.get_logger()
@@ -31,6 +33,22 @@ async def get_slack_client(
             token = await oauth_token_store.get_access_token(tenant_id, "slack")
         except Exception as e:
             logger.warning("slack_oauth_token_lookup_failed", tenant_id=tenant_id, error=str(e))
+
+    if not token and tenant_id:
+        try:
+            tenant = await auth_service.get_tenant(tenant_id)
+            if tenant:
+                encrypted = (tenant.integrations.get("slack") or {}).get("encrypted")
+                if encrypted:
+                    slack_integration = decrypt_json(encrypted)
+                    oauth_data = slack_integration.get("oauth", {}) if isinstance(slack_integration, dict) else {}
+                    token = oauth_data.get("bot_token")
+        except Exception as e:
+            logger.warning(
+                "slack_tenant_integration_token_lookup_failed",
+                tenant_id=tenant_id,
+                error=str(e),
+            )
 
     if not token:
         token = settings.slack_bot_token or None
