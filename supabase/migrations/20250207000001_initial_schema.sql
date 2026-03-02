@@ -14,6 +14,12 @@ CREATE TABLE IF NOT EXISTS tenants (
     stripe_customer_id TEXT,
     stripe_subscription_id TEXT,
     settings JSONB DEFAULT '{}',
+    integrations JSONB NOT NULL DEFAULT '{}'::jsonb,
+    max_incidents_per_month INTEGER NOT NULL DEFAULT 50,
+    max_users INTEGER NOT NULL DEFAULT 5,
+    max_integrations INTEGER NOT NULL DEFAULT 3,
+    incidents_this_month INTEGER NOT NULL DEFAULT 0,
+    billing_cycle_start TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
