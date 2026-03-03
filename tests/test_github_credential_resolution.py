@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -59,24 +58,22 @@ class TestResolveGitHubCredentials:
     async def test_reads_from_db_when_no_env_vars(self, settings_no_github):
         mock_db = _mock_supabase_db([{"config": {"encrypted": "encrypted_blob"}}])
 
-        # Patch the modules that resolve_github_credentials imports at call time
-        mock_is_enabled = MagicMock(return_value=True)
         mock_get_db = MagicMock(return_value=mock_db)
         mock_decrypt = MagicMock(return_value={"token": "ghp_db_token", "org": "db-org"})
 
-        with patch.dict(sys.modules, {}):
-            # Patch the actual source functions
-            with (
-                patch("src.supabase_client.is_supabase_db_enabled", mock_is_enabled),
-                patch("src.db.supabase_db.get_db", mock_get_db),
-                patch("src.security.crypto.decrypt_json", mock_decrypt),
-            ):
-                token, org = await resolve_github_credentials(
-                    settings_no_github, tenant_id="tenant-1"
-                )
+        with (
+            patch("src.integrations.github.get_settings", return_value=settings_no_github),
+            patch("src.integrations.github.is_supabase_db_enabled", return_value=True),
+            patch("src.integrations.github.get_db", mock_get_db),
+            patch("src.integrations.github.decrypt_json", mock_decrypt),
+        ):
+            token, org = await resolve_github_credentials(
+                settings_no_github, tenant_id="tenant-1"
+            )
 
         assert token == "ghp_db_token"
         assert org == "db-org"
+        mock_get_db.assert_called_once_with(use_admin=True)
         mock_decrypt.assert_called_once_with("encrypted_blob")
 
     @pytest.mark.asyncio
@@ -84,8 +81,9 @@ class TestResolveGitHubCredentials:
         mock_db = _mock_supabase_db([])
 
         with (
-            patch("src.supabase_client.is_supabase_db_enabled", return_value=True),
-            patch("src.db.supabase_db.get_db", return_value=mock_db),
+            patch("src.integrations.github.get_settings", return_value=settings_no_github),
+            patch("src.integrations.github.is_supabase_db_enabled", return_value=True),
+            patch("src.integrations.github.get_db", return_value=mock_db),
         ):
             token, org = await resolve_github_credentials(
                 settings_no_github, tenant_id="tenant-1"
@@ -95,7 +93,10 @@ class TestResolveGitHubCredentials:
 
     @pytest.mark.asyncio
     async def test_returns_empty_when_supabase_disabled(self, settings_no_github):
-        with patch("src.supabase_client.is_supabase_db_enabled", return_value=False):
+        with (
+            patch("src.integrations.github.get_settings", return_value=settings_no_github),
+            patch("src.integrations.github.is_supabase_db_enabled", return_value=False),
+        ):
             token, org = await resolve_github_credentials(
                 settings_no_github, tenant_id="tenant-1"
             )
@@ -105,8 +106,9 @@ class TestResolveGitHubCredentials:
     @pytest.mark.asyncio
     async def test_handles_db_exception_gracefully(self, settings_no_github):
         with (
-            patch("src.supabase_client.is_supabase_db_enabled", return_value=True),
-            patch("src.db.supabase_db.get_db", side_effect=Exception("DB down")),
+            patch("src.integrations.github.get_settings", return_value=settings_no_github),
+            patch("src.integrations.github.is_supabase_db_enabled", return_value=True),
+            patch("src.integrations.github.get_db", side_effect=Exception("DB down")),
         ):
             token, org = await resolve_github_credentials(
                 settings_no_github, tenant_id="tenant-1"
@@ -119,14 +121,30 @@ class TestResolveGitHubCredentials:
         mock_db = _mock_supabase_db([{"config": {}}])
 
         with (
-            patch("src.supabase_client.is_supabase_db_enabled", return_value=True),
-            patch("src.db.supabase_db.get_db", return_value=mock_db),
+            patch("src.integrations.github.get_settings", return_value=settings_no_github),
+            patch("src.integrations.github.is_supabase_db_enabled", return_value=True),
+            patch("src.integrations.github.get_db", return_value=mock_db),
         ):
             token, org = await resolve_github_credentials(
                 settings_no_github, tenant_id="tenant-1"
             )
             assert token == ""
             assert org == ""
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_when_tenant_id_empty(self, settings_no_github):
+        mock_get_db = MagicMock()
+
+        with (
+            patch("src.integrations.github.get_settings", return_value=settings_no_github),
+            patch("src.integrations.github.is_supabase_db_enabled", return_value=True),
+            patch("src.integrations.github.get_db", mock_get_db),
+        ):
+            token, org = await resolve_github_credentials(settings_no_github, tenant_id="")
+
+        assert token == ""
+        assert org == ""
+        mock_get_db.assert_not_called()
 
 
 class TestGitHubAdapterInit:

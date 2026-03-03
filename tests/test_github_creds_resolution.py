@@ -60,6 +60,7 @@ async def test_resolve_github_creds_from_env(monkeypatch):
 async def test_resolve_github_creds_from_db(monkeypatch):
     settings = SimpleNamespace(github_token="", github_org="")
     monkeypatch.setattr("src.integrations.github.get_settings", lambda: settings)
+    monkeypatch.setattr("src.integrations.github.is_supabase_db_enabled", lambda: True)
     monkeypatch.setattr(
         "src.integrations.github.get_db",
         lambda use_admin=True: _FakeDB([{"config": {"encrypted": "encrypted-payload"}}]),
@@ -79,6 +80,7 @@ async def test_resolve_github_creds_from_db(monkeypatch):
 async def test_resolve_github_creds_db_error(monkeypatch):
     settings = SimpleNamespace(github_token="", github_org="")
     monkeypatch.setattr("src.integrations.github.get_settings", lambda: settings)
+    monkeypatch.setattr("src.integrations.github.is_supabase_db_enabled", lambda: True)
 
     class _FailingDB:
         client = SimpleNamespace(table=lambda _name: None)
