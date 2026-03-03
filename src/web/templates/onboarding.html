@@ -302,8 +302,7 @@ function copyWebhook() {
 
 async function finishSetup() {
     const config = {};
-    
-    // Collect all form data
+
     document.querySelectorAll('input, select').forEach(input => {
         if (input.name && input.value) {
             if (input.type === 'radio') {
@@ -313,21 +312,26 @@ async function finishSetup() {
             }
         }
     });
-    
-    console.log('Saving config:', config);
-    
-    // TODO: Save to API
-    // const token = localStorage.getItem('access_token');
-    // await fetch('/api/tenant/integrations', {
-    //     method: 'POST',
-    //     headers: {
-    //         'Content-Type': 'application/json',
-    //         'Authorization': `Bearer ${token}`,
-    //     },
-    //     body: JSON.stringify(config),
-    // });
-    
-    window.location.href = '/dashboard?onboarding=complete';
+
+    try {
+        const response = await fetch('/api/onboarding/complete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(config),
+        });
+
+        if (!response.ok) {
+            const body = await response.text();
+            throw new Error(`Setup failed (${response.status}): ${body}`);
+        }
+
+        window.location.href = '/dashboard?onboarding=complete';
+    } catch (error) {
+        console.error('Failed to finish onboarding', error);
+        alert('Failed to complete onboarding. Please try again.');
+    }
 }
 
 // Initialize
