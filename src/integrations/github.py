@@ -10,6 +10,7 @@ from ..config import Settings, get_settings
 from ..db.supabase_db import get_db
 from ..models import Deployment, GitHubContext, GitHubDeployment, GitHubPullRequest
 from ..security.crypto import decrypt_json
+from ..supabase_client import is_supabase_db_enabled
 
 logger = structlog.get_logger()
 
@@ -22,7 +23,10 @@ async def resolve_github_creds(tenant_id: str | None) -> tuple[str, str]:
     if token:
         return token, org
 
-    if tenant_id is None:
+    if not tenant_id:
+        return "", ""
+
+    if not is_supabase_db_enabled():
         return "", ""
 
     try:
