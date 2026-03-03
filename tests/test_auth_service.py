@@ -59,7 +59,7 @@ async def test_tenant_methods_use_in_memory_when_supabase_disabled(monkeypatch):
 async def test_tenant_methods_use_supabase_when_enabled(monkeypatch):
     monkeypatch.setattr("src.auth.service.is_supabase_db_enabled", lambda: True)
     mock_db = AsyncMock()
-    monkeypatch.setattr("src.auth.service.get_db", lambda: mock_db)
+    monkeypatch.setattr("src.auth.service.get_db", lambda use_admin=False: mock_db)
 
     base = _tenant_row(plan="free", integrations={"pagerduty": {"api_key": "pd"}})
     created_row = {**base, "name": "Acme Inc", "slug": "acme-inc"}
@@ -116,7 +116,7 @@ async def test_get_tenant_is_read_through_cached_when_supabase_enabled(monkeypat
     monkeypatch.setattr("src.auth.service.is_supabase_db_enabled", lambda: True)
     mock_db = AsyncMock()
     mock_db.get_tenant = AsyncMock(return_value=_tenant_row())
-    monkeypatch.setattr("src.auth.service.get_db", lambda: mock_db)
+    monkeypatch.setattr("src.auth.service.get_db", lambda use_admin=False: mock_db)
     service = AuthService()
 
     first = await service.get_tenant("tenant-1")
