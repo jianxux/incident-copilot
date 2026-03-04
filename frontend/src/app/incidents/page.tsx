@@ -1,11 +1,11 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import SearchFilter from '@/components/SearchFilter';
 import { SeverityBadge, StatusBadge } from '@/components/StatusBadge';
 import { api } from '@/lib/api';
-import { Incident } from '@/lib/types';
+import { Incident, PdSyncStatus } from '@/lib/types';
 
 export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -14,13 +14,17 @@ export default function IncidentsPage() {
   const [query, setQuery] = useState('');
   const [severity, setSeverity] = useState('');
   const [status, setStatus] = useState('');
+  const [syncStatus, setSyncStatus] = useState<PdSyncStatus | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  const loadIncidents = () => api.incidents({ limit: 100 });
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
 
-    api.incidents({ limit: 100 })
+    loadIncidents()
       .then((data) => {
         if (!cancelled) {
           setIncidents(data.incidents);
@@ -34,8 +38,35 @@ export default function IncidentsPage() {
         }
       });
 
+    api.syncStatus()
+      .then((data) => {
+        if (!cancelled) {
+          setSyncStatus(data);
+        }
+      })
+      .catch(() => {
+        // Sync status is optional UI metadata; keep page usable on failures.
+      });
+
     return () => { cancelled = true; };
   }, []);
+
+  const handleForceSync = async () => {
+    setSyncing(true);
+    try {
+      await api.forceSync();
+      const [incidentsData, syncData] = await Promise.all([
+        loadIncidents(),
+        api.syncStatus(),
+      ]);
+      setIncidents(incidentsData.incidents);
+      setSyncStatus(syncData);
+    } catch {
+      // Keep existing UI state if sync call fails.
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     return incidents.filter((inc) => {
@@ -49,6 +80,36 @@ export default function IncidentsPage() {
   return (
     <div className="p-6 md:p-8 space-y-6">
       <h1 className="font-serif text-3xl">Incidents</h1>
+      <div className="bg-cream border border-cream-dark rounded-lg px-4 py-2 text-sm flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          {syncStatus?.status === 'synced' && (
+            <p className="text-gray-700 truncate">
+              <span className="text-green-600">●</span> Synced
+              {syncStatus.last_success ? ` ${formatDistanceToNow(new Date(syncStatus.last_success), { addSuffix: true })}` : ''}
+            </p>
+          )}
+          {syncStatus?.status === 'syncing' && (
+            <p className="text-amber-600 truncate"><span className="inline-block animate-spin mr-1">↻</span>Syncing...</p>
+          )}
+          {syncStatus?.status === 'error' && (
+            <p className="text-gray-700 truncate" title={syncStatus.last_error || 'Unknown sync error'}>
+              <span className="text-red-600">●</span> Sync failed
+              {syncStatus.last_error ? <span className="text-red-500">: {syncStatus.last_error}</span> : ''}
+            </p>
+          )}
+          {(!syncStatus || syncStatus.status === 'never') && (
+            <p className="text-gray-600 truncate"><span className="text-gray-400">●</span> Never synced</p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={handleForceSync}
+          disabled={syncing}
+          className="bg-coral text-white rounded-md px-3 py-1.5 text-sm hover:bg-coral/90 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {syncing ? 'Syncing...' : 'Sync Now'}
+        </button>
+      </div>
       <SearchFilter query={query} onQueryChange={setQuery} severity={severity} onSeverityChange={setSeverity} status={status} onStatusChange={setStatus} />
 
       <div className="bg-white rounded-xl border border-cream-dark shadow-sm overflow-hidden">
