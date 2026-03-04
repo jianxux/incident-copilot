@@ -6,10 +6,12 @@ import os
 
 import pytest
 import pytest_asyncio
+from fastapi.testclient import TestClient
 
 os.environ["SUPABASE_DB_ENABLED"] = "false"
 os.environ.pop("SUPABASE_URL", None)
 
+from src.main import app
 from src.onboarding.checklist import CHECKLIST_STEPS, OPTIONAL_STEPS, OnboardingChecklist
 
 # ── Checklist Model Tests ──────────────────────────────────────────
@@ -195,3 +197,17 @@ class TestTestIncidentPollStatus:
 #
 # To run them locally:
 #   uv run pytest tests/integration/test_onboarding_api.py -v
+
+
+class TestOnboardingCompleteEndpoint:
+    def test_complete_onboarding_enqueues_demo_incident(self):
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/onboarding/complete",
+                json={"pagerduty": "connected", "slack_channel": "#incidents"},
+            )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert "incident_id" in payload
+        assert payload["status"] == "processing"

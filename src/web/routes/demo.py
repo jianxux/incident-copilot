@@ -44,6 +44,11 @@ DEMO_TITLES = [
 @router.post("/api/demo")
 async def create_demo_incident():
     """Create a demo incident for testing."""
+    return await enqueue_demo_incident()
+
+
+async def enqueue_demo_incident() -> dict[str, str]:
+    """Queue a demo incident and return initial processing status."""
     incident_id = str(uuid.uuid4())
     service = random.choice(DEMO_SERVICES)
     severity = random.choice(list(Severity))
