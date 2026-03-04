@@ -17,7 +17,11 @@ from src.memory.embeddings import (
 from src.memory.health import MemoryHealthChecker
 from src.memory.importer import IncidentMemoryImporter
 from src.memory.models import GeneratedRunbook
-from src.memory.runbooks import AutoRunbookGenerator, _parse_json
+from src.memory.runbooks import (
+    AutoRunbookGenerator,
+    _deterministic_runbook_id,
+    _parse_json,
+)
 
 
 class _AcquireCtx:
@@ -294,6 +298,17 @@ async def test_runbooks_generate_for_group_fallback(memory_config, settings):
     assert runbook is not None
     assert "restart db" in runbook.steps
     assert runbook.root_cause_category == "database"
+    assert runbook.id == "dd0adb9ddbd1df1c"
+
+
+def test_deterministic_runbook_id_is_stable_and_16_chars():
+    value = _deterministic_runbook_id(
+        category="database",
+        services=["payments"],
+        source_ids=["i-2", "i-1"],
+    )
+    assert value == "dd0adb9ddbd1df1c"
+    assert len(value) == 16
 
 
 @pytest.mark.asyncio

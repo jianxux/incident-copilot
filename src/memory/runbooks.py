@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
-from hashlib import sha1
+from zlib import crc32
 
 import structlog
 from anthropic import AsyncAnthropic
@@ -29,6 +29,16 @@ Return ONLY JSON with this schema:
 Group data:
 {group_json}
 """
+
+
+def _deterministic_runbook_id(
+    category: str, services: list[str], source_ids: list[str]
+) -> str:
+    """Return a stable, non-cryptographic 16-char ID for generated runbooks."""
+    material = f"{category}|{','.join(services)}|{','.join(sorted(source_ids))}".encode()
+    primary = crc32(material) & 0xFFFFFFFF
+    secondary = crc32(material, 0xA5A5A5A5) & 0xFFFFFFFF
+    return f"{primary:08x}{secondary:08x}"
 
 
 class AutoRunbookGenerator:
@@ -144,7 +154,11 @@ class AutoRunbookGenerator:
                 }
             )
 
-        groups.sort(key=lambda item: len(item["incidents"]), reverse=True)  # type: ignore[arg-type]
+        def _incident_count(item: dict[str, object]) -> int:
+            incidents = item.get("incidents")
+            return len(incidents) if isinstance(incidents, list) else 0
+
+        groups.sort(key=_incident_count, reverse=True)
         return groups
 
     async def _generate_for_group(
@@ -155,12 +169,19 @@ class AutoRunbookGenerator:
         if not isinstance(incidents, list) or not incidents:
             return None
 
-        source_ids = [
-            str(item.get("id")) for item in incidents if isinstance(item, dict)
+        incidents_for_steps = [
+            item for item in incidents if isinstance(item, dict)
         ]
-        services = [str(item) for item in group.get("services_affected", [])]  # type: ignore[arg-type]
+        source_ids = [str(item.get("id")) for item in incidents_for_steps]
+
+        services_raw = group.get("services_affected")
+        services = (
+            [str(item) for item in services_raw]
+            if isinstance(services_raw, list)
+            else []
+        )
         category = str(group.get("root_cause_category") or "unknown")
-        steps = _fallback_steps(incidents)
+        steps = _fallback_steps(incidents_for_steps)
         trigger_conditions = [
             f"root_cause_category={category}",
             f"services={', '.join(services)}",
@@ -170,19 +191,18 @@ class AutoRunbookGenerator:
         synthesized = await self._synthesize_with_claude(group)
         if synthesized is not None:
             title = str(synthesized.get("title") or title)
-            trigger_conditions = [
-                str(item)
-                for item in synthesized.get("trigger_conditions", [])
-                if str(item).strip()
-            ] or trigger_conditions
-            steps = [
-                str(item) for item in synthesized.get("steps", []) if str(item).strip()
-            ] or steps
+            trigger_conditions_raw = synthesized.get("trigger_conditions")
+            if isinstance(trigger_conditions_raw, list):
+                trigger_conditions = [
+                    str(item) for item in trigger_conditions_raw if str(item).strip()
+                ] or trigger_conditions
+
+            steps_raw = synthesized.get("steps")
+            if isinstance(steps_raw, list):
+                steps = [str(item) for item in steps_raw if str(item).strip()] or steps
 
         confidence = min(1.0, round(len(source_ids) / (len(source_ids) + 2), 4))
-        runbook_id = sha1(
-            (f"{category}|{','.join(services)}|{','.join(sorted(source_ids))}").encode()
-        ).hexdigest()[:16]
+        runbook_id = _deterministic_runbook_id(category, services, source_ids)
 
         return GeneratedRunbook(
             id=runbook_id,

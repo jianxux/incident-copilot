@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -147,7 +147,9 @@ class ServiceCatalogDiscovery:
         headers = {"Authorization": f"Bearer {token}"}
 
         try:
-            async with httpx.AsyncClient(timeout=20.0, verify=False) as client:
+            async with httpx.AsyncClient(
+                timeout=20.0, verify=self.settings.kubernetes_verify_ssl
+            ) as client:
                 response = await client.get(
                     f"{base_url}/api/v1/services",
                     headers=headers,
