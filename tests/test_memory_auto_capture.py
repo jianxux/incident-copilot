@@ -10,7 +10,7 @@ import pytest
 
 from src.auth.middleware import AuthContext
 from src.config import Settings
-from src.models import PagerDutyIncident, Severity
+from src.models import AILogSummary, DatadogContext, LogEntry, PagerDutyIncident, Severity
 from src.orchestrator import ContextOrchestrator
 from src.web.store import incident_store
 
@@ -65,6 +65,51 @@ async def test_capture_failure_does_not_break_incident_processing():
 
     assert card.incident_id == "INC-AUTO-2"
     orchestrator.slack.send_context_card.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_process_incident_wraps_string_ai_summary_and_handles_string_verdict(
+    monkeypatch,
+):
+    orchestrator = ContextOrchestrator(Settings())
+    _stub_orchestrator_dependencies(orchestrator)
+
+    orchestrator._fetch_log_context = AsyncMock(
+        return_value=DatadogContext(
+            service="checkout-api",
+            logs=[
+                LogEntry(
+                    timestamp=datetime(2026, 2, 22, 10, 1, tzinfo=UTC),
+                    level="error",
+                    message="connection timeout",
+                    service="checkout-api",
+                )
+            ],
+            metrics=None,
+        )
+    )
+    orchestrator.summarizer.summarize = AsyncMock(return_value="LLM summary text")
+    orchestrator.verdict_engine.generate_verdict = AsyncMock(return_value="verdict text")
+    # Keep explicit-channel delivery active, but avoid ts assignment onto strict ContextCard.
+    orchestrator.slack.send_context_card = AsyncMock(return_value={})
+
+    captured: dict = {}
+
+    def _fake_generate_actions(self, verdict, context):
+        captured["verdict"] = verdict
+        captured["context"] = context
+        return []
+
+    monkeypatch.setattr(
+        "src.actions.engine.ActionEngine.generate_actions", _fake_generate_actions
+    )
+
+    card = await orchestrator.process_incident(_make_incident("INC-AUTO-3"), slack_channel="C123")
+    await asyncio.sleep(0)
+
+    assert isinstance(card.ai_summary, AILogSummary)
+    assert card.ai_summary.explanation == "LLM summary text"
+    assert captured["verdict"] == {"summary": "verdict text"}
 
 
 @pytest.mark.asyncio
