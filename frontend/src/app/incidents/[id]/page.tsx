@@ -96,6 +96,11 @@ export default function IncidentDetailPage({ params }: { params: Promise<{ id: s
     description: evt.description,
   }));
 
+  // Extract GitHub context if available
+  const githubContext = context?.github_context as Record<string, unknown> | undefined;
+  const recentDeploys = (githubContext?.recent_deploys as Array<Record<string, unknown>>) || [];
+  const recentPRs = (githubContext?.recent_prs as Array<Record<string, unknown>>) || [];
+
   return (
     <div className="p-6 md:p-8 space-y-6">
       <Link href="/incidents" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-coral transition-colors">
@@ -145,6 +150,37 @@ export default function IncidentDetailPage({ params }: { params: Promise<{ id: s
           ) : (
             <div className="bg-white rounded-xl border border-cream-dark p-6 text-center text-gray-400">
               No AI verdict available
+            </div>
+          )}
+          {(recentDeploys.length > 0 || recentPRs.length > 0) && (
+            <div className="bg-white rounded-xl border border-cream-dark shadow-sm p-6">
+              <h3 className="font-serif text-lg mb-3">Recent Code Changes</h3>
+              {recentDeploys.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Commits</p>
+                  <ul className="space-y-1.5">
+                    {recentDeploys.slice(0, 5).map((deploy, i) => (
+                      <li key={i} className="text-sm text-gray-700 flex items-start gap-1.5">
+                        <code className="text-xs text-coral font-mono shrink-0">{String(deploy.short_sha || '').slice(0, 7)}</code>
+                        <span className="truncate">{String(deploy.message || 'No message')}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {recentPRs.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Pull Requests</p>
+                  <ul className="space-y-1.5">
+                    {recentPRs.slice(0, 5).map((pr, i) => (
+                      <li key={i} className="text-sm text-gray-700">
+                        <span className="text-coral font-medium">#{String(pr.number || '')}</span>{' '}
+                        <span className="truncate">{String(pr.title || 'Untitled PR')}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </div>
