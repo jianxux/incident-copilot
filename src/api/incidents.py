@@ -411,7 +411,7 @@ def _derive_pd_sync_state(status_data: dict[str, Any]) -> str:
     if isinstance(last_error, str) and (success_dt is None or attempt_dt >= success_dt):
         return "error"
     if success_dt and (datetime.now(UTC) - success_dt) > timedelta(seconds=600):
-        return "synced"
+        return "stale"
     return "synced"
 
 
