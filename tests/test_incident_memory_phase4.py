@@ -17,7 +17,7 @@ from src.memory.embeddings import (
 from src.memory.health import MemoryHealthChecker
 from src.memory.importer import IncidentMemoryImporter
 from src.memory.models import GeneratedRunbook
-from src.memory.runbooks import AutoRunbookGenerator, _parse_json
+from src.memory.runbooks import AutoRunbookGenerator, _parse_json, _stable_runbook_id
 
 
 class _AcquireCtx:
@@ -321,6 +321,17 @@ async def test_runbooks_generate_for_group_uses_synthesized(memory_config, setti
     assert runbook is not None
     assert runbook.title == "DB Recovery"
     assert runbook.steps == ["Scale DB", "Flush cache"]
+
+
+def test_stable_runbook_id_is_deterministic_and_order_independent():
+    first = _stable_runbook_id(
+        "database", ["payments", "auth"], ["inc-3", "inc-1", "inc-2"]
+    )
+    second = _stable_runbook_id(
+        "database", ["payments", "auth"], ["inc-1", "inc-2", "inc-3"]
+    )
+    assert first == second
+    assert len(first) == 16
 
 
 @pytest.mark.asyncio

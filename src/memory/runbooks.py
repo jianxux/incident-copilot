@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
+import zlib
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
-from hashlib import sha1
 
 import structlog
 from anthropic import AsyncAnthropic
@@ -29,6 +29,18 @@ Return ONLY JSON with this schema:
 Group data:
 {group_json}
 """
+
+
+def _stable_runbook_id(
+    category: str,
+    services: list[str],
+    source_ids: list[str],
+) -> str:
+    """Build deterministic short runbook IDs without cryptographic hashing."""
+    payload = f"{category}|{','.join(services)}|{','.join(sorted(source_ids))}".encode()
+    forward = zlib.crc32(payload) & 0xFFFFFFFF
+    reverse = zlib.crc32(payload[::-1]) & 0xFFFFFFFF
+    return f"{forward:08x}{reverse:08x}"
 
 
 class AutoRunbookGenerator:
@@ -180,9 +192,7 @@ class AutoRunbookGenerator:
             ] or steps
 
         confidence = min(1.0, round(len(source_ids) / (len(source_ids) + 2), 4))
-        runbook_id = sha1(
-            (f"{category}|{','.join(services)}|{','.join(sorted(source_ids))}").encode()
-        ).hexdigest()[:16]
+        runbook_id = _stable_runbook_id(category, services, source_ids)
 
         return GeneratedRunbook(
             id=runbook_id,
