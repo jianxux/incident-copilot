@@ -706,9 +706,10 @@ class HybridIncidentStore(_BaseIncidentStore):
                 description=description,
             )
         except Exception as e:
-            logger.warning(
+            logger.error(
                 "hybrid_store_supabase_add_failed",
                 incident_id=incident_id,
+                tenant_id=tenant_id,
                 error=str(e),
                 error_type=type(e).__name__,
             )
@@ -736,9 +737,10 @@ class HybridIncidentStore(_BaseIncidentStore):
             )
             return supabase_result or memory_result
         except Exception as e:
-            logger.warning(
+            logger.error(
                 "hybrid_store_supabase_complete_failed",
                 incident_id=incident_id,
+                tenant_id=tenant_id,
                 error=str(e),
                 error_type=type(e).__name__,
             )
@@ -766,9 +768,10 @@ class HybridIncidentStore(_BaseIncidentStore):
             )
             return supabase_result or memory_result
         except Exception as e:
-            logger.warning(
+            logger.error(
                 "hybrid_store_supabase_fail_failed",
                 incident_id=incident_id,
+                tenant_id=tenant_id,
                 error=str(e),
                 error_type=type(e).__name__,
             )
