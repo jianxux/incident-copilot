@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import pytest
 
@@ -11,6 +11,8 @@ import pytest
 os.environ["SUPABASE_DB_ENABLED"] = "false"
 os.environ.pop("SUPABASE_URL", None)
 
+from src.config import Settings
+from src.services.discovery import ServiceCatalogDiscovery
 from src.services.models import (
     ServiceCreate,
     ServiceCriticality,
@@ -78,6 +80,61 @@ class TestServiceModels:
         )
         assert d.target_service_id == "auth-service"
         assert d.is_critical is True
+
+
+class TestServiceCatalogDiscovery:
+    def test_kubernetes_ssl_verify_defaults_enabled(self):
+        assert Settings().kubernetes_verify_ssl is True
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("verify_ssl", "expected_verify"),
+        [(True, True), (False, False)],
+    )
+    async def test_kubernetes_discovery_uses_ssl_verify_setting(
+        self, monkeypatch, verify_ssl, expected_verify
+    ):
+        token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+        captured: dict[str, bool] = {}
+
+        class _FakeResponse:
+            def raise_for_status(self):
+                return None
+
+            def json(self):
+                return {"items": []}
+
+        class _FakeClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def get(self, *_args, **_kwargs):
+                return _FakeResponse()
+
+        def _fake_async_client(*_args, **kwargs):
+            captured["verify"] = kwargs["verify"]
+            return _FakeClient()
+
+        monkeypatch.setenv("KUBERNETES_SERVICE_HOST", "kube.local")
+        monkeypatch.setattr(
+            "src.services.discovery.os.path.exists",
+            lambda path: path == token_path,
+        )
+        monkeypatch.setattr("builtins.open", mock_open(read_data="token"))
+        monkeypatch.setattr("src.services.discovery.httpx.AsyncClient", _fake_async_client)
+
+        store = MagicMock()
+        store.create_service = AsyncMock()
+        settings = Settings(kubernetes_verify_ssl=verify_ssl)
+        discovery = ServiceCatalogDiscovery(settings, store)
+
+        result = await discovery.discover_from_kubernetes(tenant_slug="default")
+
+        assert result == {"discovered": 0, "created": 0, "skipped": 0}
+        assert captured["verify"] is expected_verify
 
 
 # ── Store Tests (no DB) ───────────────────────────────────────────
