@@ -1,5 +1,16 @@
 import { TimelineEvent } from '@/lib/types';
-import { Bell, Search, Wrench, CheckCircle, Rocket } from 'lucide-react';
+import {
+  Bell,
+  Search,
+  Wrench,
+  CheckCircle,
+  Rocket,
+  GitCommit,
+  GitPullRequest,
+  Eye,
+  MessageSquare,
+  AlertCircle,
+} from 'lucide-react';
 import { format } from 'date-fns';
 
 const iconMap: Record<string, typeof Bell> = {
@@ -8,6 +19,12 @@ const iconMap: Record<string, typeof Bell> = {
   action: Wrench,
   resolution: CheckCircle,
   deployment: Rocket,
+  code_change: GitCommit,
+  pull_request: GitPullRequest,
+  created: AlertCircle,
+  acknowledged: Eye,
+  resolved: CheckCircle,
+  comment: MessageSquare,
 };
 
 const colorMap: Record<string, string> = {
@@ -16,6 +33,12 @@ const colorMap: Record<string, string> = {
   action: 'bg-coral',
   resolution: 'bg-green-500',
   deployment: 'bg-purple-500',
+  code_change: 'bg-orange-500',
+  pull_request: 'bg-purple-500',
+  created: 'bg-red-500',
+  acknowledged: 'bg-blue-500',
+  resolved: 'bg-green-500',
+  comment: 'bg-gray-500',
 };
 
 export default function IncidentTimeline({ events }: { events: TimelineEvent[] }) {
