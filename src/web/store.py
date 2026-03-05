@@ -250,7 +250,11 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         incident = self._incidents.get(incident_id)
         if not incident:
             return None
-        if tenant_id is not None and self._tenant_map.get(incident_id) != tenant_id:
+        if (
+            tenant_id is not None
+            and incident_id in self._tenant_map
+            and self._tenant_map.get(incident_id) != tenant_id
+        ):
             return None
         return incident
 
@@ -261,11 +265,22 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         incidents = [self._incidents[iid] for iid in self._order if iid in self._incidents]
         if tenant_id is None:
             return incidents
-        return [
+
+        unscoped_count = sum(1 for incident in incidents if incident.incident_id not in self._tenant_map)
+        matched = [
             incident
             for incident in incidents
-            if self._tenant_map.get(incident.incident_id) == tenant_id
+            if incident.incident_id not in self._tenant_map
+            or self._tenant_map.get(incident.incident_id) == tenant_id
         ]
+        logger.debug(
+            "incident_tenant_filter_applied",
+            tenant_id=tenant_id,
+            total_count=len(incidents),
+            matched_count=len(matched),
+            unscoped_count=unscoped_count,
+        )
+        return matched
 
     async def get_stats(self) -> dict:
         total = len(self._incidents)
@@ -314,6 +329,11 @@ class SupabaseIncidentStore(_BaseIncidentStore):
             return tenant_id
         if incident_id and incident_id in self._incident_tenants:
             return self._incident_tenants[incident_id]
+        logger.error(
+            "supabase_store_tenant_default_fallback",
+            incident_id=incident_id,
+            reason="tenant_id_missing_and_incident_tenant_not_cached",
+        )
         return await self._ensure_tenant()
 
     @staticmethod
@@ -696,7 +716,7 @@ class HybridIncidentStore(_BaseIncidentStore):
                 description=description,
             )
         except Exception as e:
-            logger.warning(
+            logger.error(
                 "hybrid_store_supabase_add_failed",
                 incident_id=incident_id,
                 error=str(e),
@@ -726,7 +746,7 @@ class HybridIncidentStore(_BaseIncidentStore):
             )
             return supabase_result or memory_result
         except Exception as e:
-            logger.warning(
+            logger.error(
                 "hybrid_store_supabase_complete_failed",
                 incident_id=incident_id,
                 error=str(e),
@@ -756,7 +776,7 @@ class HybridIncidentStore(_BaseIncidentStore):
             )
             return supabase_result or memory_result
         except Exception as e:
-            logger.warning(
+            logger.error(
                 "hybrid_store_supabase_fail_failed",
                 incident_id=incident_id,
                 error=str(e),
@@ -774,7 +794,7 @@ class HybridIncidentStore(_BaseIncidentStore):
             supabase_incident = await self._supabase.get_incident(incident_id, tenant_id=tenant_id)
             return supabase_incident or memory_incident
         except Exception as e:
-            logger.warning(
+            logger.error(
                 "hybrid_store_supabase_get_failed",
                 incident_id=incident_id,
                 error=str(e),
@@ -796,7 +816,7 @@ class HybridIncidentStore(_BaseIncidentStore):
             for incident in supabase_incidents:
                 merged_by_id[incident.incident_id] = incident
         except Exception as e:
-            logger.warning(
+            logger.error(
                 "hybrid_store_supabase_list_failed",
                 error=str(e),
                 error_type=type(e).__name__,
