@@ -50,11 +50,36 @@ export interface TimelineEvent {
   metadata?: Record<string, unknown>;
 }
 
+export interface GitHubDeploy {
+  sha?: string;
+  environment?: string;
+  timestamp?: string;
+}
+
+export interface GitHubPullRequest {
+  title?: string;
+  number?: number;
+  author?: string;
+  status?: string;
+}
+
+export interface GitHubCommit {
+  message?: string;
+  sha?: string;
+  author?: string;
+}
+
+export interface GitHubContext {
+  recent_deploys?: GitHubDeploy[];
+  recent_prs?: GitHubPullRequest[];
+  recent_commits?: GitHubCommit[];
+}
+
 export interface IncidentContext {
   id?: string;
   incident_id?: string;
   created_at?: string;
-  github_context?: Record<string, unknown>;
+  github_context?: GitHubContext;
   datadog_context?: Record<string, unknown>;
   on_call?: Record<string, unknown>;
   [key: string]: unknown;
@@ -80,5 +105,5 @@ export interface PdSyncStatus {
   last_attempt: string | null;
   last_success: string | null;
   last_error: string | null;
-  status: 'synced' | 'syncing' | 'error' | 'never';
+  status: 'synced' | 'syncing' | 'error' | 'never' | 'stale';
 }

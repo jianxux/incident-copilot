@@ -150,3 +150,45 @@ def test_build_pd_upsert_rows_sets_acknowledged_at_metadata():
     assert len(rows) == 1
     metadata = rows[0]["metadata"]
     assert metadata["acknowledged_at"] == "2026-02-20T11:22:33+00:00"
+
+
+class TestDerivePdSyncState:
+    """Verify _derive_pd_sync_state returns frontend-compatible status strings."""
+
+    def test_in_progress_returns_syncing(self):
+        from src.api.incidents import _derive_pd_sync_state
+
+        assert _derive_pd_sync_state({"in_progress": True}) == "syncing"
+
+    def test_never_attempted(self):
+        from src.api.incidents import _derive_pd_sync_state
+
+        assert _derive_pd_sync_state({}) == "never"
+
+    def test_success_returns_synced(self):
+        from src.api.incidents import _derive_pd_sync_state
+
+        now = datetime.now(UTC).isoformat()
+        assert _derive_pd_sync_state({
+            "last_attempt": now,
+            "last_success": now,
+        }) == "synced"
+
+    def test_error_state(self):
+        from src.api.incidents import _derive_pd_sync_state
+
+        now = datetime.now(UTC).isoformat()
+        assert _derive_pd_sync_state({
+            "last_attempt": now,
+            "last_error": "connection refused",
+        }) == "error"
+
+    def test_stale_state(self):
+        from src.api.incidents import _derive_pd_sync_state
+        from datetime import timedelta
+
+        old = (datetime.now(UTC) - timedelta(seconds=1200)).isoformat()
+        assert _derive_pd_sync_state({
+            "last_attempt": old,
+            "last_success": old,
+        }) == "stale"
