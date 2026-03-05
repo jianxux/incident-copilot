@@ -719,6 +719,7 @@ class HybridIncidentStore(_BaseIncidentStore):
             logger.error(
                 "hybrid_store_supabase_add_failed",
                 incident_id=incident_id,
+                tenant_id=tenant_id,
                 error=str(e),
                 error_type=type(e).__name__,
             )
@@ -749,6 +750,7 @@ class HybridIncidentStore(_BaseIncidentStore):
             logger.error(
                 "hybrid_store_supabase_complete_failed",
                 incident_id=incident_id,
+                tenant_id=tenant_id,
                 error=str(e),
                 error_type=type(e).__name__,
             )
@@ -779,6 +781,7 @@ class HybridIncidentStore(_BaseIncidentStore):
             logger.error(
                 "hybrid_store_supabase_fail_failed",
                 incident_id=incident_id,
+                tenant_id=tenant_id,
                 error=str(e),
                 error_type=type(e).__name__,
             )
