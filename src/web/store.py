@@ -311,10 +311,20 @@ class SupabaseIncidentStore(_BaseIncidentStore):
         tenant_id: str | None = None,
     ) -> str:
         if tenant_id:
+            # Cache mapping so complete_incident/fail_incident find the right tenant
+            if incident_id:
+                self._incident_tenants[incident_id] = tenant_id
             return tenant_id
         if incident_id and incident_id in self._incident_tenants:
             return self._incident_tenants[incident_id]
-        return await self._ensure_tenant()
+        fallback = await self._ensure_tenant()
+        logger.warning(
+            "supabase_store_tenant_fallback_to_default",
+            incident_id=incident_id,
+            fallback_tenant_id=fallback,
+            hint="No tenant_id provided and no cached mapping; falling back to default tenant",
+        )
+        return fallback
 
     @staticmethod
     def _row_to_stored(row: dict, card_row: dict | None = None) -> StoredIncident:
