@@ -1,6 +1,7 @@
 """Tests for incident store persistence and tenant_id propagation."""
 
 from datetime import UTC, datetime
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -39,19 +40,26 @@ async def test_tenant_id_cached_across_add_and_complete(memory_store):
 
 @pytest.mark.asyncio
 async def test_supabase_store_caches_tenant_in_resolve():
-    """SupabaseIncidentStore._resolve_tenant caches tenant_id from add calls."""
+    """SupabaseIncidentStore._resolve_tenant uses explicit, cached, then default tenant."""
     store = SupabaseIncidentStore(max_incidents=50)
 
-    # Simulate caching by calling _resolve_tenant with explicit tenant_id
+    # Explicit tenant should pass through as-is.
     resolved = await store._resolve_tenant(
         incident_id="INC-002",
         tenant_id="tenant-xyz",
     )
     assert resolved == "tenant-xyz"
 
-    # Now resolving without tenant_id should use cached value
+    # Cache hit should return cached tenant.
+    store._incident_tenants["INC-002"] = "tenant-xyz"
     resolved = await store._resolve_tenant(incident_id="INC-002")
     assert resolved == "tenant-xyz"
+
+    # Missing cache should fall back to ensure_tenant.
+    store._ensure_tenant = AsyncMock(return_value="tenant-default")  # type: ignore[method-assign]
+    resolved = await store._resolve_tenant(incident_id="INC-404")
+    assert resolved == "tenant-default"
+    store._ensure_tenant.assert_awaited_once()
 
 
 @pytest.mark.asyncio

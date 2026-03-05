@@ -29,7 +29,7 @@ def test_returns_error_when_last_error_exists_and_no_success_after():
     assert status == "error"
 
 
-def test_returns_synced_when_success_is_old_stale_window():
+def test_returns_stale_when_success_is_old_stale_window():
     now = datetime.now(UTC)
     status = _derive_pd_sync_state(
         {
@@ -37,7 +37,7 @@ def test_returns_synced_when_success_is_old_stale_window():
             "last_success": _iso(now - timedelta(seconds=601)),
         }
     )
-    assert status == "synced"
+    assert status == "stale"
 
 
 def test_returns_synced_when_recently_successful():
