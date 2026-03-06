@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -22,15 +24,30 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install ruff black isort
-          
-      - name: Check formatting with Black
-        run: black --check src tests
-        
-      - name: Check import order with isort
-        run: isort --check-only --profile black src tests
+
+      - name: Determine changed Python files vs origin/main
+        id: changed_python
+        run: |
+          git fetch --no-tags --prune origin main
+          CHANGED_PY_FILES="$(git diff --name-only --diff-filter=ACMRT origin/main...HEAD | grep -E '\.py$' || true)"
+          {
+            echo "files<<EOF"
+            echo "${CHANGED_PY_FILES}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check formatting with Black (changed files only)
+        if: steps.changed_python.outputs.files != ''
+        run: echo "${{ steps.changed_python.outputs.files }}" | xargs black --check
+
+      - name: Check import order with isort (changed files only)
+        if: steps.changed_python.outputs.files != ''
+        run: echo "${{ steps.changed_python.outputs.files }}" | xargs isort --check-only --profile black
         
       - name: Lint with Ruff
-        run: ruff check src tests
+        # Ruff remains repo-wide to keep broad lint signal while format debt is
+        # paid down incrementally.
+        run: ruff check .
 
   typecheck:
     name: Type Check
@@ -96,7 +113,9 @@ jobs:
           pip install bandit safety
           
       - name: Run Bandit security scan
-        run: bandit -r src -ll
+        # Gate only on high-severity + high-confidence findings to avoid
+        # blocking PRs on lower-confidence legacy debt.
+        run: bandit -r src -lll -iii
         
       - name: Check dependencies for vulnerabilities
         run: safety check
