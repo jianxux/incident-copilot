@@ -699,6 +699,8 @@ class HybridIncidentStore(_BaseIncidentStore):
             logger.warning(
                 "hybrid_store_supabase_add_failed",
                 incident_id=incident_id,
+                tenant_id=tenant_id,
+                title=title,
                 error=str(e),
                 error_type=type(e).__name__,
             )
@@ -798,6 +800,7 @@ class HybridIncidentStore(_BaseIncidentStore):
         except Exception as e:
             logger.warning(
                 "hybrid_store_supabase_list_failed",
+                tenant_id=tenant_id,
                 error=str(e),
                 error_type=type(e).__name__,
             )
