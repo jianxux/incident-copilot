@@ -29,6 +29,7 @@ from .memory import (
 from .memory.models import IncidentRecallResult
 from .metrics.latency_tracker import LatencyTracker, Phase
 from .models import (
+    AILogSummary,
     ContextCard,
     DatadogContext,
     GitHubContext,
@@ -281,11 +282,11 @@ class ContextOrchestrator:
             )
 
         # AI summarization (if we have logs)
-        ai_summary = None
+        ai_summary_raw: str | AILogSummary | None = None
         if datadog_ctx and datadog_ctx.logs:
             tracker.start(Phase.AI_SUMMARIZE)
             try:
-                ai_summary = await asyncio.wait_for(
+                ai_summary_raw = await asyncio.wait_for(
                     self.summarizer.summarize(
                         datadog_ctx.logs,
                         incident.service_name,
@@ -341,7 +342,11 @@ class ContextOrchestrator:
             elif gitlab_ctx and gitlab_ctx.recent_deploys:
                 deploy_data = [d.model_dump() for d in gitlab_ctx.recent_deploys]
 
-            log_summary_data = ai_summary.model_dump() if ai_summary else None
+            log_summary_data: str | dict[str, Any] | None
+            if isinstance(ai_summary_raw, str):
+                log_summary_data = ai_summary_raw
+            else:
+                log_summary_data = ai_summary_raw.model_dump() if ai_summary_raw else None
             metrics_data = (
                 datadog_ctx.metrics.model_dump()
                 if datadog_ctx and datadog_ctx.metrics
@@ -393,6 +398,16 @@ class ContextOrchestrator:
             codeowners = gitlab_ctx.codeowners
 
         tracker.start(Phase.CARD_ASSEMBLED)
+        ai_summary: AILogSummary | None = None
+        if isinstance(ai_summary_raw, AILogSummary):
+            ai_summary = ai_summary_raw
+        elif isinstance(ai_summary_raw, str) and ai_summary_raw.strip():
+            ai_summary = AILogSummary(
+                top_issues=[],
+                explanation=ai_summary_raw,
+                likely_cause=None,
+                suggested_actions=[],
+            )
 
         card = ContextCard(
             incident_id=incident.incident_id,
@@ -502,7 +517,12 @@ class ContextOrchestrator:
                 from .actions.engine import ActionEngine
 
                 action_engine = ActionEngine()
-                verdict_data = verdict.model_dump() if hasattr(verdict, "model_dump") else verdict
+                if hasattr(verdict, "model_dump"):
+                    verdict_data = cast(dict[str, Any], verdict.model_dump())
+                elif isinstance(verdict, dict):
+                    verdict_data = verdict
+                else:
+                    verdict_data = {"summary": str(verdict)}
                 suggested = action_engine.generate_actions(
                     verdict_data,
                     {"incident_id": incident.incident_id, "service": incident.service_name},
