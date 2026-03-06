@@ -160,16 +160,18 @@ async def process_pagerduty_incident_background(incident, settings):
             service_name=incident.service_name,
             severity=incident.severity,
             triggered_at=incident.triggered_at,
-            source="pagerduty",
-            source_url=incident.html_url,
-            source_id=incident.incident_id,
-            metadata={"provider": "pagerduty"},
         )
         orchestrator = ContextOrchestrator(settings)
-        card = await orchestrator.process_incident(incident)
-        await incident_store.complete_incident(incident.incident_id, card)
+        context_card = await orchestrator.process_incident(incident)
+        await incident_store.complete_incident(
+            incident_id=incident.incident_id,
+            context_card=context_card,
+        )
     except Exception as e:
-        await incident_store.fail_incident(incident.incident_id, str(e))
+        await incident_store.fail_incident(
+            incident_id=incident.incident_id,
+            error_message=str(e),
+        )
         logger.error(
             "pagerduty_background_processing_failed",
             incident_id=incident.incident_id,
@@ -215,16 +217,18 @@ async def process_opsgenie_alert_background(alert, settings):
             service_name=pd_incident.service_name,
             severity=pd_incident.severity,
             triggered_at=pd_incident.triggered_at,
-            source="opsgenie",
-            source_url=alert.url,
-            source_id=alert.alert_id,
-            metadata={"provider": "opsgenie"},
         )
         orchestrator = ContextOrchestrator(settings)
-        card = await orchestrator.process_incident(pd_incident)
-        await incident_store.complete_incident(incident_id, card)
+        context_card = await orchestrator.process_incident(pd_incident)
+        await incident_store.complete_incident(
+            incident_id=incident_id,
+            context_card=context_card,
+        )
     except Exception as e:
-        await incident_store.fail_incident(incident_id, str(e))
+        await incident_store.fail_incident(
+            incident_id=incident_id,
+            error_message=str(e),
+        )
         logger.error(
             "opsgenie_background_processing_failed",
             alert_id=alert.alert_id,

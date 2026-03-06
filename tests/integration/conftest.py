@@ -23,8 +23,10 @@ def supabase_client():
     """Create a Supabase client pointing at local instance."""
     client = create_client(LOCAL_SUPABASE_URL, LOCAL_SUPABASE_KEY)
     # Verify connectivity
-    result = client.table("tenants").select("id").limit(1).execute()
-    assert result is not None, "Cannot connect to local Supabase"
+    try:
+        client.table("tenants").select("id").limit(1).execute()
+    except Exception:
+        pytest.skip("Supabase not available")
     return client
 
 

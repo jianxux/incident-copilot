@@ -1,9 +1,9 @@
-import { Incident, AnalyticsData, TimelineEvent, IncidentContext } from './types';
+import { Incident, AnalyticsData, TimelineEvent, IncidentContext, PdSyncStatus } from './types';
 
 const BASE = '';
 
-async function fetchJSON<T>(url: string): Promise<T> {
-  const res = await fetch(`${BASE}${url}`, { credentials: 'include' });
+async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE}${url}`, { credentials: 'include', ...init });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
@@ -23,5 +23,9 @@ export const api = {
   incident: (id: string) => fetchJSON<Incident>(`/api/incidents/${id}`),
   incidentTimeline: (id: string) => fetchJSON<TimelineEvent[]>(`/api/incidents/${id}/timeline`),
   incidentContext: (id: string) => fetchJSON<IncidentContext>(`/api/incidents/${id}/context`),
+  syncStatus: () => fetchJSON<PdSyncStatus>('/api/incidents/sync-status'),
+  forceSync: () => fetchJSON<{ ok: boolean; status: string }>('/api/incidents/sync', { method: 'POST' }),
   analytics: () => fetchJSON<AnalyticsData>('/api/analytics'),
+  syncStatus: () => fetchJSON<{ last_attempt: string | null; last_success: string | null; last_error: string | null; status: string }>('/api/incidents/sync-status'),
+  forceSync: () => fetch(`${BASE}/api/incidents/sync`, { method: 'POST', credentials: 'include' }).then(res => res.json()),
 };
