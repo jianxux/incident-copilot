@@ -2,13 +2,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
-import { RefreshCw } from 'lucide-react';
 import SearchFilter from '@/components/SearchFilter';
 import { SeverityBadge, StatusBadge } from '@/components/StatusBadge';
 import { api } from '@/lib/api';
-import { Incident } from '@/lib/types';
-
-type SyncState = { last_attempt: string | null; last_success: string | null; last_error: string | null; status: string };
+import { Incident, PdSyncStatus } from '@/lib/types';
 
 export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -17,37 +14,59 @@ export default function IncidentsPage() {
   const [query, setQuery] = useState('');
   const [severity, setSeverity] = useState('');
   const [status, setStatus] = useState('');
-  const [syncState, setSyncState] = useState<SyncState | null>(null);
+  const [syncStatus, setSyncStatus] = useState<PdSyncStatus | null>(null);
   const [syncing, setSyncing] = useState(false);
 
-  const loadIncidents = useCallback(() => {
+  const loadIncidents = () => api.incidents({ limit: 100 });
+
+  useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
-    api.incidents({ limit: 100 })
-      .then((data) => { setIncidents(data.incidents); setLoading(false); })
-      .catch((err) => { setError(err.message || 'Failed to load incidents'); setLoading(false); });
+
+    loadIncidents()
+      .then((data) => {
+        if (!cancelled) {
+          setIncidents(data.incidents);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err.message || 'Failed to load incidents');
+          setLoading(false);
+        }
+      });
+
+    api.syncStatus()
+      .then((data) => {
+        if (!cancelled) {
+          setSyncStatus(data);
+        }
+      })
+      .catch(() => {
+        // Sync status is optional UI metadata; keep page usable on failures.
+      });
+
+    return () => { cancelled = true; };
   }, []);
 
-  const loadSyncStatus = useCallback(() => {
-    api.syncStatus().then(setSyncState).catch(() => {});
-  }, []);
-
-  const handleForceSync = useCallback(async () => {
+  const handleForceSync = async () => {
     setSyncing(true);
     try {
       await api.forceSync();
-      // Wait a moment for sync to complete then reload
-      await new Promise(r => setTimeout(r, 2000));
-      loadIncidents();
-      loadSyncStatus();
-    } catch { /* ignore */ }
-    setSyncing(false);
-  }, [loadIncidents, loadSyncStatus]);
-
-  useEffect(() => {
-    loadIncidents();
-    loadSyncStatus();
-  }, [loadIncidents, loadSyncStatus]);
+      const [incidentsData, syncData] = await Promise.all([
+        loadIncidents(),
+        api.syncStatus(),
+      ]);
+      setIncidents(incidentsData.incidents);
+      setSyncStatus(syncData);
+    } catch {
+      // Keep existing UI state if sync call fails.
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     return incidents.filter((inc) => {
@@ -58,37 +77,38 @@ export default function IncidentsPage() {
     });
   }, [incidents, query, severity, status]);
 
-  const syncLabel = syncState?.status === 'synced'
-    ? syncState.last_success
-      ? `Synced ${formatDistanceToNow(new Date(syncState.last_success), { addSuffix: true })}`
-      : 'Synced'
-    : syncState?.status === 'in_progress'
-    ? 'Syncing…'
-    : syncState?.status === 'error'
-    ? `Sync error: ${syncState.last_error?.slice(0, 60) || 'unknown'}`
-    : syncState?.status === 'stale'
-    ? 'Sync stale'
-    : syncState?.status === 'never'
-    ? 'Never synced'
-    : null;
-
-  const syncColor = syncState?.status === 'synced' ? 'text-green-600' : syncState?.status === 'error' ? 'text-red-500' : 'text-gray-500';
-
   return (
     <div className="p-6 md:p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-serif text-3xl">Incidents</h1>
-        <div className="flex items-center gap-3">
-          {syncLabel && <span className={`text-xs ${syncColor}`}>{syncLabel}</span>}
-          <button
-            onClick={handleForceSync}
-            disabled={syncing}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-cream-dark bg-white hover:bg-cream transition-colors disabled:opacity-50"
-          >
-            <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
-            {syncing ? 'Syncing…' : 'Sync PagerDuty'}
-          </button>
+      <h1 className="font-serif text-3xl">Incidents</h1>
+      <div className="bg-cream border border-cream-dark rounded-lg px-4 py-2 text-sm flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          {syncStatus?.status === 'synced' && (
+            <p className="text-gray-700 truncate">
+              <span className="text-green-600">●</span> Synced
+              {syncStatus.last_success ? ` ${formatDistanceToNow(new Date(syncStatus.last_success), { addSuffix: true })}` : ''}
+            </p>
+          )}
+          {syncStatus?.status === 'syncing' && (
+            <p className="text-amber-600 truncate"><span className="inline-block animate-spin mr-1">↻</span>Syncing...</p>
+          )}
+          {syncStatus?.status === 'error' && (
+            <p className="text-gray-700 truncate" title={syncStatus.last_error || 'Unknown sync error'}>
+              <span className="text-red-600">●</span> Sync failed
+              {syncStatus.last_error ? <span className="text-red-500">: {syncStatus.last_error}</span> : ''}
+            </p>
+          )}
+          {(!syncStatus || syncStatus.status === 'never') && (
+            <p className="text-gray-600 truncate"><span className="text-gray-400">●</span> Never synced</p>
+          )}
         </div>
+        <button
+          type="button"
+          onClick={handleForceSync}
+          disabled={syncing}
+          className="bg-coral text-white rounded-md px-3 py-1.5 text-sm hover:bg-coral/90 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {syncing ? 'Syncing...' : 'Sync Now'}
+        </button>
       </div>
       <SearchFilter query={query} onQueryChange={setQuery} severity={severity} onSeverityChange={setSeverity} status={status} onStatusChange={setStatus} />
 
