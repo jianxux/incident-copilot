@@ -75,3 +75,10 @@ export interface AnalyticsData {
   incidents_by_severity: { severity: string; count: number }[];
   resolution_times: { service: string; avg_minutes: number }[];
 }
+
+export interface PdSyncStatus {
+  last_attempt: string | null;
+  last_success: string | null;
+  last_error: string | null;
+  status: 'synced' | 'syncing' | 'error' | 'never';
+}
