@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from src.models import Severity
-from src.web.store import HybridIncidentStore, InMemoryIncidentStore
+from src.web.store import HybridIncidentStore, InMemoryIncidentStore, SupabaseIncidentStore
 
 
 @pytest.mark.asyncio
@@ -130,3 +130,75 @@ async def test_hybrid_store_memory_fallback():
     incidents = await store.get_all_incidents(tenant_id="tenant-a")
 
     assert [inc.incident_id for inc in incidents] == ["inc-hybrid-a"]
+
+
+@pytest.mark.asyncio
+async def test_hybrid_store_add_incident_raises_on_supabase_failure():
+    store = HybridIncidentStore()
+    store._supabase.add_incident = AsyncMock(side_effect=RuntimeError("write failed"))
+
+    with pytest.raises(RuntimeError, match="write failed"):
+        await store.add_incident(
+            incident_id="inc-hybrid-error",
+            title="Hybrid error",
+            service_name="payments-api",
+            severity=Severity.HIGH,
+            triggered_at=datetime.now(timezone.utc),
+            tenant_id="tenant-a",
+        )
+
+
+@pytest.mark.asyncio
+async def test_supabase_store_prefers_explicit_tenant_and_lists_by_tenant(monkeypatch):
+    class _FakeDB:
+        def __init__(self):
+            self.rows_by_tenant: dict[str, dict] = {}
+
+        async def ensure_tenant(self, slug: str, name: str):
+            return {"id": "default-tenant"}
+
+        async def upsert_processing_incident(self, **kwargs):
+            tenant_id = kwargs["tenant_id"]
+            row = {
+                "id": kwargs["incident_id"],
+                "title": kwargs["title"],
+                "service": kwargs["service_name"],
+                "severity": kwargs["severity"],
+                "status": kwargs["status"],
+                "triggered_at": kwargs["triggered_at"],
+                "processed_at": kwargs.get("processed_at"),
+                "source": kwargs.get("source") or "manual",
+                "source_url": kwargs.get("source_url"),
+                "source_id": kwargs.get("source_id"),
+                "description": kwargs.get("description"),
+                "metadata": kwargs.get("metadata") or {},
+            }
+            self.rows_by_tenant[tenant_id] = row
+
+        async def list_processing_incidents(self, tenant_id: str, limit: int, offset: int):
+            row = self.rows_by_tenant.get(tenant_id)
+            return [row] if row else []
+
+    import src.db.supabase_db as supabase_db
+
+    fake_db = _FakeDB()
+    monkeypatch.setattr(supabase_db, "get_db", lambda use_admin=True: fake_db)
+
+    store = SupabaseIncidentStore()
+    store._tenant_id = "default-tenant"
+    store._incident_tenants["inc-tenant-explicit"] = "wrong-tenant"
+
+    await store.add_incident(
+        incident_id="inc-tenant-explicit",
+        title="Tenant explicit incident",
+        service_name="payments-api",
+        severity=Severity.HIGH,
+        triggered_at=datetime.now(timezone.utc),
+        tenant_id="tenant-123",
+    )
+
+    tenant_incidents = await store.get_all_incidents(tenant_id="tenant-123")
+    default_incidents = await store.get_all_incidents(tenant_id="default-tenant")
+
+    assert [inc.incident_id for inc in tenant_incidents] == ["inc-tenant-explicit"]
+    assert default_incidents == []

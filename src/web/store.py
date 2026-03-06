@@ -311,6 +311,8 @@ class SupabaseIncidentStore(_BaseIncidentStore):
         tenant_id: str | None = None,
     ) -> str:
         if tenant_id:
+            if incident_id:
+                self._incident_tenants[incident_id] = tenant_id
             return tenant_id
         if incident_id and incident_id in self._incident_tenants:
             return self._incident_tenants[incident_id]
@@ -696,7 +698,7 @@ class HybridIncidentStore(_BaseIncidentStore):
                 description=description,
             )
         except Exception as e:
-            logger.warning(
+            logger.error(
                 "hybrid_store_supabase_add_failed",
                 incident_id=incident_id,
                 tenant_id=tenant_id,
@@ -704,6 +706,7 @@ class HybridIncidentStore(_BaseIncidentStore):
                 error=str(e),
                 error_type=type(e).__name__,
             )
+            raise
         return incident
 
     async def complete_incident(
@@ -728,13 +731,14 @@ class HybridIncidentStore(_BaseIncidentStore):
             )
             return supabase_result or memory_result
         except Exception as e:
-            logger.warning(
+            logger.error(
                 "hybrid_store_supabase_complete_failed",
                 incident_id=incident_id,
+                tenant_id=tenant_id,
                 error=str(e),
                 error_type=type(e).__name__,
             )
-            return memory_result
+            raise
 
     async def fail_incident(
         self,
