@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.models import Severity
-from src.web.store import incident_store
+from src.web.store import InMemoryIncidentStore
 
 
 @pytest.fixture(scope="module")
@@ -62,9 +62,22 @@ def _run(coro):
 
 
 @pytest.fixture(autouse=True)
-def _reset_incident_state():
+def _force_in_memory_incident_store(monkeypatch):
+    from src.api import incidents as incidents_api
+    from src.web import store as web_store
+
+    store = InMemoryIncidentStore(max_incidents=100)
+    monkeypatch.setattr(web_store, "incident_store", store)
+    monkeypatch.setattr(incidents_api, "incident_store", store)
+    monkeypatch.setattr(incidents_api, "is_supabase_db_enabled", lambda: False)
+    return store
+
+
+@pytest.fixture(autouse=True)
+def _reset_incident_state(_force_in_memory_incident_store):
     from src.api import incidents as incidents_api
 
+    incident_store = _force_in_memory_incident_store
     incidents_api._IN_MEMORY_NOTES.clear()
     incidents_api._IN_MEMORY_TIMELINE.clear()
 
@@ -83,6 +96,7 @@ def _reset_incident_state():
             service_name="api",
             severity=Severity.HIGH,
             triggered_at=now - timedelta(hours=4),
+            tenant_id="tenant-incidents",
         )
     )
     _run(
@@ -92,6 +106,7 @@ def _reset_incident_state():
             service_name="api",
             severity=Severity.CRITICAL,
             triggered_at=now - timedelta(hours=3),
+            tenant_id="tenant-incidents",
         )
     )
     _run(
@@ -101,6 +116,7 @@ def _reset_incident_state():
             service_name="billing",
             severity=Severity.MEDIUM,
             triggered_at=now - timedelta(hours=2),
+            tenant_id="tenant-incidents",
         )
     )
     _run(
@@ -110,6 +126,7 @@ def _reset_incident_state():
             service_name="workers",
             severity=Severity.LOW,
             triggered_at=now - timedelta(hours=1),
+            tenant_id="tenant-incidents",
         )
     )
 

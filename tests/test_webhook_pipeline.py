@@ -7,7 +7,7 @@ import pytest
 
 from src.config import Settings
 from src.models import ContextCard, OpsgenieAlert, PagerDutyIncident, Severity
-from src.web.store import incident_store
+from src.web.store import InMemoryIncidentStore
 
 # Test PagerDuty webhook payload
 PAGERDUTY_V3_PAYLOAD = {
@@ -36,7 +36,20 @@ PAGERDUTY_RESOLVE_PAYLOAD = {
 
 
 @pytest.fixture(autouse=True)
-def _reset_incident_store():
+def _force_in_memory_incident_store(monkeypatch):
+    from src.api import webhooks as webhooks_api
+    from src.web import store as web_store
+
+    store = InMemoryIncidentStore(max_incidents=100)
+    monkeypatch.setattr(web_store, "incident_store", store)
+    monkeypatch.setattr(webhooks_api, "incident_store", store)
+    globals()["incident_store"] = store
+    return store
+
+
+@pytest.fixture(autouse=True)
+def _reset_incident_store(_force_in_memory_incident_store):
+    incident_store = _force_in_memory_incident_store
     if hasattr(incident_store, "_incidents"):
         incident_store._incidents.clear()
     if hasattr(incident_store, "_order"):
@@ -242,7 +255,7 @@ class TestWebhookBackgroundPersistence:
         settings = Settings(correlation_enabled=False)
         calls: list[tuple[str, str]] = []
 
-        async def _fail(incident_id: str, _error_message: str):
+        async def _fail(incident_id: str, **_kwargs):
             calls.append(("fail", incident_id))
 
         def _error(_event: str, **kwargs):
@@ -279,7 +292,7 @@ class TestWebhookBackgroundPersistence:
         async def _add(incident_id: str, **_kwargs):
             calls.append(("add", incident_id))
 
-        async def _fail(incident_id: str, _error_message: str):
+        async def _fail(incident_id: str, **_kwargs):
             calls.append(("fail", incident_id))
 
         def _error(_event: str, **kwargs):
