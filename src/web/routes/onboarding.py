@@ -1,6 +1,7 @@
 """Onboarding API routes and integration workflows."""
 
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
@@ -9,7 +10,7 @@ from pydantic import BaseModel, Field
 from ...auth.middleware import AuthContext, get_auth_context
 from ...config import get_settings
 from ...integrations.slack_manifest import generate_manifest, generate_manifest_url
-from .common import logger, router, tenant_slug_from_auth
+from .common import landing_router, logger, router, tenant_slug_from_auth
 
 
 @router.get("/integrations/slack/manifest")
@@ -318,6 +319,17 @@ async def get_onboarding_status(
         "integrations": result,
         "details": details,
     }
+
+
+@landing_router.post("/api/onboarding/complete")
+async def complete_onboarding(config: dict[str, Any]):
+    from ...web.store import incident_store
+    from .demo import enqueue_demo_incident
+
+    # TODO: Persist integration config in a dedicated config store
+    stats = await incident_store.get_stats()
+    logger.info("onboarding_config_submitted", config=config, incident_stats=stats)
+    return await enqueue_demo_incident()
 
 
 @router.post("/api/onboarding/integrations/slack/channel")
