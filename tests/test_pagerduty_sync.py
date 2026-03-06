@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from src.api.incidents import _derive_pd_sync_state
 from src.integrations.pagerduty_sync import _build_pd_upsert_rows
 from src.models import ContextCard, Severity
 from src.web.store import InMemoryIncidentStore
@@ -150,3 +151,63 @@ def test_build_pd_upsert_rows_sets_acknowledged_at_metadata():
     assert len(rows) == 1
     metadata = rows[0]["metadata"]
     assert metadata["acknowledged_at"] == "2026-02-20T11:22:33+00:00"
+
+
+@pytest.mark.parametrize(
+    ("status_data", "expected"),
+    [
+        (
+            {
+                "in_progress": True,
+                "last_attempt": "2026-03-06T11:00:00Z",
+                "last_success": "2026-03-06T10:59:00Z",
+            },
+            "syncing",
+        ),
+        (
+            {
+                "in_progress": False,
+                "last_attempt": None,
+                "last_success": None,
+                "last_error": None,
+            },
+            "never",
+        ),
+        (
+            {
+                "in_progress": False,
+                "last_attempt": "2026-03-06T11:00:00Z",
+                "last_success": "2026-03-06T10:59:00Z",
+                "last_error": "PagerDuty API timeout",
+            },
+            "error",
+        ),
+        (
+            {
+                "in_progress": False,
+                "last_attempt": "2026-03-06T10:55:00Z",
+                "last_success": "2026-03-06T10:55:00Z",
+                "last_error": None,
+            },
+            "synced",
+        ),
+        (
+            {
+                "in_progress": False,
+                "last_attempt": "2026-03-06T10:39:00Z",
+                "last_success": "2026-03-06T10:39:00Z",
+                "last_error": None,
+            },
+            "stale",
+        ),
+    ],
+)
+def test_derive_pd_sync_state_status_matrix(status_data, expected, monkeypatch):
+    class _FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            return cls(2026, 3, 6, 10, 50, tzinfo=UTC)
+
+    monkeypatch.setattr("src.api.incidents.datetime", _FixedDatetime)
+
+    assert _derive_pd_sync_state(status_data) == expected
