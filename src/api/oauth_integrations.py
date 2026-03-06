@@ -178,17 +178,21 @@ async def callback_provider(
     import sys
     print(f"DEBUG_OAUTH: pre_upsert provider={resolved} tenant={state_data.tenant_id}", flush=True, file=sys.stderr)
 
-    await oauth_token_store.upsert_token(
-        tenant_id=state_data.tenant_id,
-        provider=resolved,
-        access_token=token_data["access_token"],
-        refresh_token=token_data.get("refresh_token"),
-        token_expiry=expiry,
-        scopes=scopes,
-    )
+    try:
+        await oauth_token_store.upsert_token(
+            tenant_id=state_data.tenant_id,
+            provider=resolved,
+            access_token=token_data["access_token"],
+            refresh_token=token_data.get("refresh_token"),
+            token_expiry=expiry,
+            scopes=scopes,
+        )
+        print(f"DEBUG_OAUTH: upsert_token OK", flush=True, file=sys.stderr)
+    except Exception as e:
+        print(f"DEBUG_OAUTH: upsert_token FAILED: {e}", flush=True, file=sys.stderr)
 
     # Slack-specific: store integration record + register team mapping
-    logger.info("oauth_callback_post_upsert", provider=resolved, tenant_id=state_data.tenant_id, token_prefix=token_data["access_token"][:10])
+    print(f"DEBUG_OAUTH: entering slack block, resolved={resolved}", flush=True, file=sys.stderr)
     if resolved == "slack":
         team = token_data.get("team")
         team_id_str = team.get("id") if isinstance(team, dict) else None
@@ -215,9 +219,9 @@ async def callback_provider(
                 state_data.tenant_id,
                 {"slack": {"encrypted": encrypt_json(integration_record)}},
             )
-            logger.info("slack_oauth_tenant_integrations_saved", tenant_id=state_data.tenant_id, team_id=team_id_str)
+            print(f"DEBUG_OAUTH: tenant_integrations SAVED team={team_id_str}", flush=True, file=sys.stderr)
         except Exception as e:
-            logger.warning("slack_oauth_tenant_integrations_failed", tenant_id=state_data.tenant_id, error=str(e))
+            print(f"DEBUG_OAUTH: tenant_integrations FAILED: {e}", flush=True, file=sys.stderr)
 
     # Update onboarding checklist if applicable
     checklist_map = {

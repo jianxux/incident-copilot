@@ -119,6 +119,7 @@ class InMemoryIncidentStore(_BaseIncidentStore):
     def __init__(self, max_incidents: int = 100):
         super().__init__(max_incidents=max_incidents)
         self._incidents: dict[str, StoredIncident] = {}
+        self._tenant_map: dict[str, str] = {}
         self._order: list[str] = []  # Track insertion order (newest first)
         self._lock = asyncio.Lock()
 
@@ -136,7 +137,6 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         tenant_id: str | None = None,
         description: str | None = None,
     ) -> StoredIncident:
-        _ = tenant_id
         async with self._lock:
             incident = StoredIncident(
                 incident_id=incident_id,
@@ -152,11 +152,16 @@ class InMemoryIncidentStore(_BaseIncidentStore):
                 metadata=metadata or {},
             )
             self._incidents[incident_id] = incident
+            if tenant_id is not None:
+                self._tenant_map[incident_id] = tenant_id
+            else:
+                self._tenant_map.pop(incident_id, None)
             self._order.insert(0, incident_id)
 
             while len(self._order) > self._max_incidents:
                 old_id = self._order.pop()
                 self._incidents.pop(old_id, None)
+                self._tenant_map.pop(old_id, None)
 
             await self._notify_subscribers(
                 {
@@ -180,10 +185,11 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         metadata: dict | None = None,
         tenant_id: str | None = None,
     ) -> StoredIncident | None:
-        _ = tenant_id
         async with self._lock:
             incident = self._incidents.get(incident_id)
             if not incident:
+                return None
+            if tenant_id is not None and self._tenant_map.get(incident_id) != tenant_id:
                 return None
 
             incident.status = "completed"
@@ -209,10 +215,11 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         metadata: dict | None = None,
         tenant_id: str | None = None,
     ) -> StoredIncident | None:
-        _ = tenant_id
         async with self._lock:
             incident = self._incidents.get(incident_id)
             if not incident:
+                return None
+            if tenant_id is not None and self._tenant_map.get(incident_id) != tenant_id:
                 return None
 
             incident.status = "error"
@@ -240,15 +247,25 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         incident_id: str,
         tenant_id: str | None = None,
     ) -> StoredIncident | None:
-        _ = tenant_id
-        return self._incidents.get(incident_id)
+        incident = self._incidents.get(incident_id)
+        if not incident:
+            return None
+        if tenant_id is not None and self._tenant_map.get(incident_id) != tenant_id:
+            return None
+        return incident
 
     async def get_all_incidents(
         self,
         tenant_id: str | None = None,
     ) -> list[StoredIncident]:
-        _ = tenant_id
-        return [self._incidents[iid] for iid in self._order if iid in self._incidents]
+        incidents = [self._incidents[iid] for iid in self._order if iid in self._incidents]
+        if tenant_id is None:
+            return incidents
+        return [
+            incident
+            for incident in incidents
+            if self._tenant_map.get(incident.incident_id) == tenant_id
+        ]
 
     async def get_stats(self) -> dict:
         total = len(self._incidents)
@@ -682,6 +699,8 @@ class HybridIncidentStore(_BaseIncidentStore):
             logger.warning(
                 "hybrid_store_supabase_add_failed",
                 incident_id=incident_id,
+                tenant_id=tenant_id,
+                title=title,
                 error=str(e),
                 error_type=type(e).__name__,
             )
@@ -781,6 +800,7 @@ class HybridIncidentStore(_BaseIncidentStore):
         except Exception as e:
             logger.warning(
                 "hybrid_store_supabase_list_failed",
+                tenant_id=tenant_id,
                 error=str(e),
                 error_type=type(e).__name__,
             )
@@ -808,10 +828,295 @@ class HybridIncidentStore(_BaseIncidentStore):
 
 
 
+class DatabaseIncidentStore(_BaseIncidentStore):
+    """SQLAlchemy/asyncpg-backed incident store.
+
+    Persists incidents to PostgreSQL using async SQLAlchemy while keeping
+    the same in-process SSE subscriber behavior.
+    """
+
+    def __init__(self, database_url: str, max_incidents: int = 100):
+        super().__init__(max_incidents=max_incidents)
+        from .models import create_engine_and_session
+
+        self._engine, self._session_factory = create_engine_and_session(database_url)
+        self._lock = asyncio.Lock()
+
+    async def init_db(self) -> None:
+        """Create tables if they don't exist."""
+        from .models import Base
+
+        async with self._engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+    async def dispose(self) -> None:
+        await self._engine.dispose()
+
+    async def add_incident(
+        self,
+        incident_id: str,
+        title: str,
+        service_name: str,
+        severity: Severity,
+        triggered_at: datetime,
+        source: str = "manual",
+        source_url: str | None = None,
+        source_id: str | None = None,
+        metadata: dict | None = None,
+        tenant_id: str | None = None,
+        description: str | None = None,
+    ) -> StoredIncident:
+        from .models import IncidentRow
+
+        async with self._lock:
+            async with self._session_factory() as session:
+                row = IncidentRow(
+                    incident_id=incident_id,
+                    title=title,
+                    service_name=service_name,
+                    severity=severity.value,
+                    status="processing",
+                    triggered_at=triggered_at,
+                )
+                session.add(row)
+                await session.commit()
+
+            incident = StoredIncident(
+                incident_id=incident_id,
+                title=title,
+                service_name=service_name,
+                severity=severity,
+                status="processing",
+                triggered_at=triggered_at,
+                source=source,
+                source_url=source_url,
+                source_id=source_id or incident_id,
+                description=description,
+                metadata=metadata or {},
+            )
+
+            await self._notify_subscribers(
+                {
+                    "type": "new_incident",
+                    "incident_id": incident_id,
+                    "title": title,
+                    "service": service_name,
+                    "severity": severity.value,
+                    "status": "processing",
+                    "source": source,
+                    "source_url": source_url,
+                }
+            )
+            return incident
+
+    async def complete_incident(
+        self,
+        incident_id: str,
+        context_card: ContextCard,
+        metadata: dict | None = None,
+        tenant_id: str | None = None,
+    ) -> StoredIncident | None:
+        from .models import IncidentRow
+        from sqlalchemy import select
+
+        async with self._lock:
+            async with self._session_factory() as session:
+                result = await session.execute(
+                    select(IncidentRow).where(IncidentRow.incident_id == incident_id)
+                )
+                row = result.scalar_one_or_none()
+                if not row:
+                    return None
+
+                now = datetime.now(UTC)
+                row.status = "completed"
+                row.processed_at = now
+                row.context_card = context_card.model_dump(mode="json")
+                await session.commit()
+
+                incident = StoredIncident(
+                    incident_id=row.incident_id,
+                    title=row.title,
+                    service_name=row.service_name,
+                    severity=Severity(row.severity),
+                    status="completed",
+                    triggered_at=row.triggered_at,
+                    processed_at=now,
+                    context_card=context_card,
+                    metadata=metadata or {},
+                )
+
+            await self._notify_subscribers(
+                {
+                    "type": "incident_completed",
+                    "incident_id": incident_id,
+                    "status": "completed",
+                    "assembly_time_ms": context_card.assembly_time_ms,
+                }
+            )
+            return incident
+
+    async def fail_incident(
+        self,
+        incident_id: str,
+        error_message: str,
+        metadata: dict | None = None,
+        tenant_id: str | None = None,
+    ) -> StoredIncident | None:
+        from .models import IncidentRow
+        from sqlalchemy import select
+
+        async with self._lock:
+            async with self._session_factory() as session:
+                result = await session.execute(
+                    select(IncidentRow).where(IncidentRow.incident_id == incident_id)
+                )
+                row = result.scalar_one_or_none()
+                if not row:
+                    return None
+
+                now = datetime.now(UTC)
+                row.status = "error"
+                row.processed_at = now
+                row.error_message = error_message
+                await session.commit()
+
+                incident = StoredIncident(
+                    incident_id=row.incident_id,
+                    title=row.title,
+                    service_name=row.service_name,
+                    severity=Severity(row.severity),
+                    status="error",
+                    triggered_at=row.triggered_at,
+                    processed_at=now,
+                    error_message=error_message,
+                    metadata=metadata or {},
+                )
+
+            await self._notify_subscribers(
+                {
+                    "type": "incident_error",
+                    "incident_id": incident_id,
+                    "status": "error",
+                    "error": error_message,
+                }
+            )
+            return incident
+
+    async def get_incident(
+        self,
+        incident_id: str,
+        tenant_id: str | None = None,
+    ) -> StoredIncident | None:
+        from .models import IncidentRow
+        from sqlalchemy import select
+
+        async with self._session_factory() as session:
+            result = await session.execute(
+                select(IncidentRow).where(IncidentRow.incident_id == incident_id)
+            )
+            row = result.scalar_one_or_none()
+            if not row:
+                return None
+
+            ctx = None
+            if row.context_card:
+                try:
+                    ctx = ContextCard.model_validate(row.context_card)
+                except Exception:
+                    ctx = None
+
+            return StoredIncident(
+                incident_id=row.incident_id,
+                title=row.title,
+                service_name=row.service_name,
+                severity=Severity(row.severity),
+                status=row.status,
+                triggered_at=row.triggered_at,
+                processed_at=row.processed_at,
+                context_card=ctx,
+                error_message=row.error_message,
+            )
+
+    async def get_all_incidents(
+        self,
+        tenant_id: str | None = None,
+    ) -> list[StoredIncident]:
+        from .models import IncidentRow
+        from sqlalchemy import select
+
+        async with self._session_factory() as session:
+            result = await session.execute(
+                select(IncidentRow).order_by(IncidentRow.triggered_at.desc()).limit(self._max_incidents)
+            )
+            rows = result.scalars().all()
+
+            incidents = []
+            for row in rows:
+                ctx = None
+                if row.context_card:
+                    try:
+                        ctx = ContextCard.model_validate(row.context_card)
+                    except Exception:
+                        ctx = None
+
+                incidents.append(
+                    StoredIncident(
+                        incident_id=row.incident_id,
+                        title=row.title,
+                        service_name=row.service_name,
+                        severity=Severity(row.severity),
+                        status=row.status,
+                        triggered_at=row.triggered_at,
+                        processed_at=row.processed_at,
+                        context_card=ctx,
+                        error_message=row.error_message,
+                    )
+                )
+            return incidents
+
+    async def get_stats(self) -> dict:
+        incidents = await self.get_all_incidents()
+        total = len(incidents)
+        by_status = {"processing": 0, "completed": 0, "error": 0}
+        by_severity = {s.value: 0 for s in Severity}
+
+        for incident in incidents:
+            by_status[incident.status] = by_status.get(incident.status, 0) + 1
+            by_severity[incident.severity.value] = (
+                by_severity.get(incident.severity.value, 0) + 1
+            )
+
+        return {"total": total, "by_status": by_status, "by_severity": by_severity}
+
+
 def get_incident_store() -> _BaseIncidentStore:
+    """Create the appropriate incident store based on configuration.
+
+    Priority:
+    1. Supabase DB if SUPABASE_DB_ENABLED=true -> HybridIncidentStore
+    2. DATABASE_URL if set and non-empty -> DatabaseIncidentStore (SQLAlchemy + asyncpg)
+    3. Fallback -> InMemoryIncidentStore
+    """
     if is_supabase_db_enabled():
         logger.info("incident_store_backend", backend="hybrid")
         return HybridIncidentStore(max_incidents=100)
+
+    # Check for DATABASE_URL via config
+    try:
+        from ..config import get_settings
+
+        settings = get_settings()
+        database_url = settings.database_url
+        if database_url:
+            logger.info("incident_store_backend", backend="database")
+            return DatabaseIncidentStore(database_url=database_url, max_incidents=100)
+    except Exception as exc:
+        logger.warning(
+            "database_store_init_failed",
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
 
     logger.info("incident_store_backend", backend="memory")
     return InMemoryIncidentStore(max_incidents=100)
