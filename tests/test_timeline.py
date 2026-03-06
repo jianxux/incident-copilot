@@ -6,10 +6,10 @@ import pytest
 
 from src.models import (
     ContextCard,
+    DatadogContext,
     Deployment,
     GitHubContext,
     LogEntry,
-    LogSummary,
     Severity,
 )
 from src.web.timeline import (
@@ -206,30 +206,26 @@ class TestBuildFromContextCard:
 
         return ContextCard(
             incident_id="inc-123",
-            alert_title="High Error Rate",
-            alert_description="Error rate exceeded 5% on payments-api",
+            title="High Error Rate",
             severity=Severity.HIGH,
+            service_name="payments-api",
             triggered_at=triggered_at,
             github=GitHubContext(
-                service_name="payments-api",
-                recent_deployments=[
+                repo="payments-api",
+                recent_deploys=[
                     Deployment(
                         sha="abc123",
-                        version="v2.1.0",
-                        deployed_at=triggered_at - timedelta(minutes=30),
-                        deployed_by="deploy-bot",
-                        commit_message="Add new payment flow",
-                        environment="production",
+                        short_sha="abc123",
+                        author="deploy-bot",
+                        message="Add new payment flow",
+                        timestamp=triggered_at - timedelta(minutes=30),
+                        url="https://github.com/acme/payments/commit/abc123",
                     ),
                 ],
             ),
-            logs=LogSummary(
-                query="service:payments-api level:error",
-                total_count=25,
-                error_count=20,
-                warning_count=5,
-                time_range_minutes=60,
-                entries=[
+            datadog=DatadogContext(
+                service="payments-api",
+                logs=[
                     LogEntry(
                         timestamp=triggered_at - timedelta(minutes=5),
                         message="Connection timeout to payment gateway",
@@ -268,7 +264,96 @@ class TestBuildFromContextCard:
             e for e in events if e.event_type == TimelineEventType.DEPLOYMENT
         ]
         assert len(deploy_events) == 1
-        assert "v2.1.0" in deploy_events[0].title
+        assert "abc123" in deploy_events[0].title
+
+    def test_github_deploys_added_to_timeline(self, builder):
+        """Test multiple GitHub deploys are added with deployment metadata."""
+        triggered_at = datetime(2026, 2, 2, 3, 0, 0, tzinfo=UTC)
+        card = ContextCard(
+            incident_id="inc-456",
+            title="Checkout latency spike",
+            severity=Severity.HIGH,
+            service_name="checkout-api",
+            triggered_at=triggered_at,
+            github=GitHubContext(
+                repo="checkout-api",
+                recent_deploys=[
+                    Deployment(
+                        sha="111111111111",
+                        short_sha="1111111",
+                        author="alice",
+                        message="Optimize query path",
+                        timestamp=triggered_at - timedelta(minutes=45),
+                        url="https://github.com/acme/checkout/commit/111111111111",
+                    ),
+                    Deployment(
+                        sha="222222222222",
+                        short_sha="2222222",
+                        author="bob",
+                        message="Add cache warming",
+                        timestamp=triggered_at - timedelta(minutes=20),
+                        url="https://github.com/acme/checkout/commit/222222222222",
+                    ),
+                ],
+            ),
+        )
+
+        events = builder.build_from_context_card(card, {})
+        deploy_events = [
+            e for e in events if e.event_type == TimelineEventType.DEPLOYMENT
+        ]
+
+        assert len(deploy_events) == 2
+        assert {event.metadata.get("sha") for event in deploy_events} == {
+            "111111111111",
+            "222222222222",
+        }
+        assert all(event.source == "GitHub" for event in deploy_events)
+
+    def test_github_deploys_only_before_alert(self, builder):
+        """Test only deploys before the alert trigger time are included."""
+        triggered_at = datetime(2026, 2, 2, 3, 0, 0, tzinfo=UTC)
+        card = ContextCard(
+            incident_id="inc-789",
+            title="Cart errors",
+            severity=Severity.HIGH,
+            service_name="cart-api",
+            triggered_at=triggered_at,
+            github=GitHubContext(
+                repo="cart-api",
+                recent_deploys=[
+                    Deployment(
+                        sha="aaaaaa111111",
+                        short_sha="aaaaaa1",
+                        author="alice",
+                        message="Safe change",
+                        timestamp=triggered_at - timedelta(minutes=10),
+                    ),
+                    Deployment(
+                        sha="bbbbbb222222",
+                        short_sha="bbbbbb2",
+                        author="bob",
+                        message="Exactly at trigger",
+                        timestamp=triggered_at,
+                    ),
+                    Deployment(
+                        sha="cccccc333333",
+                        short_sha="cccccc3",
+                        author="carol",
+                        message="After trigger",
+                        timestamp=triggered_at + timedelta(minutes=5),
+                    ),
+                ],
+            ),
+        )
+
+        events = builder.build_from_context_card(card, {})
+        deploy_events = [
+            e for e in events if e.event_type == TimelineEventType.DEPLOYMENT
+        ]
+
+        assert len(deploy_events) == 1
+        assert deploy_events[0].metadata["sha"] == "aaaaaa111111"
 
     def test_includes_log_errors(self, builder, sample_context_card):
         """Test that log error events are included."""

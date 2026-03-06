@@ -47,15 +47,30 @@ async def start_test_incident(
     if supabase_enabled and not tenant_id:
         raise ValueError("tenant_id is required when SUPABASE_DB_ENABLED=true")
 
-    await incident_store.add_incident(
-        incident_id=incident_id,
-        title=title,
-        service_name=service_name,
-        severity=severity,
-        triggered_at=triggered_at,
-        tenant_id=tenant_id,
-        description="Synthetic test incident created by onboarding flow.",
-    )
+    try:
+        await incident_store.add_incident(
+            incident_id=incident_id,
+            title=title,
+            service_name=service_name,
+            severity=severity,
+            triggered_at=triggered_at,
+            tenant_id=tenant_id,
+            description="Synthetic test incident created by onboarding flow.",
+        )
+        logger.info(
+            "test_incident_add_succeeded",
+            incident_id=incident_id,
+            tenant_id=tenant_id,
+        )
+    except Exception as e:
+        logger.error(
+            "test_incident_add_failed",
+            incident_id=incident_id,
+            tenant_id=tenant_id,
+            error=str(e),
+            error_type=type(e).__name__,
+        )
+        raise
 
     incident = PagerDutyIncident(
         incident_id=incident_id,

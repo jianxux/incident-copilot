@@ -10,6 +10,7 @@ from ..config import Settings, get_settings
 from ..db.supabase_db import get_db
 from ..models import Deployment, GitHubContext, GitHubDeployment, GitHubPullRequest
 from ..security.crypto import decrypt_json
+from ..supabase_client import is_supabase_db_enabled
 
 logger = structlog.get_logger()
 
@@ -20,10 +21,18 @@ async def resolve_github_creds(tenant_id: str | None) -> tuple[str, str]:
     token = settings.github_token or ""
     org = settings.github_org or ""
     if token:
+        logger.debug("github_creds_resolved_from_env", org=org)
         return token, org
 
-    if tenant_id is None:
+    if not tenant_id:
+        logger.debug("github_creds_skipped", reason="no_tenant_id")
         return "", ""
+
+    if not is_supabase_db_enabled():
+        logger.debug("github_creds_skipped", reason="supabase_db_disabled")
+        return "", ""
+
+    logger.debug("github_creds_resolving_from_db", tenant_id=tenant_id)
 
     try:
         db = get_db(use_admin=True)
@@ -40,25 +49,55 @@ async def resolve_github_creds(tenant_id: str | None) -> tuple[str, str]:
 
         result = await db._to_thread(_fetch)
         if not result.data:
+            logger.warning(
+                "github_creds_not_found_in_db",
+                tenant_id=tenant_id,
+                reason="no_integration_config_rows",
+            )
             return "", ""
 
         config = result.data[0].get("config")
         if not isinstance(config, dict):
+            logger.warning(
+                "github_creds_invalid_config",
+                tenant_id=tenant_id,
+                reason="config_not_dict",
+                config_type=type(config).__name__,
+            )
             return "", ""
 
         encrypted = config.get("encrypted")
         if not encrypted:
+            logger.warning(
+                "github_creds_missing_encrypted_field",
+                tenant_id=tenant_id,
+                reason="no_encrypted_key_in_config",
+                config_keys=list(config.keys()),
+            )
             return "", ""
 
         decrypted = decrypt_json(encrypted)
-        token = decrypted.get("token", "") if isinstance(decrypted, dict) else ""
-        org = decrypted.get("org", "") if isinstance(decrypted, dict) else ""
+        if not isinstance(decrypted, dict):
+            logger.warning(
+                "github_creds_decrypt_unexpected_type",
+                tenant_id=tenant_id,
+                decrypted_type=type(decrypted).__name__,
+            )
+            return "", ""
+
+        token = decrypted.get("token", "")
+        org = decrypted.get("org", "")
+        if not token:
+            logger.warning("github_creds_empty_token_after_decrypt", tenant_id=tenant_id)
+        else:
+            logger.info("github_creds_resolved_from_db", tenant_id=tenant_id, org=org)
         return token, org
     except Exception as exc:
         logger.warning(
             "github_credentials_resolution_failed",
             tenant_id=tenant_id,
             error=str(exc),
+            exc_type=type(exc).__name__,
         )
         return "", ""
 
@@ -69,6 +108,7 @@ async def resolve_github_credentials(
 ) -> tuple[str, str]:
     """Backward-compatible wrapper for older call sites."""
     if settings.github_token:
+        logger.debug("github_credentials_resolved_from_settings", org=settings.github_org)
         return settings.github_token, settings.github_org
     return await resolve_github_creds(tenant_id)
 

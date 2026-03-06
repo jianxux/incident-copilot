@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -59,7 +59,8 @@ async def test_tenant_methods_use_in_memory_when_supabase_disabled(monkeypatch):
 async def test_tenant_methods_use_supabase_when_enabled(monkeypatch):
     monkeypatch.setattr("src.auth.service.is_supabase_db_enabled", lambda: True)
     mock_db = AsyncMock()
-    monkeypatch.setattr("src.auth.service.get_db", lambda: mock_db)
+    get_db_mock = MagicMock(return_value=mock_db)
+    monkeypatch.setattr("src.auth.service.get_db", get_db_mock)
 
     base = _tenant_row(plan="free", integrations={"pagerduty": {"api_key": "pd"}})
     created_row = {**base, "name": "Acme Inc", "slug": "acme-inc"}
@@ -87,6 +88,7 @@ async def test_tenant_methods_use_supabase_when_enabled(monkeypatch):
     service = AuthService()
     tenant = await service.create_tenant(name="Acme Inc", slug="acme-inc")
     assert tenant.id == "tenant-1"
+    get_db_mock.assert_any_call(use_admin=True)
     mock_db.create_tenant.assert_awaited_once()
 
     await service.update_tenant_integrations(
@@ -116,7 +118,8 @@ async def test_get_tenant_is_read_through_cached_when_supabase_enabled(monkeypat
     monkeypatch.setattr("src.auth.service.is_supabase_db_enabled", lambda: True)
     mock_db = AsyncMock()
     mock_db.get_tenant = AsyncMock(return_value=_tenant_row())
-    monkeypatch.setattr("src.auth.service.get_db", lambda: mock_db)
+    get_db_mock = MagicMock(return_value=mock_db)
+    monkeypatch.setattr("src.auth.service.get_db", get_db_mock)
     service = AuthService()
 
     first = await service.get_tenant("tenant-1")
@@ -125,4 +128,5 @@ async def test_get_tenant_is_read_through_cached_when_supabase_enabled(monkeypat
     assert first is not None
     assert second is not None
     assert first.id == second.id == "tenant-1"
+    get_db_mock.assert_called_once_with(use_admin=True)
     mock_db.get_tenant.assert_awaited_once_with("tenant-1")
