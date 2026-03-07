@@ -189,7 +189,12 @@ class InMemoryIncidentStore(_BaseIncidentStore):
             incident = self._incidents.get(incident_id)
             if not incident:
                 return None
-            if tenant_id is not None and self._tenant_map.get(incident_id) != tenant_id:
+            mapped_tenant = self._tenant_map.get(incident_id)
+            if (
+                tenant_id is not None
+                and mapped_tenant is not None
+                and mapped_tenant != tenant_id
+            ):
                 return None
 
             incident.status = "completed"
@@ -219,7 +224,12 @@ class InMemoryIncidentStore(_BaseIncidentStore):
             incident = self._incidents.get(incident_id)
             if not incident:
                 return None
-            if tenant_id is not None and self._tenant_map.get(incident_id) != tenant_id:
+            mapped_tenant = self._tenant_map.get(incident_id)
+            if (
+                tenant_id is not None
+                and mapped_tenant is not None
+                and mapped_tenant != tenant_id
+            ):
                 return None
 
             incident.status = "error"
@@ -250,7 +260,8 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         incident = self._incidents.get(incident_id)
         if not incident:
             return None
-        if tenant_id is not None and self._tenant_map.get(incident_id) != tenant_id:
+        mapped_tenant = self._tenant_map.get(incident_id)
+        if tenant_id is not None and mapped_tenant is not None and mapped_tenant != tenant_id:
             return None
         return incident
 
@@ -264,7 +275,10 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         return [
             incident
             for incident in incidents
-            if self._tenant_map.get(incident.incident_id) == tenant_id
+            if (
+                self._tenant_map.get(incident.incident_id) is None
+                or self._tenant_map.get(incident.incident_id) == tenant_id
+            )
         ]
 
     async def get_stats(self) -> dict:

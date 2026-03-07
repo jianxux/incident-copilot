@@ -242,7 +242,7 @@ class TestWebhookBackgroundPersistence:
         settings = Settings(correlation_enabled=False)
         calls: list[tuple[str, str]] = []
 
-        async def _fail(incident_id: str, _error_message: str):
+        async def _fail(incident_id: str, _error_message: str | None = None, **_kwargs):
             calls.append(("fail", incident_id))
 
         def _error(_event: str, **kwargs):
@@ -279,7 +279,7 @@ class TestWebhookBackgroundPersistence:
         async def _add(incident_id: str, **_kwargs):
             calls.append(("add", incident_id))
 
-        async def _fail(incident_id: str, _error_message: str):
+        async def _fail(incident_id: str, _error_message: str | None = None, **_kwargs):
             calls.append(("fail", incident_id))
 
         def _error(_event: str, **kwargs):
