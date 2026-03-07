@@ -80,5 +80,5 @@ export interface PdSyncStatus {
   last_attempt: string | null;
   last_success: string | null;
   last_error: string | null;
-  status: 'synced' | 'syncing' | 'error' | 'never';
+  status: 'synced' | 'syncing' | 'error' | 'never' | 'stale' | 'in_progress';
 }
