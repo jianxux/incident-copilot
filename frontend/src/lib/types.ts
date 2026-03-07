@@ -76,6 +76,27 @@ export interface AnalyticsData {
   resolution_times: { service: string; avg_minutes: number }[];
 }
 
+export interface IncidentStats {
+  total: number;
+  by_status: {
+    triggered: number;
+    acknowledged: number;
+    resolved: number;
+    processing: number;
+  };
+  by_severity: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+    info: number;
+  };
+  mttr_hours: number;
+  mtta_minutes: number;
+  incidents_today: number;
+  incidents_week: number;
+}
+
 export interface PdSyncStatus {
   last_attempt: string | null;
   last_success: string | null;
