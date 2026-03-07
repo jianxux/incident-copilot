@@ -696,7 +696,14 @@ class HybridIncidentStore(_BaseIncidentStore):
                 description=description,
             )
         except Exception as e:
-            logger.warning(
+            incident.metadata = {
+                **incident.metadata,
+                "supabase_add_error": {
+                    "message": str(e),
+                    "type": type(e).__name__,
+                },
+            }
+            logger.error(
                 "hybrid_store_supabase_add_failed",
                 incident_id=incident_id,
                 tenant_id=tenant_id,
@@ -728,9 +735,18 @@ class HybridIncidentStore(_BaseIncidentStore):
             )
             return supabase_result or memory_result
         except Exception as e:
-            logger.warning(
+            if memory_result is not None:
+                memory_result.metadata = {
+                    **memory_result.metadata,
+                    "supabase_complete_error": {
+                        "message": str(e),
+                        "type": type(e).__name__,
+                    },
+                }
+            logger.error(
                 "hybrid_store_supabase_complete_failed",
                 incident_id=incident_id,
+                tenant_id=tenant_id,
                 error=str(e),
                 error_type=type(e).__name__,
             )

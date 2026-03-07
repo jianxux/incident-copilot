@@ -27,6 +27,18 @@ async def test_start_test_incident_uses_explicit_tenant(monkeypatch):
     fake_db = AsyncMock()
     fake_db.ensure_tenant = AsyncMock(return_value={"id": "default-tenant"})
     fake_db.upsert_processing_incident = AsyncMock()
+    fake_db.get_processing_incident = AsyncMock(
+        return_value={
+            "id": "test-incident-id",
+            "title": "test",
+            "service": "payments-api",
+            "severity": "high",
+            "status": "processing",
+            "triggered_at": datetime.now(UTC).isoformat(),
+            "metadata": {},
+        }
+    )
+    fake_db.get_context_card = AsyncMock(return_value=None)
 
     monkeypatch.setattr(supabase_db, "get_db", lambda use_admin=True: fake_db)
 

@@ -769,6 +769,13 @@ async def list_incidents(
             search=search,
         )
         incidents = [_format_incident(row) for row in page_rows]
+        logger.debug(
+            "list_incidents_returned",
+            tenant_id=tenant_id,
+            count=len(incidents),
+            total=total,
+            source="merged_supabase_memory",
+        )
         return {"incidents": incidents, "total": total}
 
     stored = await incident_store.get_all_incidents(tenant_id=tenant_id)
@@ -788,6 +795,13 @@ async def list_incidents(
         search=search,
     )
     incidents = [_format_incident(row) for row in page_rows]
+    logger.debug(
+        "list_incidents_returned",
+        tenant_id=tenant_id,
+        count=len(incidents),
+        total=total,
+        source="memory_only",
+    )
     return {"incidents": incidents, "total": total}
 
 
