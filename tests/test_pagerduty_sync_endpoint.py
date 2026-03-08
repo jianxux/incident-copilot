@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from src.api.incidents import _derive_pd_sync_state
 from src.models import ContextCard, Severity
 from src.web.store import InMemoryIncidentStore
 
@@ -244,3 +245,28 @@ async def test_sync_extracts_metadata_fields(store):
     assert stored.metadata["urgency"] == "high"
     assert stored.metadata["assigned_to"] == ["Alice", "Bob"]
     assert stored.metadata["escalation_policy"] == "Critical EP"
+
+
+def test_incidents_api_sync_state_uses_syncing_label():
+    state = _derive_pd_sync_state(
+        {
+            "last_attempt": datetime.now(UTC).isoformat(),
+            "last_success": None,
+            "last_error": None,
+            "in_progress": True,
+        }
+    )
+    assert state == "syncing"
+
+
+def test_incidents_api_sync_state_maps_stale_to_synced():
+    stale_success = "2024-01-01T00:00:00+00:00"
+    state = _derive_pd_sync_state(
+        {
+            "last_attempt": stale_success,
+            "last_success": stale_success,
+            "last_error": None,
+            "in_progress": False,
+        }
+    )
+    assert state == "synced"

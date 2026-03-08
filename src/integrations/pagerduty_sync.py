@@ -55,6 +55,25 @@ def get_pd_sync_status(tenant_id: str) -> dict[str, Any]:
     return dict(_ensure_sync_status(tenant_id))
 
 
+def _derive_pd_sync_state(status_data: dict[str, Any]) -> str:
+    """Map raw sync status fields to frontend-facing state values."""
+    if bool(status_data.get("in_progress")):
+        return "syncing"
+
+    last_attempt_raw = status_data.get("last_attempt")
+    last_success_raw = status_data.get("last_success")
+    last_error = status_data.get("last_error")
+
+    attempt_dt = _parse_iso_datetime(last_attempt_raw)
+    success_dt = _parse_iso_datetime(last_success_raw)
+
+    if attempt_dt is None:
+        return "never"
+    if isinstance(last_error, str) and (success_dt is None or attempt_dt >= success_dt):
+        return "error"
+    return "synced"
+
+
 def _pd_id_to_uuid(pd_id: str) -> str:
     """Convert a PagerDuty incident ID to a deterministic UUID5.
 

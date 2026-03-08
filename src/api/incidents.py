@@ -399,20 +399,11 @@ def _get_pd_sync_status(tenant_id: str) -> dict[str, Any]:
 
 
 def _derive_pd_sync_state(status_data: dict[str, Any]) -> str:
-    if bool(status_data.get("in_progress")):
-        return "in_progress"
+    from src.integrations.pagerduty_sync import (
+        _derive_pd_sync_state as _pd_derive_pd_sync_state,
+    )
 
-    attempt_dt = _as_datetime(status_data.get("last_attempt"))
-    success_dt = _as_datetime(status_data.get("last_success"))
-    last_error = status_data.get("last_error")
-
-    if attempt_dt is None:
-        return "never"
-    if isinstance(last_error, str) and (success_dt is None or attempt_dt >= success_dt):
-        return "error"
-    if success_dt and (datetime.now(UTC) - success_dt) > timedelta(seconds=600):
-        return "stale"
-    return "synced"
+    return _pd_derive_pd_sync_state(status_data)
 
 
 async def _capture_resolution_memory_best_effort(

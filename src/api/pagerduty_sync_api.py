@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -15,9 +14,6 @@ from ..integrations.pagerduty_sync import (
 )
 
 router = APIRouter(prefix="/api/integrations/pagerduty", tags=["integrations-pagerduty"])
-
-_STALE_SECONDS = 600
-
 
 async def _require_tenant(auth: AuthContext) -> str:
     if not auth.tenant_id:
@@ -40,12 +36,9 @@ async def get_sync_status(auth: AuthContext = Depends(get_auth_context)):
             "interval_seconds": _PD_SYNC_INTERVAL,
         }
 
-    age_seconds = time.time() - float(last_sync_ts)
-    sync_status = "stale" if age_seconds > _STALE_SECONDS else "synced"
-
     return {
         "last_sync_at": datetime.fromtimestamp(last_sync_ts, tz=UTC).isoformat(),
-        "status": sync_status,
+        "status": "synced",
         "interval_seconds": _PD_SYNC_INTERVAL,
     }
 

@@ -1,10 +1,10 @@
 """Tests for PagerDuty/Opsgenie provenance data sync."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from src.integrations.pagerduty_sync import _build_pd_upsert_rows
+from src.integrations.pagerduty_sync import _build_pd_upsert_rows, _derive_pd_sync_state
 from src.models import ContextCard, Severity
 from src.web.store import InMemoryIncidentStore
 
@@ -150,3 +150,28 @@ def test_build_pd_upsert_rows_sets_acknowledged_at_metadata():
     assert len(rows) == 1
     metadata = rows[0]["metadata"]
     assert metadata["acknowledged_at"] == "2026-02-20T11:22:33+00:00"
+
+
+def test_derive_pd_sync_state_maps_in_progress_to_syncing():
+    state = _derive_pd_sync_state(
+        {
+            "last_attempt": datetime.now(UTC).isoformat(),
+            "last_success": None,
+            "last_error": None,
+            "in_progress": True,
+        }
+    )
+    assert state == "syncing"
+
+
+def test_derive_pd_sync_state_maps_old_success_to_synced():
+    old_success = (datetime.now(UTC) - timedelta(minutes=30)).isoformat()
+    state = _derive_pd_sync_state(
+        {
+            "last_attempt": old_success,
+            "last_success": old_success,
+            "last_error": None,
+            "in_progress": False,
+        }
+    )
+    assert state == "synced"
