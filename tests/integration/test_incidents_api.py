@@ -11,6 +11,8 @@ import pytest
 from src.models import Severity
 from src.web.store import incident_store
 
+TEST_TENANT_ID = "tenant-incidents"
+
 
 @pytest.fixture(scope="module")
 def app():
@@ -26,8 +28,8 @@ def authed_client(app):
     from src.auth.middleware import AuthContext, get_auth_context
 
     mock_tenant = MagicMock()
-    mock_tenant.id = "tenant-incidents"
-    mock_tenant.slug = "tenant-incidents"
+    mock_tenant.id = TEST_TENANT_ID
+    mock_tenant.slug = TEST_TENANT_ID
 
     mock_user = MagicMock()
     mock_user.id = "user-incidents"
@@ -62,6 +64,15 @@ def _run(coro):
 
 
 @pytest.fixture(autouse=True)
+def _force_inmemory_listing(monkeypatch):
+    from src.api import incidents as incidents_api
+
+    # Avoid Supabase queries in integration tests; validate API contract against
+    # the in-process incident store instead.
+    monkeypatch.setattr(incidents_api, "is_supabase_db_enabled", lambda: False)
+
+
+@pytest.fixture(autouse=True)
 def _reset_incident_state():
     from src.api import incidents as incidents_api
 
@@ -74,6 +85,17 @@ def _reset_incident_state():
         incident_store._order.clear()
     if hasattr(incident_store, "_subscribers"):
         incident_store._subscribers.clear()
+    if hasattr(incident_store, "_tenant_map"):
+        incident_store._tenant_map.clear()
+    if hasattr(incident_store, "_memory"):
+        if hasattr(incident_store._memory, "_incidents"):
+            incident_store._memory._incidents.clear()
+        if hasattr(incident_store._memory, "_order"):
+            incident_store._memory._order.clear()
+        if hasattr(incident_store._memory, "_subscribers"):
+            incident_store._memory._subscribers.clear()
+        if hasattr(incident_store._memory, "_tenant_map"):
+            incident_store._memory._tenant_map.clear()
 
     now = datetime.now(UTC)
     _run(
@@ -83,6 +105,7 @@ def _reset_incident_state():
             service_name="api",
             severity=Severity.HIGH,
             triggered_at=now - timedelta(hours=4),
+            tenant_id=TEST_TENANT_ID,
         )
     )
     _run(
@@ -92,6 +115,7 @@ def _reset_incident_state():
             service_name="api",
             severity=Severity.CRITICAL,
             triggered_at=now - timedelta(hours=3),
+            tenant_id=TEST_TENANT_ID,
         )
     )
     _run(
@@ -101,6 +125,7 @@ def _reset_incident_state():
             service_name="billing",
             severity=Severity.MEDIUM,
             triggered_at=now - timedelta(hours=2),
+            tenant_id=TEST_TENANT_ID,
         )
     )
     _run(
@@ -110,6 +135,7 @@ def _reset_incident_state():
             service_name="workers",
             severity=Severity.LOW,
             triggered_at=now - timedelta(hours=1),
+            tenant_id=TEST_TENANT_ID,
         )
     )
 

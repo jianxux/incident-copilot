@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 import structlog
 
 from ..config import get_settings
-from ..models import AILogSummary, ContextCard, PagerDutyIncident, Severity
+from ..models import PagerDutyIncident, Severity
 from ..orchestrator import ContextOrchestrator
 from ..web.store import incident_store
 
@@ -113,54 +113,44 @@ async def _process(
         error_message = str(e)
         if isinstance(e, asyncio.TimeoutError):
             error_message = f"Processing timed out after {_PROCESS_TIMEOUT_SECONDS}s"
-
-        fallback_card = ContextCard(
-            incident_id=incident.incident_id,
-            title=incident.title,
-            severity=incident.severity,
-            service_name=incident.service_name,
-            triggered_at=incident.triggered_at,
-            alert_url=incident.html_url,
-            ai_summary=AILogSummary(
-                top_issues=[f"Orchestrator error: {error_message}"],
-                explanation="Generated fallback context after orchestrator failure.",
-                likely_cause=error_message,
-                suggested_actions=[
-                    "Verify onboarding integrations are connected and credentials are valid.",
-                    "Re-run onboarding test incident after fixing integration errors.",
-                ],
-            ),
-            assembly_time_ms=0,
-            errors=[f"orchestrator: {error_message}"],
-        )
         logger.error(
-            "test_incident_fallback_completed",
+            "test_incident_processing_failed",
             incident_id=incident.incident_id,
+            tenant_id=tenant_id,
             error=error_message,
         )
+
+        # Keep onboarding incidents visible as "processing" even when orchestration
+        # fails. If the row was not persisted (for example due to transient DB
+        # issues), re-add it in processing state as a best-effort recovery.
         try:
-            await incident_store.complete_incident(
-                incident.incident_id,
-                fallback_card,
-                metadata={"fallback": True, "error": error_message},
-                tenant_id=tenant_id,
+            existing = await incident_store.get_incident(
+                incident.incident_id, tenant_id=tenant_id
             )
-        except Exception as store_err:
-            # Last resort: try to mark as error so it doesn't stay "processing" forever
-            logger.error(
-                "test_incident_fallback_store_failed",
-                incident_id=incident.incident_id,
-                error=str(store_err),
-            )
-            try:
-                await incident_store.fail_incident(
-                    incident.incident_id,
-                    error_message=error_message,
-                    metadata={"fallback": True},
+            if existing is None:
+                await incident_store.add_incident(
+                    incident_id=incident.incident_id,
+                    title=incident.title,
+                    service_name=incident.service_name,
+                    severity=incident.severity,
+                    triggered_at=incident.triggered_at,
+                    source="manual",
+                    source_url=incident.html_url,
+                    source_id=incident.incident_id,
+                    tenant_id=tenant_id,
+                    description=incident.description,
+                    metadata={"processing_error": error_message},
+                )
+                logger.info(
+                    "test_incident_readded_after_processing_failure",
+                    incident_id=incident.incident_id,
                     tenant_id=tenant_id,
                 )
-            except Exception:
-                logger.error(
-                    "test_incident_fail_store_also_failed",
-                    incident_id=incident.incident_id,
-                )
+        except Exception as store_err:
+            logger.error(
+                "test_incident_processing_failure_persist_check_failed",
+                incident_id=incident.incident_id,
+                tenant_id=tenant_id,
+                error=str(store_err),
+                error_type=type(store_err).__name__,
+            )
