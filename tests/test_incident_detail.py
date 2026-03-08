@@ -6,15 +6,32 @@ import asyncio
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from src.main import create_app
 from src.models import Severity
-from src.web.routes import incident_store
+from src.web.routes import pages as pages_routes
+from src.web.store import InMemoryIncidentStore
+import src.web.store as web_store_module
+
+
+incident_store = InMemoryIncidentStore(max_incidents=50)
 
 
 def _run(coro):
     return asyncio.run(coro)
+
+
+@pytest.fixture(autouse=True)
+def _use_in_memory_incident_store(monkeypatch: pytest.MonkeyPatch):
+    store = InMemoryIncidentStore(max_incidents=50)
+    monkeypatch.setattr(web_store_module, "incident_store", store)
+    monkeypatch.setattr(pages_routes, "incident_store", store)
+    globals()["incident_store"] = store
+    _clear_incident_store()
+    yield
+    _clear_incident_store()
 
 
 def _clear_incident_store() -> None:
@@ -28,6 +45,7 @@ def _add_processing_incident(
     *,
     incident_id: str,
     title: str,
+    tenant_id: str = "default",
     source: str = "pagerduty",
     source_url: str | None = None,
     metadata: dict | None = None,
@@ -42,6 +60,7 @@ def _add_processing_incident(
             source=source,
             source_url=source_url,
             metadata=metadata,
+            tenant_id=tenant_id,
         )
     )
 
@@ -60,6 +79,7 @@ def test_incident_detail_renders_pd_metadata():
     _add_processing_incident(
         incident_id=incident_id,
         title="Checkout timeout incident",
+        tenant_id="default",
         source_url="https://pagerduty.com/incidents/PD123",
         metadata={
             "provider": "pagerduty",
@@ -94,6 +114,7 @@ def test_incident_detail_renders_without_metadata():
     _add_processing_incident(
         incident_id=incident_id,
         title="Title fallback when metadata missing",
+        tenant_id="default",
         source="manual",
         metadata={},
     )
@@ -118,6 +139,7 @@ def test_incident_detail_source_url_link():
     _add_processing_incident(
         incident_id=incident_id,
         title="PD source URL link test",
+        tenant_id="default",
         source_url=source_url,
         metadata={"provider": "pagerduty", "status": "triggered"},
     )
@@ -140,6 +162,7 @@ def test_incident_detail_assigned_to_display():
     _add_processing_incident(
         incident_id=incident_id,
         title="Assigned engineer display test",
+        tenant_id="default",
         metadata={
             "provider": "pagerduty",
             "status": "triggered",
