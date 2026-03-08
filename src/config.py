@@ -74,6 +74,16 @@ class Settings(BaseSettings):
     datadog_app_key: str = Field(default="", description="Datadog application key")
     datadog_site: str = Field(default="datadoghq.com", description="Datadog site")
 
+    # Kubernetes discovery
+    kubernetes_api_verify: bool = Field(
+        default=True,
+        description="Verify TLS certs for Kubernetes API discovery requests",
+    )
+    kubernetes_api_ca_path: str = Field(
+        default="",
+        description="Optional CA bundle path for Kubernetes API discovery",
+    )
+
     # AWS CloudWatch
     aws_region: str = Field(default="", description="AWS region for CloudWatch")
     aws_access_key_id: str = Field(

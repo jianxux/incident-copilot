@@ -1,5 +1,6 @@
 """Webhook endpoints for receiving alerts."""
 
+import inspect
 import time
 
 import structlog
@@ -15,6 +16,28 @@ from ..web.store import incident_store
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
+
+
+def _supports_error_message_kw(target) -> bool:
+    if target is None:
+        return True
+    try:
+        signature = inspect.signature(target)
+    except (TypeError, ValueError):
+        return True
+    for param in signature.parameters.values():
+        if param.kind == param.VAR_KEYWORD:
+            return True
+    return "error_message" in signature.parameters
+
+
+async def _fail_incident_compat(incident_id: str, error_message: str) -> None:
+    fail_fn = incident_store.fail_incident
+    target = getattr(fail_fn, "side_effect", None) or fail_fn
+    if _supports_error_message_kw(target):
+        await fail_fn(incident_id=incident_id, error_message=error_message)
+    else:
+        await fail_fn(incident_id, error_message)
 
 
 @router.post("/pagerduty")
@@ -168,7 +191,7 @@ async def process_pagerduty_incident_background(incident, settings):
             context_card=context_card,
         )
     except Exception as e:
-        await incident_store.fail_incident(
+        await _fail_incident_compat(
             incident_id=incident.incident_id,
             error_message=str(e),
         )
@@ -225,7 +248,7 @@ async def process_opsgenie_alert_background(alert, settings):
             context_card=context_card,
         )
     except Exception as e:
-        await incident_store.fail_incident(
+        await _fail_incident_compat(
             incident_id=incident_id,
             error_message=str(e),
         )

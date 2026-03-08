@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -145,9 +145,16 @@ class ServiceCatalogDiscovery:
 
         base_url = f"https://{api_host}:443"
         headers = {"Authorization": f"Bearer {token}"}
+        default_ca_path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        if self.settings.kubernetes_api_ca_path:
+            verify: bool | str = self.settings.kubernetes_api_ca_path
+        elif os.path.exists(default_ca_path):
+            verify = default_ca_path
+        else:
+            verify = self.settings.kubernetes_api_verify
 
         try:
-            async with httpx.AsyncClient(timeout=20.0, verify=False) as client:
+            async with httpx.AsyncClient(timeout=20.0, verify=verify) as client:
                 response = await client.get(
                     f"{base_url}/api/v1/services",
                     headers=headers,

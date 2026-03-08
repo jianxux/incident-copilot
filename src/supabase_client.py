@@ -1,7 +1,5 @@
 """Supabase client singleton for Incident Copilot."""
 
-from functools import lru_cache
-
 import structlog
 
 from supabase import Client, create_client
@@ -56,14 +54,12 @@ def get_supabase_admin_client() -> Client | None:
     )
 
 
-@lru_cache
 def is_supabase_configured() -> bool:
     """Check if Supabase is properly configured."""
     settings = get_settings()
     return bool(settings.supabase_url and settings.supabase_anon_key)
 
 
-@lru_cache
 def is_supabase_auth_enabled() -> bool:
     """Check if Supabase Auth is enabled."""
     settings = get_settings()
@@ -74,7 +70,6 @@ def is_supabase_auth_enabled() -> bool:
     )
 
 
-@lru_cache
 def is_supabase_db_enabled() -> bool:
     """Check if Supabase database is enabled."""
     settings = get_settings()

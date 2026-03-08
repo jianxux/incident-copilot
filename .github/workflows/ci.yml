@@ -44,9 +44,12 @@ jobs:
         if: steps.changed_python.outputs.files != ''
         run: echo "${{ steps.changed_python.outputs.files }}" | xargs isort --check-only --profile black
         
-      - name: Lint with Ruff
-        # Ruff remains repo-wide to keep broad lint signal while format debt is
-        # paid down incrementally.
+      - name: Lint with Ruff (changed files only on PR)
+        if: github.event_name == 'pull_request' && steps.changed_python.outputs.files != ''
+        run: echo "${{ steps.changed_python.outputs.files }}" | xargs ruff check
+
+      - name: Lint with Ruff (repo-wide on main)
+        if: github.event_name == 'push'
         run: ruff check .
 
   typecheck:
