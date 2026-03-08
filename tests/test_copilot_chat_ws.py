@@ -6,27 +6,39 @@ import asyncio
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from src.main import create_app
 from src.models import Severity
-from src.web.routes import incident_store
+from src.web.store import InMemoryIncidentStore
 
 
 def _run(coro):
     return asyncio.run(coro)
 
 
-def _clear_incident_store() -> None:
-    if hasattr(incident_store, "_incidents"):
-        incident_store._incidents.clear()
-    if hasattr(incident_store, "_order"):
-        incident_store._order.clear()
+@pytest.fixture
+def fresh_incident_store(monkeypatch):
+    store = InMemoryIncidentStore()
+    monkeypatch.setattr("src.web.store.incident_store", store)
+    monkeypatch.setattr("src.web.routes.pages.incident_store", store)
+    monkeypatch.setattr("src.web.routes.incident_store", store)
+    return store
 
 
-def _add_processing_incident(*, incident_id: str, title: str) -> None:
+def _clear_incident_store(store: InMemoryIncidentStore) -> None:
+    if hasattr(store, "_incidents"):
+        store._incidents.clear()
+    if hasattr(store, "_order"):
+        store._order.clear()
+
+
+def _add_processing_incident(
+    store: InMemoryIncidentStore, *, incident_id: str, title: str
+) -> None:
     _run(
-        incident_store.add_incident(
+        store.add_incident(
             incident_id=incident_id,
             title=title,
             service_name="payments-api",
@@ -35,6 +47,7 @@ def _add_processing_incident(*, incident_id: str, title: str) -> None:
             source="pagerduty",
             source_url="https://pagerduty.com/incidents/TEST123",
             metadata={"description": "Copilot chat websocket test incident"},
+            tenant_id="default",
         )
     )
 
@@ -58,10 +71,14 @@ def test_copilot_chat_checks_ws_readystate():
     assert "function sendPayload(payload)" in template
 
 
-def test_copilot_chat_page_renders():
-    _clear_incident_store()
+def test_copilot_chat_page_renders(fresh_incident_store):
+    _clear_incident_store(fresh_incident_store)
     incident_id = "inc-chat-ws-render"
-    _add_processing_incident(incident_id=incident_id, title="Chat page render test incident")
+    _add_processing_incident(
+        fresh_incident_store,
+        incident_id=incident_id,
+        title="Chat page render test incident",
+    )
 
     app = create_app()
     with TestClient(app) as client:
@@ -73,4 +90,4 @@ def test_copilot_chat_page_renders():
     assert "connection-status-dot" in response.text
     assert "connection-status-text" in response.text
 
-    _clear_incident_store()
+    _clear_incident_store(fresh_incident_store)
