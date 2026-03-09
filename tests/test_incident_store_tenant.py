@@ -81,6 +81,42 @@ async def test_inmemory_store_returns_all_when_no_tenant():
 
 
 @pytest.mark.asyncio
+async def test_inmemory_store_tenant_scope_includes_unscoped_incidents():
+    store = InMemoryIncidentStore()
+
+    await store.add_incident(
+        incident_id="inc-tenant-a",
+        title="Tenant A incident",
+        service_name="payments-api",
+        severity=Severity.HIGH,
+        triggered_at=datetime.now(timezone.utc),
+        tenant_id="tenant-a",
+    )
+    await store.add_incident(
+        incident_id="inc-tenant-b",
+        title="Tenant B incident",
+        service_name="orders-api",
+        severity=Severity.MEDIUM,
+        triggered_at=datetime.now(timezone.utc),
+        tenant_id="tenant-b",
+    )
+    await store.add_incident(
+        incident_id="inc-global",
+        title="Legacy unscoped incident",
+        service_name="core-api",
+        severity=Severity.LOW,
+        triggered_at=datetime.now(timezone.utc),
+        tenant_id=None,
+    )
+
+    tenant_a_incidents = await store.get_all_incidents(tenant_id="tenant-a")
+    assert {inc.incident_id for inc in tenant_a_incidents} == {"inc-tenant-a", "inc-global"}
+
+    tenant_b_incidents = await store.get_all_incidents(tenant_id="tenant-b")
+    assert {inc.incident_id for inc in tenant_b_incidents} == {"inc-tenant-b", "inc-global"}
+
+
+@pytest.mark.asyncio
 async def test_inmemory_store_get_incident_filters_tenant():
     store = InMemoryIncidentStore()
 
@@ -99,6 +135,22 @@ async def test_inmemory_store_get_incident_filters_tenant():
     assert (await store.get_incident("inc-1", tenant_id="tenant-b")) is None
     # No tenant filter finds it
     assert (await store.get_incident("inc-1", tenant_id=None)) is not None
+
+
+@pytest.mark.asyncio
+async def test_inmemory_store_get_incident_allows_unscoped_with_tenant_filter():
+    store = InMemoryIncidentStore()
+
+    await store.add_incident(
+        incident_id="inc-global",
+        title="Legacy unscoped incident",
+        service_name="api",
+        severity=Severity.HIGH,
+        triggered_at=datetime.now(timezone.utc),
+        tenant_id=None,
+    )
+
+    assert (await store.get_incident("inc-global", tenant_id="tenant-a")) is not None
 
 
 @pytest.mark.asyncio

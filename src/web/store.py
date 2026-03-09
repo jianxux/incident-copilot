@@ -123,6 +123,14 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         self._order: list[str] = []  # Track insertion order (newest first)
         self._lock = asyncio.Lock()
 
+    def _incident_visible_to_tenant(self, incident_id: str, tenant_id: str | None) -> bool:
+        if tenant_id is None:
+            return True
+        mapped_tenant = self._tenant_map.get(incident_id)
+        # Incidents without explicit tenant mapping are treated as legacy/global
+        # and remain visible when tenant-scoped reads are requested.
+        return mapped_tenant is None or mapped_tenant == tenant_id
+
     async def add_incident(
         self,
         incident_id: str,
@@ -189,7 +197,7 @@ class InMemoryIncidentStore(_BaseIncidentStore):
             incident = self._incidents.get(incident_id)
             if not incident:
                 return None
-            if tenant_id is not None and self._tenant_map.get(incident_id) != tenant_id:
+            if not self._incident_visible_to_tenant(incident_id, tenant_id):
                 return None
 
             incident.status = "completed"
@@ -219,7 +227,7 @@ class InMemoryIncidentStore(_BaseIncidentStore):
             incident = self._incidents.get(incident_id)
             if not incident:
                 return None
-            if tenant_id is not None and self._tenant_map.get(incident_id) != tenant_id:
+            if not self._incident_visible_to_tenant(incident_id, tenant_id):
                 return None
 
             incident.status = "error"
@@ -250,7 +258,7 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         incident = self._incidents.get(incident_id)
         if not incident:
             return None
-        if tenant_id is not None and self._tenant_map.get(incident_id) != tenant_id:
+        if not self._incident_visible_to_tenant(incident_id, tenant_id):
             return None
         return incident
 
@@ -264,7 +272,7 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         return [
             incident
             for incident in incidents
-            if self._tenant_map.get(incident.incident_id) == tenant_id
+            if self._incident_visible_to_tenant(incident.incident_id, tenant_id)
         ]
 
     async def get_stats(self) -> dict:
