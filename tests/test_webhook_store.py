@@ -124,10 +124,7 @@ async def test_pagerduty_background_failure_calls_fail_incident():
     ):
         await process_pagerduty_incident_background(incident, settings)
 
-    fail_mock.assert_awaited_once_with(
-        incident_id="pd-fail-1",
-        error_message="pd boom",
-    )
+    fail_mock.assert_awaited_once_with("pd-fail-1", "pd boom")
 
 
 @pytest.mark.asyncio
@@ -202,7 +199,4 @@ async def test_opsgenie_background_failure_calls_fail_incident():
     ):
         await process_opsgenie_alert_background(alert, settings)
 
-    fail_mock.assert_awaited_once_with(
-        incident_id="og-fail-1",
-        error_message="og boom",
-    )
+    fail_mock.assert_awaited_once_with("og-fail-1", "og boom")
