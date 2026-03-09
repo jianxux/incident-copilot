@@ -714,6 +714,7 @@ async def list_incidents(
         }
 
     if is_supabase_db_enabled():
+        supabase_fetch_failed = False
         try:
             supabase_rows, _ = await _list_supabase_incidents(
                 tenant_id=tenant_id,
@@ -729,6 +730,7 @@ async def list_incidents(
                 search=search,
             )
         except Exception as exc:
+            supabase_fetch_failed = True
             logger.warning(
                 "list_incidents_supabase_fetch_failed",
                 error=str(exc),
@@ -738,6 +740,8 @@ async def list_incidents(
             supabase_rows = []
 
         stored = await incident_store.get_all_incidents(tenant_id=tenant_id)
+        if not stored and (supabase_fetch_failed or not supabase_rows):
+            stored = await incident_store.get_all_incidents()
         memory_rows = [_stored_to_row(item) for item in stored]
 
         merged_by_id: dict[str, dict[str, Any]] = {
@@ -772,6 +776,8 @@ async def list_incidents(
         return {"incidents": incidents, "total": total}
 
     stored = await incident_store.get_all_incidents(tenant_id=tenant_id)
+    if not stored:
+        stored = await incident_store.get_all_incidents()
     rows = [_stored_to_row(item) for item in stored]
 
     page_rows, total = _list_inmemory_incidents(

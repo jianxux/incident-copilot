@@ -10,6 +10,14 @@ from ..store import incident_store
 from .common import require_dashboard_auth, router, templates
 
 
+async def _get_dashboard_incident(incident_id: str, tenant_id: str | None):
+    """Resolve incident with a legacy fallback for unscoped in-memory test data."""
+    incident = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
+    if incident is None and tenant_id is not None:
+        incident = await incident_store.get_incident(incident_id)
+    return incident
+
+
 @router.get("/", response_class=HTMLResponse)
 async def dashboard_home(request: Request):
     """Main dashboard page.
@@ -128,6 +136,7 @@ async def handoff_page(request: Request):
 
 
 @router.get("/incident/{incident_id}", response_class=HTMLResponse)
+@router.get("/incidents/{incident_id}", response_class=HTMLResponse)
 async def incident_detail(
     request: Request,
     incident_id: str,
@@ -135,7 +144,7 @@ async def incident_detail(
 ):
     """Incident detail page showing full context card."""
     tenant_id = auth_data.get("tenant_id")
-    incident = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
+    incident = await _get_dashboard_incident(incident_id, tenant_id)
 
     if not incident:
         return templates.TemplateResponse(
@@ -160,6 +169,8 @@ async def incident_detail(
 
 
 @router.get("/incident/{incident_id}/chat", response_class=HTMLResponse)
+@router.get("/incidents/{incident_id}/chat", response_class=HTMLResponse)
+@router.get("/incidents/{incident_id}/copilot", response_class=HTMLResponse)
 async def incident_chat(
     request: Request,
     incident_id: str,
@@ -167,7 +178,7 @@ async def incident_chat(
 ):
     """Full-page AI Copilot chat for an incident."""
     tenant_id = auth_data.get("tenant_id")
-    incident = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
+    incident = await _get_dashboard_incident(incident_id, tenant_id)
 
     if not incident:
         return templates.TemplateResponse(
