@@ -7,6 +7,7 @@ import { SeverityBadge, StatusBadge } from '@/components/StatusBadge';
 import ContextCard from '@/components/ContextCard';
 import VerdictDisplay from '@/components/VerdictDisplay';
 import IncidentTimeline from '@/components/IncidentTimeline';
+import GitHubContext from '@/components/GitHubContext';
 import { api } from '@/lib/api';
 import { Incident, TimelineEvent, IncidentContext } from '@/lib/types';
 
@@ -87,11 +88,18 @@ export default function IncidentDetailPage({ params }: { params: Promise<{ id: s
     rollback_recommended: false,
   } : undefined;
 
+  const hasGithubContext = !!(
+    context &&
+    context.github_context &&
+    typeof context.github_context === 'object' &&
+    Object.keys(context.github_context).length > 0
+  );
+
   // Map timeline events for the IncidentTimeline component
   const timelineEvents = timeline.map((evt) => ({
     id: evt.id,
     timestamp: evt.timestamp,
-    type: evt.type as 'alert' | 'investigation' | 'action' | 'resolution' | 'deployment',
+    type: evt.type,
     title: evt.title || evt.type.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
     description: evt.description,
   }));
@@ -146,6 +154,9 @@ export default function IncidentDetailPage({ params }: { params: Promise<{ id: s
             <div className="bg-white rounded-xl border border-cream-dark p-6 text-center text-gray-400">
               No AI verdict available
             </div>
+          )}
+          {hasGithubContext && context && (
+            <GitHubContext context={context} />
           )}
         </div>
       </div>

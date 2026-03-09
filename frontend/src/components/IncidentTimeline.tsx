@@ -1,5 +1,14 @@
 import { TimelineEvent } from '@/lib/types';
-import { Bell, Search, Wrench, CheckCircle, Rocket } from 'lucide-react';
+import {
+  Bell,
+  Search,
+  Wrench,
+  CheckCircle,
+  Rocket,
+  GitCommit,
+  GitPullRequest,
+  Users,
+} from 'lucide-react';
 import { format } from 'date-fns';
 
 const iconMap: Record<string, typeof Bell> = {
@@ -8,6 +17,9 @@ const iconMap: Record<string, typeof Bell> = {
   action: Wrench,
   resolution: CheckCircle,
   deployment: Rocket,
+  code_change: GitCommit,
+  pull_request: GitPullRequest,
+  codeowner: Users,
 };
 
 const colorMap: Record<string, string> = {
@@ -16,6 +28,9 @@ const colorMap: Record<string, string> = {
   action: 'bg-coral',
   resolution: 'bg-green-500',
   deployment: 'bg-purple-500',
+  code_change: 'bg-blue-600',
+  pull_request: 'bg-purple-600',
+  codeowner: 'bg-teal-500',
 };
 
 export default function IncidentTimeline({ events }: { events: TimelineEvent[] }) {
@@ -34,10 +49,12 @@ export default function IncidentTimeline({ events }: { events: TimelineEvent[] }
                 </div>
                 <div className="flex-1 min-w-0 pb-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold text-gray-900">{event.title}</p>
+                    <p className="text-sm font-semibold text-gray-900">{event.title || event.description}</p>
                     <span className="text-xs text-gray-400">{format(new Date(event.timestamp), 'HH:mm:ss')}</span>
                   </div>
-                  <p className="text-sm text-gray-600 mt-0.5">{event.description}</p>
+                  {event.title && event.description && (
+                    <p className="text-sm text-gray-600 mt-0.5">{event.description}</p>
+                  )}
                 </div>
               </div>
             );
