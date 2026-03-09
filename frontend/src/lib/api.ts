@@ -26,6 +26,7 @@ export const api = {
   syncStatus: () => fetchJSON<PdSyncStatus>('/api/incidents/sync-status'),
   forceSync: () => fetchJSON<{ ok: boolean; status: string }>('/api/incidents/sync', { method: 'POST' }),
   analytics: () => fetchJSON<AnalyticsData>('/api/analytics'),
+  incidentStats: () => fetchJSON<{ total: number; by_status: Record<string, number>; by_severity: Record<string, number>; mttr_hours: number; mtta_minutes: number; incidents_today: number; incidents_week: number }>('/api/incidents/stats'),
   syncStatus: () => fetchJSON<{ last_attempt: string | null; last_success: string | null; last_error: string | null; status: string }>('/api/incidents/sync-status'),
   forceSync: () => fetch(`${BASE}/api/incidents/sync`, { method: 'POST', credentials: 'include' }).then(res => res.json()),
 };
