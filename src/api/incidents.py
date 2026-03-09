@@ -400,7 +400,7 @@ def _get_pd_sync_status(tenant_id: str) -> dict[str, Any]:
 
 def _derive_pd_sync_state(status_data: dict[str, Any]) -> str:
     if bool(status_data.get("in_progress")):
-        return "in_progress"
+        return "syncing"
 
     attempt_dt = _as_datetime(status_data.get("last_attempt"))
     success_dt = _as_datetime(status_data.get("last_success"))
@@ -411,7 +411,7 @@ def _derive_pd_sync_state(status_data: dict[str, Any]) -> str:
     if isinstance(last_error, str) and (success_dt is None or attempt_dt >= success_dt):
         return "error"
     if success_dt and (datetime.now(UTC) - success_dt) > timedelta(seconds=600):
-        return "stale"
+        return "synced"
     return "synced"
 
 
