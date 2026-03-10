@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 from src.models import ContextCard
+from src.web.store import StoredIncident
 
 import pytest
 
@@ -40,16 +41,51 @@ async def test_start_test_incident_uses_explicit_tenant(monkeypatch):
     )
 
     try:
-        await start_test_incident(service_name="payments-api", tenant_id="tenant-123")
+        incident_id = await start_test_incident(service_name="payments-api", tenant_id="tenant-123")
 
         assert fake_db.upsert_processing_incident.await_count == 1
         assert (
             fake_db.upsert_processing_incident.await_args.kwargs["tenant_id"]
             == "tenant-123"
         )
+        stored = await test_incident_module.incident_store.get_incident(
+            incident_id, tenant_id="tenant-123"
+        )
+        assert stored is not None
     finally:
         config_module.get_settings.cache_clear()
         supabase_client_module.is_supabase_db_enabled.cache_clear()
+
+
+@pytest.mark.anyio
+async def test_start_test_incident_verifies_visibility_after_add(monkeypatch):
+    import src.onboarding.test_incident as test_incident_module
+
+    add_mock = AsyncMock()
+    get_mock = AsyncMock(
+        return_value=StoredIncident(
+            incident_id="inc-visible",
+            title="visible",
+            service_name="payments-api",
+            severity=test_incident_module.Severity.HIGH,
+            status="processing",
+            triggered_at=datetime.now(UTC),
+        )
+    )
+
+    def _fake_create_task(coro):
+        coro.close()
+        return AsyncMock()
+
+    monkeypatch.setattr(test_incident_module.asyncio, "create_task", _fake_create_task)
+    monkeypatch.setattr(test_incident_module.incident_store, "add_incident", add_mock)
+    monkeypatch.setattr(test_incident_module.incident_store, "get_incident", get_mock)
+
+    incident_id = await test_incident_module.start_test_incident(tenant_id="tenant-1")
+
+    assert incident_id
+    add_mock.assert_awaited_once()
+    get_mock.assert_awaited_once_with(incident_id, tenant_id="tenant-1")
 
 
 @pytest.mark.anyio

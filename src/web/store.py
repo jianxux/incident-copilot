@@ -681,6 +681,25 @@ class HybridIncidentStore(_BaseIncidentStore):
             tenant_id=tenant_id,
             description=description,
         )
+        if tenant_id is not None:
+            memory_incident = await self._memory.get_incident(incident_id, tenant_id=tenant_id)
+            if memory_incident is None:
+                logger.error(
+                    "hybrid_store_memory_tenant_mismatch_after_add",
+                    incident_id=incident_id,
+                    tenant_id=tenant_id,
+                    title=title,
+                )
+                self._memory._tenant_map[incident_id] = tenant_id
+                memory_incident = await self._memory.get_incident(
+                    incident_id, tenant_id=tenant_id
+                )
+                logger.info(
+                    "hybrid_store_memory_tenant_repaired",
+                    incident_id=incident_id,
+                    tenant_id=tenant_id,
+                    repaired=memory_incident is not None,
+                )
         try:
             await self._supabase.add_incident(
                 incident_id=incident_id,

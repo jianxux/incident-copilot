@@ -79,8 +79,8 @@ class TestProcessReliability:
             assert metadata.get("fallback") is True
 
     @pytest.mark.asyncio
-    async def test_fallback_store_failure_tries_fail_incident(self):
-        """When both orchestrator and fallback store.complete fail, try fail_incident."""
+    async def test_fallback_store_failure_keeps_processing_state(self):
+        """When fallback persistence fails, verify the incident is still visible."""
         incident = _make_incident()
 
         mock_orchestrator = MagicMock()
@@ -91,11 +91,14 @@ class TestProcessReliability:
             patch("src.onboarding.test_incident.incident_store") as mock_store,
         ):
             mock_store.complete_incident = AsyncMock(side_effect=Exception("DB write failed"))
-            mock_store.fail_incident = AsyncMock()
+            mock_store.get_incident = AsyncMock(
+                return_value=MagicMock(incident_id=incident.incident_id, status="processing")
+            )
             await _process(incident, None, "tenant-1")
 
-            # Should have tried fail_incident as last resort
-            mock_store.fail_incident.assert_awaited_once()
+            mock_store.get_incident.assert_awaited_once_with(
+                incident.incident_id, tenant_id="tenant-1"
+            )
 
     @pytest.mark.asyncio
     async def test_timeout_produces_clear_error(self):

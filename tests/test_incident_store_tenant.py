@@ -130,3 +130,23 @@ async def test_hybrid_store_memory_fallback():
     incidents = await store.get_all_incidents(tenant_id="tenant-a")
 
     assert [inc.incident_id for inc in incidents] == ["inc-hybrid-a"]
+
+
+@pytest.mark.asyncio
+async def test_hybrid_store_repairs_memory_tenant_visibility():
+    store = HybridIncidentStore()
+    store._supabase.add_incident = AsyncMock(return_value=None)
+    store._memory._tenant_map = {}
+
+    await store.add_incident(
+        incident_id="inc-hybrid-tenant-fix",
+        title="Hybrid tenant repair",
+        service_name="payments-api",
+        severity=Severity.HIGH,
+        triggered_at=datetime.now(timezone.utc),
+        tenant_id="tenant-a",
+    )
+
+    incident = await store.get_incident("inc-hybrid-tenant-fix", tenant_id="tenant-a")
+
+    assert incident is not None

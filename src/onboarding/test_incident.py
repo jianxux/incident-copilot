@@ -62,6 +62,20 @@ async def start_test_incident(
             incident_id=incident_id,
             tenant_id=tenant_id,
         )
+        stored_incident = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
+        if stored_incident is None:
+            logger.error(
+                "test_incident_add_not_visible_after_write",
+                incident_id=incident_id,
+                tenant_id=tenant_id,
+            )
+        else:
+            logger.info(
+                "test_incident_verified_in_store",
+                incident_id=incident_id,
+                tenant_id=tenant_id,
+                status=stored_incident.status,
+            )
     except Exception as e:
         logger.error(
             "test_incident_add_failed",
@@ -108,7 +122,11 @@ async def _process(
         await incident_store.complete_incident(
             incident.incident_id, card, tenant_id=tenant_id
         )
-        logger.info("test_incident_completed", incident_id=incident.incident_id)
+        logger.info(
+            "test_incident_completed",
+            incident_id=incident.incident_id,
+            tenant_id=tenant_id,
+        )
     except Exception as e:
         error_message = str(e)
         if isinstance(e, asyncio.TimeoutError):
@@ -134,33 +152,57 @@ async def _process(
             errors=[f"orchestrator: {error_message}"],
         )
         logger.error(
-            "test_incident_fallback_completed",
+            "test_incident_orchestrator_failed_using_fallback",
             incident_id=incident.incident_id,
+            tenant_id=tenant_id,
             error=error_message,
+            error_type=type(e).__name__,
         )
         try:
-            await incident_store.complete_incident(
+            fallback_result = await incident_store.complete_incident(
                 incident.incident_id,
                 fallback_card,
                 metadata={"fallback": True, "error": error_message},
                 tenant_id=tenant_id,
             )
+            if fallback_result is None:
+                logger.error(
+                    "test_incident_fallback_completion_missing_incident",
+                    incident_id=incident.incident_id,
+                    tenant_id=tenant_id,
+                    error=error_message,
+                )
+            else:
+                logger.info(
+                    "test_incident_fallback_completed",
+                    incident_id=incident.incident_id,
+                    tenant_id=tenant_id,
+                    status=fallback_result.status,
+                )
         except Exception as store_err:
-            # Last resort: try to mark as error so it doesn't stay "processing" forever
+            # If persistence fails, keep the incident visible in memory as "processing".
             logger.error(
                 "test_incident_fallback_store_failed",
                 incident_id=incident.incident_id,
+                tenant_id=tenant_id,
+                original_error=error_message,
                 error=str(store_err),
+                error_type=type(store_err).__name__,
             )
             try:
-                await incident_store.fail_incident(
-                    incident.incident_id,
-                    error_message=error_message,
-                    metadata={"fallback": True},
+                still_visible = await incident_store.get_incident(
+                    incident.incident_id, tenant_id=tenant_id
+                )
+                logger.warning(
+                    "test_incident_left_processing_after_fallback_store_failure",
+                    incident_id=incident.incident_id,
                     tenant_id=tenant_id,
+                    visible=still_visible is not None,
+                    status=still_visible.status if still_visible is not None else None,
                 )
             except Exception:
                 logger.error(
-                    "test_incident_fail_store_also_failed",
+                    "test_incident_processing_state_verification_failed",
                     incident_id=incident.incident_id,
+                    tenant_id=tenant_id,
                 )

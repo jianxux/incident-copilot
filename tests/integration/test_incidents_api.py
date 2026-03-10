@@ -76,6 +76,7 @@ def _reset_incident_state():
         incident_store._subscribers.clear()
 
     now = datetime.now(UTC)
+    tenant_id = "tenant-incidents"
     _run(
         incident_store.add_incident(
             incident_id="inc-1001",
@@ -83,6 +84,7 @@ def _reset_incident_state():
             service_name="api",
             severity=Severity.HIGH,
             triggered_at=now - timedelta(hours=4),
+            tenant_id=tenant_id,
         )
     )
     _run(
@@ -92,6 +94,7 @@ def _reset_incident_state():
             service_name="api",
             severity=Severity.CRITICAL,
             triggered_at=now - timedelta(hours=3),
+            tenant_id=tenant_id,
         )
     )
     _run(
@@ -101,6 +104,7 @@ def _reset_incident_state():
             service_name="billing",
             severity=Severity.MEDIUM,
             triggered_at=now - timedelta(hours=2),
+            tenant_id=tenant_id,
         )
     )
     _run(
@@ -110,17 +114,18 @@ def _reset_incident_state():
             service_name="workers",
             severity=Severity.LOW,
             triggered_at=now - timedelta(hours=1),
+            tenant_id=tenant_id,
         )
     )
 
-    inc2 = _run(incident_store.get_incident("inc-1002"))
+    inc2 = _run(incident_store.get_incident("inc-1002", tenant_id=tenant_id))
     inc2.status = "acknowledged"
 
-    inc3 = _run(incident_store.get_incident("inc-1003"))
+    inc3 = _run(incident_store.get_incident("inc-1003", tenant_id=tenant_id))
     inc3.status = "completed"
     inc3.processed_at = now - timedelta(hours=1, minutes=20)
 
-    inc4 = _run(incident_store.get_incident("inc-1004"))
+    inc4 = _run(incident_store.get_incident("inc-1004", tenant_id=tenant_id))
     inc4.status = "error"
 
 
