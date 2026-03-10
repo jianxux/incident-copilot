@@ -1,11 +1,28 @@
 import { TimelineEvent } from '@/lib/types';
-import { Bell, Search, Wrench, CheckCircle, Rocket } from 'lucide-react';
+import {
+  AlertCircle,
+  Bell,
+  CheckCircle,
+  Eye,
+  GitCommit,
+  GitPullRequest,
+  MessageSquare,
+  Rocket,
+  Search,
+  Wrench,
+} from 'lucide-react';
 import { format } from 'date-fns';
 
 const iconMap: Record<string, typeof Bell> = {
   alert: Bell,
   investigation: Search,
   action: Wrench,
+  code_change: GitCommit,
+  pull_request: GitPullRequest,
+  comment: MessageSquare,
+  created: AlertCircle,
+  acknowledged: Eye,
+  resolved: CheckCircle,
   resolution: CheckCircle,
   deployment: Rocket,
 };
@@ -14,6 +31,12 @@ const colorMap: Record<string, string> = {
   alert: 'bg-red-500',
   investigation: 'bg-blue-500',
   action: 'bg-coral',
+  code_change: 'bg-amber-500',
+  pull_request: 'bg-indigo-500',
+  comment: 'bg-gray-500',
+  created: 'bg-red-500',
+  acknowledged: 'bg-yellow-500',
+  resolved: 'bg-green-500',
   resolution: 'bg-green-500',
   deployment: 'bg-purple-500',
 };
@@ -27,6 +50,12 @@ export default function IncidentTimeline({ events }: { events: TimelineEvent[] }
         <div className="space-y-6">
           {events.map((event) => {
             const Icon = iconMap[event.type] || Bell;
+            const primaryText = event.description || event.title;
+            const secondaryText =
+              event.description && event.title && event.description !== event.title
+                ? event.title
+                : null;
+
             return (
               <div key={event.id} className="relative flex gap-4 pl-0">
                 <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white z-10 ${colorMap[event.type] || 'bg-gray-400'}`}>
@@ -34,10 +63,10 @@ export default function IncidentTimeline({ events }: { events: TimelineEvent[] }
                 </div>
                 <div className="flex-1 min-w-0 pb-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold text-gray-900">{event.title}</p>
+                    <p className="text-sm font-semibold text-gray-900">{primaryText}</p>
                     <span className="text-xs text-gray-400">{format(new Date(event.timestamp), 'HH:mm:ss')}</span>
                   </div>
-                  <p className="text-sm text-gray-600 mt-0.5">{event.description}</p>
+                  {secondaryText ? <p className="text-sm text-gray-600 mt-0.5">{secondaryText}</p> : null}
                 </div>
               </div>
             );
