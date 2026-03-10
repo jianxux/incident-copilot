@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -22,15 +24,67 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install ruff black isort
+
+      - name: Find changed Python files
+        id: changed-python
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          mapfile -t files < <(
+            git diff --name-only --diff-filter=ACMR \
+              "${{ github.event.pull_request.base.sha }}" \
+              "${{ github.event.pull_request.head.sha }}" \
+              -- 'src/**/*.py' 'tests/**/*.py'
+          )
+
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "files<<EOF"
+            printf '%s\n' "${files[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
           
+      - name: No Python files changed for lint
+        if: github.event_name == 'pull_request' && steps.changed-python.outputs.has_changes != 'true'
+        run: echo "No changed Python files under src/ or tests/; skipping Black, isort, and Ruff."
+
       - name: Check formatting with Black
+        if: github.event_name == 'push'
         run: black --check src tests
+
+      - name: Check formatting with Black on changed files
+        if: github.event_name == 'pull_request' && steps.changed-python.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          mapfile -t files <<< "${{ steps.changed-python.outputs.files }}"
+          black --check "${files[@]}"
         
       - name: Check import order with isort
+        if: github.event_name == 'push'
         run: isort --check-only --profile black src tests
+
+      - name: Check import order with isort on changed files
+        if: github.event_name == 'pull_request' && steps.changed-python.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          mapfile -t files <<< "${{ steps.changed-python.outputs.files }}"
+          isort --check-only --profile black "${files[@]}"
         
       - name: Lint with Ruff
+        if: github.event_name == 'push'
         run: ruff check src tests
+
+      - name: Lint changed files with Ruff
+        if: github.event_name == 'pull_request' && steps.changed-python.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          mapfile -t files <<< "${{ steps.changed-python.outputs.files }}"
+          ruff check "${files[@]}"
 
   typecheck:
     name: Type Check
@@ -84,6 +138,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -94,11 +150,48 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install bandit safety
-          
+
+      - name: Find changed Python files
+        id: changed-python
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          mapfile -t files < <(
+            git diff --name-only --diff-filter=ACMR \
+              "${{ github.event.pull_request.base.sha }}" \
+              "${{ github.event.pull_request.head.sha }}" \
+              -- 'src/**/*.py' 'tests/**/*.py'
+          )
+
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "files<<EOF"
+            printf '%s\n' "${files[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: No Python files changed for security scan
+        if: github.event_name == 'pull_request' && steps.changed-python.outputs.has_changes != 'true'
+        run: echo "No changed Python files under src/ or tests/; skipping Bandit."
+
       - name: Run Bandit security scan
+        if: github.event_name == 'push'
         run: bandit -r src -ll
-        
+
+      - name: Run Bandit security scan on changed files
+        if: github.event_name == 'pull_request' && steps.changed-python.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          mapfile -t files <<< "${{ steps.changed-python.outputs.files }}"
+          bandit -ll "${files[@]}"
+
       - name: Check dependencies for vulnerabilities
+        if: github.event_name == 'push'
         run: safety check
 
   build-docker:
