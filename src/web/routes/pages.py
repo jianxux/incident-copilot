@@ -10,6 +10,22 @@ from ..store import incident_store
 from .common import require_dashboard_auth, router, templates
 
 
+def _has_memory_tenant_assignments() -> bool:
+    """Return True when the in-memory incident store has explicit tenant scoping."""
+    for candidate in (incident_store, getattr(incident_store, "_memory", None)):
+        tenant_map = getattr(candidate, "_tenant_map", None)
+        if isinstance(tenant_map, dict) and tenant_map:
+            return True
+    return False
+
+
+async def _get_dashboard_incident(incident_id: str, tenant_id: str | None):
+    incident = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
+    if incident is not None or tenant_id is None or _has_memory_tenant_assignments():
+        return incident
+    return await incident_store.get_incident(incident_id)
+
+
 @router.get("/", response_class=HTMLResponse)
 async def dashboard_home(request: Request):
     """Main dashboard page.
@@ -128,6 +144,7 @@ async def handoff_page(request: Request):
 
 
 @router.get("/incident/{incident_id}", response_class=HTMLResponse)
+@router.get("/incidents/{incident_id}", response_class=HTMLResponse)
 async def incident_detail(
     request: Request,
     incident_id: str,
@@ -135,7 +152,7 @@ async def incident_detail(
 ):
     """Incident detail page showing full context card."""
     tenant_id = auth_data.get("tenant_id")
-    incident = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
+    incident = await _get_dashboard_incident(incident_id, tenant_id)
 
     if not incident:
         return templates.TemplateResponse(
@@ -160,6 +177,8 @@ async def incident_detail(
 
 
 @router.get("/incident/{incident_id}/chat", response_class=HTMLResponse)
+@router.get("/incidents/{incident_id}/chat", response_class=HTMLResponse)
+@router.get("/incidents/{incident_id}/copilot", response_class=HTMLResponse)
 async def incident_chat(
     request: Request,
     incident_id: str,
@@ -167,7 +186,7 @@ async def incident_chat(
 ):
     """Full-page AI Copilot chat for an incident."""
     tenant_id = auth_data.get("tenant_id")
-    incident = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
+    incident = await _get_dashboard_incident(incident_id, tenant_id)
 
     if not incident:
         return templates.TemplateResponse(
@@ -192,6 +211,7 @@ async def incident_chat(
 
 
 @router.get("/incident/{incident_id}/timeline", response_class=HTMLResponse)
+@router.get("/incidents/{incident_id}/timeline", response_class=HTMLResponse)
 async def incident_timeline(
     request: Request,
     incident_id: str,
@@ -201,7 +221,7 @@ async def incident_timeline(
     from ..timeline import TimelineBuilder, TimelineEventType, format_duration
 
     tenant_id = auth_data.get("tenant_id")
-    incident = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
+    incident = await _get_dashboard_incident(incident_id, tenant_id)
 
     if not incident:
         return templates.TemplateResponse(

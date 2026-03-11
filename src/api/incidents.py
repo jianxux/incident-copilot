@@ -106,6 +106,15 @@ def _extract_multi_query(request: Request, key: str, value: list[str] | None) ->
     return _parse_multi_values(values)
 
 
+def _has_memory_tenant_assignments() -> bool:
+    """Return True when the in-memory incident store has explicit tenant scoping."""
+    for candidate in (incident_store, getattr(incident_store, "_memory", None)):
+        tenant_map = getattr(candidate, "_tenant_map", None)
+        if isinstance(tenant_map, dict) and tenant_map:
+            return True
+    return False
+
+
 def _compute_duration_ms(start: Any, end: Any) -> int | None:
     start_dt = _as_datetime(start)
     end_dt = _as_datetime(end)
@@ -738,6 +747,8 @@ async def list_incidents(
             supabase_rows = []
 
         stored = await incident_store.get_all_incidents(tenant_id=tenant_id)
+        if not stored and not _has_memory_tenant_assignments():
+            stored = await incident_store.get_all_incidents()
         memory_rows = [_stored_to_row(item) for item in stored]
 
         merged_by_id: dict[str, dict[str, Any]] = {
@@ -772,6 +783,8 @@ async def list_incidents(
         return {"incidents": incidents, "total": total}
 
     stored = await incident_store.get_all_incidents(tenant_id=tenant_id)
+    if not stored and not _has_memory_tenant_assignments():
+        stored = await incident_store.get_all_incidents()
     rows = [_stored_to_row(item) for item in stored]
 
     page_rows, total = _list_inmemory_incidents(
