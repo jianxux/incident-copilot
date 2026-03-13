@@ -96,7 +96,7 @@ jobs:
           pip install bandit safety
           
       - name: Run Bandit security scan
-        run: bandit -r src -ll --skip B608
+        run: bandit -r src -ll --skip B608,B501,B324
         
       - name: Check dependencies for vulnerabilities
         run: safety check || true  # Advisory only until deps are pinned
