@@ -89,11 +89,13 @@ class OpsgenieMapper:
         """Map an Opsgenie escalation policy to our escalation model."""
         rules = []
         for rule in og_escalation.get("rules", []):
-            rules.append({
-                "delay_minutes": rule.get("delay", {}).get("timeAmount", 0),
-                "notify": rule.get("recipient", {}),
-                "condition": rule.get("condition", "if-not-acked"),
-            })
+            rules.append(
+                {
+                    "delay_minutes": rule.get("delay", {}).get("timeAmount", 0),
+                    "notify": rule.get("recipient", {}),
+                    "condition": rule.get("condition", "if-not-acked"),
+                }
+            )
         return {
             "name": og_escalation.get("name", ""),
             "description": og_escalation.get("description", ""),
@@ -112,13 +114,13 @@ class OpsgenieMapper:
             "severity": OpsgenieMapper.map_severity(
                 og_alert.get("priority", "P3")
             ).value,
-            "status": OpsgenieMapper.map_alert_status(
-                og_alert.get("status", "open")
-            ),
+            "status": OpsgenieMapper.map_alert_status(og_alert.get("status", "open")),
             "source": "opsgenie",
-            "service": og_alert.get("impactedServices", [""])[0]
-            if og_alert.get("impactedServices")
-            else None,
+            "service": (
+                og_alert.get("impactedServices", [""])[0]
+                if og_alert.get("impactedServices")
+                else None
+            ),
             "created_at": og_alert.get("createdAt"),
             "updated_at": og_alert.get("updatedAt"),
             "acknowledged_at": og_alert.get("report", {}).get("ackTime"),

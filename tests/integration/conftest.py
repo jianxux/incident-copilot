@@ -10,9 +10,7 @@ import pytest
 from supabase import create_client
 
 # Local Supabase defaults (from `supabase start`)
-LOCAL_SUPABASE_URL = os.environ.get(
-    "SUPABASE_URL", "http://127.0.0.1:54321"
-)
+LOCAL_SUPABASE_URL = os.environ.get("SUPABASE_URL", "http://127.0.0.1:54321")
 LOCAL_SUPABASE_KEY = os.environ.get(
     "SUPABASE_SERVICE_KEY", "sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz"
 )
@@ -35,12 +33,14 @@ def test_tenant(supabase_client):
     """Create an isolated test tenant, clean up after."""
     tenant_id = str(uuid.uuid4())
     slug = f"test-{tenant_id[:8]}"
-    supabase_client.table("tenants").insert({
-        "id": tenant_id,
-        "name": f"Test Tenant {slug}",
-        "slug": slug,
-        "plan": "free",
-    }).execute()
+    supabase_client.table("tenants").insert(
+        {
+            "id": tenant_id,
+            "name": f"Test Tenant {slug}",
+            "slug": slug,
+            "plan": "free",
+        }
+    ).execute()
 
     yield tenant_id
 

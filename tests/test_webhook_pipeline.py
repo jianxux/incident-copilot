@@ -253,7 +253,10 @@ class TestWebhookBackgroundPersistence:
                 "src.api.webhooks.ContextOrchestrator.process_incident",
                 new=AsyncMock(side_effect=RuntimeError("order boom")),
             ),
-            patch("src.api.webhooks.incident_store.fail_incident", new=AsyncMock(side_effect=_fail)),
+            patch(
+                "src.api.webhooks.incident_store.fail_incident",
+                new=AsyncMock(side_effect=_fail),
+            ),
             patch("src.api.webhooks.logger.error", side_effect=_error),
         ):
             await process_pagerduty_incident_background(incident, settings)
@@ -286,12 +289,18 @@ class TestWebhookBackgroundPersistence:
             calls.append(("log", kwargs["alert_id"]))
 
         with (
-            patch("src.api.webhooks.incident_store.add_incident", new=AsyncMock(side_effect=_add)),
+            patch(
+                "src.api.webhooks.incident_store.add_incident",
+                new=AsyncMock(side_effect=_add),
+            ),
             patch(
                 "src.api.webhooks.ContextOrchestrator.process_incident",
                 new=AsyncMock(side_effect=RuntimeError("ops order boom")),
             ),
-            patch("src.api.webhooks.incident_store.fail_incident", new=AsyncMock(side_effect=_fail)),
+            patch(
+                "src.api.webhooks.incident_store.fail_incident",
+                new=AsyncMock(side_effect=_fail),
+            ),
             patch("src.api.webhooks.logger.error", side_effect=_error),
         ):
             await process_opsgenie_alert_background(alert, settings)

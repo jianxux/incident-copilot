@@ -31,7 +31,9 @@ class AIServiceClient:
         if self.enabled:
             logger.info("ai_service_client_enabled", url=self.base_url)
         else:
-            logger.info("ai_service_client_disabled", hint="Set AI_SERVICE_URL to enable")
+            logger.info(
+                "ai_service_client_disabled", hint="Set AI_SERVICE_URL to enable"
+            )
 
     async def _post(self, path: str, payload: dict) -> dict:
         assert self._client is not None
@@ -78,9 +80,7 @@ class AIServiceClient:
 
     # ── Log compression ────────────────────────────────────────
 
-    async def compress_logs(
-        self, logs: list[dict], max_tokens: int = 4000
-    ) -> dict:
+    async def compress_logs(self, logs: list[dict], max_tokens: int = 4000) -> dict:
         if self.enabled:
             return await self._post(
                 "/api/v1/compress-logs",
@@ -135,7 +135,11 @@ class AIServiceClient:
                 "/api/v1/digest",
                 {"incidents": incidents, "period": period},
             )
-        return {"summary": "AI digest not available.", "insights": [], "recommendations": []}
+        return {
+            "summary": "AI digest not available.",
+            "insights": [],
+            "recommendations": [],
+        }
 
     # ── Stubs ──────────────────────────────────────────────────
 

@@ -1,6 +1,6 @@
 """Tests for predictive alerting engine."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -16,7 +16,7 @@ def engine():
 
 @pytest.fixture
 def now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 @pytest.fixture
@@ -28,7 +28,9 @@ def sample_incidents(now):
             IncidentMetrics(
                 incident_id=f"inc-{i}",
                 triggered_at=now - timedelta(days=i * 3),
-                resolved_at=now - timedelta(days=i * 3) + timedelta(minutes=30 + i * 10),
+                resolved_at=now
+                - timedelta(days=i * 3)
+                + timedelta(minutes=30 + i * 10),
                 service_name="payments-api",
                 severity="high" if i < 3 else "medium",
                 status="resolved",
@@ -121,9 +123,7 @@ class TestMetricTrends:
             )
             for i in range(5)
         ]
-        trends = await engine.analyze_metric_trends(
-            metrics, breach_threshold=100.0
-        )
+        trends = await engine.analyze_metric_trends(metrics, breach_threshold=100.0)
         assert len(trends) == 1
         assert trends[0].estimated_breach_time is not None
 

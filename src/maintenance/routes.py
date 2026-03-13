@@ -1,6 +1,6 @@
 """Maintenance Windows - FastAPI Routes"""
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response

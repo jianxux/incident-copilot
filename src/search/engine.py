@@ -6,7 +6,7 @@ import re
 import time
 from abc import ABC, abstractmethod
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 from .models import (
     FacetValue,

@@ -114,7 +114,7 @@ async def get_audit_stats(
     """Get audit statistics."""
     try:
         # Build a basic query to count events
-        from datetime import timedelta, UTC
+        from datetime import UTC, timedelta
 
         end_date = datetime.now(UTC)
         start_date = end_date - timedelta(days=days)

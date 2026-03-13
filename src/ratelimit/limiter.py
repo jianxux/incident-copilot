@@ -4,7 +4,7 @@ import asyncio
 import hashlib
 import re
 import time
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 import structlog
 from redis import asyncio as aioredis

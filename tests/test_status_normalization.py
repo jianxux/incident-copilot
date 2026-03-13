@@ -1,6 +1,5 @@
 """Tests for status normalization (_map_status) and status_color."""
 
-
 from src.web.routes import _map_status, status_color
 
 

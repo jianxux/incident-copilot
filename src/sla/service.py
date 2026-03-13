@@ -5,7 +5,7 @@ Supports business hours awareness and escalation notifications.
 """
 
 import logging
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 

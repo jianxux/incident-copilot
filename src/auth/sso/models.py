@@ -1,7 +1,7 @@
 """Data models for SSO (SAML 2.0 and OIDC) authentication."""
 
 import secrets
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Any
 

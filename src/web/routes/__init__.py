@@ -13,8 +13,6 @@ from .common import (
 
 # Backward-compatible alias used by src.main
 DashboardAuthRedirectError = DashboardAuthRedirect
-from .pages import incident_chat, incident_detail, incident_timeline
-
 # Import route modules for side-effect registration on shared routers.
 from . import api as _api  # noqa: F401
 from . import config as _config  # noqa: F401
@@ -22,6 +20,7 @@ from . import demo as _demo  # noqa: F401
 from . import onboarding as _onboarding  # noqa: F401
 from . import pagerduty as _pagerduty  # noqa: F401
 from . import pages as _pages  # noqa: F401
+from .pages import incident_chat, incident_detail, incident_timeline
 
 __all__ = [
     "router",

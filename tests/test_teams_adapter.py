@@ -2,8 +2,7 @@
 
 import hashlib
 import hmac
-import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -20,10 +19,10 @@ from src.copilot.adapters.teams_adapter import (
     verify_teams_signature,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 class DummySettings:
     teams_app_id = "test-app-id"
@@ -36,8 +35,8 @@ class FakeSession:
     service_name = "payments-api"
     messages = []
     context_card = None
-    created_at = datetime.now(timezone.utc)
-    updated_at = datetime.now(timezone.utc)
+    created_at = datetime.now(UTC)
+    updated_at = datetime.now(UTC)
 
 
 @pytest.fixture()
@@ -45,12 +44,14 @@ def fake_copilot():
     copilot = MagicMock()
     copilot.chat = AsyncMock(return_value="AI response")
     copilot.get_session = MagicMock(return_value=FakeSession())
-    copilot.generate_summary = AsyncMock(return_value={
-        "title": "Test Incident",
-        "summary": "Something broke",
-        "root_cause": "Bad deploy",
-        "resolution": "Rolled back",
-    })
+    copilot.generate_summary = AsyncMock(
+        return_value={
+            "title": "Test Incident",
+            "summary": "Something broke",
+            "root_cause": "Bad deploy",
+            "resolution": "Rolled back",
+        }
+    )
     copilot.suggest_next_steps = AsyncMock(return_value=["Check logs", "Rollback"])
     return copilot
 
@@ -65,7 +66,8 @@ def app_client(monkeypatch, fake_copilot):
     monkeypatch.setattr(teams_adapter, "thread_registry", registry)
     monkeypatch.setattr(teams_adapter, "get_settings", lambda: DummySettings())
     monkeypatch.setattr(
-        teams_adapter, "_rate_limiter",
+        teams_adapter,
+        "_rate_limiter",
         teams_adapter.IncidentRateLimiter(limit=10, window_seconds=60),
     )
     monkeypatch.setattr(teams_adapter, "get_copilot", lambda: fake_copilot)
@@ -79,6 +81,7 @@ def app_client(monkeypatch, fake_copilot):
 # ---------------------------------------------------------------------------
 # Signature verification
 # ---------------------------------------------------------------------------
+
 
 class TestSignatureVerification:
     def test_no_password_allows_all(self):
@@ -97,7 +100,9 @@ class TestSignatureVerification:
         assert verify_teams_signature(b"body", "HMAC bad", "app", "secret") is False
 
     def test_bearer_accepted(self):
-        assert verify_teams_signature(b"body", "Bearer some-jwt", "app", "secret") is True
+        assert (
+            verify_teams_signature(b"body", "Bearer some-jwt", "app", "secret") is True
+        )
 
     def test_malformed_header(self):
         assert verify_teams_signature(b"body", "noscheme", "app", "secret") is False
@@ -106,6 +111,7 @@ class TestSignatureVerification:
 # ---------------------------------------------------------------------------
 # Thread registry
 # ---------------------------------------------------------------------------
+
 
 class TestTeamsThreadRegistry:
     @pytest.mark.asyncio()
@@ -124,6 +130,7 @@ class TestTeamsThreadRegistry:
 # Rate limiter
 # ---------------------------------------------------------------------------
 
+
 class TestRateLimiter:
     def test_allows_within_limit(self):
         rl = IncidentRateLimiter(limit=3, window_seconds=60)
@@ -140,14 +147,17 @@ class TestRateLimiter:
 # Adaptive card builders
 # ---------------------------------------------------------------------------
 
+
 class TestAdaptiveCards:
     def test_context_card_structure(self):
-        card = build_context_card({
-            "title": "Outage",
-            "summary": "Service down",
-            "root_cause": "OOM",
-            "resolution": "Restart",
-        })
+        card = build_context_card(
+            {
+                "title": "Outage",
+                "summary": "Service down",
+                "root_cause": "OOM",
+                "resolution": "Restart",
+            }
+        )
         assert card["type"] == "AdaptiveCard"
         assert card["version"] == "1.4"
         assert any(b.get("text") == "Outage" for b in card["body"])
@@ -176,6 +186,7 @@ class TestAdaptiveCards:
 # Messages endpoint
 # ---------------------------------------------------------------------------
 
+
 class TestMessagesEndpoint:
     @pytest.mark.asyncio()
     async def test_message_triggers_copilot(self, app_client, fake_copilot):
@@ -191,7 +202,9 @@ class TestMessagesEndpoint:
             "id": "act-1",
         }
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
             resp = await ac.post("/api/teams/messages", json=activity)
         assert resp.status_code == 200
         fake_copilot.chat.assert_awaited_once()
@@ -209,7 +222,9 @@ class TestMessagesEndpoint:
             "serviceUrl": "https://smba.trafficmanager.net/teams/",
         }
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
             resp = await ac.post("/api/teams/messages", json=activity)
         assert resp.status_code == 200
         fake_copilot.chat.assert_not_awaited()
@@ -226,7 +241,9 @@ class TestMessagesEndpoint:
             "serviceUrl": "https://smba.trafficmanager.net/teams/",
         }
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
             resp = await ac.post("/api/teams/messages", json=activity)
         assert resp.status_code == 200
         fake_copilot.chat.assert_not_awaited()
@@ -243,7 +260,9 @@ class TestMessagesEndpoint:
             "serviceUrl": "https://smba.trafficmanager.net/teams/",
         }
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
             resp = await ac.post("/api/teams/messages", json=activity)
         assert resp.status_code == 200
         fake_copilot.chat.assert_not_awaited()
@@ -252,7 +271,11 @@ class TestMessagesEndpoint:
     async def test_rate_limited_message(self, app_client, monkeypatch, fake_copilot):
         app, registry = app_client
         await registry.register("conv-1", "INC-123")
-        monkeypatch.setattr(teams_adapter, "_rate_limiter", IncidentRateLimiter(limit=0, window_seconds=60))
+        monkeypatch.setattr(
+            teams_adapter,
+            "_rate_limiter",
+            IncidentRateLimiter(limit=0, window_seconds=60),
+        )
 
         activity = {
             "type": "message",
@@ -262,7 +285,9 @@ class TestMessagesEndpoint:
             "serviceUrl": "https://smba.trafficmanager.net/teams/",
         }
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
             resp = await ac.post("/api/teams/messages", json=activity)
         assert resp.status_code == 200
         fake_copilot.chat.assert_not_awaited()
@@ -276,9 +301,16 @@ class TestMessagesEndpoint:
         settings.teams_app_password = "real-secret"
         monkeypatch.setattr(teams_adapter, "get_settings", lambda: settings)
 
-        activity = {"type": "message", "text": "hi", "conversation": {"id": "c"}, "from": {"id": "u"}}
+        activity = {
+            "type": "message",
+            "text": "hi",
+            "conversation": {"id": "c"},
+            "from": {"id": "u"},
+        }
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
             resp = await ac.post("/api/teams/messages", json=activity)
         assert resp.status_code == 401
 
@@ -287,13 +319,16 @@ class TestMessagesEndpoint:
 # Commands endpoint
 # ---------------------------------------------------------------------------
 
+
 class TestCommandsEndpoint:
     @pytest.mark.asyncio()
     async def test_summary_command(self, app_client, fake_copilot):
         app, _ = app_client
 
         payload = {"text": "summary INC-123", "conversation": {"id": "conv-1"}}
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
             resp = await ac.post("/api/teams/commands", json=payload)
         assert resp.status_code == 200
         data = resp.json()
@@ -304,7 +339,9 @@ class TestCommandsEndpoint:
         app, _ = app_client
 
         payload = {"text": "suggest INC-123", "conversation": {"id": "conv-1"}}
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
             resp = await ac.post("/api/teams/commands", json=payload)
         assert resp.status_code == 200
         data = resp.json()
@@ -315,7 +352,9 @@ class TestCommandsEndpoint:
         app, _ = app_client
 
         payload = {"text": "unknown", "conversation": {"id": "conv-1"}}
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
             resp = await ac.post("/api/teams/commands", json=payload)
         assert resp.status_code == 200
         assert "summary" in resp.json()["text"].lower()
@@ -325,7 +364,9 @@ class TestCommandsEndpoint:
         app, _ = app_client
 
         payload = {"text": "summary", "conversation": {"id": "conv-1"}}
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
             resp = await ac.post("/api/teams/commands", json=payload)
         assert resp.status_code == 200
         assert "No incident" in resp.json()["text"]
@@ -336,7 +377,9 @@ class TestCommandsEndpoint:
         fake_copilot.get_session = MagicMock(return_value=None)
 
         payload = {"text": "summary INC-999", "conversation": {"id": "conv-1"}}
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
             resp = await ac.post("/api/teams/commands", json=payload)
         assert resp.status_code == 200
         assert "No active" in resp.json()["text"]
@@ -345,6 +388,7 @@ class TestCommandsEndpoint:
 # ---------------------------------------------------------------------------
 # Slash commands inside messages
 # ---------------------------------------------------------------------------
+
 
 class TestSlashCommandInMessage:
     @pytest.mark.asyncio()
@@ -360,7 +404,9 @@ class TestSlashCommandInMessage:
             "id": "act-1",
         }
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
             resp = await ac.post("/api/teams/messages", json=activity)
         assert resp.status_code == 200
         teams_adapter.send_card.assert_awaited_once()
@@ -378,7 +424,9 @@ class TestSlashCommandInMessage:
             "id": "act-1",
         }
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
             resp = await ac.post("/api/teams/messages", json=activity)
         assert resp.status_code == 200
         teams_adapter.send_card.assert_awaited()
@@ -388,11 +436,15 @@ class TestSlashCommandInMessage:
 # Channel notifications
 # ---------------------------------------------------------------------------
 
+
 class TestChannelNotifications:
     @pytest.mark.asyncio()
     async def test_notify_channel_builds_card(self):
-        with patch.object(teams_adapter, "send_card", new_callable=AsyncMock) as mock_send:
+        with patch.object(
+            teams_adapter, "send_card", new_callable=AsyncMock
+        ) as mock_send:
             from src.copilot.adapters.teams_adapter import notify_channel
+
             await notify_channel(
                 "https://smba.trafficmanager.net/teams/",
                 "conv-1",

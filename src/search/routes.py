@@ -1,6 +1,6 @@
 """FastAPI routes for search functionality."""
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Annotated, Any
 from uuid import UUID
 

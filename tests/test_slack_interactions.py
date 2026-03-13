@@ -23,12 +23,14 @@ class TestHandleInteraction:
 
     @pytest.mark.asyncio
     async def test_returns_none_for_memory_feedback(self):
-        result = await handle_interaction({
-            "type": "block_actions",
-            "actions": [{"action_id": "memory_feedback_helpful", "value": "{}"}],
-            "user": {"id": "U1"},
-            "channel": {"id": "C1"},
-        })
+        result = await handle_interaction(
+            {
+                "type": "block_actions",
+                "actions": [{"action_id": "memory_feedback_helpful", "value": "{}"}],
+                "user": {"id": "U1"},
+                "channel": {"id": "C1"},
+            }
+        )
         assert result is None  # Deferred to existing handler
 
     @pytest.mark.asyncio
@@ -45,15 +47,22 @@ class TestHandleInteraction:
                 mock_result.execution_result = {"status": "ok"}
                 mock_exec.execute = AsyncMock(return_value=mock_result)
 
-                result = await handle_interaction({
-                    "type": "block_actions",
-                    "actions": [{"action_id": "action_approve:act-1", "value": value}],
-                    "user": {"username": "alice"},
-                    "channel": {"id": "C1"},
-                })
+                result = await handle_interaction(
+                    {
+                        "type": "block_actions",
+                        "actions": [
+                            {"action_id": "action_approve:act-1", "value": value}
+                        ],
+                        "user": {"username": "alice"},
+                        "channel": {"id": "C1"},
+                    }
+                )
 
         assert result is not None
-        assert "executed" in result.get("text", "").lower() or "approved" in result.get("text", "").lower()
+        assert (
+            "executed" in result.get("text", "").lower()
+            or "approved" in result.get("text", "").lower()
+        )
 
     @pytest.mark.asyncio
     async def test_action_reject(self):
@@ -64,26 +73,35 @@ class TestHandleInteraction:
             mock_action.description = "Rollback deploy"
             mock_wf.reject.return_value = mock_action
 
-            result = await handle_interaction({
-                "type": "block_actions",
-                "actions": [{"action_id": "action_reject:act-1", "value": value}],
-                "user": {"username": "bob"},
-                "channel": {"id": "C1"},
-            })
+            result = await handle_interaction(
+                {
+                    "type": "block_actions",
+                    "actions": [{"action_id": "action_reject:act-1", "value": value}],
+                    "user": {"username": "bob"},
+                    "channel": {"id": "C1"},
+                }
+            )
 
         assert result is not None
         assert "rejected" in result.get("text", "").lower()
 
     @pytest.mark.asyncio
     async def test_generate_postmortem(self):
-        with patch("src.integrations.slack_interactions._handle_generate_postmortem") as mock_pm:
-            mock_pm.return_value = {"response_type": "ephemeral", "text": "Generating..."}
+        with patch(
+            "src.integrations.slack_interactions._handle_generate_postmortem"
+        ) as mock_pm:
+            mock_pm.return_value = {
+                "response_type": "ephemeral",
+                "text": "Generating...",
+            }
 
-            result = await handle_interaction({
-                "type": "block_actions",
-                "actions": [{"action_id": "generate_postmortem", "value": "INC-1"}],
-                "user": {"username": "alice"},
-                "channel": {"id": "C1"},
-            })
+            result = await handle_interaction(
+                {
+                    "type": "block_actions",
+                    "actions": [{"action_id": "generate_postmortem", "value": "INC-1"}],
+                    "user": {"username": "alice"},
+                    "channel": {"id": "C1"},
+                }
+            )
 
         assert result is not None

@@ -1,8 +1,8 @@
+import sys
+import types
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
-import sys
-import types
 
 import pytest
 
@@ -76,15 +76,23 @@ async def test_pagerduty_background_stores_and_completes_incident():
     async def _complete(*, incident_id: str, context_card: ContextCard):
         stored = await incident_store.get_incident(incident_id)
         statuses_before_complete.append(stored.status if stored else None)
-        return await original_complete(incident_id=incident_id, context_card=context_card)
+        return await original_complete(
+            incident_id=incident_id, context_card=context_card
+        )
 
     with (
-        patch("src.api.webhooks.get_correlation_engine", new=AsyncMock(return_value=engine)),
+        patch(
+            "src.api.webhooks.get_correlation_engine",
+            new=AsyncMock(return_value=engine),
+        ),
         patch(
             "src.api.webhooks.ContextOrchestrator.process_incident",
             new=AsyncMock(return_value=_context_card("pd-store-1", "payments")),
         ) as process_mock,
-        patch("src.api.webhooks.incident_store.complete_incident", new=AsyncMock(side_effect=_complete)),
+        patch(
+            "src.api.webhooks.incident_store.complete_incident",
+            new=AsyncMock(side_effect=_complete),
+        ),
     ):
         await process_pagerduty_incident_background(incident, settings)
 
@@ -115,7 +123,10 @@ async def test_pagerduty_background_failure_calls_fail_incident():
     fail_mock = AsyncMock(side_effect=original_fail)
 
     with (
-        patch("src.api.webhooks.get_correlation_engine", new=AsyncMock(return_value=engine)),
+        patch(
+            "src.api.webhooks.get_correlation_engine",
+            new=AsyncMock(return_value=engine),
+        ),
         patch(
             "src.api.webhooks.ContextOrchestrator.process_incident",
             new=AsyncMock(side_effect=RuntimeError("pd boom")),
@@ -152,15 +163,23 @@ async def test_opsgenie_background_stores_and_completes_incident():
     async def _complete(*, incident_id: str, context_card: ContextCard):
         stored = await incident_store.get_incident(incident_id)
         statuses_before_complete.append(stored.status if stored else None)
-        return await original_complete(incident_id=incident_id, context_card=context_card)
+        return await original_complete(
+            incident_id=incident_id, context_card=context_card
+        )
 
     with (
-        patch("src.api.webhooks.get_correlation_engine", new=AsyncMock(return_value=engine)),
+        patch(
+            "src.api.webhooks.get_correlation_engine",
+            new=AsyncMock(return_value=engine),
+        ),
         patch(
             "src.api.webhooks.ContextOrchestrator.process_incident",
             new=AsyncMock(return_value=_context_card("og-store-1", "checkout")),
         ) as process_mock,
-        patch("src.api.webhooks.incident_store.complete_incident", new=AsyncMock(side_effect=_complete)),
+        patch(
+            "src.api.webhooks.incident_store.complete_incident",
+            new=AsyncMock(side_effect=_complete),
+        ),
     ):
         await process_opsgenie_alert_background(alert, settings)
 
@@ -193,7 +212,10 @@ async def test_opsgenie_background_failure_calls_fail_incident():
     fail_mock = AsyncMock(side_effect=original_fail)
 
     with (
-        patch("src.api.webhooks.get_correlation_engine", new=AsyncMock(return_value=engine)),
+        patch(
+            "src.api.webhooks.get_correlation_engine",
+            new=AsyncMock(return_value=engine),
+        ),
         patch(
             "src.api.webhooks.ContextOrchestrator.process_incident",
             new=AsyncMock(side_effect=RuntimeError("og boom")),

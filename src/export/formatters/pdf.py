@@ -1,6 +1,6 @@
 """PDF export formatter using reportlab."""
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from io import BytesIO
 from typing import Any
 

@@ -1,6 +1,5 @@
 """Deployment risk scoring engine."""
 
-import hashlib
 from datetime import UTC, datetime, timedelta
 
 import structlog
@@ -10,7 +9,6 @@ from .models import (
     DeploymentInfo,
     DeploymentRiskScore,
     RiskFactor,
-    Severity,
 )
 
 logger = structlog.get_logger()

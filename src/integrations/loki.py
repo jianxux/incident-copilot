@@ -4,7 +4,7 @@ Supports both self-hosted Loki and Grafana Cloud Loki.
 Provides log fetching capabilities using LogQL queries.
 """
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx

@@ -86,4 +86,3 @@ def test_dashboard_pagerduty_sync_status_prefixed(client: TestClient):
 def test_unprefixed_dashboard_only_endpoints_404(client: TestClient, path: str):
     response = client.get(path)
     assert response.status_code == 404
-

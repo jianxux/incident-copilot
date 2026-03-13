@@ -2,7 +2,7 @@
 Change Tracking Routes - FastAPI endpoints for change queries.
 """
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field

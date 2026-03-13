@@ -2,7 +2,7 @@
 
 import hashlib
 import re
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from difflib import SequenceMatcher
 
 import structlog

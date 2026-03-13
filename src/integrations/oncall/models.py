@@ -1,6 +1,6 @@
 """On-Call Scheduling Models - Pydantic v2 models for schedules, shifts, and rotations."""
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from zoneinfo import ZoneInfo
 

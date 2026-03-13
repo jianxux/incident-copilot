@@ -10,6 +10,22 @@ from ..store import incident_store
 from .common import require_dashboard_auth, router, templates
 
 
+def _has_memory_tenant_assignments() -> bool:
+    """Return True when the in-memory incident store has explicit tenant scoping."""
+    for candidate in (incident_store, getattr(incident_store, "_memory", None)):
+        tenant_map = getattr(candidate, "_tenant_map", None)
+        if isinstance(tenant_map, dict) and tenant_map:
+            return True
+    return False
+
+
+async def _get_dashboard_incident(incident_id: str, tenant_id: str | None):
+    incident = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
+    if incident is not None or tenant_id is None or _has_memory_tenant_assignments():
+        return incident
+    return await incident_store.get_incident(incident_id)
+
+
 @router.get("/", response_class=HTMLResponse)
 async def dashboard_home(request: Request):
     """Main dashboard page.
@@ -128,6 +144,7 @@ async def handoff_page(request: Request):
 
 
 @router.get("/incident/{incident_id}", response_class=HTMLResponse)
+@router.get("/incidents/{incident_id}", response_class=HTMLResponse)
 async def incident_detail(
     request: Request,
     incident_id: str,
@@ -135,7 +152,7 @@ async def incident_detail(
 ):
     """Incident detail page showing full context card."""
     tenant_id = auth_data.get("tenant_id")
-    incident = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
+    incident = await _get_dashboard_incident(incident_id, tenant_id)
 
     if not incident:
         return templates.TemplateResponse(
@@ -160,6 +177,8 @@ async def incident_detail(
 
 
 @router.get("/incident/{incident_id}/chat", response_class=HTMLResponse)
+@router.get("/incidents/{incident_id}/chat", response_class=HTMLResponse)
+@router.get("/incidents/{incident_id}/copilot", response_class=HTMLResponse)
 async def incident_chat(
     request: Request,
     incident_id: str,
@@ -167,7 +186,7 @@ async def incident_chat(
 ):
     """Full-page AI Copilot chat for an incident."""
     tenant_id = auth_data.get("tenant_id")
-    incident = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
+    incident = await _get_dashboard_incident(incident_id, tenant_id)
 
     if not incident:
         return templates.TemplateResponse(
@@ -192,6 +211,7 @@ async def incident_chat(
 
 
 @router.get("/incident/{incident_id}/timeline", response_class=HTMLResponse)
+@router.get("/incidents/{incident_id}/timeline", response_class=HTMLResponse)
 async def incident_timeline(
     request: Request,
     incident_id: str,
@@ -201,7 +221,7 @@ async def incident_timeline(
     from ..timeline import TimelineBuilder, TimelineEventType, format_duration
 
     tenant_id = auth_data.get("tenant_id")
-    incident = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
+    incident = await _get_dashboard_incident(incident_id, tenant_id)
 
     if not incident:
         return templates.TemplateResponse(
@@ -244,6 +264,7 @@ async def incident_timeline(
         ack_at = meta.get("acknowledged_at")
         if ack_at:
             from dateutil.parser import parse as parse_dt
+
             try:
                 ack_dt = parse_dt(ack_at) if isinstance(ack_at, str) else ack_at
                 builder.add_event(
@@ -260,8 +281,13 @@ async def incident_timeline(
         resolved_at = meta.get("resolved_at")
         if resolved_at:
             from dateutil.parser import parse as parse_dt
+
             try:
-                res_dt = parse_dt(resolved_at) if isinstance(resolved_at, str) else resolved_at
+                res_dt = (
+                    parse_dt(resolved_at)
+                    if isinstance(resolved_at, str)
+                    else resolved_at
+                )
                 builder.add_event(
                     timestamp=res_dt,
                     event_type=TimelineEventType.ALERT_RESOLVED,
@@ -294,7 +320,9 @@ async def incident_timeline(
         "deployments": len(
             [e for e in events if e.event_type == TimelineEventType.DEPLOYMENT]
         ),
-        "errors": len([e for e in events if e.event_type == TimelineEventType.LOG_ERROR]),
+        "errors": len(
+            [e for e in events if e.event_type == TimelineEventType.LOG_ERROR]
+        ),
         "key_events": len([e for e in events if e.is_key_event]),
     }
 
@@ -367,8 +395,8 @@ async def billing_page(
     auth_data: dict[str, str] = Depends(require_dashboard_auth),
 ):
     """Billing and pricing page."""
-    from ...billing.routes import PLANS
     from ...auth.models import PlanTier
+    from ...billing.routes import PLANS
 
     # Current plan — default to free
     current_plan_id = "free"

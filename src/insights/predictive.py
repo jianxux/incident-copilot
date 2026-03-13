@@ -1,7 +1,6 @@
 """Predictive alerting engine for proactive incident prevention."""
 
 import hashlib
-import math
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
@@ -12,8 +11,8 @@ from .models import (
     EarlyWarning,
     MetricDataPoint,
     MetricTrend,
-    Severity,
     ServiceHealthScore,
+    Severity,
 )
 
 logger = structlog.get_logger()
@@ -53,7 +52,7 @@ class PredictiveEngine:
         sum_y = sum(ys)
         sum_xy = sum(x * y for x, y in zip(xs, ys))
         sum_x2 = sum(x * x for x in xs)
-        sum_y2 = sum(y * y for y in ys)
+        sum_y2 = sum(y * y for y in ys)  # noqa: F841 — reserved for R² calc
 
         denom = n * sum_x2 - sum_x * sum_x
         if denom == 0:
@@ -252,9 +251,15 @@ class PredictiveEngine:
             if score.overall_score < 30:
                 warnings.append(
                     EarlyWarning(
-                        warning_id=self._gen_id(f"health_{service_name}_{now.isoformat()}"),
+                        warning_id=self._gen_id(
+                            f"health_{service_name}_{now.isoformat()}"
+                        ),
                         warning_type="health_degradation",
-                        severity=Severity.HIGH if score.overall_score < 15 else Severity.MEDIUM,
+                        severity=(
+                            Severity.HIGH
+                            if score.overall_score < 15
+                            else Severity.MEDIUM
+                        ),
                         title=f"Service health critical: {service_name}",
                         description=(
                             f"{service_name} health score is {score.overall_score}/100. "
@@ -280,7 +285,9 @@ class PredictiveEngine:
             if score.trend_score < 25 and score.recent_incidents >= 3:
                 warnings.append(
                     EarlyWarning(
-                        warning_id=self._gen_id(f"trend_{service_name}_{now.isoformat()}"),
+                        warning_id=self._gen_id(
+                            f"trend_{service_name}_{now.isoformat()}"
+                        ),
                         warning_type="pattern_acceleration",
                         severity=Severity.MEDIUM,
                         title=f"Incident rate accelerating: {service_name}",

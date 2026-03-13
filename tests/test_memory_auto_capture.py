@@ -10,7 +10,13 @@ import pytest
 
 from src.auth.middleware import AuthContext
 from src.config import Settings
-from src.models import AILogSummary, DatadogContext, LogEntry, PagerDutyIncident, Severity
+from src.models import (
+    AILogSummary,
+    DatadogContext,
+    LogEntry,
+    PagerDutyIncident,
+    Severity,
+)
 from src.orchestrator import ContextOrchestrator
 from src.web.store import incident_store
 
@@ -89,7 +95,9 @@ async def test_process_incident_wraps_string_ai_summary_and_handles_string_verdi
         )
     )
     orchestrator.summarizer.summarize = AsyncMock(return_value="LLM summary text")
-    orchestrator.verdict_engine.generate_verdict = AsyncMock(return_value="verdict text")
+    orchestrator.verdict_engine.generate_verdict = AsyncMock(
+        return_value="verdict text"
+    )
     # Keep explicit-channel delivery active, but avoid ts assignment onto strict ContextCard.
     orchestrator.slack.send_context_card = AsyncMock(return_value={})
 
@@ -104,7 +112,9 @@ async def test_process_incident_wraps_string_ai_summary_and_handles_string_verdi
         "src.actions.engine.ActionEngine.generate_actions", _fake_generate_actions
     )
 
-    card = await orchestrator.process_incident(_make_incident("INC-AUTO-3"), slack_channel="C123")
+    card = await orchestrator.process_incident(
+        _make_incident("INC-AUTO-3"), slack_channel="C123"
+    )
     await asyncio.sleep(0)
 
     assert isinstance(card.ai_summary, AILogSummary)

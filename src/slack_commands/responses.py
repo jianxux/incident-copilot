@@ -269,7 +269,9 @@ class BlockKitBuilder:
         }
 
     @classmethod
-    def warroom_response(cls, incident_id: str, channel_id: str, channel_name: str) -> dict[str, Any]:
+    def warroom_response(
+        cls, incident_id: str, channel_id: str, channel_name: str
+    ) -> dict[str, Any]:
         return {
             "response_type": "in_channel",
             "text": f"🏠 War room created for `{incident_id}`",

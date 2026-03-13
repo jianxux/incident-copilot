@@ -5,7 +5,7 @@ Statistics, pattern detection, and anomaly detection run locally.
 """
 
 import hashlib
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 import structlog
 
@@ -229,9 +229,7 @@ class DigestGenerator:
         Useful for Slack/Teams notifications.
         """
         cutoff = datetime.now(UTC) - timedelta(hours=hours)
-        recent = [
-            i for i in incidents if self._as_utc_aware(i.triggered_at) >= cutoff
-        ]
+        recent = [i for i in incidents if self._as_utc_aware(i.triggered_at) >= cutoff]
 
         if not recent:
             return f"✅ No incidents in the last {hours} hours"

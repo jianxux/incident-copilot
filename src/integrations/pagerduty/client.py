@@ -5,7 +5,7 @@ PagerDuty API Client
 Async HTTP client for PagerDuty REST API v2.
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx

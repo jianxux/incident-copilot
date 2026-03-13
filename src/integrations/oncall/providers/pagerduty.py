@@ -1,6 +1,6 @@
 """PagerDuty on-call schedule provider."""
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 import httpx
 

@@ -2,7 +2,7 @@
 
 import asyncio
 from collections import defaultdict
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
 import asyncpg
@@ -120,16 +120,12 @@ class AuditStore:
         async with self._lock:
             # Filter out old events
             old_events = [
-                e
-                for e in self._events
-                if self._normalize_to_utc(e.timestamp) < cutoff
+                e for e in self._events if self._normalize_to_utc(e.timestamp) < cutoff
             ]
             deleted = len(old_events)
 
             self._events = [
-                e
-                for e in self._events
-                if self._normalize_to_utc(e.timestamp) >= cutoff
+                e for e in self._events if self._normalize_to_utc(e.timestamp) >= cutoff
             ]
 
             # Update tenant indices
@@ -156,9 +152,7 @@ class AuditStore:
 
         if query.start_date:
             filtered = [
-                e
-                for e in filtered
-                if self._normalize_to_utc(e.timestamp) >= start_date
+                e for e in filtered if self._normalize_to_utc(e.timestamp) >= start_date
             ]
         if query.end_date:
             filtered = [
@@ -255,8 +249,7 @@ class PostgresAuditStore:
             await self.connect()
 
         async with self._pool.acquire() as conn:
-            await conn.execute(
-                """
+            await conn.execute("""
                 CREATE TABLE IF NOT EXISTS audit_events (
                     id VARCHAR(32) PRIMARY KEY,
                     event_type VARCHAR(64) NOT NULL,
@@ -290,8 +283,7 @@ class PostgresAuditStore:
                     ON audit_events (category);
                 CREATE INDEX IF NOT EXISTS idx_audit_timestamp
                     ON audit_events (timestamp DESC);
-            """
-            )
+            """)
 
     async def store_event(self, event: AuditEvent) -> AuditEvent:
         """Store an audit event in PostgreSQL."""

@@ -12,7 +12,11 @@ os.environ["SUPABASE_DB_ENABLED"] = "false"
 os.environ.pop("SUPABASE_URL", None)
 
 from src.main import app
-from src.onboarding.checklist import CHECKLIST_STEPS, OPTIONAL_STEPS, OnboardingChecklist
+from src.onboarding.checklist import (
+    CHECKLIST_STEPS,
+    OPTIONAL_STEPS,
+    OnboardingChecklist,
+)
 
 # ── Checklist Model Tests ──────────────────────────────────────────
 
@@ -100,6 +104,7 @@ class TestChecklistStore:
     @pytest_asyncio.fixture
     async def store(self, tmp_path):
         from src.onboarding.db_store import ChecklistStore
+
         db_path = tmp_path / "test_checklist.db"
         s = ChecklistStore(db_path=db_path)
         yield s

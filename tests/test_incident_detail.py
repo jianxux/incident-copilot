@@ -155,3 +155,23 @@ def test_incident_detail_assigned_to_display():
     assert "Primary Oncall, Database SME" in response.text
 
     _clear_incident_store()
+
+
+def test_incident_detail_plural_alias_renders():
+    _clear_incident_store()
+    incident_id = "inc-plural-alias"
+
+    _add_processing_incident(
+        incident_id=incident_id,
+        title="Plural alias detail route",
+        metadata={"provider": "pagerduty", "status": "triggered"},
+    )
+
+    app = create_app()
+    with TestClient(app) as client:
+        response = client.get(f"/dashboard/incidents/{incident_id}")
+
+    assert response.status_code == 200
+    assert "Plural alias detail route" in response.text
+
+    _clear_incident_store()

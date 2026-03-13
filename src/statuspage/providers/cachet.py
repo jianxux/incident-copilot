@@ -1,6 +1,6 @@
 """Cachet (Self-Hosted) Provider."""
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 import httpx
 

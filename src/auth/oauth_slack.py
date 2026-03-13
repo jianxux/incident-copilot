@@ -186,7 +186,12 @@ async def slack_oauth_callback(
 
     state_data = await oauth_state_store.consume(provider="slack", state=state)
     import sys
-    print(f"DEBUG_SLACK_CB: state_found={bool(state_data)} state={state[:10]}", flush=True, file=sys.stderr)
+
+    print(
+        f"DEBUG_SLACK_CB: state_found={bool(state_data)} state={state[:10]}",
+        flush=True,
+        file=sys.stderr,
+    )
     if not state_data:
         return RedirectResponse(
             url=f"{settings.app_url}/dashboard/onboarding-wizard?slack_error=state"
@@ -228,7 +233,9 @@ async def slack_oauth_callback(
         {"slack": {"encrypted": encrypt_json(integration_record)}},
     )
 
-    team_id = token.team.get("id") if token.team and isinstance(token.team, dict) else None
+    team_id = (
+        token.team.get("id") if token.team and isinstance(token.team, dict) else None
+    )
     if team_id:
         try:
             await oauth_token_store.upsert_token(
@@ -236,7 +243,9 @@ async def slack_oauth_callback(
                 provider="slack",
                 access_token=bot_token,
             )
-            register_slack_team_mapping(team_id=team_id, tenant_id=state_data["tenant_id"])
+            register_slack_team_mapping(
+                team_id=team_id, tenant_id=state_data["tenant_id"]
+            )
         except Exception as e:
             logger.warning(
                 "slack_oauth_token_store_upsert_failed",

@@ -54,8 +54,7 @@ class FeedbackStore:
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
         conn = self._connect()
         try:
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS incident_memory_feedback (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     incident_id TEXT NOT NULL,
@@ -64,22 +63,16 @@ class FeedbackStore:
                     notes TEXT,
                     timestamp TEXT NOT NULL
                 )
-                """
-            )
-            conn.execute(
-                """
+                """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_feedback_incident_id
                 ON incident_memory_feedback (incident_id)
-                """
-            )
-            conn.execute(
-                """
+                """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_feedback_pair
                 ON incident_memory_feedback (incident_id, recalled_incident_id)
-                """
-            )
-            conn.execute(
-                """
+                """)
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS incident_ai_feedback (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     incident_id TEXT NOT NULL,
@@ -88,14 +81,11 @@ class FeedbackStore:
                     notes TEXT,
                     timestamp TEXT NOT NULL
                 )
-                """
-            )
-            conn.execute(
-                """
+                """)
+            conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_ai_feedback_incident_id
                 ON incident_ai_feedback (incident_id)
-                """
-            )
+                """)
             conn.commit()
         finally:
             conn.close()
@@ -199,13 +189,11 @@ class FeedbackStore:
     def _feedback_breakdown_sync(self) -> dict[str, int]:
         conn = self._connect()
         try:
-            rows = conn.execute(
-                """
+            rows = conn.execute("""
                 SELECT feedback, COUNT(*) AS count
                 FROM incident_memory_feedback
                 GROUP BY feedback
-                """
-            ).fetchall()
+                """).fetchall()
             breakdown = {"helpful": 0, "not_helpful": 0, "partial": 0}
             for row in rows:
                 breakdown[str(row["feedback"])] = int(row["count"])
@@ -247,14 +235,18 @@ class FeedbackStore:
         average = aggregate / len(rows)
         return max(-0.25, min(0.25, round(average * 0.20, 4)))
 
-    async def get_feedback_summary(self, recalled_incident_id: str) -> dict[str, int | float]:
+    async def get_feedback_summary(
+        self, recalled_incident_id: str
+    ) -> dict[str, int | float]:
         """Return aggregate feedback statistics for one recalled incident."""
         return await asyncio.to_thread(
             self._get_feedback_summary_sync,
             recalled_incident_id,
         )
 
-    def _get_feedback_summary_sync(self, recalled_incident_id: str) -> dict[str, int | float]:
+    def _get_feedback_summary_sync(
+        self, recalled_incident_id: str
+    ) -> dict[str, int | float]:
         conn = self._connect()
         try:
             row = conn.execute(
@@ -297,12 +289,10 @@ class FeedbackStore:
     def _recall_hit_rate_sync(self) -> float:
         conn = self._connect()
         try:
-            rows = conn.execute(
-                """
+            rows = conn.execute("""
                 SELECT incident_id, feedback
                 FROM incident_memory_feedback
-                """
-            ).fetchall()
+                """).fetchall()
         finally:
             conn.close()
 

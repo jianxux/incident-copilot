@@ -1,7 +1,7 @@
 """Opsgenie data importer with resumable, cancellable imports."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from src.migrations.models import (
     EntityMigrationResult,
@@ -36,7 +36,7 @@ class OpsgenieImporter:
         """Run the migration for selected entity types."""
         self.job.selected_entities = selected_entities
         self.job.status = MigrationStatus.RUNNING
-        self.job.started_at = datetime.now(timezone.utc)
+        self.job.started_at = datetime.now(UTC)
 
         import_methods = {
             MigrationEntityType.SERVICES: self._import_services,
@@ -52,7 +52,7 @@ class OpsgenieImporter:
         for i, entity_type in enumerate(selected_entities):
             if self._cancelled:
                 self.job.status = MigrationStatus.CANCELLED
-                self.job.completed_at = datetime.now(timezone.utc)
+                self.job.completed_at = datetime.now(UTC)
                 return self.job
 
             method = import_methods.get(entity_type)
@@ -63,7 +63,7 @@ class OpsgenieImporter:
             self.job.progress_pct = ((i + 1) / total) * 100
 
         self.job.status = MigrationStatus.COMPLETED
-        self.job.completed_at = datetime.now(timezone.utc)
+        self.job.completed_at = datetime.now(UTC)
 
         # Mark as failed if any entity had all failures
         for r in self.job.results.values():

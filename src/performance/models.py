@@ -5,7 +5,7 @@ including DORA-style metrics, burnout indicators, and industry benchmarks.
 """
 
 import statistics
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
 from pydantic import BaseModel, Field, computed_field

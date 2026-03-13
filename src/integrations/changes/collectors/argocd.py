@@ -2,7 +2,7 @@
 ArgoCD Collector - Collect deployment events from ArgoCD.
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 import httpx
 
