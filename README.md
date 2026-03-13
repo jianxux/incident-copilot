@@ -100,6 +100,17 @@ For a full walkthrough, see `docs/getting-started/quickstart.md`. For local dev,
 - Install dev dependencies: `make install-dev`
 - Run tests: `make test`
 
+### PR CI triage utility
+
+Use `scripts/pr_ci_digest.py` to summarize CI health across open GitHub pull requests via `gh` CLI JSON output.
+
+```bash
+python scripts/pr_ci_digest.py --limit 20
+python scripts/pr_ci_digest.py --limit 20 --required --json
+```
+
+The digest reports per-PR check outcomes, recurring failing checks, and duplicate-title clusters after normalizing common prefixes such as `fix:`, `chore:`, and `feat:`.
+
 ### Detailed local setup
 
 ### Prerequisites
