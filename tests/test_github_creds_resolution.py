@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -148,3 +149,159 @@ async def test_try_ondemand_enrichment_uses_db_creds(monkeypatch):
         "github": {"repo": "resolved-org/payments-api"},
         "github_context": {"repo": "resolved-org/payments-api"},
     }
+
+
+@pytest.mark.asyncio
+async def test_try_ondemand_enrichment_logs_no_token(monkeypatch):
+    from src.api import incidents
+
+    logs: list[tuple[str, dict[str, object]]] = []
+
+    monkeypatch.setattr(incidents, "resolve_github_creds", AsyncMock(return_value=("", "")))
+    monkeypatch.setattr(
+        incidents,
+        "logger",
+        SimpleNamespace(
+            warning=lambda event, **kwargs: logs.append((event, kwargs)),
+        ),
+    )
+
+    payload = await incidents._try_ondemand_enrichment(
+        {"id": "inc-1", "service": "payments-api"},
+        tenant_id="tenant-1",
+    )
+
+    assert payload == {}
+    assert logs == [
+        (
+            "ondemand_github_enrichment_skipped",
+            {
+                "reason": "no_token",
+                "tenant_id": "tenant-1",
+                "service": "payments-api",
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_try_ondemand_enrichment_logs_no_org_when_repo_cannot_be_resolved(monkeypatch):
+    from src.api import incidents
+
+    logs: list[tuple[str, dict[str, object]]] = []
+    settings = SimpleNamespace(service_repo_map={})
+
+    monkeypatch.setattr(incidents, "get_settings", lambda: settings)
+    monkeypatch.setattr(incidents, "resolve_github_creds", AsyncMock(return_value=("token", "")))
+    monkeypatch.setattr(
+        incidents,
+        "logger",
+        SimpleNamespace(
+            warning=lambda event, **kwargs: logs.append((event, kwargs)),
+        ),
+    )
+
+    payload = await incidents._try_ondemand_enrichment(
+        {"id": "inc-2", "service": "payments-api"},
+        tenant_id="tenant-2",
+    )
+
+    assert payload == {}
+    assert logs == [
+        (
+            "ondemand_github_enrichment_skipped",
+            {
+                "reason": "no_org",
+                "tenant_id": "tenant-2",
+                "service": "payments-api",
+                "has_org": False,
+                "has_service_mapping": False,
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_try_ondemand_enrichment_logs_api_error_reason(monkeypatch):
+    from src.api import incidents
+
+    logs: list[tuple[str, dict[str, object]]] = []
+    settings = SimpleNamespace(service_repo_map={})
+
+    class _FakeGitHubAdapter:
+        last_context_error_reason = "api_error"
+
+        @classmethod
+        def from_credentials(cls, token: str, org: str, provided_settings):
+            assert token == "token"
+            assert org == "my-org"
+            assert provided_settings is settings
+            return cls()
+
+        def _get_repo_for_service(self, service_name: str):
+            assert service_name == "payments-api"
+            return "my-org/payments-api"
+
+        async def get_context(self, service_name: str):
+            assert service_name == "payments-api"
+            return None
+
+    monkeypatch.setattr(incidents, "get_settings", lambda: settings)
+    monkeypatch.setattr(incidents, "resolve_github_creds", AsyncMock(return_value=("token", "my-org")))
+    monkeypatch.setattr(incidents, "GitHubAdapter", _FakeGitHubAdapter)
+    monkeypatch.setattr(
+        incidents,
+        "logger",
+        SimpleNamespace(
+            warning=lambda event, **kwargs: logs.append((event, kwargs)),
+        ),
+    )
+
+    payload = await incidents._try_ondemand_enrichment(
+        {"id": "inc-3", "service": "payments-api"},
+        tenant_id="tenant-3",
+    )
+
+    assert payload == {}
+    assert logs == [
+        (
+            "ondemand_github_enrichment_skipped",
+            {
+                "reason": "api_error",
+                "tenant_id": "tenant-3",
+                "incident_id": "inc-3",
+                "service": "payments-api",
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_github_adapter_logs_debug_when_repo_is_unresolved(monkeypatch):
+    logs: list[tuple[str, dict[str, object]]] = []
+    settings = SimpleNamespace(github_token="token", github_org="", service_repo_map={})
+
+    monkeypatch.setattr(
+        "src.integrations.github.logger",
+        SimpleNamespace(
+            debug=lambda event, **kwargs: logs.append((event, kwargs)),
+            error=lambda *args, **kwargs: None,
+        ),
+    )
+
+    adapter = GitHubAdapter(settings)
+
+    context = await adapter.get_context("payments-api")
+
+    assert context is None
+    assert adapter.last_context_error_reason == "no_repo_mapping"
+    assert logs == [
+        (
+            "github_context_repo_unresolved",
+            {
+                "service": "payments-api",
+                "has_org": False,
+                "has_service_mapping": False,
+            },
+        )
+    ]

@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Literal
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -42,6 +42,8 @@ _STATUS_API_TO_DB = {
     "processing": {"processing"},
     "error": {"error"},
 }
+
+GitHubStatus = Literal["connected", "no_credentials", "no_repo_mapping", "enriched"]
 
 
 class ResolveRequest(BaseModel):
@@ -220,6 +222,7 @@ def _map_context_payload(
     payload: dict[str, Any] | None,
     context_id: str | None = None,
     created_at: Any = None,
+    github_status: GitHubStatus | None = None,
 ) -> dict[str, Any]:
     data = dict(payload or {})
 
@@ -233,8 +236,62 @@ def _map_context_payload(
     data["id"] = str(context_id or data.get("id") or "")
     data["incident_id"] = incident_id
     data["created_at"] = _iso(created_at or data.get("created_at")) or _now_iso()
+    if github_status is not None:
+        data["github_status"] = github_status
 
     return data
+
+
+def _service_has_repo_mapping(adapter: GitHubAdapter, service_name: str) -> bool:
+    return service_name in adapter.service_repo_map
+
+
+async def _get_github_enrichment_prereqs(
+    service: str,
+    tenant_id: str | None,
+) -> tuple[GitHubStatus, GitHubAdapter | None]:
+    settings = get_settings()
+    token, org = await resolve_github_creds(tenant_id)
+    if not token:
+        logger.warning(
+            "ondemand_github_enrichment_skipped",
+            reason="no_token",
+            tenant_id=tenant_id,
+            service=service,
+        )
+        return "no_credentials", None
+
+    adapter = GitHubAdapter.from_credentials(token, org, settings)
+    if not adapter._get_repo_for_service(service):
+        reason = "no_org" if not org and not _service_has_repo_mapping(adapter, service) else "no_repo_mapping"
+        logger.warning(
+            "ondemand_github_enrichment_skipped",
+            reason=reason,
+            tenant_id=tenant_id,
+            service=service,
+            has_org=bool(org),
+            has_service_mapping=_service_has_repo_mapping(adapter, service),
+        )
+        return "no_repo_mapping", adapter
+
+    return "connected", adapter
+
+
+async def _get_github_status(
+    incident_row: dict[str, Any],
+    tenant_id: str | None = None,
+    payload: dict[str, Any] | None = None,
+) -> GitHubStatus:
+    github_context = _extract_github_context(payload)
+    if github_context:
+        return "enriched"
+
+    service = incident_row.get("service") or incident_row.get("service_name")
+    if not service:
+        return "no_repo_mapping"
+
+    status, _adapter = await _get_github_enrichment_prereqs(service, tenant_id)
+    return status
 
 
 async def _try_ondemand_enrichment(
@@ -243,17 +300,28 @@ async def _try_ondemand_enrichment(
 ) -> dict[str, Any]:
     service = incident_row.get("service") or incident_row.get("service_name")
     if not service:
+        logger.warning(
+            "ondemand_github_enrichment_skipped",
+            reason="no_service",
+            tenant_id=tenant_id,
+            incident_id=incident_row.get("id"),
+        )
         return {}
 
-    settings = get_settings()
-    token, org = await resolve_github_creds(tenant_id)
-    if not token:
+    status, adapter = await _get_github_enrichment_prereqs(service, tenant_id)
+    if not adapter or status != "connected":
         return {}
 
     try:
-        adapter = GitHubAdapter.from_credentials(token, org, settings)
         github_context = await adapter.get_context(service)
         if not github_context:
+            logger.warning(
+                "ondemand_github_enrichment_skipped",
+                reason=adapter.last_context_error_reason or "api_error",
+                tenant_id=tenant_id,
+                incident_id=incident_row.get("id"),
+                service=service,
+            )
             return {}
 
         payload = github_context.model_dump(mode="json")
@@ -264,6 +332,8 @@ async def _try_ondemand_enrichment(
             error=str(exc),
             incident_id=incident_row.get("id"),
             service=service,
+            tenant_id=tenant_id,
+            reason="api_error",
         )
         return {}
 
@@ -1239,13 +1309,24 @@ async def get_incident_context(
                 payload=enriched_payload,
                 context_id="",
                 created_at=row.get("created_at"),
+                github_status=await _get_github_status(
+                    row,
+                    tenant_id=tenant_id,
+                    payload=enriched_payload,
+                ),
             )
 
+        stored_payload = card_row.get("data")
         return _map_context_payload(
             incident_id=incident_id,
-            payload=card_row.get("data"),
+            payload=stored_payload,
             context_id=card_row.get("id"),
             created_at=card_row.get("created_at"),
+            github_status=await _get_github_status(
+                row,
+                tenant_id=tenant_id,
+                payload=stored_payload,
+            ),
         )
 
     item = await incident_store.get_incident(incident_id)
@@ -1266,6 +1347,14 @@ async def get_incident_context(
             payload=enriched_payload,
             context_id="",
             created_at=item.triggered_at,
+            github_status=await _get_github_status(
+                {
+                    "service": item.service_name,
+                    "service_name": item.service_name,
+                },
+                tenant_id=tenant_id,
+                payload=enriched_payload,
+            ),
         )
 
     payload = item.context_card.model_dump(mode="json")
@@ -1274,6 +1363,14 @@ async def get_incident_context(
         payload=payload,
         context_id=payload.get("incident_id") or "",
         created_at=payload.get("assembled_at") or item.triggered_at,
+        github_status=await _get_github_status(
+            {
+                "service": item.service_name,
+                "service_name": item.service_name,
+            },
+            tenant_id=tenant_id,
+            payload=payload,
+        ),
     )
 
 

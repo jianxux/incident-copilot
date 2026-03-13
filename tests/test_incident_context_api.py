@@ -137,6 +137,110 @@ class TestIncidentContextEndpoint:
         assert data["incident_id"] == inc_id
         assert data["service_name"] == "checkout-api"
         assert data["github"]["repo"] == "myco/checkout-api"
+        assert data["github_status"] == "enriched"
+
+    def test_returns_github_status_no_credentials(self, authed_client, monkeypatch):
+        from src.models import Severity
+        from src.web.store import StoredIncident
+
+        monkeypatch.setattr(
+            "src.api.incidents.incident_store.get_incident",
+            AsyncMock(
+                return_value=StoredIncident(
+                    incident_id="inc-no-creds",
+                    title="Latency spike",
+                    service_name="payments-api",
+                    severity=Severity.HIGH,
+                    status="processing",
+                    triggered_at=datetime.now(UTC),
+                )
+            ),
+        )
+        monkeypatch.setattr(
+            "src.api.incidents.resolve_github_creds",
+            AsyncMock(return_value=("", "")),
+        )
+
+        resp = authed_client.get("/api/incidents/inc-no-creds/context")
+
+        assert resp.status_code == 200
+        assert resp.json()["github_status"] == "no_credentials"
+
+    def test_returns_github_status_no_repo_mapping(self, authed_client, monkeypatch):
+        from src.models import Severity
+        from src.web.store import StoredIncident
+
+        monkeypatch.setattr(
+            "src.api.incidents.incident_store.get_incident",
+            AsyncMock(
+                return_value=StoredIncident(
+                    incident_id="inc-no-repo",
+                    title="Latency spike",
+                    service_name="payments-api",
+                    severity=Severity.HIGH,
+                    status="processing",
+                    triggered_at=datetime.now(UTC),
+                )
+            ),
+        )
+        monkeypatch.setattr(
+            "src.api.incidents.get_settings",
+            lambda: MagicMock(service_repo_map={}),
+        )
+        monkeypatch.setattr(
+            "src.api.incidents.resolve_github_creds",
+            AsyncMock(return_value=("token", "")),
+        )
+
+        resp = authed_client.get("/api/incidents/inc-no-repo/context")
+
+        assert resp.status_code == 200
+        assert resp.json()["github_status"] == "no_repo_mapping"
+
+    def test_returns_github_status_connected_when_fetch_fails(self, authed_client, monkeypatch):
+        from src.models import Severity
+        from src.web.store import StoredIncident
+
+        class _FakeGitHubAdapter:
+            last_context_error_reason = "api_error"
+
+            @classmethod
+            def from_credentials(cls, token: str, org: str, provided_settings):
+                return cls()
+
+            def _get_repo_for_service(self, service_name: str):
+                return f"my-org/{service_name}"
+
+            async def get_context(self, service_name: str):
+                return None
+
+        monkeypatch.setattr(
+            "src.api.incidents.incident_store.get_incident",
+            AsyncMock(
+                return_value=StoredIncident(
+                    incident_id="inc-connected",
+                    title="Latency spike",
+                    service_name="payments-api",
+                    severity=Severity.HIGH,
+                    status="processing",
+                    triggered_at=datetime.now(UTC),
+                )
+            ),
+        )
+        monkeypatch.setattr(
+            "src.api.incidents.get_settings",
+            lambda: MagicMock(service_repo_map={}),
+        )
+        monkeypatch.setattr(
+            "src.api.incidents.resolve_github_creds",
+            AsyncMock(return_value=("token", "my-org")),
+        )
+        monkeypatch.setattr("src.api.incidents.GitHubAdapter", _FakeGitHubAdapter)
+
+        resp = authed_client.get("/api/incidents/inc-connected/context")
+
+        assert resp.status_code == 200
+        assert resp.json()["github_status"] == "connected"
 
     def test_returns_404_for_missing(self, authed_client):
         resp = authed_client.get("/api/incidents/nonexistent-id/context")

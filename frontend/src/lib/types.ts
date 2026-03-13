@@ -54,6 +54,7 @@ export interface IncidentContext {
   id?: string;
   incident_id?: string;
   created_at?: string;
+  github_status?: 'connected' | 'no_credentials' | 'no_repo_mapping' | 'enriched';
   github_context?: Record<string, unknown>;
   datadog_context?: Record<string, unknown>;
   on_call?: Record<string, unknown>;

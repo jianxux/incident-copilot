@@ -96,6 +96,20 @@ export default function IncidentDetailPage({ params }: { params: Promise<{ id: s
     description: evt.description,
   }));
 
+  const timelineEmptyMessage = (() => {
+    switch (context?.github_status) {
+      case 'no_credentials':
+        return 'No timeline events yet. Connect GitHub to enrich this incident with commits, pull requests, and deployments.';
+      case 'no_repo_mapping':
+        return 'No timeline events yet. GitHub is connected, but this service is not mapped to a repository.';
+      case 'connected':
+      case 'enriched':
+        return 'No timeline events yet. GitHub is connected, but no related commits, pull requests, or deployments were found.';
+      default:
+        return 'No timeline events yet';
+    }
+  })();
+
   return (
     <div className="p-6 md:p-8 space-y-6">
       <Link href="/incidents" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-coral transition-colors">
@@ -135,7 +149,7 @@ export default function IncidentDetailPage({ params }: { params: Promise<{ id: s
             <IncidentTimeline events={timelineEvents} />
           ) : (
             <div className="bg-white rounded-xl border border-cream-dark p-6 text-center text-gray-400">
-              No timeline events yet
+              {timelineEmptyMessage}
             </div>
           )}
         </div>

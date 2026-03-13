@@ -129,6 +129,7 @@ class GitHubAdapter:
         self.token = token if token is not None else settings.github_token
         self.org = org if org is not None else settings.github_org
         self.service_repo_map = settings.service_repo_map
+        self.last_context_error_reason: str | None = None
 
     @classmethod
     def from_credentials(
@@ -162,9 +163,16 @@ class GitHubAdapter:
         self, service_name: str, since_hours: int = 24
     ) -> GitHubContext | None:
         """Get GitHub context for a service."""
+        self.last_context_error_reason = None
         repo = self._get_repo_for_service(service_name)
         if not repo:
-            logger.warning("no_repo_mapping", service=service_name)
+            self.last_context_error_reason = "no_repo_mapping"
+            logger.debug(
+                "github_context_repo_unresolved",
+                service=service_name,
+                has_org=bool(self.org),
+                has_service_mapping=service_name in self.service_repo_map,
+            )
             return None
 
         try:
@@ -185,6 +193,7 @@ class GitHubAdapter:
                 )
 
         except Exception as e:
+            self.last_context_error_reason = "api_error"
             logger.error("github_fetch_failed", repo=repo, error=str(e))
             return None
 
