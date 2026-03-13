@@ -86,7 +86,12 @@ class OpsgenieValidator:
         """Run full validation: connection, permissions, and inventory."""
         valid, message = await self.validate_connection()
         if not valid:
-            return {"valid": False, "message": message, "permissions": [], "previews": []}
+            return {
+                "valid": False,
+                "message": message,
+                "permissions": [],
+                "previews": [],
+            }
         permissions = await self.check_permissions()
         previews = await self.inventory()
         return {

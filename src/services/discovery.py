@@ -23,7 +23,9 @@ class ServiceCatalogDiscovery:
         self.settings = settings
         self.store = store
 
-    async def discover_from_pagerduty(self, tenant_slug: str = "default") -> dict[str, int]:
+    async def discover_from_pagerduty(
+        self, tenant_slug: str = "default"
+    ) -> dict[str, int]:
         """Ingest PagerDuty service catalog into the local catalog."""
         if not self.settings.pagerduty_api_key:
             return {"discovered": 0, "created": 0, "skipped": 0}
@@ -77,7 +79,9 @@ class ServiceCatalogDiscovery:
             "skipped": skipped,
         }
 
-    async def discover_from_datadog_apm(self, tenant_slug: str = "default") -> dict[str, int]:
+    async def discover_from_datadog_apm(
+        self, tenant_slug: str = "default"
+    ) -> dict[str, int]:
         """Ingest Datadog APM service inventory."""
         if not self.settings.datadog_api_key or not self.settings.datadog_app_key:
             return {"discovered": 0, "created": 0, "skipped": 0}
@@ -127,7 +131,9 @@ class ServiceCatalogDiscovery:
 
         return {"discovered": len(data), "created": created, "skipped": skipped}
 
-    async def discover_from_kubernetes(self, tenant_slug: str = "default") -> dict[str, int]:
+    async def discover_from_kubernetes(
+        self, tenant_slug: str = "default"
+    ) -> dict[str, int]:
         """Ingest Kubernetes Services from in-cluster API."""
         api_host = os.getenv("KUBERNETES_SERVICE_HOST")
         token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"

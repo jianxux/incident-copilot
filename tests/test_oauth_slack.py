@@ -33,7 +33,9 @@ async def test_slack_oauth_callback_stores_token_in_both_locations():
         patch("src.auth.oauth_slack.SlackOAuth") as mock_oauth_cls,
         patch("src.auth.oauth_slack.auth_service") as mock_auth_service,
         patch("src.auth.oauth_slack.oauth_token_store") as mock_token_store,
-        patch("src.auth.oauth_slack.register_slack_team_mapping") as mock_register_mapping,
+        patch(
+            "src.auth.oauth_slack.register_slack_team_mapping"
+        ) as mock_register_mapping,
     ):
         mock_state_store.consume = AsyncMock(return_value=state_data)
         mock_auth_service.update_tenant_integrations = AsyncMock()

@@ -264,6 +264,7 @@ async def incident_timeline(
         ack_at = meta.get("acknowledged_at")
         if ack_at:
             from dateutil.parser import parse as parse_dt
+
             try:
                 ack_dt = parse_dt(ack_at) if isinstance(ack_at, str) else ack_at
                 builder.add_event(
@@ -280,8 +281,13 @@ async def incident_timeline(
         resolved_at = meta.get("resolved_at")
         if resolved_at:
             from dateutil.parser import parse as parse_dt
+
             try:
-                res_dt = parse_dt(resolved_at) if isinstance(resolved_at, str) else resolved_at
+                res_dt = (
+                    parse_dt(resolved_at)
+                    if isinstance(resolved_at, str)
+                    else resolved_at
+                )
                 builder.add_event(
                     timestamp=res_dt,
                     event_type=TimelineEventType.ALERT_RESOLVED,
@@ -314,7 +320,9 @@ async def incident_timeline(
         "deployments": len(
             [e for e in events if e.event_type == TimelineEventType.DEPLOYMENT]
         ),
-        "errors": len([e for e in events if e.event_type == TimelineEventType.LOG_ERROR]),
+        "errors": len(
+            [e for e in events if e.event_type == TimelineEventType.LOG_ERROR]
+        ),
         "key_events": len([e for e in events if e.is_key_event]),
     }
 

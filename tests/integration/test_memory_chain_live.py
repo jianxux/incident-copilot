@@ -14,23 +14,30 @@ from datetime import UTC, datetime, timedelta
 # 1. Incident CRUD against real Supabase
 # ---------------------------------------------------------------------------
 
+
 class TestIncidentCRUD:
     """Verify basic incident operations against live Supabase."""
 
     def test_insert_incident(self, supabase_client, test_tenant):
         incident_id = str(uuid.uuid4())
-        result = supabase_client.table("incidents").insert({
-            "id": incident_id,
-            "tenant_id": test_tenant,
-            "source": "pagerduty",
-            "source_id": f"PD-{uuid.uuid4().hex[:8]}",
-            "title": "Database connection pool exhausted",
-            "service": "postgres-primary",
-            "severity": "critical",
-            "status": "triggered",
-            "triggered_at": datetime.now(UTC).isoformat(),
-            "metadata": {"pd_incident_id": "PD-12345"},
-        }).execute()
+        result = (
+            supabase_client.table("incidents")
+            .insert(
+                {
+                    "id": incident_id,
+                    "tenant_id": test_tenant,
+                    "source": "pagerduty",
+                    "source_id": f"PD-{uuid.uuid4().hex[:8]}",
+                    "title": "Database connection pool exhausted",
+                    "service": "postgres-primary",
+                    "severity": "critical",
+                    "status": "triggered",
+                    "triggered_at": datetime.now(UTC).isoformat(),
+                    "metadata": {"pd_incident_id": "PD-12345"},
+                }
+            )
+            .execute()
+        )
 
         assert len(result.data) == 1
         assert result.data[0]["title"] == "Database connection pool exhausted"
@@ -38,7 +45,9 @@ class TestIncidentCRUD:
         # Cleanup
         supabase_client.table("incidents").delete().eq("id", incident_id).execute()
 
-    def test_query_incidents_by_tenant(self, supabase_client, test_tenant, test_incidents):
+    def test_query_incidents_by_tenant(
+        self, supabase_client, test_tenant, test_incidents
+    ):
         result = (
             supabase_client.table("incidents")
             .select("*")
@@ -47,7 +56,9 @@ class TestIncidentCRUD:
         )
         assert len(result.data) == 5
 
-    def test_query_incidents_by_severity(self, supabase_client, test_tenant, test_incidents):
+    def test_query_incidents_by_severity(
+        self, supabase_client, test_tenant, test_incidents
+    ):
         result = (
             supabase_client.table("incidents")
             .select("*")
@@ -58,7 +69,9 @@ class TestIncidentCRUD:
         assert len(result.data) == 1
         assert result.data[0]["severity"] == "critical"
 
-    def test_query_incidents_by_status(self, supabase_client, test_tenant, test_incidents):
+    def test_query_incidents_by_status(
+        self, supabase_client, test_tenant, test_incidents
+    ):
         result = (
             supabase_client.table("incidents")
             .select("*")
@@ -85,10 +98,13 @@ class TestIncidentCRUD:
 # 2. Analytics queries against real data
 # ---------------------------------------------------------------------------
 
+
 class TestAnalyticsLive:
     """Verify analytics endpoints compute correctly from real DB rows."""
 
-    def test_incident_count_by_period(self, supabase_client, test_tenant, test_incidents):
+    def test_incident_count_by_period(
+        self, supabase_client, test_tenant, test_incidents
+    ):
         seven_days_ago = (datetime.now(UTC) - timedelta(days=7)).isoformat()
         result = (
             supabase_client.table("incidents")
@@ -126,10 +142,13 @@ class TestAnalyticsLive:
 # 3. Incident events (timeline) against real DB
 # ---------------------------------------------------------------------------
 
+
 class TestIncidentEventsLive:
     """Verify incident event tracking."""
 
-    def test_insert_and_query_events(self, supabase_client, test_tenant, test_incidents):
+    def test_insert_and_query_events(
+        self, supabase_client, test_tenant, test_incidents
+    ):
         incident_id = test_incidents[0]["id"]
 
         events = [
@@ -175,29 +194,29 @@ class TestIncidentEventsLive:
 # 4. Insights persistence against real DB
 # ---------------------------------------------------------------------------
 
+
 class TestInsightsLive:
     """Verify insights table persistence."""
 
     def test_insert_and_query_insight(self, supabase_client, test_tenant):
         insight_id = str(uuid.uuid4())
-        supabase_client.table("insights").insert({
-            "id": insight_id,
-            "tenant_id": test_tenant,
-            "insight_type": "pattern",
-            "severity": "high",
-            "title": "Recurring DB connection failures",
-            "description": "Service-a experiences DB connection pool exhaustion every Monday morning",
-            "service_name": "service-a",
-            "data": {"pattern_count": 5, "frequency": "weekly"},
-            "affected_incident_ids": [str(uuid.uuid4()), str(uuid.uuid4())],
-            "is_active": True,
-        }).execute()
+        supabase_client.table("insights").insert(
+            {
+                "id": insight_id,
+                "tenant_id": test_tenant,
+                "insight_type": "pattern",
+                "severity": "high",
+                "title": "Recurring DB connection failures",
+                "description": "Service-a experiences DB connection pool exhaustion every Monday morning",
+                "service_name": "service-a",
+                "data": {"pattern_count": 5, "frequency": "weekly"},
+                "affected_incident_ids": [str(uuid.uuid4()), str(uuid.uuid4())],
+                "is_active": True,
+            }
+        ).execute()
 
         result = (
-            supabase_client.table("insights")
-            .select("*")
-            .eq("id", insight_id)
-            .execute()
+            supabase_client.table("insights").select("*").eq("id", insight_id).execute()
         )
         assert len(result.data) == 1
         assert result.data[0]["insight_type"] == "pattern"
@@ -211,6 +230,7 @@ class TestInsightsLive:
 # 5. Feedback persistence (memory recall feedback)
 # ---------------------------------------------------------------------------
 
+
 class TestFeedbackLive:
     """Verify feedback table if it exists, otherwise test SQLite path."""
 
@@ -221,6 +241,7 @@ class TestFeedbackLive:
         store = FeedbackStore(str(tmp_path / "feedback.db"))
 
         import asyncio
+
         feedback = ResolutionFeedback(
             incident_id="INC-100",
             recalled_incident_id="INC-050",
@@ -245,11 +266,13 @@ class TestFeedbackLive:
 
         for fb_type in ["helpful", "helpful", "not_helpful"]:
             asyncio.get_event_loop().run_until_complete(
-                store.submit(ResolutionFeedback(
-                    incident_id=f"INC-{fb_type}",
-                    recalled_incident_id="INC-RECALLED",
-                    feedback=fb_type,
-                ))
+                store.submit(
+                    ResolutionFeedback(
+                        incident_id=f"INC-{fb_type}",
+                        recalled_incident_id="INC-RECALLED",
+                        feedback=fb_type,
+                    )
+                )
             )
 
         summary = asyncio.get_event_loop().run_until_complete(
@@ -264,30 +287,37 @@ class TestFeedbackLive:
 # 6. Tenant isolation
 # ---------------------------------------------------------------------------
 
+
 class TestTenantIsolation:
     """Verify data doesn't leak between tenants."""
 
-    def test_incidents_isolated_by_tenant(self, supabase_client, test_tenant, test_incidents):
+    def test_incidents_isolated_by_tenant(
+        self, supabase_client, test_tenant, test_incidents
+    ):
         other_tenant_id = str(uuid.uuid4())
-        supabase_client.table("tenants").insert({
-            "id": other_tenant_id,
-            "name": "Other Tenant",
-            "slug": f"other-{other_tenant_id[:8]}",
-            "plan": "free",
-        }).execute()
+        supabase_client.table("tenants").insert(
+            {
+                "id": other_tenant_id,
+                "name": "Other Tenant",
+                "slug": f"other-{other_tenant_id[:8]}",
+                "plan": "free",
+            }
+        ).execute()
 
         # Insert incident in other tenant
         other_incident_id = str(uuid.uuid4())
-        supabase_client.table("incidents").insert({
-            "id": other_incident_id,
-            "tenant_id": other_tenant_id,
-            "source": "manual",
-            "source_id": f"other-{uuid.uuid4().hex[:8]}",
-            "title": "Other tenant incident",
-            "service": "other-service",
-            "severity": "low",
-            "status": "triggered",
-        }).execute()
+        supabase_client.table("incidents").insert(
+            {
+                "id": other_incident_id,
+                "tenant_id": other_tenant_id,
+                "source": "manual",
+                "source_id": f"other-{uuid.uuid4().hex[:8]}",
+                "title": "Other tenant incident",
+                "service": "other-service",
+                "severity": "low",
+                "status": "triggered",
+            }
+        ).execute()
 
         # Query with test_tenant filter should NOT see other tenant's incidents
         result = (
@@ -300,5 +330,7 @@ class TestTenantIsolation:
         assert other_incident_id not in ids
 
         # Cleanup
-        supabase_client.table("incidents").delete().eq("id", other_incident_id).execute()
+        supabase_client.table("incidents").delete().eq(
+            "id", other_incident_id
+        ).execute()
         supabase_client.table("tenants").delete().eq("id", other_tenant_id).execute()

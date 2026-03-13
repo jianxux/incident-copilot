@@ -206,7 +206,9 @@ async def test_second_call_within_interval_skips():
     """A call within 5 min of the last sync should NOT trigger another sync."""
     _pd_sync_timestamps["tenant-1"] = time.time()
 
-    with patch("src.integrations.pagerduty_sync._background_pd_sync", new_callable=AsyncMock) as mock_sync:
+    with patch(
+        "src.integrations.pagerduty_sync._background_pd_sync", new_callable=AsyncMock
+    ) as mock_sync:
         result = await _maybe_trigger_pd_sync("tenant-1")
 
     mock_sync.assert_not_called()
@@ -218,7 +220,9 @@ async def test_call_after_interval_triggers_sync():
     """A call after the debounce interval should trigger sync again."""
     _pd_sync_timestamps["tenant-1"] = time.time() - _PD_SYNC_INTERVAL - 1
 
-    with patch("src.integrations.pagerduty_sync._background_pd_sync", new_callable=AsyncMock):
+    with patch(
+        "src.integrations.pagerduty_sync._background_pd_sync", new_callable=AsyncMock
+    ):
         with patch("src.integrations.pagerduty_sync.asyncio.create_task") as mock_task:
             await _maybe_trigger_pd_sync("tenant-1")
 
@@ -231,7 +235,9 @@ async def test_different_tenants_sync_independently():
     """Each tenant has its own debounce timestamp."""
     _pd_sync_timestamps["tenant-1"] = time.time()  # recently synced
 
-    with patch("src.integrations.pagerduty_sync._background_pd_sync", new_callable=AsyncMock) as mock_sync:
+    with patch(
+        "src.integrations.pagerduty_sync._background_pd_sync", new_callable=AsyncMock
+    ) as mock_sync:
         with patch("src.integrations.pagerduty_sync.asyncio.create_task"):
             await _maybe_trigger_pd_sync("tenant-1")  # should skip
             await _maybe_trigger_pd_sync("tenant-2")  # should trigger (first sync)
@@ -324,9 +330,13 @@ class TestFirstSyncTimeout:
         async def slow_sync(tenant_id):
             await asyncio.sleep(30)
 
-        with patch("src.integrations.pagerduty_sync._background_pd_sync", side_effect=slow_sync):
+        with patch(
+            "src.integrations.pagerduty_sync._background_pd_sync", side_effect=slow_sync
+        ):
             with patch("src.integrations.pagerduty_sync._pd_sync_timestamps", {}):
                 start = time.time()
                 await _maybe_trigger_pd_sync("tenant-slow")
                 elapsed = time.time() - start
-                assert elapsed < 13, f"First sync took {elapsed}s, should timeout at ~10s"
+                assert (
+                    elapsed < 13
+                ), f"First sync took {elapsed}s, should timeout at ~10s"

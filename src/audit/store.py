@@ -120,16 +120,12 @@ class AuditStore:
         async with self._lock:
             # Filter out old events
             old_events = [
-                e
-                for e in self._events
-                if self._normalize_to_utc(e.timestamp) < cutoff
+                e for e in self._events if self._normalize_to_utc(e.timestamp) < cutoff
             ]
             deleted = len(old_events)
 
             self._events = [
-                e
-                for e in self._events
-                if self._normalize_to_utc(e.timestamp) >= cutoff
+                e for e in self._events if self._normalize_to_utc(e.timestamp) >= cutoff
             ]
 
             # Update tenant indices
@@ -156,9 +152,7 @@ class AuditStore:
 
         if query.start_date:
             filtered = [
-                e
-                for e in filtered
-                if self._normalize_to_utc(e.timestamp) >= start_date
+                e for e in filtered if self._normalize_to_utc(e.timestamp) >= start_date
             ]
         if query.end_date:
             filtered = [

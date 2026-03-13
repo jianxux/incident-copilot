@@ -552,9 +552,7 @@ class TestInsightsDBFetch:
         now = datetime.utcnow()
         start = now - timedelta(days=7)
 
-        with patch(
-            "src.insights.service.is_supabase_db_enabled", return_value=False
-        ):
+        with patch("src.insights.service.is_supabase_db_enabled", return_value=False):
             with patch.object(
                 service, "_fetch_incidents", wraps=service._fetch_incidents
             ):
@@ -581,7 +579,10 @@ class TestInsightsDBFetch:
         service = InsightsService()
 
         with patch.object(
-            service, "_fetch_incidents", new_callable=AsyncMock, return_value=mock_metrics
+            service,
+            "_fetch_incidents",
+            new_callable=AsyncMock,
+            return_value=mock_metrics,
         ):
             result = await service._fetch_incidents(
                 start=now - timedelta(days=7), end=now
@@ -609,7 +610,10 @@ class TestInsightsDBFetch:
         service = InsightsService()
 
         with patch.object(
-            service, "_fetch_incidents", new_callable=AsyncMock, return_value=mock_incidents
+            service,
+            "_fetch_incidents",
+            new_callable=AsyncMock,
+            return_value=mock_incidents,
         ):
             result = await service.run_analysis()
             assert result.incidents_analyzed == 5
@@ -635,7 +639,10 @@ class TestInsightsDBFetch:
         service = InsightsService()
 
         with patch.object(
-            service, "_fetch_all_incidents", new_callable=AsyncMock, return_value=mock_incidents
+            service,
+            "_fetch_all_incidents",
+            new_callable=AsyncMock,
+            return_value=mock_incidents,
         ):
             digest = await service.generate_digest(generate_ai=False)
             assert digest is not None

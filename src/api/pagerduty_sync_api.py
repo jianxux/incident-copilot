@@ -14,7 +14,9 @@ from ..integrations.pagerduty_sync import (
     trigger_manual_pd_sync,
 )
 
-router = APIRouter(prefix="/api/integrations/pagerduty", tags=["integrations-pagerduty"])
+router = APIRouter(
+    prefix="/api/integrations/pagerduty", tags=["integrations-pagerduty"]
+)
 
 _STALE_SECONDS = 600
 

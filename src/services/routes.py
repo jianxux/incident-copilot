@@ -131,7 +131,9 @@ async def list_service_dependencies(
     return list(edges.values())
 
 
-@router.post("/{service_id}/dependencies", response_model=ServiceDependency, status_code=201)
+@router.post(
+    "/{service_id}/dependencies", response_model=ServiceDependency, status_code=201
+)
 async def create_service_dependency(
     service_id: str,
     request: ServiceDependencyCreate,

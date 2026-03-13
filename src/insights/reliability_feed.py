@@ -151,16 +151,10 @@ class ReliabilityFeedGenerator:
             recommendations.append(
                 "Add capacity planning alerts and auto-scaling policies"
             )
-            recommendations.append(
-                "Implement chaos engineering to test failure modes"
-            )
+            recommendations.append("Implement chaos engineering to test failure modes")
         if categories.get("detection", 0) > 0:
-            recommendations.append(
-                "Review and tune alerting thresholds"
-            )
-            recommendations.append(
-                "Add synthetic monitoring for critical paths"
-            )
+            recommendations.append("Review and tune alerting thresholds")
+            recommendations.append("Add synthetic monitoring for critical paths")
         if categories.get("response", 0) > 0:
             recommendations.append(
                 "Create or update runbooks for common incident types"
@@ -224,9 +218,7 @@ class ReliabilityFeedGenerator:
             summary += f" Health score: {health_score.overall_score}/100."
 
         return ReliabilityDigest(
-            digest_id=self._gen_id(
-                f"digest_{service_name}_{period_start.isoformat()}"
-            ),
+            digest_id=self._gen_id(f"digest_{service_name}_{period_start.isoformat()}"),
             service_name=service_name,
             period_start=period_start,
             period_end=now,

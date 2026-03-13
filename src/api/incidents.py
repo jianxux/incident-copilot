@@ -97,7 +97,9 @@ def _parse_multi_values(raw_values: Iterable[str] | None) -> list[str]:
     return parsed
 
 
-def _extract_multi_query(request: Request, key: str, value: list[str] | None) -> list[str]:
+def _extract_multi_query(
+    request: Request, key: str, value: list[str] | None
+) -> list[str]:
     values: list[str] = []
     if value:
         values.extend(value)
@@ -150,11 +152,11 @@ def _format_incident(row: dict[str, Any]) -> dict[str, Any]:
     metadata = _extract_metadata(row)
 
     created_at = _iso(row.get("triggered_at") or row.get("created_at")) or _now_iso()
-    acknowledged_at = _iso(row.get("acknowledged_at") or metadata.get("acknowledged_at"))
+    acknowledged_at = _iso(
+        row.get("acknowledged_at") or metadata.get("acknowledged_at")
+    )
     resolved_at = _iso(
-        row.get("resolved_at")
-        or row.get("processed_at")
-        or metadata.get("resolved_at")
+        row.get("resolved_at") or row.get("processed_at") or metadata.get("resolved_at")
     )
 
     tta = _compute_duration_ms(created_at, acknowledged_at)
@@ -191,14 +193,24 @@ def _format_incident(row: dict[str, Any]) -> dict[str, Any]:
         "tta": tta,
         "ttr": ttr,
         "tags": metadata.get("tags") if isinstance(metadata.get("tags"), list) else [],
-        "labels": metadata.get("labels") if isinstance(metadata.get("labels"), dict) else {},
+        "labels": (
+            metadata.get("labels") if isinstance(metadata.get("labels"), dict) else {}
+        ),
         "related_incidents": (
             metadata.get("related_incidents")
             if isinstance(metadata.get("related_incidents"), list)
             else []
         ),
-        "runbooks": metadata.get("runbooks") if isinstance(metadata.get("runbooks"), list) else [],
-        "context": metadata.get("context") if isinstance(metadata.get("context"), dict) else None,
+        "runbooks": (
+            metadata.get("runbooks")
+            if isinstance(metadata.get("runbooks"), list)
+            else []
+        ),
+        "context": (
+            metadata.get("context")
+            if isinstance(metadata.get("context"), dict)
+            else None
+        ),
     }
     return incident
 
@@ -274,7 +286,8 @@ def _event_to_timeline(event: dict[str, Any], incident_id: str) -> dict[str, Any
         "type": str(event.get("event_type") or "comment"),
         "description": description,
         "actor": event.get("actor") or metadata.get("actor"),
-        "timestamp": _iso(event.get("occurred_at") or event.get("created_at")) or _now_iso(),
+        "timestamp": _iso(event.get("occurred_at") or event.get("created_at"))
+        or _now_iso(),
         "metadata": metadata,
     }
 
@@ -291,7 +304,9 @@ def _extract_github_context(payload: dict[str, Any] | None) -> dict[str, Any]:
     if isinstance(github, dict):
         return github
 
-    if any(key in payload for key in ("recent_deploys", "recent_prs", "recent_deployments")):
+    if any(
+        key in payload for key in ("recent_deploys", "recent_prs", "recent_deployments")
+    ):
         return payload
 
     return {}
@@ -371,7 +386,9 @@ async def _github_timeline_events_from_context(
 ) -> list[dict[str, Any]]:
     github_context = _extract_github_context(stored_context_payload)
     if not github_context and incident_row:
-        enriched_payload = await _try_ondemand_enrichment(incident_row, tenant_id=tenant_id)
+        enriched_payload = await _try_ondemand_enrichment(
+            incident_row, tenant_id=tenant_id
+        )
         github_context = _extract_github_context(enriched_payload)
 
     if not github_context:
@@ -396,7 +413,9 @@ async def _trigger_pd_sync_best_effort(tenant_id: str) -> None:
 
 
 async def _force_pd_sync_best_effort(tenant_id: str) -> bool:
-    from src.integrations.pagerduty_sync import force_pd_sync_best_effort as _pd_force_sync
+    from src.integrations.pagerduty_sync import (
+        force_pd_sync_best_effort as _pd_force_sync,
+    )
 
     return await _pd_force_sync(tenant_id)
 
@@ -452,7 +471,9 @@ async def _get_incident_row(tenant_id: str, incident_id: str) -> dict[str, Any] 
     from ..db.supabase_db import get_db
 
     db = get_db(use_admin=True)
-    return await db.get_processing_incident(tenant_id=tenant_id, incident_id=incident_id)
+    return await db.get_processing_incident(
+        tenant_id=tenant_id, incident_id=incident_id
+    )
 
 
 async def _update_incident_row(
@@ -477,7 +498,9 @@ async def _update_incident_row(
     result = await db._to_thread(_do_update)
     if result.data:
         return result.data[0]
-    return await db.get_processing_incident(tenant_id=tenant_id, incident_id=incident_id)
+    return await db.get_processing_incident(
+        tenant_id=tenant_id, incident_id=incident_id
+    )
 
 
 async def _list_supabase_incidents(
@@ -499,7 +522,11 @@ async def _list_supabase_incidents(
     db = get_db(use_admin=True)
 
     def _build_query(include_range: bool):
-        query = db.client.table("incidents").select("*", count="exact").eq("tenant_id", tenant_id)
+        query = (
+            db.client.table("incidents")
+            .select("*", count="exact")
+            .eq("tenant_id", tenant_id)
+        )
 
         if statuses:
             db_statuses: set[str] = set()
@@ -699,8 +726,16 @@ async def list_incidents(
     # Trigger PagerDuty background sync (batch upsert, non-blocking after first load)
     await _trigger_pd_sync_best_effort(tenant_id)
 
-    statuses = [s for s in _extract_multi_query(request, "status", status) if s in _ALLOWED_STATUSES]
-    severities = [s for s in _extract_multi_query(request, "severity", severity) if s in _ALLOWED_SEVERITIES]
+    statuses = [
+        s
+        for s in _extract_multi_query(request, "status", status)
+        if s in _ALLOWED_STATUSES
+    ]
+    severities = [
+        s
+        for s in _extract_multi_query(request, "severity", severity)
+        if s in _ALLOWED_SEVERITIES
+    ]
     services = _extract_multi_query(request, "service", service)
     teams = _extract_multi_query(request, "team", team)
 
@@ -761,7 +796,9 @@ async def list_incidents(
 
         merged_rows = list(merged_by_id.values())
         merged_rows.sort(
-            key=lambda row: _as_datetime(row.get("created_at") or row.get("triggered_at"))
+            key=lambda row: _as_datetime(
+                row.get("created_at") or row.get("triggered_at")
+            )
             or datetime.min.replace(tzinfo=UTC),
             reverse=True,
         )
@@ -893,14 +930,10 @@ async def get_incident_stats(
             ttr_values_ms.append(int(item["ttr"]))
 
     mtta_minutes = (
-        (sum(tta_values_ms) / len(tta_values_ms) / 60000.0)
-        if tta_values_ms
-        else 0.0
+        (sum(tta_values_ms) / len(tta_values_ms) / 60000.0) if tta_values_ms else 0.0
     )
     mttr_hours = (
-        (sum(ttr_values_ms) / len(ttr_values_ms) / 3600000.0)
-        if ttr_values_ms
-        else 0.0
+        (sum(ttr_values_ms) / len(ttr_values_ms) / 3600000.0) if ttr_values_ms else 0.0
     )
 
     return {
@@ -920,15 +953,21 @@ async def get_incident_sync_status(auth: AuthContext = Depends(get_auth_context)
     tenant_id = await _require_tenant(auth)
     status_data = _get_pd_sync_status(tenant_id)
     return {
-        "last_attempt": status_data.get("last_attempt")
-        if isinstance(status_data.get("last_attempt"), str)
-        else None,
-        "last_success": status_data.get("last_success")
-        if isinstance(status_data.get("last_success"), str)
-        else None,
-        "last_error": status_data.get("last_error")
-        if isinstance(status_data.get("last_error"), str)
-        else None,
+        "last_attempt": (
+            status_data.get("last_attempt")
+            if isinstance(status_data.get("last_attempt"), str)
+            else None
+        ),
+        "last_success": (
+            status_data.get("last_success")
+            if isinstance(status_data.get("last_success"), str)
+            else None
+        ),
+        "last_error": (
+            status_data.get("last_error")
+            if isinstance(status_data.get("last_error"), str)
+            else None
+        ),
         "status": _derive_pd_sync_state(status_data),
     }
 
@@ -1275,7 +1314,9 @@ async def get_incident_timeline(
             await _github_timeline_events_from_context(
                 incident_id,
                 incident_row=row,
-                stored_context_payload=card_row.get("data") if isinstance(card_row, dict) else None,
+                stored_context_payload=(
+                    card_row.get("data") if isinstance(card_row, dict) else None
+                ),
                 tenant_id=tenant_id,
             )
         )
@@ -1418,8 +1459,16 @@ async def get_similar_incidents(
             rows,
             key=lambda row: (
                 0 if row.get("service") == current_service else 1,
-                0 if _normalize_severity(row.get("severity")) == current_severity else 1,
-                -(int(_as_datetime(row.get("created_at")).timestamp()) if _as_datetime(row.get("created_at")) else 0),
+                (
+                    0
+                    if _normalize_severity(row.get("severity")) == current_severity
+                    else 1
+                ),
+                -(
+                    int(_as_datetime(row.get("created_at")).timestamp())
+                    if _as_datetime(row.get("created_at"))
+                    else 0
+                ),
             ),
         )
 

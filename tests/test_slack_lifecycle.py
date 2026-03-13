@@ -21,7 +21,9 @@ from src.security import encrypt_json
 
 class TestSanitizeChannelName:
     def test_basic(self):
-        assert sanitize_channel_name("abc123", "payments-api") == "inc-abc123-payments-api"
+        assert (
+            sanitize_channel_name("abc123", "payments-api") == "inc-abc123-payments-api"
+        )
 
     def test_uppercase(self):
         assert sanitize_channel_name("ABC", "MyService") == "inc-abc-myservice"
@@ -44,9 +46,7 @@ class TestGetSlackClient:
         settings = MagicMock()
         settings.slack_bot_token = "xoxb-env-token"
 
-        with patch(
-            "src.integrations.slack_lifecycle.oauth_token_store"
-        ) as mock_store:
+        with patch("src.integrations.slack_lifecycle.oauth_token_store") as mock_store:
             mock_store.get_access_token = AsyncMock(return_value="xoxb-oauth-token")
             client = await get_slack_client("tenant-1", settings)
             assert client is not None
@@ -57,9 +57,7 @@ class TestGetSlackClient:
         settings = MagicMock()
         settings.slack_bot_token = "xoxb-env-token"
 
-        with patch(
-            "src.integrations.slack_lifecycle.oauth_token_store"
-        ) as mock_store:
+        with patch("src.integrations.slack_lifecycle.oauth_token_store") as mock_store:
             mock_store.get_access_token = AsyncMock(return_value=None)
             client = await get_slack_client("tenant-1", settings)
             assert client is not None
@@ -88,9 +86,7 @@ class TestGetSlackClient:
         settings = MagicMock()
         settings.slack_bot_token = ""
 
-        with patch(
-            "src.integrations.slack_lifecycle.oauth_token_store"
-        ) as mock_store:
+        with patch("src.integrations.slack_lifecycle.oauth_token_store") as mock_store:
             mock_store.get_access_token = AsyncMock(return_value=None)
             client = await get_slack_client(None, settings)
             assert client is None
@@ -103,13 +99,21 @@ class TestGetSlackClient:
         with (
             patch("src.integrations.slack_lifecycle._slack_team_to_tenant", {}),
             patch("src.integrations.slack_lifecycle.oauth_token_store") as mock_store,
-            patch("src.integrations.slack_lifecycle.is_supabase_db_enabled", return_value=True),
+            patch(
+                "src.integrations.slack_lifecycle.is_supabase_db_enabled",
+                return_value=True,
+            ),
             patch("src.integrations.slack_lifecycle.get_db") as mock_get_db,
         ):
             mock_db = MagicMock()
             encrypted = encrypt_json({"oauth": {"team": {"id": "T08RLHX3C0S"}}})
             mock_db.list_tenants_with_slack_integration = AsyncMock(
-                return_value=[{"id": "tenant-uuid-1", "integrations": {"slack": {"encrypted": encrypted}}}]
+                return_value=[
+                    {
+                        "id": "tenant-uuid-1",
+                        "integrations": {"slack": {"encrypted": encrypted}},
+                    }
+                ]
             )
             mock_get_db.return_value = mock_db
 

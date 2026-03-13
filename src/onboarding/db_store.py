@@ -173,7 +173,9 @@ class OAuthStateStore:
                 )
                 await conn.commit()
             self._initialized = True
-            logger.info("onboarding_oauth_state_db_initialized", path=str(self._db_path))
+            logger.info(
+                "onboarding_oauth_state_db_initialized", path=str(self._db_path)
+            )
 
     async def save(
         self,
@@ -347,7 +349,9 @@ class ServiceCatalogStore:
         import json
 
         created_at = datetime.now(UTC).isoformat()
-        metadata_json = json.dumps(metadata or {}, separators=(",", ":"), sort_keys=True)
+        metadata_json = json.dumps(
+            metadata or {}, separators=(",", ":"), sort_keys=True
+        )
         async with aiosqlite.connect(self._db_path) as conn:
             await conn.execute(
                 """

@@ -112,7 +112,11 @@ class SupabaseDB:
 
         try:
             result = (
-                self.client.table("tenants").select("*").eq("slug", slug).single().execute()
+                self.client.table("tenants")
+                .select("*")
+                .eq("slug", slug)
+                .single()
+                .execute()
             )
             return result.data
         except Exception:
@@ -179,7 +183,11 @@ class SupabaseDB:
 
         try:
             result = (
-                self.client.table("users").select("*").eq("id", user_id).single().execute()
+                self.client.table("users")
+                .select("*")
+                .eq("id", user_id)
+                .single()
+                .execute()
             )
             return result.data
         except Exception:
@@ -191,7 +199,11 @@ class SupabaseDB:
 
         try:
             result = (
-                self.client.table("users").select("*").eq("email", email).single().execute()
+                self.client.table("users")
+                .select("*")
+                .eq("email", email)
+                .single()
+                .execute()
             )
             return result.data
         except Exception:
@@ -598,7 +610,9 @@ class SupabaseDB:
             "updated_at": now,
         }
 
-        existing = await self.get_integration_token(tenant_id=tenant_id, provider=provider)
+        existing = await self.get_integration_token(
+            tenant_id=tenant_id, provider=provider
+        )
         if existing:
             payload["created_at"] = now
             result = (

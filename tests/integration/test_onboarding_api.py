@@ -21,6 +21,7 @@ os.environ.pop("SUPABASE_URL", None)
 @pytest.fixture(scope="module")
 def app():
     from src.main import create_app
+
     return create_app()
 
 
@@ -60,6 +61,7 @@ def authed_client(app, tmp_path_factory):
 @pytest.fixture(scope="module")
 def anon_client(app):
     from fastapi.testclient import TestClient
+
     with TestClient(app) as c:
         yield c
 
@@ -157,10 +159,15 @@ def test_test_integration_pagerduty_stored_token_success(authed_client, monkeypa
 
     async def _mock_get(self, url, headers=None):
         if "/services" in url:
-            return _Resp(200, {
-                "services": [{"html_url": "https://acme-corp.pagerduty.com/services/P123"}],
-                "total": 1,
-            })
+            return _Resp(
+                200,
+                {
+                    "services": [
+                        {"html_url": "https://acme-corp.pagerduty.com/services/P123"}
+                    ],
+                    "total": 1,
+                },
+            )
         raise AssertionError(f"unexpected GET call: {url}")
 
     monkeypatch.setattr("httpx.AsyncClient.post", _unexpected_post)
@@ -185,7 +192,9 @@ def test_test_integration_pagerduty_stored_token_success(authed_client, monkeypa
     assert data["details"]["connected_at"]
 
 
-def test_test_integration_pagerduty_token_info_fails_gracefully(authed_client, monkeypatch):
+def test_test_integration_pagerduty_token_info_fails_gracefully(
+    authed_client, monkeypatch
+):
     """If /services call fails, should still return ok:true without subdomain."""
 
     class _Resp:
@@ -261,7 +270,9 @@ def test_test_integration_pagerduty_expired_refresh_failed(authed_client, monkey
     assert "refresh failed" in data["details"].lower()
 
 
-def test_test_integration_pagerduty_refresh_retries_inside_client_scope(authed_client, monkeypatch):
+def test_test_integration_pagerduty_refresh_retries_inside_client_scope(
+    authed_client, monkeypatch
+):
     from datetime import UTC, datetime, timedelta
 
     monkeypatch.setenv("PAGERDUTY_CLIENT_ID", "pd-client")
@@ -335,12 +346,16 @@ def test_test_integration_pagerduty_refresh_retries_inside_client_scope(authed_c
     assert stored.refresh_token == "new-refresh-token"
 
     client = _ScopedAsyncClient.instances[-1]
-    assert ("post", "https://identity.pagerduty.com/oauth/token", {
-        "grant_type": "refresh_token",
-        "refresh_token": "old-refresh-token",
-        "client_id": "pd-client",
-        "client_secret": "pd-secret",
-    }) in client.calls
+    assert (
+        "post",
+        "https://identity.pagerduty.com/oauth/token",
+        {
+            "grant_type": "refresh_token",
+            "refresh_token": "old-refresh-token",
+            "client_id": "pd-client",
+            "client_secret": "pd-secret",
+        },
+    ) in client.calls
 
 
 def test_import_pagerduty_services_uses_oauth_token_store(authed_client, monkeypatch):
@@ -361,12 +376,20 @@ def test_import_pagerduty_services_uses_oauth_token_store(authed_client, monkeyp
     async def _mock_get(self, url, *args, **kwargs):
         url_str = str(url)
         if "api.pagerduty.com" in url_str and "/services" in url_str:
-            return _Resp(200, {
-                "services": [
-                    {"id": "P1", "name": "Web App", "html_url": "https://acme.pagerduty.com/services/P1",
-                     "description": "Main web app", "status": "active"},
-                ],
-            })
+            return _Resp(
+                200,
+                {
+                    "services": [
+                        {
+                            "id": "P1",
+                            "name": "Web App",
+                            "html_url": "https://acme.pagerduty.com/services/P1",
+                            "description": "Main web app",
+                            "status": "active",
+                        },
+                    ],
+                },
+            )
         return await original_get(self, url, *args, **kwargs)
 
     monkeypatch.setattr("httpx.AsyncClient.get", _mock_get)
@@ -380,7 +403,9 @@ def test_import_pagerduty_services_uses_oauth_token_store(authed_client, monkeyp
         )
     )
 
-    resp = authed_client.post("/dashboard/api/onboarding/integrations/pagerduty/import-services")
+    resp = authed_client.post(
+        "/dashboard/api/onboarding/integrations/pagerduty/import-services"
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["ok"] is True
@@ -389,7 +414,9 @@ def test_import_pagerduty_services_uses_oauth_token_store(authed_client, monkeyp
 
 def test_import_pagerduty_services_not_connected(authed_client):
     """Import should return ok:false when no PagerDuty token exists."""
-    resp = authed_client.post("/dashboard/api/onboarding/integrations/pagerduty/import-services")
+    resp = authed_client.post(
+        "/dashboard/api/onboarding/integrations/pagerduty/import-services"
+    )
     assert resp.status_code == 200
     assert resp.json()["ok"] is False
 
@@ -401,7 +428,9 @@ def test_service_api_list_empty(anon_client):
 
 
 def test_service_api_create(anon_client):
-    resp = anon_client.post("/api/services", json={"name": "test-svc", "description": "Test"})
+    resp = anon_client.post(
+        "/api/services", json={"name": "test-svc", "description": "Test"}
+    )
     assert resp.status_code == 201
     assert resp.json()["name"] == "test-svc"
 

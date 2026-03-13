@@ -67,7 +67,9 @@ async def connect_provider(
         "pagerduty": f"{settings.app_url}/api/integrations/oauth/pagerduty/callback",
         "slack": f"{settings.app_url}/api/integrations/oauth/slack/callback",
     }
-    redirect_uri = legacy_callback_map.get(resolved, f"{settings.app_url}/api/integrations/{resolved}/callback")
+    redirect_uri = legacy_callback_map.get(
+        resolved, f"{settings.app_url}/api/integrations/{resolved}/callback"
+    )
     state = await oauth_token_store.save_state(
         provider=resolved,
         tenant_id=auth.tenant_id,
@@ -107,7 +109,9 @@ async def callback_provider_legacy(
     error: str | None = None,
 ):
     """Legacy callback path alias — delegates to generic handler."""
-    return await callback_provider(provider=provider, code=code, state=state, error=error)
+    return await callback_provider(
+        provider=provider, code=code, state=state, error=error
+    )
 
 
 @router.get("/{provider}/callback")
@@ -176,7 +180,12 @@ async def callback_provider(
     scopes = _parse_scopes(token_data.get("scope"), resolved)
 
     import sys
-    print(f"DEBUG_OAUTH: pre_upsert provider={resolved} tenant={state_data.tenant_id}", flush=True, file=sys.stderr)
+
+    print(
+        f"DEBUG_OAUTH: pre_upsert provider={resolved} tenant={state_data.tenant_id}",
+        flush=True,
+        file=sys.stderr,
+    )
 
     try:
         await oauth_token_store.upsert_token(
@@ -192,17 +201,27 @@ async def callback_provider(
         print(f"DEBUG_OAUTH: upsert_token FAILED: {e}", flush=True, file=sys.stderr)
 
     # Slack-specific: store integration record + register team mapping
-    print(f"DEBUG_OAUTH: entering slack block, resolved={resolved}", flush=True, file=sys.stderr)
+    print(
+        f"DEBUG_OAUTH: entering slack block, resolved={resolved}",
+        flush=True,
+        file=sys.stderr,
+    )
     if resolved == "slack":
         team = token_data.get("team")
         team_id_str = team.get("id") if isinstance(team, dict) else None
         if team_id_str:
             from ..integrations.slack_lifecycle import register_slack_team_mapping
-            register_slack_team_mapping(team_id=team_id_str, tenant_id=state_data.tenant_id)
+
+            register_slack_team_mapping(
+                team_id=team_id_str, tenant_id=state_data.tenant_id
+            )
 
         from ..security import encrypt_json
+
         authed_user = token_data.get("authed_user")
-        authed_user_token = authed_user.get("access_token") if isinstance(authed_user, dict) else None
+        authed_user_token = (
+            authed_user.get("access_token") if isinstance(authed_user, dict) else None
+        )
         integration_record = {
             "oauth": {
                 "bot_token": token_data["access_token"],
@@ -219,9 +238,17 @@ async def callback_provider(
                 state_data.tenant_id,
                 {"slack": {"encrypted": encrypt_json(integration_record)}},
             )
-            print(f"DEBUG_OAUTH: tenant_integrations SAVED team={team_id_str}", flush=True, file=sys.stderr)
+            print(
+                f"DEBUG_OAUTH: tenant_integrations SAVED team={team_id_str}",
+                flush=True,
+                file=sys.stderr,
+            )
         except Exception as e:
-            print(f"DEBUG_OAUTH: tenant_integrations FAILED: {e}", flush=True, file=sys.stderr)
+            print(
+                f"DEBUG_OAUTH: tenant_integrations FAILED: {e}",
+                flush=True,
+                file=sys.stderr,
+            )
 
     # Update onboarding checklist if applicable
     checklist_map = {
@@ -234,6 +261,7 @@ async def callback_provider(
     if checklist_step:
         try:
             from ..onboarding import checklist_store
+
             await checklist_store.set_step(state_data.tenant_id, checklist_step, True)
         except Exception:
             logger.warning("checklist_update_failed", provider=resolved)
@@ -270,7 +298,9 @@ async def provider_status(
     return {
         "provider": resolved,
         "connected": bool(token),
-        "token_expiry": token.token_expiry.isoformat() if token and token.token_expiry else None,
+        "token_expiry": (
+            token.token_expiry.isoformat() if token and token.token_expiry else None
+        ),
         "scopes": token.scopes if token else [],
     }
 
@@ -468,7 +498,9 @@ async def _load_pagerduty_stored_details(tenant_id: str) -> dict:
         oauth = decrypted.get("oauth", {}) if isinstance(decrypted, dict) else {}
         scopes = oauth.get("scope")
         if isinstance(scopes, str):
-            scopes = [s.strip() for s in scopes.replace(",", " ").split(" ") if s.strip()]
+            scopes = [
+                s.strip() for s in scopes.replace(",", " ").split(" ") if s.strip()
+            ]
         elif not isinstance(scopes, list):
             scopes = None
         return {
@@ -632,7 +664,6 @@ async def _revoke_token(provider: str, access_token: str) -> bool:
     return response.status_code in (200, 201, 202, 204)
 
 
-
 def _parse_scopes(scope: str | None, provider: str) -> list[str]:
     if not scope:
         config = get_provider_config(provider)
@@ -642,7 +673,6 @@ def _parse_scopes(scope: str | None, provider: str) -> list[str]:
         return [s.strip() for s in scope.split(",") if s.strip()]
 
     return [s.strip() for s in scope.split(" ") if s.strip()]
-
 
 
 def _redirect_result(base_url: str, provider: str, ok: bool, reason: str):

@@ -52,7 +52,9 @@ def _parse_dt(value: Any) -> datetime | None:
         return _to_utc(value)
     if isinstance(value, str):
         try:
-            return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(
+                timezone.utc
+            )
         except ValueError:
             return None
     return None
@@ -89,7 +91,9 @@ def _is_acknowledged_event(event: dict[str, Any]) -> bool:
         data.get("to_status"),
         data.get("new_status"),
     ]
-    return any(str(v or "").lower() in _ACKNOWLEDGED_STATUS_VALUES for v in status_values)
+    return any(
+        str(v or "").lower() in _ACKNOWLEDGED_STATUS_VALUES for v in status_values
+    )
 
 
 def _row_to_metric(
@@ -99,7 +103,11 @@ def _row_to_metric(
     metadata = _as_dict(row.get("metadata"))
     incident_id = str(row.get("id", ""))
 
-    triggered_at = _parse_dt(row.get("triggered_at")) or _parse_dt(row.get("created_at")) or _utc_now()
+    triggered_at = (
+        _parse_dt(row.get("triggered_at"))
+        or _parse_dt(row.get("created_at"))
+        or _utc_now()
+    )
     acknowledged_at = (
         _parse_dt(row.get("acknowledged_at"))
         or _parse_dt(metadata.get("acknowledged_at"))
@@ -162,7 +170,9 @@ def _stats_from_metrics(
         p90_mttr_seconds=_percentile(mttr_values, 90) if mttr_values else None,
         incidents_count=len(metrics),
         resolved_count=len(mttr_values),
-        mean_time_to_acknowledge_seconds=statistics.mean(mtta_values) if mtta_values else None,
+        mean_time_to_acknowledge_seconds=(
+            statistics.mean(mtta_values) if mtta_values else None
+        ),
         mean_time_to_context_card_seconds=None,
     )
 
@@ -234,7 +244,9 @@ async def _query_ack_map(
             continue
         if not _is_acknowledged_event(event):
             continue
-        ack_at = _parse_dt(event.get("occurred_at")) or _parse_dt(event.get("created_at"))
+        ack_at = _parse_dt(event.get("occurred_at")) or _parse_dt(
+            event.get("created_at")
+        )
         if ack_at:
             ack_by_incident[incident_id] = ack_at
 
@@ -259,7 +271,9 @@ async def _load_supabase_metrics(
         limit=limit,
     )
     incident_ids = [str(row.get("id", "")) for row in rows if row.get("id")]
-    ack_by_incident = await _query_ack_map(incident_ids=incident_ids, tenant_id=tenant_id)
+    ack_by_incident = await _query_ack_map(
+        incident_ids=incident_ids, tenant_id=tenant_id
+    )
     return [_row_to_metric(row, ack_by_incident) for row in rows]
 
 
@@ -279,7 +293,9 @@ def _build_service_health(metrics: list[IncidentMetrics]) -> list[ServiceHealth]
     rows: list[ServiceHealth] = []
     for service_name, service_metrics in grouped.items():
         critical_count = sum(1 for m in service_metrics if m.severity == "critical")
-        last_incident = max(service_metrics, key=lambda m: m.triggered_at).triggered_at.isoformat()
+        last_incident = max(
+            service_metrics, key=lambda m: m.triggered_at
+        ).triggered_at.isoformat()
         rows.append(
             ServiceHealth(
                 service_id=service_name,
@@ -372,8 +388,12 @@ def _build_trends(
                 date=d.isoformat(),
                 incidents=len(day_metrics),
                 resolved=len(mttr_values),
-                mttr_hours=(statistics.mean(mttr_values) / 3600) if mttr_values else 0.0,
-                mtta_minutes=(statistics.mean(mtta_values) / 60) if mtta_values else 0.0,
+                mttr_hours=(
+                    (statistics.mean(mttr_values) / 3600) if mttr_values else 0.0
+                ),
+                mtta_minutes=(
+                    (statistics.mean(mtta_values) / 60) if mtta_values else 0.0
+                ),
             )
         )
 
@@ -591,7 +611,9 @@ async def get_incident_metrics(
                 limit=limit,
             )
         except Exception as exc:
-            logger.warning("analytics_incidents_supabase_failed_fallback", error=str(exc))
+            logger.warning(
+                "analytics_incidents_supabase_failed_fallback", error=str(exc)
+            )
 
     metrics = await analytics_store.get_metrics_for_period(
         start=start,
@@ -658,7 +680,9 @@ async def compare_periods(
             )
             return PeriodComparison.from_stats(current_stats, previous_stats)
         except Exception as exc:
-            logger.warning("analytics_comparison_supabase_failed_fallback", error=str(exc))
+            logger.warning(
+                "analytics_comparison_supabase_failed_fallback", error=str(exc)
+            )
 
     comparison = await tracker.compare_to_previous(
         days=days,
@@ -699,8 +723,12 @@ async def get_analytics_summary(
                 limit=5000,
             )
 
-            current_incident_ids = [str(row.get("id", "")) for row in current_rows if row.get("id")]
-            previous_incident_ids = [str(row.get("id", "")) for row in previous_rows if row.get("id")]
+            current_incident_ids = [
+                str(row.get("id", "")) for row in current_rows if row.get("id")
+            ]
+            previous_incident_ids = [
+                str(row.get("id", "")) for row in previous_rows if row.get("id")
+            ]
             ack_current = await _query_ack_map(
                 incident_ids=current_incident_ids,
                 tenant_id=auth.tenant_id if auth else None,
@@ -710,7 +738,9 @@ async def get_analytics_summary(
                 tenant_id=auth.tenant_id if auth else None,
             )
             current_metrics = [_row_to_metric(row, ack_current) for row in current_rows]
-            previous_metrics = [_row_to_metric(row, ack_previous) for row in previous_rows]
+            previous_metrics = [
+                _row_to_metric(row, ack_previous) for row in previous_rows
+            ]
 
             current_stats = _stats_from_metrics(
                 current_metrics,

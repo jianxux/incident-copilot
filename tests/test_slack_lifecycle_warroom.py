@@ -73,9 +73,16 @@ class TestPostIncidentNotification:
     @pytest.mark.asyncio
     async def test_posts_to_channel(self):
         mock_client = AsyncMock()
-        mock_client.chat_postMessage.return_value = {"ok": True, "ts": "1234.5678", "channel": "C999"}
+        mock_client.chat_postMessage.return_value = {
+            "ok": True,
+            "ts": "1234.5678",
+            "channel": "C999",
+        }
 
-        with patch("src.integrations.slack_lifecycle.get_slack_client", return_value=mock_client):
+        with patch(
+            "src.integrations.slack_lifecycle.get_slack_client",
+            return_value=mock_client,
+        ):
             result = await post_incident_notification(
                 tenant_id=None,
                 channel="#incidents",
@@ -96,7 +103,9 @@ class TestPostIncidentNotification:
 
     @pytest.mark.asyncio
     async def test_returns_none_when_no_client(self):
-        with patch("src.integrations.slack_lifecycle.get_slack_client", return_value=None):
+        with patch(
+            "src.integrations.slack_lifecycle.get_slack_client", return_value=None
+        ):
             result = await post_incident_notification(
                 tenant_id=None,
                 channel="#incidents",
@@ -120,14 +129,19 @@ class TestCreateWarroomFromNotification:
         mock_client.conversations_setTopic.return_value = {"ok": True}
         mock_client.chat_postMessage.return_value = {"ok": True, "ts": "111.222"}
 
-        with patch("src.integrations.slack_lifecycle.get_slack_client", return_value=mock_client):
+        with patch(
+            "src.integrations.slack_lifecycle.get_slack_client",
+            return_value=mock_client,
+        ):
             result = await create_warroom_from_notification(
                 tenant_id=None,
                 incident_id="INC-12345678",
                 service="payments-api",
                 original_channel_id="C_INCIDENTS",
                 original_ts="100.200",
-                context_blocks=[{"type": "section", "text": {"type": "mrkdwn", "text": "test"}}],
+                context_blocks=[
+                    {"type": "section", "text": {"type": "mrkdwn", "text": "test"}}
+                ],
             )
 
         assert result is not None
@@ -138,9 +152,15 @@ class TestCreateWarroomFromNotification:
     @pytest.mark.asyncio
     async def test_raises_on_failure(self):
         mock_client = AsyncMock()
-        mock_client.conversations_create.return_value = {"ok": False, "error": "name_taken"}
+        mock_client.conversations_create.return_value = {
+            "ok": False,
+            "error": "name_taken",
+        }
 
-        with patch("src.integrations.slack_lifecycle.get_slack_client", return_value=mock_client):
+        with patch(
+            "src.integrations.slack_lifecycle.get_slack_client",
+            return_value=mock_client,
+        ):
             with pytest.raises(RuntimeError, match="name_taken"):
                 await create_warroom_from_notification(
                     tenant_id=None,
@@ -158,7 +178,10 @@ class TestCreateWarroomFromNotification:
             response=mock_response,
         )
 
-        with patch("src.integrations.slack_lifecycle.get_slack_client", return_value=mock_client):
+        with patch(
+            "src.integrations.slack_lifecycle.get_slack_client",
+            return_value=mock_client,
+        ):
             with pytest.raises(RuntimeError, match="missing_scope"):
                 await create_warroom_from_notification(
                     tenant_id=None,
@@ -169,9 +192,15 @@ class TestCreateWarroomFromNotification:
     @pytest.mark.asyncio
     async def test_raises_on_api_failure(self):
         mock_client = AsyncMock()
-        mock_client.conversations_create.return_value = {"ok": False, "error": "restricted_action"}
+        mock_client.conversations_create.return_value = {
+            "ok": False,
+            "error": "restricted_action",
+        }
 
-        with patch("src.integrations.slack_lifecycle.get_slack_client", return_value=mock_client):
+        with patch(
+            "src.integrations.slack_lifecycle.get_slack_client",
+            return_value=mock_client,
+        ):
             with pytest.raises(RuntimeError, match="restricted_action"):
                 await create_warroom_from_notification(
                     tenant_id=None,
@@ -203,7 +232,12 @@ class TestHandleStartWarroom:
 
         with patch(
             "src.integrations.slack_interactions.create_warroom_from_notification",
-            new=AsyncMock(return_value={"channel_id": "C_WAR", "channel_name": "inc-inc-123-payments-api"}),
+            new=AsyncMock(
+                return_value={
+                    "channel_id": "C_WAR",
+                    "channel_name": "inc-inc-123-payments-api",
+                }
+            ),
         ) as mock_create:
             await _handle_start_warroom(payload)
 
@@ -262,7 +296,12 @@ class TestHandleStartWarroom:
 
         with patch(
             "src.integrations.slack_interactions.create_warroom_from_notification",
-            new=AsyncMock(return_value={"channel_id": "C_WAR", "channel_name": "inc-inc-123-payments-api"}),
+            new=AsyncMock(
+                return_value={
+                    "channel_id": "C_WAR",
+                    "channel_name": "inc-inc-123-payments-api",
+                }
+            ),
         ) as mock_create:
             await _handle_start_warroom(payload)
 
@@ -276,7 +315,10 @@ class TestPostUpdateToIncident:
         mock_client = AsyncMock()
         mock_client.chat_postMessage.return_value = {"ok": True}
 
-        with patch("src.integrations.slack_lifecycle.get_slack_client", return_value=mock_client):
+        with patch(
+            "src.integrations.slack_lifecycle.get_slack_client",
+            return_value=mock_client,
+        ):
             ok = await post_update_to_incident(
                 tenant_id=None,
                 warroom_channel_id="C_WARROOM",
@@ -295,7 +337,10 @@ class TestPostUpdateToIncident:
         mock_client = AsyncMock()
         mock_client.chat_postMessage.return_value = {"ok": True}
 
-        with patch("src.integrations.slack_lifecycle.get_slack_client", return_value=mock_client):
+        with patch(
+            "src.integrations.slack_lifecycle.get_slack_client",
+            return_value=mock_client,
+        ):
             ok = await post_update_to_incident(
                 tenant_id=None,
                 warroom_channel_id=None,
@@ -311,7 +356,9 @@ class TestPostUpdateToIncident:
 
     @pytest.mark.asyncio
     async def test_returns_false_no_client(self):
-        with patch("src.integrations.slack_lifecycle.get_slack_client", return_value=None):
+        with patch(
+            "src.integrations.slack_lifecycle.get_slack_client", return_value=None
+        ):
             ok = await post_update_to_incident(
                 tenant_id=None,
                 warroom_channel_id=None,

@@ -43,8 +43,11 @@ class TestGamificationModels:
     def test_leaderboard_entry(self):
         uid = uuid.uuid4()
         entry = LeaderboardEntry(
-            rank=1, user_id=uid, user_name="Alice",
-            value=500.0, formatted_value="500",
+            rank=1,
+            user_id=uid,
+            user_name="Alice",
+            value=500.0,
+            formatted_value="500",
         )
         assert entry.rank == 1
 

@@ -83,7 +83,15 @@ class MemoryHealthChecker:
         stale_days: int | None = None
         if latest_created_at is not None:
             stale_days = max(
-                (datetime.now(UTC) - (latest_created_at.astimezone(UTC) if latest_created_at.tzinfo else latest_created_at.replace(tzinfo=UTC))).days, 0
+                (
+                    datetime.now(UTC)
+                    - (
+                        latest_created_at.astimezone(UTC)
+                        if latest_created_at.tzinfo
+                        else latest_created_at.replace(tzinfo=UTC)
+                    )
+                ).days,
+                0,
             )
 
         recall_hit_rate = await self._recall_hit_rate(pool)

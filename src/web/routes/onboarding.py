@@ -49,7 +49,9 @@ async def dashboard_list_services(
                 "team": service.team,
                 "source": (service.metadata or {}).get("source", "manual"),
                 "metadata": service.metadata or {},
-                "created_at": service.created_at.isoformat() if service.created_at else None,
+                "created_at": (
+                    service.created_at.isoformat() if service.created_at else None
+                ),
             }
             for service in services
         ]
@@ -233,7 +235,9 @@ async def get_onboarding_status(
             token_rec = await oauth_token_store.get_token(tenant_id, provider_name)
             if token_rec and token_rec.access_token:
                 result[provider_name] = True
-                date_str = token_rec.created_at.isoformat() if token_rec.created_at else ""
+                date_str = (
+                    token_rec.created_at.isoformat() if token_rec.created_at else ""
+                )
                 oauth_dates[provider_name] = date_str
                 details[provider_name] = {
                     "scopes": token_rec.scopes,
@@ -264,7 +268,9 @@ async def get_onboarding_status(
                     try:
                         config = row.get("config", {})
                         encrypted = (
-                            config.get("encrypted", "") if isinstance(config, dict) else ""
+                            config.get("encrypted", "")
+                            if isinstance(config, dict)
+                            else ""
                         )
                         if encrypted:
                             decrypted = decrypt_json(encrypted)
@@ -309,7 +315,9 @@ async def get_onboarding_status(
             cfg = slack_settings.data[0].get("config", {})
             if "slack" not in details:
                 details["slack"] = {}
-            details["slack"]["incidents_channel"] = cfg.get("incidents_channel", "#incidents")
+            details["slack"]["incidents_channel"] = cfg.get(
+                "incidents_channel", "#incidents"
+            )
     except Exception:
         pass
 
@@ -415,12 +423,16 @@ async def test_integration(
                 )
             except Exception as exc:
                 logger.warning(
-                    "integration_config_lookup_failed", provider=provider, error=str(exc)
+                    "integration_config_lookup_failed",
+                    provider=provider,
+                    error=str(exc),
                 )
 
             if rows and rows.data:
                 config = rows.data[0].get("config", {})
-                encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
+                encrypted = (
+                    config.get("encrypted", "") if isinstance(config, dict) else ""
+                )
                 if encrypted:
                     decrypted = decrypt_json(encrypted)
                 oauth = decrypted.get("oauth", {})
@@ -438,9 +450,7 @@ async def test_integration(
                 raw = oauth.get("scope")
                 if isinstance(raw, str):
                     return [
-                        s.strip()
-                        for s in raw.replace(",", " ").split(" ")
-                        if s.strip()
+                        s.strip() for s in raw.replace(",", " ").split(" ") if s.strip()
                     ]
                 if isinstance(raw, list):
                     return [str(s).strip() for s in raw if str(s).strip()]
@@ -548,7 +558,9 @@ async def test_integration(
                 new_expiry = None
                 try:
                     expires_in = new_tokens.get("expires_in")
-                    expires_in_value = int(expires_in) if expires_in is not None else None
+                    expires_in_value = (
+                        int(expires_in) if expires_in is not None else None
+                    )
                 except (TypeError, ValueError):
                     expires_in_value = None
                 if expires_in_value and expires_in_value > 0:
@@ -568,7 +580,9 @@ async def test_integration(
                     tenant_id=tenant_id,
                     provider="pagerduty",
                     access_token=new_access_token,
-                    refresh_token=new_tokens.get("refresh_token", token_rec.refresh_token),
+                    refresh_token=new_tokens.get(
+                        "refresh_token", token_rec.refresh_token
+                    ),
                     token_expiry=new_expiry,
                     scopes=new_scopes,
                 )
@@ -587,9 +601,14 @@ async def test_integration(
 
             token = oauth.get("access_token", "")
             team = oauth.get("team", {})
-            team_name = team.get("name", "unknown") if isinstance(team, dict) else "unknown"
+            team_name = (
+                team.get("name", "unknown") if isinstance(team, dict) else "unknown"
+            )
             if not token:
-                return {"ok": True, "details": f"Connected to {team_name} (no token to verify)"}
+                return {
+                    "ok": True,
+                    "details": f"Connected to {team_name} (no token to verify)",
+                }
             async with httpx.AsyncClient(timeout=10) as client:
                 resp = await client.post(
                     "https://slack.com/api/auth.test",
@@ -689,7 +708,9 @@ async def import_pagerduty_services(
 
                 if rows.data:
                     config = rows.data[0].get("config", {})
-                    encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
+                    encrypted = (
+                        config.get("encrypted", "") if isinstance(config, dict) else ""
+                    )
                     if encrypted:
                         decrypted = decrypt_json(encrypted)
                         oauth = decrypted.get("oauth", {})
@@ -750,12 +771,16 @@ async def import_pagerduty_services(
             req = ServiceCreate(
                 name=name,
                 description=pd_svc.get("description") or f"Imported from PagerDuty",
-                team=pd_svc.get("teams", [{}])[0].get("summary")
-                if pd_svc.get("teams")
-                else None,
-                criticality=ServiceCriticality.CRITICAL
-                if pd_svc.get("alert_creation") == "create_alerts_and_incidents"
-                else ServiceCriticality.MEDIUM,
+                team=(
+                    pd_svc.get("teams", [{}])[0].get("summary")
+                    if pd_svc.get("teams")
+                    else None
+                ),
+                criticality=(
+                    ServiceCriticality.CRITICAL
+                    if pd_svc.get("alert_creation") == "create_alerts_and_incidents"
+                    else ServiceCriticality.MEDIUM
+                ),
                 metadata={
                     "source": "pagerduty",
                     "pagerduty_id": pd_svc.get("id"),
@@ -774,7 +799,9 @@ async def import_pagerduty_services(
 
     except HTTPException as he:
         logger.warning(
-            "import_pagerduty_services_http_error", status=he.status_code, detail=he.detail
+            "import_pagerduty_services_http_error",
+            status=he.status_code,
+            detail=he.detail,
         )
         return {"ok": False, "error": he.detail}
     except Exception as exc:

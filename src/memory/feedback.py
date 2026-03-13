@@ -247,14 +247,18 @@ class FeedbackStore:
         average = aggregate / len(rows)
         return max(-0.25, min(0.25, round(average * 0.20, 4)))
 
-    async def get_feedback_summary(self, recalled_incident_id: str) -> dict[str, int | float]:
+    async def get_feedback_summary(
+        self, recalled_incident_id: str
+    ) -> dict[str, int | float]:
         """Return aggregate feedback statistics for one recalled incident."""
         return await asyncio.to_thread(
             self._get_feedback_summary_sync,
             recalled_incident_id,
         )
 
-    def _get_feedback_summary_sync(self, recalled_incident_id: str) -> dict[str, int | float]:
+    def _get_feedback_summary_sync(
+        self, recalled_incident_id: str
+    ) -> dict[str, int | float]:
         conn = self._connect()
         try:
             row = conn.execute(

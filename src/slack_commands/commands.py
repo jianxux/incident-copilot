@@ -269,9 +269,7 @@ class CommandHandler:
 
         # Look up the incident for service name
         incidents = await incident_store.get_all_incidents()
-        incident = next(
-            (i for i in incidents if i.incident_id == incident_id), None
-        )
+        incident = next((i for i in incidents if i.incident_id == incident_id), None)
         service = incident.service_name if incident else "unknown"
 
         from ..integrations.slack_lifecycle import create_warroom_from_notification

@@ -139,7 +139,10 @@ class TestIncidentFormatting:
             },
         }
         result = self._format(row)
-        assert result["verdict_summary"] == "Memory leak in worker process caused OOM kills"
+        assert (
+            result["verdict_summary"]
+            == "Memory leak in worker process caused OOM kills"
+        )
 
     def test_verdict_from_ai_verdict_key(self):
         row = {
@@ -344,7 +347,9 @@ def test_list_incidents_merges_supabase_and_memory_with_supabase_wins(monkeypatc
     ]
 
     monkeypatch.setattr("src.api.incidents.is_supabase_db_enabled", lambda: True)
-    monkeypatch.setattr("src.api.incidents._list_supabase_incidents", fake_supabase_list)
+    monkeypatch.setattr(
+        "src.api.incidents._list_supabase_incidents", fake_supabase_list
+    )
     monkeypatch.setattr(
         "src.api.incidents.incident_store.get_all_incidents",
         AsyncMock(return_value=memory_rows),
@@ -593,7 +598,9 @@ class TestDashboardWrapperEndpoints:
 
         from src.main import create_app
 
-        monkeypatch.setattr("src.supabase_client.is_supabase_auth_enabled", lambda: True)
+        monkeypatch.setattr(
+            "src.supabase_client.is_supabase_auth_enabled", lambda: True
+        )
 
         async def _no_auth(_request):
             return None, None
@@ -610,7 +617,9 @@ class TestDashboardWrapperEndpoints:
 
         from src.main import create_app
 
-        monkeypatch.setattr("src.supabase_client.is_supabase_auth_enabled", lambda: True)
+        monkeypatch.setattr(
+            "src.supabase_client.is_supabase_auth_enabled", lambda: True
+        )
 
         async def _no_auth(_request):
             return None, None
