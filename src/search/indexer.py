@@ -1,8 +1,9 @@
 """Indexing service for incidents, runbooks, and postmortems."""
 
 import asyncio
-from datetime import datetime, UTC
-from typing import Any, Callable, Protocol
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any, Protocol
 
 from .engine import SearchEngine
 from .models import IndexedDocument, SearchableType

@@ -1,7 +1,7 @@
 """JSON export formatter with schema options."""
 
 import json
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 from ..models import (

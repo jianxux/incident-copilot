@@ -770,7 +770,7 @@ async def import_pagerduty_services(
                 continue
             req = ServiceCreate(
                 name=name,
-                description=pd_svc.get("description") or f"Imported from PagerDuty",
+                description=pd_svc.get("description") or "Imported from PagerDuty",
                 team=(
                     pd_svc.get("teams", [{}])[0].get("summary")
                     if pd_svc.get("teams")

@@ -1,7 +1,7 @@
 """GitHub integration adapter."""
 
 import asyncio
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import structlog
@@ -275,7 +275,9 @@ class GitHubAdapter:
         self, client: httpx.AsyncClient, repo: str, since_hours: int
     ) -> list[GitHubPullRequest]:
         """Fetch recently merged pull requests."""
-        since = (datetime.now(UTC) - timedelta(hours=since_hours)).isoformat() + "Z"
+        since = (
+            datetime.now(UTC) - timedelta(hours=since_hours)
+        ).isoformat() + "Z"  # noqa: F841 — TODO: use in query params
 
         url = f"{self.BASE_URL}/repos/{repo}/pulls"
         params = {

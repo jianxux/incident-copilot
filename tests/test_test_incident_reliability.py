@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.models import AILogSummary, ContextCard, PagerDutyIncident, Severity
+from src.models import ContextCard, PagerDutyIncident, Severity
 from src.onboarding.test_incident import _process
 
 

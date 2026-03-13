@@ -1,8 +1,5 @@
 """Entitlement middleware that gates features based on tenant plan."""
 
-from functools import wraps
-from collections.abc import Callable
-
 import structlog
 from fastapi import Depends, HTTPException, status
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 import asyncpg
 import structlog
@@ -203,13 +203,11 @@ class MemoryHealthChecker:
         if not configured:
             return []
 
-        rows = await pool.fetch(
-            f"""  # nosec B608
+        rows = await pool.fetch(f"""  # nosec B608
             SELECT DISTINCT UNNEST(services_affected) AS service
             FROM {self.config.table_name}
             WHERE array_length(services_affected, 1) > 0
-            """
-        )
+            """)
         observed = {str(row["service"]) for row in rows}
         return sorted(list(configured - observed))
 

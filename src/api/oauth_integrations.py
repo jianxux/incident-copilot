@@ -196,7 +196,7 @@ async def callback_provider(
             token_expiry=expiry,
             scopes=scopes,
         )
-        print(f"DEBUG_OAUTH: upsert_token OK", flush=True, file=sys.stderr)
+        print("DEBUG_OAUTH: upsert_token OK", flush=True, file=sys.stderr)
     except Exception as e:
         print(f"DEBUG_OAUTH: upsert_token FAILED: {e}", flush=True, file=sys.stderr)
 

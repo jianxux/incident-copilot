@@ -2,7 +2,7 @@
 
 import statistics
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 import structlog
@@ -36,13 +36,13 @@ _SEVERITY_KEYS = ("critical", "high", "medium", "low", "info")
 
 
 def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _to_utc(dt: datetime) -> datetime:
     if dt.tzinfo:
-        return dt.astimezone(timezone.utc)
-    return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(UTC)
+    return dt.replace(tzinfo=UTC)
 
 
 def _parse_dt(value: Any) -> datetime | None:
@@ -52,9 +52,7 @@ def _parse_dt(value: Any) -> datetime | None:
         return _to_utc(value)
     if isinstance(value, str):
         try:
-            return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(
-                timezone.utc
-            )
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC)
         except ValueError:
             return None
     return None
@@ -493,7 +491,7 @@ def _demo_trends(period: Literal["day", "week", "month", "quarter"]) -> list[Tre
     else:
         points = 12
 
-    end = datetime.now(timezone.utc).date()
+    end = datetime.now(UTC).date()
     trends: list[TrendData] = []
 
     for idx in range(points):

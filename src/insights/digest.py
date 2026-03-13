@@ -5,7 +5,7 @@ Statistics, pattern detection, and anomaly detection run locally.
 """
 
 import hashlib
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 import structlog
 

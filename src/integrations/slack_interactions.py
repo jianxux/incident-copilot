@@ -15,7 +15,6 @@ from ..actions.executor import ActionExecutor
 from .slack_lifecycle import (
     create_warroom_from_notification,
     get_slack_client,
-    post_status_update,
 )
 
 logger = structlog.get_logger()

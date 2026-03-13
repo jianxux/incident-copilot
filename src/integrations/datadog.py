@@ -1,6 +1,6 @@
 """Datadog integration adapter."""
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import structlog

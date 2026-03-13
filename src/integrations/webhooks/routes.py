@@ -69,7 +69,7 @@ async def update_webhook(
     for field, value in update_data.items():
         setattr(webhook, field, value)
 
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
 
     webhook.updated_at = datetime.now(UTC)
 
@@ -94,7 +94,7 @@ async def rotate_secret(webhook_id: UUID, org_id: OrgId) -> WebhookConfig:
         raise HTTPException(status_code=404, detail="Webhook not found")
 
     webhook.secret = generate_signing_secret()
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
 
     webhook.updated_at = datetime.now(UTC)
 

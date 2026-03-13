@@ -53,7 +53,7 @@ async def require_dashboard_auth(request: Request) -> dict[str, str]:
     return {"tenant_id": tenant_id, "user_id": user_id}
 
 
-class DashboardAuthRedirect(Exception):
+class DashboardAuthRedirect(Exception):  # noqa: N818 — redirect, not a typical error
     """Raised to redirect unauthenticated browser requests to /login."""
 
     pass

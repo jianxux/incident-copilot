@@ -16,8 +16,8 @@ from .integrations import (
     GitHubAdapter,
     GitLabAdapter,
     SlackAdapter,
+    slack_lifecycle,
 )
-from .integrations import slack_lifecycle
 from .integrations.oncall_legacy import OnCallAdapter
 from .memory import (
     IncidentCapture,

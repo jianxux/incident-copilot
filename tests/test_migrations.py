@@ -14,7 +14,6 @@ from src.migrations.opsgenie.importer import OpsgenieImporter
 from src.migrations.opsgenie.mapper import OpsgenieMapper
 from src.migrations.opsgenie.validator import OpsgenieValidator
 
-
 # --- Mapper Tests ---
 
 
@@ -217,7 +216,7 @@ class TestMigrationRoutes:
         from fastapi import FastAPI
         from httpx import ASGITransport, AsyncClient
 
-        from src.migrations.routes import router, _jobs
+        from src.migrations.routes import _jobs, router
 
         _jobs.clear()
 
@@ -235,7 +234,7 @@ class TestMigrationRoutes:
         from fastapi import FastAPI
         from httpx import ASGITransport, AsyncClient
 
-        from src.migrations.routes import router, _jobs
+        from src.migrations.routes import _jobs, router
 
         _jobs.clear()
 

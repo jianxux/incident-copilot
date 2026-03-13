@@ -1,7 +1,7 @@
 """Data models for authentication and multi-tenancy."""
 
 import secrets
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
 from pydantic import BaseModel, Field

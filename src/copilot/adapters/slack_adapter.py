@@ -383,8 +383,8 @@ async def handle_slack_interactions(
     import json as _json
     from urllib.parse import parse_qs as _parse_qs
 
-    from ...integrations.slack_interactions import handle_interaction
     from ...integrations.slack import SlackAdapter
+    from ...integrations.slack_interactions import handle_interaction
     from ...memory.feedback import FeedbackStore
 
     body = await request.body()

@@ -1,7 +1,7 @@
 """In-memory store for insights data."""
 
 import asyncio
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 

@@ -2,8 +2,7 @@
 
 import hashlib
 import hmac
-import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -19,7 +18,6 @@ from src.copilot.adapters.teams_adapter import (
     build_verdict_card,
     verify_teams_signature,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -37,8 +35,8 @@ class FakeSession:
     service_name = "payments-api"
     messages = []
     context_card = None
-    created_at = datetime.now(timezone.utc)
-    updated_at = datetime.now(timezone.utc)
+    created_at = datetime.now(UTC)
+    updated_at = datetime.now(UTC)
 
 
 @pytest.fixture()

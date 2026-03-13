@@ -1,18 +1,18 @@
 """Tests for gamification module."""
 
 import uuid
+
 import pytest
 
 from src.gamification.models import (
+    LEVEL_THRESHOLDS,
+    POINT_VALUES,
     Achievement,
     AchievementCategory,
     Badge,
     LeaderboardEntry,
     LeaderboardMetric,
-    LeaderboardPeriod,
     UserPoints,
-    POINT_VALUES,
-    LEVEL_THRESHOLDS,
 )
 from src.gamification.service import GamificationService
 

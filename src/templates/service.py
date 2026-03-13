@@ -1,7 +1,7 @@
 """Template service for managing incident templates."""
 
 import uuid
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 from .defaults import get_builtin_templates

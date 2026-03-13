@@ -1,6 +1,6 @@
 """AI Copilot API endpoints for interactive incident assistance."""
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 import structlog
 from fastapi import APIRouter, HTTPException

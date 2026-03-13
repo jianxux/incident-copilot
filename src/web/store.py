@@ -923,8 +923,9 @@ class DatabaseIncidentStore(_BaseIncidentStore):
         metadata: dict | None = None,
         tenant_id: str | None = None,
     ) -> StoredIncident | None:
-        from .models import IncidentRow
         from sqlalchemy import select
+
+        from .models import IncidentRow
 
         async with self._lock:
             async with self._session_factory() as session:
@@ -970,8 +971,9 @@ class DatabaseIncidentStore(_BaseIncidentStore):
         metadata: dict | None = None,
         tenant_id: str | None = None,
     ) -> StoredIncident | None:
-        from .models import IncidentRow
         from sqlalchemy import select
+
+        from .models import IncidentRow
 
         async with self._lock:
             async with self._session_factory() as session:
@@ -1015,8 +1017,9 @@ class DatabaseIncidentStore(_BaseIncidentStore):
         incident_id: str,
         tenant_id: str | None = None,
     ) -> StoredIncident | None:
-        from .models import IncidentRow
         from sqlalchemy import select
+
+        from .models import IncidentRow
 
         async with self._session_factory() as session:
             result = await session.execute(
@@ -1049,8 +1052,9 @@ class DatabaseIncidentStore(_BaseIncidentStore):
         self,
         tenant_id: str | None = None,
     ) -> list[StoredIncident]:
-        from .models import IncidentRow
         from sqlalchemy import select
+
+        from .models import IncidentRow
 
         async with self._session_factory() as session:
             result = await session.execute(

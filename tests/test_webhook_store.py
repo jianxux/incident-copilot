@@ -1,8 +1,8 @@
+import sys
+import types
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
-import sys
-import types
 
 import pytest
 

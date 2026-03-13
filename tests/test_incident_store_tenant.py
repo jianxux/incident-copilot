@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
@@ -20,7 +20,7 @@ async def test_inmemory_store_filters_by_tenant():
         title="Tenant A incident 1",
         service_name="payments-api",
         severity=Severity.HIGH,
-        triggered_at=datetime.now(timezone.utc),
+        triggered_at=datetime.now(UTC),
         tenant_id="tenant-a",
     )
     await store.add_incident(
@@ -28,7 +28,7 @@ async def test_inmemory_store_filters_by_tenant():
         title="Tenant B incident",
         service_name="orders-api",
         severity=Severity.MEDIUM,
-        triggered_at=datetime.now(timezone.utc),
+        triggered_at=datetime.now(UTC),
         tenant_id="tenant-b",
     )
     await store.add_incident(
@@ -36,7 +36,7 @@ async def test_inmemory_store_filters_by_tenant():
         title="Tenant A incident 2",
         service_name="checkout-api",
         severity=Severity.LOW,
-        triggered_at=datetime.now(timezone.utc),
+        triggered_at=datetime.now(UTC),
         tenant_id="tenant-a",
     )
 
@@ -60,7 +60,7 @@ async def test_inmemory_store_returns_all_when_no_tenant():
         title="Tenant A incident",
         service_name="payments-api",
         severity=Severity.HIGH,
-        triggered_at=datetime.now(timezone.utc),
+        triggered_at=datetime.now(UTC),
         tenant_id="tenant-a",
     )
     await store.add_incident(
@@ -68,7 +68,7 @@ async def test_inmemory_store_returns_all_when_no_tenant():
         title="No tenant incident",
         service_name="core-api",
         severity=Severity.MEDIUM,
-        triggered_at=datetime.now(timezone.utc),
+        triggered_at=datetime.now(UTC),
         tenant_id=None,
     )
 
@@ -89,7 +89,7 @@ async def test_inmemory_store_get_incident_filters_tenant():
         title="Tenant A incident",
         service_name="api",
         severity=Severity.HIGH,
-        triggered_at=datetime.now(timezone.utc),
+        triggered_at=datetime.now(UTC),
         tenant_id="tenant-a",
     )
 
@@ -115,7 +115,7 @@ async def test_hybrid_store_memory_fallback():
         title="Hybrid tenant A",
         service_name="payments-api",
         severity=Severity.HIGH,
-        triggered_at=datetime.now(timezone.utc),
+        triggered_at=datetime.now(UTC),
         tenant_id="tenant-a",
     )
     await store.add_incident(
@@ -123,7 +123,7 @@ async def test_hybrid_store_memory_fallback():
         title="Hybrid tenant B",
         service_name="orders-api",
         severity=Severity.MEDIUM,
-        triggered_at=datetime.now(timezone.utc),
+        triggered_at=datetime.now(UTC),
         tenant_id="tenant-b",
     )
 

@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from .actions.routes import router as actions_router
 from .api import (
     ai_feedback_router,
     analytics_router,
@@ -18,7 +19,6 @@ from .api import (
     health_router,
     incidents_router,
     insights_router,
-    predictive_insights_router,
     latency_router,
     memory_advanced_router,
     memory_feedback_router,
@@ -44,7 +44,6 @@ from .auth.oauth_slack import router as slack_oauth_router
 from .auth.routes import router as auth_router
 from .auth.sso.routes import router as sso_router
 from .auth.supabase_auth import router as supabase_auth_router
-from .actions.routes import router as actions_router
 from .billing.routes import router as billing_router
 from .config import get_settings
 from .copilot.adapters.slack_adapter import router as slack_copilot_router

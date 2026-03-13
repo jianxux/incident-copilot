@@ -3,7 +3,7 @@
 import asyncio
 import time
 from contextlib import asynccontextmanager, contextmanager
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 from .models import AuditEvent, EventCategory, EventType, Outcome

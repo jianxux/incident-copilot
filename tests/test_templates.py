@@ -2,14 +2,14 @@
 
 import pytest
 
+from src.templates.defaults import get_builtin_template, get_builtin_templates
 from src.templates.models import (
+    FieldType,
     IncidentTemplate,
     TemplateCategory,
     TemplateCreateRequest,
     TemplateField,
-    FieldType,
 )
-from src.templates.defaults import get_builtin_templates, get_builtin_template
 from src.templates.service import TemplateService
 
 

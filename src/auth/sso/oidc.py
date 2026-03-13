@@ -2,7 +2,7 @@
 
 import base64
 import secrets
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlencode
 

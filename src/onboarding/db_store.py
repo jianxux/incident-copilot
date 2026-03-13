@@ -37,8 +37,7 @@ class ChecklistStore:
             if self._initialized:
                 return
             async with aiosqlite.connect(self._db_path) as conn:
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE TABLE IF NOT EXISTS onboarding_checklist (
                         tenant_id TEXT NOT NULL,
                         step TEXT NOT NULL,
@@ -46,14 +45,11 @@ class ChecklistStore:
                         updated_at TEXT NOT NULL,
                         PRIMARY KEY (tenant_id, step)
                     )
-                    """
-                )
-                await conn.execute(
-                    """
+                    """)
+                await conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_onboarding_checklist_tenant
                     ON onboarding_checklist(tenant_id)
-                    """
-                )
+                    """)
                 await conn.commit()
             self._initialized = True
             logger.info("onboarding_checklist_db_initialized", path=str(self._db_path))
@@ -150,8 +146,7 @@ class OAuthStateStore:
             if self._initialized:
                 return
             async with aiosqlite.connect(self._db_path) as conn:
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE TABLE IF NOT EXISTS onboarding_oauth_states (
                         provider TEXT NOT NULL,
                         state TEXT NOT NULL,
@@ -163,14 +158,11 @@ class OAuthStateStore:
                         expires_at TEXT NOT NULL,
                         PRIMARY KEY (provider, state)
                     )
-                    """
-                )
-                await conn.execute(
-                    """
+                    """)
+                await conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_onboarding_oauth_states_expires_at
                     ON onboarding_oauth_states(expires_at)
-                    """
-                )
+                    """)
                 await conn.commit()
             self._initialized = True
             logger.info(
@@ -285,8 +277,7 @@ class ServiceCatalogStore:
             if self._initialized:
                 return
             async with aiosqlite.connect(self._db_path) as conn:
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE TABLE IF NOT EXISTS onboarding_services (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         tenant_id TEXT NOT NULL,
@@ -297,14 +288,11 @@ class ServiceCatalogStore:
                         created_at TEXT NOT NULL,
                         UNIQUE (tenant_id, name)
                     )
-                    """
-                )
-                await conn.execute(
-                    """
+                    """)
+                await conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_onboarding_services_tenant
                     ON onboarding_services(tenant_id)
-                    """
-                )
+                    """)
                 await conn.commit()
             self._initialized = True
             logger.info("onboarding_services_db_initialized", path=str(self._db_path))
