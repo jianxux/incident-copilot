@@ -275,9 +275,7 @@ class GitHubAdapter:
         self, client: httpx.AsyncClient, repo: str, since_hours: int
     ) -> list[GitHubPullRequest]:
         """Fetch recently merged pull requests."""
-        since = (
-            datetime.now(UTC) - timedelta(hours=since_hours)
-        ).isoformat() + "Z"  # noqa: F841 — TODO: use in query params
+        since = (datetime.now(UTC) - timedelta(hours=since_hours)).isoformat() + "Z"
 
         url = f"{self.BASE_URL}/repos/{repo}/pulls"
         params = {
@@ -285,6 +283,7 @@ class GitHubAdapter:
             "sort": "updated",
             "direction": "desc",
             "per_page": 10,
+            "since": since,
         }
 
         try:
