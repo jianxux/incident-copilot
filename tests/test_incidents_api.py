@@ -11,6 +11,8 @@ import pytest
 os.environ["SUPABASE_DB_ENABLED"] = "false"
 os.environ.pop("SUPABASE_URL", None)
 
+from src.api.incidents import _build_github_timeline_events, _event_to_timeline
+
 
 class TestIncidentFormatting:
     """Test the _format_incident helper in the API."""
@@ -202,6 +204,81 @@ class TestIncidentFormatting:
         }
         result = self._format(row)
         assert result["duration_seconds"] == 0
+
+
+class TestIncidentTimelineFormatting:
+    """Test incident timeline event formatting helpers."""
+
+    def test_event_to_timeline_includes_readable_title(self):
+        event = {
+            "id": "evt-1",
+            "event_type": "acknowledged",
+            "description": "Primary responder took ownership",
+            "actor": "alex",
+            "occurred_at": "2026-02-18T10:05:00Z",
+        }
+
+        result = _event_to_timeline(event, "inc-1")
+
+        assert result["type"] == "acknowledged"
+        assert result["title"] == "Incident Acknowledged"
+        assert result["description"] == "Primary responder took ownership"
+        assert result["actor"] == "alex"
+
+    def test_event_to_timeline_formats_unknown_types(self):
+        event = {
+            "id": "evt-2",
+            "event_type": "manual_handoff",
+            "message": "Escalated to platform team",
+            "created_at": "2026-02-18T10:10:00Z",
+        }
+
+        result = _event_to_timeline(event, "inc-1")
+
+        assert result["title"] == "Manual Handoff"
+        assert result["description"] == "Escalated to platform team"
+
+    def test_build_github_timeline_events_adds_titles(self):
+        github_context = {
+            "recent_deploys": [
+                {
+                    "timestamp": "2026-02-18T09:50:00Z",
+                    "short_sha": "abc123def456",
+                    "message": "Fix payment timeout",
+                    "author": "sam",
+                }
+            ],
+            "recent_prs": [
+                {
+                    "merged_at": "2026-02-18T09:40:00Z",
+                    "number": 42,
+                    "title": "Stabilize checkout retries",
+                    "author": "jordan",
+                }
+            ],
+            "recent_deployments": [
+                {
+                    "created_at": "2026-02-18T09:30:00Z",
+                    "environment": "production",
+                    "status": "success",
+                    "creator": "ci-bot",
+                }
+            ],
+        }
+
+        events = _build_github_timeline_events("inc-1", github_context)
+
+        assert [event["title"] for event in events] == [
+            "Code Change",
+            "Pull Request Merged",
+            "Deployment",
+        ]
+        assert events[0]["type"] == "code_change"
+        assert events[0]["description"] == "abc123def456: Fix payment timeout"
+        assert events[1]["type"] == "pull_request"
+        assert events[1]["description"] == "PR #42: Stabilize checkout retries"
+        assert events[2]["type"] == "deployment"
+        assert events[2]["description"] == "Deployment to production (success)"
 
 
 class TestIncidentStatusUpdate:

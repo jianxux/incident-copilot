@@ -252,6 +252,7 @@ def _event_to_timeline(event: dict[str, Any], incident_id: str) -> dict[str, Any
     if not isinstance(metadata, dict):
         metadata = event.get("data") if isinstance(event.get("data"), dict) else {}
 
+    event_type = str(event.get("event_type") or "comment")
     description = (
         event.get("description")
         or event.get("title")
@@ -262,12 +263,29 @@ def _event_to_timeline(event: dict[str, Any], incident_id: str) -> dict[str, Any
     return {
         "id": str(event.get("id", "")),
         "incident_id": incident_id,
-        "type": str(event.get("event_type") or "comment"),
+        "type": event_type,
+        "title": _timeline_event_title(event_type),
         "description": description,
         "actor": event.get("actor") or metadata.get("actor"),
         "timestamp": _iso(event.get("occurred_at") or event.get("created_at")) or _now_iso(),
         "metadata": metadata,
     }
+
+
+def _timeline_event_title(event_type: str) -> str:
+    normalized = str(event_type or "comment").strip().lower()
+    title_map = {
+        "created": "Incident Created",
+        "acknowledged": "Incident Acknowledged",
+        "resolved": "Incident Resolved",
+        "comment": "Note Added",
+        "code_change": "Code Change",
+        "pull_request": "Pull Request",
+        "deployment": "Deployment",
+    }
+    if normalized in title_map:
+        return title_map[normalized]
+    return normalized.replace("_", " ").title() or "Incident Event"
 
 
 def _extract_github_context(payload: dict[str, Any] | None) -> dict[str, Any]:
@@ -306,6 +324,7 @@ def _build_github_timeline_events(
                 "id": f"{incident_id}-gh-code-{idx}",
                 "incident_id": incident_id,
                 "type": "code_change",
+                "title": "Code Change",
                 "description": description,
                 "actor": deploy.get("author"),
                 "timestamp": timestamp,
@@ -325,6 +344,7 @@ def _build_github_timeline_events(
                 "id": f"{incident_id}-gh-pr-{idx}",
                 "incident_id": incident_id,
                 "type": "pull_request",
+                "title": "Pull Request Merged",
                 "description": f"{prefix}{title}",
                 "actor": pr.get("author"),
                 "timestamp": timestamp,
@@ -343,6 +363,7 @@ def _build_github_timeline_events(
                 "id": f"{incident_id}-gh-deploy-{idx}",
                 "incident_id": incident_id,
                 "type": "deployment",
+                "title": "Deployment",
                 "description": f"Deployment to {environment} ({status})",
                 "actor": deployment.get("creator"),
                 "timestamp": timestamp,
