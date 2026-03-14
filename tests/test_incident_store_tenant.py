@@ -130,3 +130,51 @@ async def test_hybrid_store_memory_fallback():
     incidents = await store.get_all_incidents(tenant_id="tenant-a")
 
     assert [inc.incident_id for inc in incidents] == ["inc-hybrid-a"]
+
+
+@pytest.mark.asyncio
+async def test_hybrid_store_retries_supabase_add_once(monkeypatch):
+    store = HybridIncidentStore()
+    sleep_mock = AsyncMock()
+    monkeypatch.setattr("src.web.store.asyncio.sleep", sleep_mock)
+    store._supabase.add_incident = AsyncMock(
+        side_effect=[RuntimeError("temporary failure"), None]
+    )
+
+    incident = await store.add_incident(
+        incident_id="inc-retry",
+        title="Retry incident",
+        service_name="payments-api",
+        severity=Severity.HIGH,
+        triggered_at=datetime.now(timezone.utc),
+        tenant_id="tenant-a",
+    )
+
+    assert store._supabase.add_incident.await_count == 2
+    sleep_mock.assert_awaited_once_with(0.5)
+    assert incident.metadata.get("persistence_failed") is None
+
+
+@pytest.mark.asyncio
+async def test_hybrid_store_marks_metadata_when_supabase_add_fails_twice(monkeypatch):
+    store = HybridIncidentStore()
+    sleep_mock = AsyncMock()
+    monkeypatch.setattr("src.web.store.asyncio.sleep", sleep_mock)
+    store._supabase.add_incident = AsyncMock(
+        side_effect=[RuntimeError("first failure"), RuntimeError("second failure")]
+    )
+
+    incident = await store.add_incident(
+        incident_id="inc-persist-fail",
+        title="Persist fail incident",
+        service_name="orders-api",
+        severity=Severity.MEDIUM,
+        triggered_at=datetime.now(timezone.utc),
+        tenant_id="tenant-b",
+        metadata={"source": "test"},
+    )
+
+    assert store._supabase.add_incident.await_count == 2
+    sleep_mock.assert_awaited_once_with(0.5)
+    assert incident.metadata["source"] == "test"
+    assert incident.metadata["persistence_failed"] is True
