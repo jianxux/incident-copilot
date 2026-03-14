@@ -127,6 +127,9 @@ async def test_try_ondemand_enrichment_uses_db_creds(monkeypatch):
             seen["from_credentials"] = (token, org, provided_settings)
             return cls()
 
+        def _get_repo_for_service(self, service_name: str):
+            return f"resolved-org/{service_name}"
+
         async def get_context(self, service: str):
             seen["service"] = service
             return _FakeContext()
