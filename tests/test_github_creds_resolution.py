@@ -157,7 +157,9 @@ async def test_try_ondemand_enrichment_logs_no_token(monkeypatch):
 
     logs: list[tuple[str, dict[str, object]]] = []
 
-    monkeypatch.setattr(incidents, "resolve_github_creds", AsyncMock(return_value=("", "")))
+    monkeypatch.setattr(
+        incidents, "resolve_github_creds", AsyncMock(return_value=("", ""))
+    )
     monkeypatch.setattr(
         incidents,
         "logger",
@@ -185,14 +187,18 @@ async def test_try_ondemand_enrichment_logs_no_token(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_try_ondemand_enrichment_logs_no_org_when_repo_cannot_be_resolved(monkeypatch):
+async def test_try_ondemand_enrichment_logs_no_org_when_repo_cannot_be_resolved(
+    monkeypatch,
+):
     from src.api import incidents
 
     logs: list[tuple[str, dict[str, object]]] = []
     settings = SimpleNamespace(service_repo_map={})
 
     monkeypatch.setattr(incidents, "get_settings", lambda: settings)
-    monkeypatch.setattr(incidents, "resolve_github_creds", AsyncMock(return_value=("token", "")))
+    monkeypatch.setattr(
+        incidents, "resolve_github_creds", AsyncMock(return_value=("token", ""))
+    )
     monkeypatch.setattr(
         incidents,
         "logger",
@@ -247,7 +253,9 @@ async def test_try_ondemand_enrichment_logs_api_error_reason(monkeypatch):
             return None
 
     monkeypatch.setattr(incidents, "get_settings", lambda: settings)
-    monkeypatch.setattr(incidents, "resolve_github_creds", AsyncMock(return_value=("token", "my-org")))
+    monkeypatch.setattr(
+        incidents, "resolve_github_creds", AsyncMock(return_value=("token", "my-org"))
+    )
     monkeypatch.setattr(incidents, "GitHubAdapter", _FakeGitHubAdapter)
     monkeypatch.setattr(
         incidents,

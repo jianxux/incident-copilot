@@ -197,7 +197,9 @@ class TestIncidentContextEndpoint:
         assert resp.status_code == 200
         assert resp.json()["github_status"] == "no_repo_mapping"
 
-    def test_returns_github_status_connected_when_fetch_fails(self, authed_client, monkeypatch):
+    def test_returns_github_status_connected_when_fetch_fails(
+        self, authed_client, monkeypatch
+    ):
         from src.models import Severity
         from src.web.store import StoredIncident
 

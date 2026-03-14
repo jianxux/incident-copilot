@@ -263,7 +263,11 @@ async def _get_github_enrichment_prereqs(
 
     adapter = GitHubAdapter.from_credentials(token, org, settings)
     if not adapter._get_repo_for_service(service):
-        reason = "no_org" if not org and not _service_has_repo_mapping(adapter, service) else "no_repo_mapping"
+        reason = (
+            "no_org"
+            if not org and not _service_has_repo_mapping(adapter, service)
+            else "no_repo_mapping"
+        )
         logger.warning(
             "ondemand_github_enrichment_skipped",
             reason=reason,
