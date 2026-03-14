@@ -79,7 +79,11 @@ def _parse_iso_datetime(
             normalized = raw.replace("Z", "+00:00")
             try:
                 parsed = datetime.fromisoformat(normalized)
-                return parsed.astimezone(UTC) if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+                return (
+                    parsed.astimezone(UTC)
+                    if parsed.tzinfo
+                    else parsed.replace(tzinfo=UTC)
+                )
             except ValueError as exc:
                 logger.warning(
                     "pd_parse_datetime_iso_failed",
@@ -243,13 +247,21 @@ async def _background_pd_sync(tenant_id: str) -> bool:
                 from ..security.crypto import decrypt_json
 
                 db = get_db(use_admin=True)
-                rows = db.client.table("integration_configs").select("config").eq(
-                    "tenant_id", tenant_id
-                ).eq("type", "pagerduty").eq("is_active", True).limit(1).execute()
+                rows = (
+                    db.client.table("integration_configs")
+                    .select("config")
+                    .eq("tenant_id", tenant_id)
+                    .eq("type", "pagerduty")
+                    .eq("is_active", True)
+                    .limit(1)
+                    .execute()
+                )
 
                 if rows.data:
                     config = rows.data[0].get("config", {})
-                    encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
+                    encrypted = (
+                        config.get("encrypted", "") if isinstance(config, dict) else ""
+                    )
                     if encrypted:
                         decrypted = decrypt_json(encrypted)
                         oauth = decrypted.get("oauth", {})
@@ -267,8 +279,12 @@ async def _background_pd_sync(tenant_id: str) -> bool:
                         )
                         logger.info("pd_sync_no_encrypted_config", tenant_id=tenant_id)
                 else:
-                    token_resolution_errors.append("no active pagerduty integration config found")
-                    logger.info("pd_sync_no_integration_config_row", tenant_id=tenant_id)
+                    token_resolution_errors.append(
+                        "no active pagerduty integration config found"
+                    )
+                    logger.info(
+                        "pd_sync_no_integration_config_row", tenant_id=tenant_id
+                    )
             except Exception as exc:
                 token_resolution_errors.append(
                     f"integration_config_token_error: {type(exc).__name__}: {exc}"
@@ -284,9 +300,11 @@ async def _background_pd_sync(tenant_id: str) -> bool:
         if not token:
             _set_sync_error(
                 tenant_id,
-                " | ".join(token_resolution_errors)
-                if token_resolution_errors
-                else "no pagerduty token found",
+                (
+                    " | ".join(token_resolution_errors)
+                    if token_resolution_errors
+                    else "no pagerduty token found"
+                ),
             )
             logger.warning("pd_sync_no_token_found", tenant_id=tenant_id)
             return False
@@ -311,8 +329,12 @@ async def _background_pd_sync(tenant_id: str) -> bool:
                 },
             )
             if resp.status_code != 200:
-                _set_sync_error(tenant_id, f"pagerduty api returned HTTP {resp.status_code}")
-                logger.warning("bg_pd_sync_api_error", status=resp.status_code, tenant_id=tenant_id)
+                _set_sync_error(
+                    tenant_id, f"pagerduty api returned HTTP {resp.status_code}"
+                )
+                logger.warning(
+                    "bg_pd_sync_api_error", status=resp.status_code, tenant_id=tenant_id
+                )
                 return False
 
             pd_incidents = resp.json().get("incidents", [])
@@ -326,14 +348,20 @@ async def _background_pd_sync(tenant_id: str) -> bool:
             db = get_db(use_admin=True)
 
             def _batch_upsert():
-                return db.client.table("incidents").upsert(rows, on_conflict="id").execute()
+                return (
+                    db.client.table("incidents")
+                    .upsert(rows, on_conflict="id")
+                    .execute()
+                )
 
             await db._to_thread(_batch_upsert)
 
         # 4. Update timestamp on success
         _pd_sync_timestamps[tenant_id] = time.time()
         _set_sync_success(tenant_id)
-        logger.info("bg_pd_sync_complete", tenant_id=tenant_id, synced=len(pd_incidents))
+        logger.info(
+            "bg_pd_sync_complete", tenant_id=tenant_id, synced=len(pd_incidents)
+        )
         return True
 
     except Exception as exc:
@@ -366,7 +394,7 @@ async def _maybe_trigger_pd_sync(tenant_id: str) -> bool:
         # First sync: await with a timeout so we don't block too long
         try:
             await asyncio.wait_for(_background_pd_sync(tenant_id), timeout=10.0)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             _set_sync_error(tenant_id, "first sync timed out after 10 seconds")
             logger.warning(
                 "pd_first_sync_timeout",
@@ -429,7 +457,9 @@ def trigger_manual_pd_sync(tenant_id: str) -> None:
             return
         asyncio.create_task(_background_pd_sync(tenant_id))
     except Exception as exc:
-        _set_sync_error(tenant_id, f"manual trigger failed: {type(exc).__name__}: {exc}")
+        _set_sync_error(
+            tenant_id, f"manual trigger failed: {type(exc).__name__}: {exc}"
+        )
         logger.warning(
             "pd_manual_trigger_failed",
             tenant_id=tenant_id,

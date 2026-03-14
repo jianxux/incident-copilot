@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 import asyncpg
 import structlog
@@ -83,7 +83,15 @@ class MemoryHealthChecker:
         stale_days: int | None = None
         if latest_created_at is not None:
             stale_days = max(
-                (datetime.now(UTC) - (latest_created_at.astimezone(UTC) if latest_created_at.tzinfo else latest_created_at.replace(tzinfo=UTC))).days, 0
+                (
+                    datetime.now(UTC)
+                    - (
+                        latest_created_at.astimezone(UTC)
+                        if latest_created_at.tzinfo
+                        else latest_created_at.replace(tzinfo=UTC)
+                    )
+                ).days,
+                0,
             )
 
         recall_hit_rate = await self._recall_hit_rate(pool)
@@ -195,13 +203,11 @@ class MemoryHealthChecker:
         if not configured:
             return []
 
-        rows = await pool.fetch(
-            f"""  # nosec B608
+        rows = await pool.fetch(f"""  # nosec B608
             SELECT DISTINCT UNNEST(services_affected) AS service
             FROM {self.config.table_name}
             WHERE array_length(services_affected, 1) > 0
-            """
-        )
+            """)
         observed = {str(row["service"]) for row in rows}
         return sorted(list(configured - observed))
 

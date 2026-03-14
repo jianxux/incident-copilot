@@ -1,7 +1,7 @@
 """Timeline service for managing incident timelines."""
 
 from collections.abc import Callable
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from uuid import UUID
 
 from .models import (

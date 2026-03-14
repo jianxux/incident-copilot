@@ -116,9 +116,7 @@ async def test_sync_resolved_incident_marks_completed(store):
         assembled_at=datetime.now(UTC),
         assembly_time_ms=0,
     )
-    await store.complete_incident(
-        inc["id"], card, metadata={"resolved_via_sync": True}
-    )
+    await store.complete_incident(inc["id"], card, metadata={"resolved_via_sync": True})
 
     stored = await store.get_incident("PD-R1")
     assert stored is not None

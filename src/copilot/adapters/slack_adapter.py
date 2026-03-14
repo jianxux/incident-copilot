@@ -188,11 +188,15 @@ async def _handle_app_mention(payload: dict) -> None:
     # Try to find an incident context from thread registry
     incident_id = None
     if thread_ts:
-        incident_id = await thread_registry.get_incident_id(team_id, channel_id, thread_ts)
+        incident_id = await thread_registry.get_incident_id(
+            team_id, channel_id, thread_ts
+        )
 
     if incident_id:
         if not _rate_limiter.allow(incident_id):
-            logger.warning("copilot_slack_mention_rate_limited", incident_id=incident_id)
+            logger.warning(
+                "copilot_slack_mention_rate_limited", incident_id=incident_id
+            )
             return
 
         copilot = get_copilot()
@@ -379,8 +383,8 @@ async def handle_slack_interactions(
     import json as _json
     from urllib.parse import parse_qs as _parse_qs
 
-    from ...integrations.slack_interactions import handle_interaction
     from ...integrations.slack import SlackAdapter
+    from ...integrations.slack_interactions import handle_interaction
     from ...memory.feedback import FeedbackStore
 
     body = await request.body()

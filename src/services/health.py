@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 import structlog
 
@@ -54,7 +54,9 @@ class ServiceIntegrationHealthChecker:
             try:
                 await self.check_once()
             except Exception as exc:
-                logger.warning("service_integration_health_checker_failed", error=str(exc))
+                logger.warning(
+                    "service_integration_health_checker_failed", error=str(exc)
+                )
             await asyncio.sleep(self.interval_seconds)
 
     async def check_once(self, tenant_slug: str = "default") -> int:
@@ -63,7 +65,9 @@ class ServiceIntegrationHealthChecker:
         checked = 0
 
         for service in services:
-            integration_state = self._evaluate_service_integrations(service.metadata or {})
+            integration_state = self._evaluate_service_integrations(
+                service.metadata or {}
+            )
             health_block = {
                 "checked_at": datetime.now(UTC).isoformat(),
                 "integrations": integration_state,

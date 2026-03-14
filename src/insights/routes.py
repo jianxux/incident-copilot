@@ -1,10 +1,8 @@
 """FastAPI routes for predictive insights, deployment risk, and reliability feed."""
 
-from datetime import UTC, datetime, timedelta
-
 import structlog
-from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Query
+from pydantic import BaseModel
 
 from ..analytics.models import IncidentMetrics
 from ..analytics.store import analytics_store

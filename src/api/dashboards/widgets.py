@@ -1,7 +1,7 @@
 """Widget type implementations and data fetching."""
 
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from .models import (

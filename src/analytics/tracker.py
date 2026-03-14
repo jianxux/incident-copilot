@@ -1,7 +1,7 @@
 """Analytics tracker for calculating MTTR and other metrics."""
 
 import statistics
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 import structlog
 

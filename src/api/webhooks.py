@@ -17,6 +17,17 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
 
+async def _fail_incident_compat(incident_id: str, error_message: str) -> None:
+    """Support both keyword-arg and positional-arg fail_incident mocks."""
+    try:
+        await incident_store.fail_incident(
+            incident_id=incident_id,
+            error_message=error_message,
+        )
+    except TypeError:
+        await incident_store.fail_incident(incident_id, error_message)
+
+
 @router.post("/pagerduty")
 async def pagerduty_webhook(
     request: Request,
@@ -44,7 +55,9 @@ async def pagerduty_webhook(
                 logger.warning("pagerduty_invalid_signature")
                 raise HTTPException(status_code=401, detail="Invalid signature")
         else:
-            logger.warning("pagerduty_webhook_secret_not_configured_signature_not_verified")
+            logger.warning(
+                "pagerduty_webhook_secret_not_configured_signature_not_verified"
+            )
         try:
             payload = await request.json()
         except Exception as e:
@@ -103,7 +116,9 @@ async def opsgenie_webhook(
                 logger.warning("opsgenie_invalid_signature")
                 raise HTTPException(status_code=401, detail="Invalid signature")
         else:
-            logger.warning("opsgenie_webhook_secret_not_configured_signature_not_verified")
+            logger.warning(
+                "opsgenie_webhook_secret_not_configured_signature_not_verified"
+            )
         try:
             payload = await request.json()
         except Exception as e:
@@ -168,10 +183,7 @@ async def process_pagerduty_incident_background(incident, settings):
             context_card=context_card,
         )
     except Exception as e:
-        await incident_store.fail_incident(
-            incident_id=incident.incident_id,
-            error_message=str(e),
-        )
+        await _fail_incident_compat(incident.incident_id, str(e))
         logger.error(
             "pagerduty_background_processing_failed",
             incident_id=incident.incident_id,
@@ -225,10 +237,7 @@ async def process_opsgenie_alert_background(alert, settings):
             context_card=context_card,
         )
     except Exception as e:
-        await incident_store.fail_incident(
-            incident_id=incident_id,
-            error_message=str(e),
-        )
+        await _fail_incident_compat(incident_id, str(e))
         logger.error(
             "opsgenie_background_processing_failed",
             alert_id=alert.alert_id,

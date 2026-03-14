@@ -31,11 +31,19 @@ class TestGenerateManifest:
         m = generate_manifest(APP_URL)
         scopes = m["oauth_config"]["scopes"]["bot"]
         expected = [
-            "channels:manage", "channels:join", "channels:read",
-            "chat:write", "chat:write.public", "commands",
-            "im:history", "im:read", "im:write",
-            "users:read", "users:read.email",
-            "reactions:write", "files:write",
+            "channels:manage",
+            "channels:join",
+            "channels:read",
+            "chat:write",
+            "chat:write.public",
+            "commands",
+            "im:history",
+            "im:read",
+            "im:write",
+            "users:read",
+            "users:read.email",
+            "reactions:write",
+            "files:write",
         ]
         assert len(scopes) == 13
         for s in expected:
@@ -53,14 +61,28 @@ class TestGenerateManifest:
     def test_events(self):
         m = generate_manifest(APP_URL)
         events = m["settings"]["event_subscriptions"]["bot_events"]
-        for e in ["message.channels", "message.im", "app_mention", "member_joined_channel"]:
+        for e in [
+            "message.channels",
+            "message.im",
+            "app_mention",
+            "member_joined_channel",
+        ]:
             assert e in events
 
     def test_urls(self):
         m = generate_manifest(APP_URL)
-        assert m["settings"]["event_subscriptions"]["request_url"] == f"{APP_URL}/api/slack/events"
-        assert m["settings"]["interactivity"]["request_url"] == f"{APP_URL}/api/slack/interactions"
-        assert f"{APP_URL}/api/integrations/oauth/slack/callback" in m["oauth_config"]["redirect_urls"]
+        assert (
+            m["settings"]["event_subscriptions"]["request_url"]
+            == f"{APP_URL}/api/slack/events"
+        )
+        assert (
+            m["settings"]["interactivity"]["request_url"]
+            == f"{APP_URL}/api/slack/interactions"
+        )
+        assert (
+            f"{APP_URL}/api/integrations/oauth/slack/callback"
+            in m["oauth_config"]["redirect_urls"]
+        )
 
     def test_app_home(self):
         m = generate_manifest(APP_URL)
@@ -71,7 +93,9 @@ class TestGenerateManifest:
 
     def test_trailing_slash_stripped(self):
         m = generate_manifest("https://app.example.com/")
-        assert "//" not in m["settings"]["event_subscriptions"]["request_url"].replace("https://", "")
+        assert "//" not in m["settings"]["event_subscriptions"]["request_url"].replace(
+            "https://", ""
+        )
 
 
 class TestGenerateManifestUrl:
@@ -95,6 +119,7 @@ class TestManifestEndpoints:
         """Test GET /dashboard/integrations/slack/manifest returns manifest JSON."""
         try:
             import httpx
+
             from src.web.app import create_app
         except ImportError:
             pytest.skip("httpx or app not available")
@@ -116,6 +141,7 @@ class TestManifestEndpoints:
         """Test GET /dashboard/integrations/slack/install redirects."""
         try:
             import httpx
+
             from src.web.app import create_app
         except ImportError:
             pytest.skip("httpx or app not available")

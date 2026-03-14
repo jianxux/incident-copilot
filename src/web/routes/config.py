@@ -70,7 +70,9 @@ async def config_page(
         {
             "name": "Datadog",
             "icon": "chart",
-            "connected": is_connected("datadog", bool(settings.datadog_api_key and settings.datadog_app_key)),
+            "connected": is_connected(
+                "datadog", bool(settings.datadog_api_key and settings.datadog_app_key)
+            ),
             "description": "Logs, metrics, and APM traces",
         },
         {

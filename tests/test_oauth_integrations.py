@@ -89,7 +89,9 @@ def test_slack_oauth_connect_callback_status_disconnect(monkeypatch):
     client = TestClient(app)
     headers = _run(_create_headers())
 
-    connect = client.get("/api/integrations/slack/connect", headers=headers, follow_redirects=False)
+    connect = client.get(
+        "/api/integrations/slack/connect", headers=headers, follow_redirects=False
+    )
     assert connect.status_code in (302, 307)
     parsed = urlparse(connect.headers["location"])
     params = parse_qs(parsed.query)
@@ -178,7 +180,9 @@ def test_provider_test_slack_success(monkeypatch):
     client = TestClient(app)
     headers = _run(_create_headers())
 
-    connect = client.get("/api/integrations/slack/connect", headers=headers, follow_redirects=False)
+    connect = client.get(
+        "/api/integrations/slack/connect", headers=headers, follow_redirects=False
+    )
     parsed = urlparse(connect.headers["location"])
     state = parse_qs(parsed.query)["state"][0]
     client.get(
@@ -198,7 +202,9 @@ def test_provider_test_pagerduty_uses_stored_token_without_api_calls(monkeypatch
     async def _unexpected_post(self, url, data=None, headers=None):
         raise AssertionError(f"unexpected network call: {url}")
 
-    monkeypatch.setattr("src.api.oauth_integrations.httpx.AsyncClient.post", _unexpected_post)
+    monkeypatch.setattr(
+        "src.api.oauth_integrations.httpx.AsyncClient.post", _unexpected_post
+    )
     app = create_app()
     client = TestClient(app)
     headers, tenant_id = _run(_create_headers_and_tenant())

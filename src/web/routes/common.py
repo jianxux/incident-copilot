@@ -53,7 +53,7 @@ async def require_dashboard_auth(request: Request) -> dict[str, str]:
     return {"tenant_id": tenant_id, "user_id": user_id}
 
 
-class DashboardAuthRedirect(Exception):
+class DashboardAuthRedirect(Exception):  # noqa: N818 — redirect, not a typical error
     """Raised to redirect unauthenticated browser requests to /login."""
 
     pass
@@ -143,7 +143,9 @@ templates.env.filters["status_color"] = status_color
 templates.env.filters["mask_secret"] = mask_secret
 
 
-async def _get_tenant_id_from_request(request: Request) -> tuple[str | None, str | None]:
+async def _get_tenant_id_from_request(
+    request: Request,
+) -> tuple[str | None, str | None]:
     """Resolve (tenant_id, user_id) from a Supabase Bearer token.
 
     Returns (None, None) if no auth is provided.

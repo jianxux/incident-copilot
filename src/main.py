@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from .actions.routes import router as actions_router
 from .api import (
     ai_feedback_router,
     analytics_router,
@@ -18,7 +19,6 @@ from .api import (
     health_router,
     incidents_router,
     insights_router,
-    predictive_insights_router,
     latency_router,
     memory_advanced_router,
     memory_feedback_router,
@@ -44,7 +44,6 @@ from .auth.oauth_slack import router as slack_oauth_router
 from .auth.routes import router as auth_router
 from .auth.sso.routes import router as sso_router
 from .auth.supabase_auth import router as supabase_auth_router
-from .actions.routes import router as actions_router
 from .billing.routes import router as billing_router
 from .config import get_settings
 from .copilot.adapters.slack_adapter import router as slack_copilot_router
@@ -70,6 +69,7 @@ try:
         start_oauth_refresh_worker,
         stop_oauth_refresh_worker,
     )
+
     _oauth_refresh_available = True
 except ImportError:
     pass
@@ -111,7 +111,9 @@ def create_app() -> FastAPI:
             slack_configured=bool(settings.slack_bot_token),
             github_configured=bool(settings.github_token),
             gitlab_configured=bool(settings.gitlab_token),
-            datadog_configured=bool(settings.datadog_api_key and settings.datadog_app_key),
+            datadog_configured=bool(
+                settings.datadog_api_key and settings.datadog_app_key
+            ),
             aws_cloudwatch_configured=bool(settings.aws_region),
             loki_configured=bool(settings.loki_url),
             redis_configured=bool(settings.redis_url),
@@ -248,9 +250,15 @@ def create_app() -> FastAPI:
     app.include_router(ai_feedback_router)
     app.include_router(memory_stats_router)
     app.include_router(auth_router)
-    app.include_router(oauth_integrations_router)  # generic OAuth (handles all providers including PD/Slack)
-    app.include_router(pagerduty_oauth_router)  # legacy PD OAuth (start route only; callback handled by generic)
-    app.include_router(slack_oauth_router)  # legacy Slack OAuth (start route only; callback handled by generic)
+    app.include_router(
+        oauth_integrations_router
+    )  # generic OAuth (handles all providers including PD/Slack)
+    app.include_router(
+        pagerduty_oauth_router
+    )  # legacy PD OAuth (start route only; callback handled by generic)
+    app.include_router(
+        slack_oauth_router
+    )  # legacy Slack OAuth (start route only; callback handled by generic)
     app.include_router(sso_router)
     app.include_router(supabase_auth_router)
     app.include_router(billing_router)

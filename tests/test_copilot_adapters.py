@@ -73,6 +73,7 @@ def slack_app(monkeypatch):
 
     fake_copilot = FakeCopilot()
     fake_client = FakeSlackClient()
+
     async def _fake_get_slack_client(team_id=None):
         return fake_client
 

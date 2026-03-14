@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import Callable
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import structlog

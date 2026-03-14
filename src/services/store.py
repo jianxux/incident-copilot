@@ -81,17 +81,25 @@ class ServiceCatalogStore:
             return None
         try:
             result = await asyncio.to_thread(
-                lambda: client.table("tenants").select("id").eq("slug", tenant_slug).limit(1).execute()
+                lambda: client.table("tenants")
+                .select("id")
+                .eq("slug", tenant_slug)
+                .limit(1)
+                .execute()
             )
             if result.data:
                 return str(result.data[0]["id"])
             # Create tenant
             result = await asyncio.to_thread(
-                lambda: client.table("tenants").insert({
-                    "name": f"{tenant_slug.title()} Tenant",
-                    "slug": tenant_slug,
-                    "plan": "free",
-                }).execute()
+                lambda: client.table("tenants")
+                .insert(
+                    {
+                        "name": f"{tenant_slug.title()} Tenant",
+                        "slug": tenant_slug,
+                        "plan": "free",
+                    }
+                )
+                .execute()
             )
             if result.data:
                 return str(result.data[0]["id"])
@@ -147,12 +155,19 @@ class ServiceCatalogStore:
     ) -> Service:
         service_key = request.id or self._normalize_service_id(request.name)
         fallback = Service(
-            id=service_key, name=request.name, description=request.description,
-            team=request.team, owner_email=request.owner_email,
-            criticality=request.criticality, health=request.health,
-            tags=request.tags, critical_user_journey=request.critical_user_journey,
-            repo_url=request.repo_url, dashboard_url=request.dashboard_url,
-            runbook_url=request.runbook_url, metadata=request.metadata,
+            id=service_key,
+            name=request.name,
+            description=request.description,
+            team=request.team,
+            owner_email=request.owner_email,
+            criticality=request.criticality,
+            health=request.health,
+            tags=request.tags,
+            critical_user_journey=request.critical_user_journey,
+            repo_url=request.repo_url,
+            dashboard_url=request.dashboard_url,
+            runbook_url=request.runbook_url,
+            metadata=request.metadata,
             environments=request.environments,
         )
         if not await self._ensure_ready():
@@ -170,7 +185,9 @@ class ServiceCatalogStore:
             "description": request.description,
             "team": request.team,
             "owner_email": request.owner_email,
-            "criticality": request.criticality.value if request.criticality else "medium",
+            "criticality": (
+                request.criticality.value if request.criticality else "medium"
+            ),
             "health": request.health.value if request.health else "unknown",
             "tags": request.tags or [],
             "critical_user_journey": request.critical_user_journey,
@@ -181,9 +198,9 @@ class ServiceCatalogStore:
         }
 
         result = await self._run(
-            lambda: client.table("services").upsert(
-                data, on_conflict="tenant_id,name"
-            ).execute()
+            lambda: client.table("services")
+            .upsert(data, on_conflict="tenant_id,name")
+            .execute()
         )
         if result and result.data:
             return self._row_to_service(result.data[0])
@@ -201,11 +218,12 @@ class ServiceCatalogStore:
             return None
         client = self._client()
         result = await self._run(
-            lambda: client.table("services").select("*").eq(
-                "tenant_id", tenant_id
-            ).or_(
-                f"service_key.eq.{service_id},name.eq.{service_id}"
-            ).limit(1).execute()
+            lambda: client.table("services")
+            .select("*")
+            .eq("tenant_id", tenant_id)
+            .or_(f"service_key.eq.{service_id},name.eq.{service_id}")
+            .limit(1)
+            .execute()
         )
         if result and result.data:
             return self._row_to_service(result.data[0])
@@ -274,13 +292,17 @@ class ServiceCatalogStore:
 
         client = self._client()
         await self._run(
-            lambda: client.table("services").update(update_data).eq(
-                "tenant_id", tenant_id
-            ).eq("service_key", existing.id).execute()
+            lambda: client.table("services")
+            .update(update_data)
+            .eq("tenant_id", tenant_id)
+            .eq("service_key", existing.id)
+            .execute()
         )
         return await self.get_service(service_id, tenant_slug=tenant_slug)
 
-    async def delete_service(self, service_id: str, tenant_slug: str = "default") -> bool:
+    async def delete_service(
+        self, service_id: str, tenant_slug: str = "default"
+    ) -> bool:
         if not await self._ensure_ready():
             return False
         tenant_id = await self._resolve_tenant_id(tenant_slug)
@@ -288,11 +310,11 @@ class ServiceCatalogStore:
             return False
         client = self._client()
         result = await self._run(
-            lambda: client.table("services").delete().eq(
-                "tenant_id", tenant_id
-            ).or_(
-                f"service_key.eq.{service_id},name.eq.{service_id}"
-            ).execute()
+            lambda: client.table("services")
+            .delete()
+            .eq("tenant_id", tenant_id)
+            .or_(f"service_key.eq.{service_id},name.eq.{service_id}")
+            .execute()
         )
         return bool(result and result.data)
 
@@ -332,7 +354,9 @@ class ServiceCatalogStore:
 
         # Resolve service UUIDs
         source = await self.get_service(source_service_id, tenant_slug=tenant_slug)
-        target = await self.get_service(request.target_service_id, tenant_slug=tenant_slug)
+        target = await self.get_service(
+            request.target_service_id, tenant_slug=tenant_slug
+        )
         if not source or not target:
             return None
 
@@ -362,9 +386,11 @@ class ServiceCatalogStore:
             return None
         client = self._client()
         result = await self._run(
-            lambda: client.table("service_dependencies").select("*").eq(
-                "id", dependency_id
-            ).limit(1).execute()
+            lambda: client.table("service_dependencies")
+            .select("*")
+            .eq("id", dependency_id)
+            .limit(1)
+            .execute()
         )
         if result and result.data:
             return self._row_to_dependency(result.data[0])
@@ -384,7 +410,11 @@ class ServiceCatalogStore:
         client = self._client()
 
         def _query():
-            q = client.table("service_dependencies").select("*").eq("tenant_id", tenant_id)
+            q = (
+                client.table("service_dependencies")
+                .select("*")
+                .eq("tenant_id", tenant_id)
+            )
             if source_service_id:
                 q = q.eq("upstream_service_id", source_service_id)
             if target_service_id:
@@ -414,9 +444,10 @@ class ServiceCatalogStore:
 
         client = self._client()
         await self._run(
-            lambda: client.table("service_dependencies").update(
-                update_data
-            ).eq("id", dependency_id).execute()
+            lambda: client.table("service_dependencies")
+            .update(update_data)
+            .eq("id", dependency_id)
+            .execute()
         )
         return await self.get_dependency(dependency_id, tenant_slug=tenant_slug)
 
@@ -429,9 +460,10 @@ class ServiceCatalogStore:
             return False
         client = self._client()
         result = await self._run(
-            lambda: client.table("service_dependencies").delete().eq(
-                "id", dependency_id
-            ).execute()
+            lambda: client.table("service_dependencies")
+            .delete()
+            .eq("id", dependency_id)
+            .execute()
         )
         return bool(result and result.data)
 

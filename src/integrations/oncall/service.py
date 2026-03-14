@@ -1,7 +1,7 @@
 """On-Call Service - Core business logic for schedule management."""
 
 import uuid
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 from .models import (
     HandoffNotification,

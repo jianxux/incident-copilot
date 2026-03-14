@@ -97,14 +97,18 @@ async def get_slack_client(
         try:
             token = await oauth_token_store.get_access_token(tenant_id, "slack")
         except Exception as e:
-            logger.warning("slack_oauth_token_lookup_failed", tenant_id=tenant_id, error=str(e))
+            logger.warning(
+                "slack_oauth_token_lookup_failed", tenant_id=tenant_id, error=str(e)
+            )
 
     if not token and tenant_id and _looks_like_slack_team_id(tenant_id):
         mapped_tenant_id = await _resolve_tenant_id_from_slack_team_id(tenant_id)
         if mapped_tenant_id:
             resolved_tenant_id = mapped_tenant_id
             try:
-                token = await oauth_token_store.get_access_token(mapped_tenant_id, "slack")
+                token = await oauth_token_store.get_access_token(
+                    mapped_tenant_id, "slack"
+                )
             except Exception as e:
                 logger.warning(
                     "slack_oauth_token_lookup_failed",
@@ -120,9 +124,15 @@ async def get_slack_client(
                 encrypted = (tenant.integrations.get("slack") or {}).get("encrypted")
                 if encrypted:
                     slack_integration = decrypt_json(encrypted)
-                    oauth_data = slack_integration.get("oauth", {}) if isinstance(slack_integration, dict) else {}
+                    oauth_data = (
+                        slack_integration.get("oauth", {})
+                        if isinstance(slack_integration, dict)
+                        else {}
+                    )
                     token = oauth_data.get("bot_token")
-                    team = oauth_data.get("team") if isinstance(oauth_data, dict) else None
+                    team = (
+                        oauth_data.get("team") if isinstance(oauth_data, dict) else None
+                    )
                     mapped_team_id = team.get("id") if isinstance(team, dict) else None
                     if mapped_team_id:
                         register_slack_team_mapping(mapped_team_id, resolved_tenant_id)
@@ -179,7 +189,9 @@ async def create_incident_channel(
         resp = await client.conversations_create(name=channel_name)
         if not resp.get("ok"):
             error_msg = resp.get("error") or "unknown_error"
-            logger.error("slack_channel_create_failed", error=error_msg, name=channel_name)
+            logger.error(
+                "slack_channel_create_failed", error=error_msg, name=channel_name
+            )
             raise RuntimeError(error_msg)
 
         channel_id = resp["channel"]["id"]
@@ -190,7 +202,9 @@ async def create_incident_channel(
         try:
             await client.conversations_setTopic(channel=channel_id, topic=topic)
         except Exception as e:
-            logger.warning("slack_set_topic_failed", channel_id=channel_id, error=str(e))
+            logger.warning(
+                "slack_set_topic_failed", channel_id=channel_id, error=str(e)
+            )
 
         # Invite responders
         if responder_slack_ids:
@@ -236,7 +250,9 @@ async def post_context_card(
         logger.info("slack_context_card_posted", channel_id=channel_id, ts=ts)
         return ts
     except Exception as e:
-        logger.error("slack_context_card_post_failed", channel_id=channel_id, error=str(e))
+        logger.error(
+            "slack_context_card_post_failed", channel_id=channel_id, error=str(e)
+        )
         return None
 
 
@@ -263,7 +279,12 @@ async def update_context_card(
         logger.info("slack_context_card_updated", channel_id=channel_id, ts=ts, ok=ok)
         return bool(ok)
     except Exception as e:
-        logger.error("slack_context_card_update_failed", channel_id=channel_id, ts=ts, error=str(e))
+        logger.error(
+            "slack_context_card_update_failed",
+            channel_id=channel_id,
+            ts=ts,
+            error=str(e),
+        )
         return False
 
 
@@ -281,7 +302,11 @@ async def post_suggested_actions(
     blocks: list[dict] = [
         {
             "type": "header",
-            "text": {"type": "plain_text", "text": "⚡ Suggested Actions", "emoji": True},
+            "text": {
+                "type": "plain_text",
+                "text": "⚡ Suggested Actions",
+                "emoji": True,
+            },
         }
     ]
 
@@ -290,7 +315,11 @@ async def post_suggested_actions(
         value_payload = json.dumps({"action_id": action_id, "incident_id": incident_id})
 
         risk_emoji = {"low": "🟢", "medium": "🟡", "high": "🟠", "critical": "🔴"}.get(
-            action.risk_level.value if hasattr(action.risk_level, "value") else str(action.risk_level),
+            (
+                action.risk_level.value
+                if hasattr(action.risk_level, "value")
+                else str(action.risk_level)
+            ),
             "⚪",
         )
 
@@ -310,14 +339,22 @@ async def post_suggested_actions(
                 "elements": [
                     {
                         "type": "button",
-                        "text": {"type": "plain_text", "text": "✅ Approve", "emoji": True},
+                        "text": {
+                            "type": "plain_text",
+                            "text": "✅ Approve",
+                            "emoji": True,
+                        },
                         "action_id": f"action_approve:{action_id}",
                         "value": value_payload,
                         "style": "primary",
                     },
                     {
                         "type": "button",
-                        "text": {"type": "plain_text", "text": "❌ Reject", "emoji": True},
+                        "text": {
+                            "type": "plain_text",
+                            "text": "❌ Reject",
+                            "emoji": True,
+                        },
                         "action_id": f"action_reject:{action_id}",
                         "value": value_payload,
                         "style": "danger",
@@ -334,10 +371,17 @@ async def post_suggested_actions(
             unfurl_links=False,
         )
         ts = resp.get("ts")
-        logger.info("slack_suggested_actions_posted", channel_id=channel_id, incident_id=incident_id, ts=ts)
+        logger.info(
+            "slack_suggested_actions_posted",
+            channel_id=channel_id,
+            incident_id=incident_id,
+            ts=ts,
+        )
         return ts
     except Exception as e:
-        logger.error("slack_suggested_actions_post_failed", channel_id=channel_id, error=str(e))
+        logger.error(
+            "slack_suggested_actions_post_failed", channel_id=channel_id, error=str(e)
+        )
         return None
 
 
@@ -375,7 +419,11 @@ async def post_status_update(
                 "elements": [
                     {
                         "type": "button",
-                        "text": {"type": "plain_text", "text": "📝 Generate Postmortem", "emoji": True},
+                        "text": {
+                            "type": "plain_text",
+                            "text": "📝 Generate Postmortem",
+                            "emoji": True,
+                        },
                         "action_id": "generate_postmortem",
                         "value": incident_id,
                         "style": "primary",
@@ -410,7 +458,9 @@ async def archive_channel(tenant_id: str | None, channel_id: str) -> bool:
         logger.info("slack_channel_archived", channel_id=channel_id, ok=ok)
         return bool(ok)
     except Exception as e:
-        logger.error("slack_channel_archive_failed", channel_id=channel_id, error=str(e))
+        logger.error(
+            "slack_channel_archive_failed", channel_id=channel_id, error=str(e)
+        )
         return False
 
 
@@ -471,9 +521,19 @@ def build_incident_notification_blocks(
             "elements": [
                 {
                     "type": "button",
-                    "text": {"type": "plain_text", "text": "🚨 Start War Room", "emoji": True},
+                    "text": {
+                        "type": "plain_text",
+                        "text": "🚨 Start War Room",
+                        "emoji": True,
+                    },
                     "action_id": "start_warroom",
-                    "value": json.dumps({"incident_id": incident_id, "service": service, "tenant_id": tenant_id}),
+                    "value": json.dumps(
+                        {
+                            "incident_id": incident_id,
+                            "service": service,
+                            "tenant_id": tenant_id,
+                        }
+                    ),
                     "style": "danger",
                 },
             ],
@@ -530,7 +590,9 @@ async def post_incident_notification(
         )
         return {"channel_id": channel_id, "ts": ts}
     except Exception as e:
-        logger.error("slack_incident_notification_failed", channel=channel, error=str(e))
+        logger.error(
+            "slack_incident_notification_failed", channel=channel, error=str(e)
+        )
         return None
 
 

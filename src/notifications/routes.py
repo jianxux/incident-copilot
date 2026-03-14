@@ -1,6 +1,6 @@
 """FastAPI routes for notification preferences."""
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -305,7 +305,8 @@ async def update_quiet_hours(
     service: NotificationService = Depends(get_notification_service),
 ) -> QuietHours:
     """Update quiet hours settings."""
-    from datetime import time as dt_time, UTC
+    from datetime import UTC
+    from datetime import time as dt_time
 
     prefs = await service.preference_store.get(user_id)
 

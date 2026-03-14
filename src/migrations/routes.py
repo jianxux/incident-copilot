@@ -1,6 +1,5 @@
 """API routes for migration management."""
 
-import asyncio
 import logging
 from typing import Any
 

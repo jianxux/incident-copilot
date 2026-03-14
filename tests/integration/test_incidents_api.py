@@ -147,7 +147,9 @@ def test_list_response_matches_frontend_contract(authed_client):
     }
     assert required_fields.issubset(set(incident.keys()))
 
-    filtered = authed_client.get("/api/incidents", params={"service": "api", "limit": 10})
+    filtered = authed_client.get(
+        "/api/incidents", params={"service": "api", "limit": 10}
+    )
     assert filtered.status_code == 200
     filtered_payload = filtered.json()
     assert filtered_payload["total"] == 2
@@ -155,7 +157,9 @@ def test_list_response_matches_frontend_contract(authed_client):
 
 
 def test_list_endpoint_awaits_pd_sync_trigger(authed_client):
-    with patch("src.api.incidents._trigger_pd_sync_best_effort", new_callable=AsyncMock) as mock_sync:
+    with patch(
+        "src.api.incidents._trigger_pd_sync_best_effort", new_callable=AsyncMock
+    ) as mock_sync:
         response = authed_client.get("/api/incidents")
 
     assert response.status_code == 200
@@ -236,7 +240,9 @@ def test_context_timeline_notes_and_similar(authed_client):
     similar_payload = similar_response.json()
     assert isinstance(similar_payload, list)
     if similar_payload:
-        assert {"id", "title", "severity", "status"}.issubset(set(similar_payload[0].keys()))
+        assert {"id", "title", "severity", "status"}.issubset(
+            set(similar_payload[0].keys())
+        )
 
 
 def test_incident_list_endpoint_requires_auth():

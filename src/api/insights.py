@@ -151,7 +151,9 @@ async def get_insights_summary(
         try:
             if _auto_analysis_task and _auto_analysis_task.done():
                 _auto_analysis_task = None
-            has_running = _auto_analysis_task is not None and not _auto_analysis_task.done()
+            has_running = (
+                _auto_analysis_task is not None and not _auto_analysis_task.done()
+            )
             if has_running:
                 analysis_pending = True
             else:

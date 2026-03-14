@@ -44,13 +44,17 @@ class TestResolveGitHubCredentials:
 
     @pytest.mark.asyncio
     async def test_returns_env_vars_when_set(self, settings_with_github):
-        token, org = await resolve_github_credentials(settings_with_github, tenant_id="t1")
+        token, org = await resolve_github_credentials(
+            settings_with_github, tenant_id="t1"
+        )
         assert token == "ghp_env_token"
         assert org == "my-org"
 
     @pytest.mark.asyncio
     async def test_returns_empty_when_no_tenant(self, settings_no_github):
-        token, org = await resolve_github_credentials(settings_no_github, tenant_id=None)
+        token, org = await resolve_github_credentials(
+            settings_no_github, tenant_id=None
+        )
         assert token == ""
         assert org == ""
 
@@ -59,10 +63,14 @@ class TestResolveGitHubCredentials:
         mock_db = _mock_supabase_db([{"config": {"encrypted": "encrypted_blob"}}])
 
         mock_get_db = MagicMock(return_value=mock_db)
-        mock_decrypt = MagicMock(return_value={"token": "ghp_db_token", "org": "db-org"})
+        mock_decrypt = MagicMock(
+            return_value={"token": "ghp_db_token", "org": "db-org"}
+        )
 
         with (
-            patch("src.integrations.github.get_settings", return_value=settings_no_github),
+            patch(
+                "src.integrations.github.get_settings", return_value=settings_no_github
+            ),
             patch("src.integrations.github.is_supabase_db_enabled", return_value=True),
             patch("src.integrations.github.get_db", mock_get_db),
             patch("src.integrations.github.decrypt_json", mock_decrypt),
@@ -81,7 +89,9 @@ class TestResolveGitHubCredentials:
         mock_db = _mock_supabase_db([])
 
         with (
-            patch("src.integrations.github.get_settings", return_value=settings_no_github),
+            patch(
+                "src.integrations.github.get_settings", return_value=settings_no_github
+            ),
             patch("src.integrations.github.is_supabase_db_enabled", return_value=True),
             patch("src.integrations.github.get_db", return_value=mock_db),
         ):
@@ -94,7 +104,9 @@ class TestResolveGitHubCredentials:
     @pytest.mark.asyncio
     async def test_returns_empty_when_supabase_disabled(self, settings_no_github):
         with (
-            patch("src.integrations.github.get_settings", return_value=settings_no_github),
+            patch(
+                "src.integrations.github.get_settings", return_value=settings_no_github
+            ),
             patch("src.integrations.github.is_supabase_db_enabled", return_value=False),
         ):
             token, org = await resolve_github_credentials(
@@ -106,7 +118,9 @@ class TestResolveGitHubCredentials:
     @pytest.mark.asyncio
     async def test_handles_db_exception_gracefully(self, settings_no_github):
         with (
-            patch("src.integrations.github.get_settings", return_value=settings_no_github),
+            patch(
+                "src.integrations.github.get_settings", return_value=settings_no_github
+            ),
             patch("src.integrations.github.is_supabase_db_enabled", return_value=True),
             patch("src.integrations.github.get_db", side_effect=Exception("DB down")),
         ):
@@ -121,7 +135,9 @@ class TestResolveGitHubCredentials:
         mock_db = _mock_supabase_db([{"config": {}}])
 
         with (
-            patch("src.integrations.github.get_settings", return_value=settings_no_github),
+            patch(
+                "src.integrations.github.get_settings", return_value=settings_no_github
+            ),
             patch("src.integrations.github.is_supabase_db_enabled", return_value=True),
             patch("src.integrations.github.get_db", return_value=mock_db),
         ):
@@ -136,11 +152,15 @@ class TestResolveGitHubCredentials:
         mock_get_db = MagicMock()
 
         with (
-            patch("src.integrations.github.get_settings", return_value=settings_no_github),
+            patch(
+                "src.integrations.github.get_settings", return_value=settings_no_github
+            ),
             patch("src.integrations.github.is_supabase_db_enabled", return_value=True),
             patch("src.integrations.github.get_db", mock_get_db),
         ):
-            token, org = await resolve_github_credentials(settings_no_github, tenant_id="")
+            token, org = await resolve_github_credentials(
+                settings_no_github, tenant_id=""
+            )
 
         assert token == ""
         assert org == ""
@@ -156,7 +176,9 @@ class TestGitHubAdapterInit:
         assert adapter.org == "my-org"
 
     def test_override_token_and_org(self, settings_with_github):
-        adapter = GitHubAdapter(settings_with_github, token="override_token", org="override_org")
+        adapter = GitHubAdapter(
+            settings_with_github, token="override_token", org="override_org"
+        )
         assert adapter.token == "override_token"
         assert adapter.org == "override_org"
 

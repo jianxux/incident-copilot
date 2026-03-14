@@ -63,7 +63,9 @@ async def test_resolve_github_creds_from_db(monkeypatch):
     monkeypatch.setattr("src.integrations.github.is_supabase_db_enabled", lambda: True)
     monkeypatch.setattr(
         "src.integrations.github.get_db",
-        lambda use_admin=True: _FakeDB([{"config": {"encrypted": "encrypted-payload"}}]),
+        lambda use_admin=True: _FakeDB(
+            [{"config": {"encrypted": "encrypted-payload"}}]
+        ),
     )
     monkeypatch.setattr(
         "src.integrations.github.decrypt_json",
@@ -88,7 +90,9 @@ async def test_resolve_github_creds_db_error(monkeypatch):
         async def _to_thread(self, fn, *args, **kwargs):
             raise RuntimeError("db unavailable")
 
-    monkeypatch.setattr("src.integrations.github.get_db", lambda use_admin=True: _FailingDB())
+    monkeypatch.setattr(
+        "src.integrations.github.get_db", lambda use_admin=True: _FailingDB()
+    )
 
     token, org = await resolve_github_creds("tenant-1")
 

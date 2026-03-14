@@ -1,6 +1,6 @@
 """Tests for reliability feed generator."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -16,7 +16,7 @@ def generator():
 
 @pytest.fixture
 def now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 @pytest.fixture
@@ -56,17 +56,25 @@ class TestExtractLessons:
         lessons = await generator.extract_lessons(diverse_incidents, "payments-api")
         assert len(lessons) > 0
         titles = [l.title for l in lessons]
-        assert any("high-severity" in t.lower() or "critical" in t.lower() for t in titles)
+        assert any(
+            "high-severity" in t.lower() or "critical" in t.lower() for t in titles
+        )
 
     @pytest.mark.asyncio
     async def test_extracts_slow_mttr_lesson(self, generator, diverse_incidents):
         lessons = await generator.extract_lessons(diverse_incidents, "payments-api")
-        assert any("slow" in l.title.lower() or "resolution" in l.title.lower() for l in lessons)
+        assert any(
+            "slow" in l.title.lower() or "resolution" in l.title.lower()
+            for l in lessons
+        )
 
     @pytest.mark.asyncio
     async def test_extracts_frequency_lesson(self, generator, diverse_incidents):
         lessons = await generator.extract_lessons(diverse_incidents, "payments-api")
-        assert any("volume" in l.title.lower() or "frequent" in l.title.lower() for l in lessons)
+        assert any(
+            "volume" in l.title.lower() or "frequent" in l.title.lower()
+            for l in lessons
+        )
 
     @pytest.mark.asyncio
     async def test_no_lessons_for_healthy_service(self, generator):
@@ -80,7 +88,12 @@ class TestExtractLessons:
             assert lesson.lesson_id
             assert lesson.service_name
             assert lesson.title
-            assert lesson.category in ("prevention", "detection", "response", "recovery")
+            assert lesson.category in (
+                "prevention",
+                "detection",
+                "response",
+                "recovery",
+            )
 
 
 class TestShiftLeftReport:

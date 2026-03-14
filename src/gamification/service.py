@@ -5,7 +5,7 @@ Gamification Service
 Core service for managing achievements, badges, points, and leaderboards.
 """
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from .models import (

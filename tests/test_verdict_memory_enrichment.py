@@ -97,7 +97,9 @@ async def test_similar_incident_context_appears_in_generated_verdict():
 
     async def _fake_create(**kwargs):
         prompt = kwargs["messages"][0]["content"]
-        has_memory_context = "Here are similar past incidents and their resolutions:" in prompt
+        has_memory_context = (
+            "Here are similar past incidents and their resolutions:" in prompt
+        )
         return _mock_llm_response(
             {
                 "most_likely_cause": "Repeated deploy-related regression",

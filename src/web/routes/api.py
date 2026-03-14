@@ -2,13 +2,12 @@
 
 import asyncio
 import json
-from datetime import UTC, datetime
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 
 from ...auth.middleware import AuthContext, get_auth_context
-from ...integrations.pagerduty_sync import maybe_trigger_pd_sync
+from ...auth.models import Tenant, User
 from ..store import incident_store
 from .common import (
     _map_status,
@@ -35,229 +34,7 @@ async def health_check():
     return {"status": "ok", "service": "incident-copilot"}
 
 
-@landing_router.get("/api/incidents")
-async def api_incidents(
-    request: Request,
-    auth_data: dict[str, str] = Depends(require_dashboard_auth),
-):
-    """Tenant-scoped JSON API endpoint for incidents list."""
-    tenant_id = auth_data["tenant_id"]
-
-    # Sync PagerDuty incidents - first load awaits, subsequent are background
-    await maybe_trigger_pd_sync(tenant_id)
-
-    # When Supabase DB is disabled, fall back to in-memory store.
-    from ...supabase_client import is_supabase_db_enabled
-
-    if not is_supabase_db_enabled():
-        incidents = await incident_store.get_all_incidents()
-        serialized = []
-        for i in incidents:
-            triggered_at = i.triggered_at.isoformat()
-            processed_at = i.processed_at.isoformat() if i.processed_at else None
-            created_at = triggered_at
-            updated_at = processed_at or triggered_at
-            status = _map_status(i.status)
-
-            serialized.append(
-                {
-                    "id": i.incident_id,
-                    "incident_id": i.incident_id,
-                    "title": i.title,
-                    "service": i.service_name,
-                    "service_name": i.service_name,
-                    "severity": i.severity.value,
-                    "status": status,
-                    "source": i.source or "",
-                    "source_url": i.source_url or "",
-                    "source_id": i.source_id or "",
-                    "created_at": created_at,
-                    "updated_at": updated_at,
-                    "triggered_at": triggered_at,
-                    "processed_at": processed_at,
-                }
-            )
-
-        return {"incidents": serialized, "total": len(serialized)}
-
-    from ...db.supabase_db import get_db
-
-    db = get_db(use_admin=True)
-    rows = await db.list_processing_incidents(tenant_id=tenant_id, limit=100, offset=0)
-
-    def _format_incident(r: dict) -> dict:
-        triggered = r.get("triggered_at")
-        processed = r.get("processed_at")
-        created_at = r.get("created_at") or triggered
-        updated_at = r.get("updated_at") or processed or created_at
-        duration_seconds = None
-        if triggered and processed:
-            try:
-                from datetime import datetime, timezone
-
-                t0 = datetime.fromisoformat(str(triggered).replace("Z", "+00:00"))
-                t1 = datetime.fromisoformat(str(processed).replace("Z", "+00:00"))
-                duration_seconds = int((t1 - t0).total_seconds())
-            except Exception as e:
-                logger.warning(
-                    "incident_duration_parse_failed",
-                    error=str(e),
-                    error_type=type(e).__name__,
-                    incident_id=r.get("id"),
-                )
-
-        # Extract verdict summary from metadata if available
-        meta = r.get("metadata") or {}
-        verdict_summary = None
-        if isinstance(meta, dict):
-            verdict = meta.get("verdict") or meta.get("ai_verdict") or {}
-            if isinstance(verdict, dict):
-                verdict_summary = verdict.get("summary") or verdict.get("one_liner")
-            elif isinstance(verdict, str):
-                verdict_summary = verdict[:200]
-
-        return {
-            "id": r["id"],
-            "incident_id": r["id"],
-            "title": r.get("title") or "",
-            "description": r.get("description") or "",
-            "service": r.get("service") or "",
-            "service_name": r.get("service") or "",  # backward compat
-            "severity": r.get("severity") or "medium",
-            "status": _map_status(r.get("status")),
-            "source": r.get("source") or "",
-            "source_url": r.get("source_url") or "",
-            "source_id": r.get("source_id") or "",
-            "triggered_at": triggered,
-            "processed_at": processed,
-            "created_at": created_at,
-            "updated_at": updated_at,
-            "duration_seconds": duration_seconds,
-            "verdict_summary": verdict_summary,
-            "error_message": r.get("error_message"),
-        }
-
-    return {
-        "incidents": [_format_incident(r) for r in rows],
-        "total": len(rows),
-    }
-
-
-@landing_router.get("/api/incidents/stats")
-async def api_incident_stats(
-    request: Request,
-    auth_data: dict[str, str] = Depends(require_dashboard_auth),
-):
-    """Return incident statistics: total, open, resolved today, avg MTTR."""
-    tenant_id = auth_data["tenant_id"]
-
-    from ...supabase_client import is_supabase_db_enabled
-
-    if not is_supabase_db_enabled():
-        incidents = await incident_store.get_all_incidents()
-    else:
-        from ...db.supabase_db import get_db
-
-        db = get_db(use_admin=True)
-        rows = await db.list_processing_incidents(
-            tenant_id=tenant_id, limit=500, offset=0
-        )
-        incidents = [
-            type(
-                "Inc",
-                (),
-                {
-                    "status": r.get("status") or "processing",
-                    "processed_at": (
-                        datetime.fromisoformat(
-                            str(r["processed_at"]).replace("Z", "+00:00")
-                        )
-                        if r.get("processed_at")
-                        else None
-                    ),
-                    "triggered_at": (
-                        datetime.fromisoformat(
-                            str(r["triggered_at"]).replace("Z", "+00:00")
-                        )
-                        if r.get("triggered_at")
-                        else None
-                    ),
-                },
-            )()
-            for r in rows
-        ]
-
-    total = len(incidents)
-    open_count = sum(
-        1
-        for i in incidents
-        if _map_status(getattr(i, "status", "processing")) not in ("resolved",)
-    )
-
-    today = datetime.now(UTC).date()
-    resolved_today = 0
-    mttr_values: list[float] = []
-
-    for i in incidents:
-        p = getattr(i, "processed_at", None)
-        t = getattr(i, "triggered_at", None)
-        st = _map_status(getattr(i, "status", "processing"))
-        if st == "resolved" and p:
-            if hasattr(p, "date") and p.date() == today:
-                resolved_today += 1
-            if t and p:
-                mttr_values.append((p - t).total_seconds() / 60.0)
-
-    avg_mttr_minutes = (
-        round(sum(mttr_values) / len(mttr_values), 1) if mttr_values else None
-    )
-
-    return {
-        "total": total,
-        "open": open_count,
-        "resolved_today": resolved_today,
-        "avg_mttr_minutes": avg_mttr_minutes,
-    }
-
-
-@landing_router.get("/api/incidents/{incident_id}/context")
-async def api_incident_context(
-    incident_id: str,
-    auth_data: dict[str, str] = Depends(require_dashboard_auth),
-):
-    """Return the context card JSON for a specific incident."""
-    incident = await incident_store.get_incident(incident_id)
-    if not incident:
-        raise HTTPException(status_code=404, detail="Incident not found")
-    if not incident.context_card:
-        return {}
-    return incident.context_card.model_dump(mode="json")
-
-
-@landing_router.get("/api/incidents/{incident_id}")
-async def api_incident_detail(
-    incident_id: str,
-    auth_data: dict[str, str] = Depends(require_dashboard_auth),
-):
-    """Return a single incident by ID."""
-    incident = await incident_store.get_incident(incident_id)
-    if not incident:
-        raise HTTPException(status_code=404, detail="Incident not found")
-    return {
-        "id": incident.incident_id,
-        "title": incident.title,
-        "service": incident.service_name,
-        "severity": incident.severity.value,
-        "status": _map_status(incident.status),
-        "created_at": incident.triggered_at.isoformat(),
-        "updated_at": (
-            incident.processed_at.isoformat()
-            if incident.processed_at
-            else incident.triggered_at.isoformat()
-        ),
-        "source": incident.source,
-        "source_url": incident.source_url,
-    }
+# Canonical incidents API routes live in src/api/incidents.py.
 
 
 @landing_router.get("/api/dashboard/stats")
@@ -314,8 +91,7 @@ async def auth_callback(request: Request):
     The code exchange must happen client-side where the PKCE code verifier
     is stored (in the browser's storage from the initial OAuth request).
     """
-    return HTMLResponse(
-        content="""
+    return HTMLResponse(content="""
 <!DOCTYPE html>
 <html>
 <head>
@@ -412,8 +188,7 @@ async def auth_callback(request: Request):
     </script>
 </body>
 </html>
-"""
-    )
+""")
 
 
 @landing_router.get("/login", response_class=HTMLResponse)
@@ -431,7 +206,6 @@ async def login_page(request: Request, error: str | None = None):
         "oauth_not_configured": "This login method is not configured.",
         "oauth_token_failed": "Failed to authenticate. Please try again.",
         "oauth_user_failed": "Failed to get user info. Please try again.",
-        "session_expired": "Your session has expired. Please sign in again.",
     }
 
     return templates.TemplateResponse(
@@ -500,10 +274,45 @@ async def sse_events(request: Request):
 @router.get("/api/incidents")
 async def api_incidents_dashboard_scope(
     request: Request,
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    status: list[str] | None = Query(None),
+    severity: list[str] | None = Query(None),
+    service: list[str] | None = Query(None),
+    team: list[str] | None = Query(None),
+    assignee: str | None = Query(None),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+    search: str | None = Query(None),
     auth_data: dict[str, str] = Depends(require_dashboard_auth),
 ):
     """Backward-compatible tenant-scoped incidents endpoint under /dashboard."""
-    return await api_incidents(request, auth_data)
+    from ...api.incidents import list_incidents
+
+    tenant_id = auth_data["tenant_id"]
+    user_id = auth_data["user_id"]
+    return await list_incidents(
+        request=request,
+        page=page,
+        limit=limit,
+        status=status,
+        severity=severity,
+        service=service,
+        team=team,
+        assignee=assignee,
+        date_from=date_from,
+        date_to=date_to,
+        search=search,
+        auth=AuthContext(
+            user=User(
+                id=user_id,
+                email=f"{user_id}@dashboard.local",
+                name=user_id,
+                tenant_id=tenant_id,
+            ),
+            tenant=Tenant(id=tenant_id, name=tenant_id, slug=tenant_id),
+        ),
+    )
 
 
 @router.patch("/api/incidents/{incident_id}/status")
@@ -538,9 +347,9 @@ async def update_incident_status(
         db = get_db(use_admin=True)
         update_data: dict = {"status": canonical_status}
         if canonical_status == "completed":
-            from datetime import datetime, timezone
+            from datetime import datetime
 
-            update_data["processed_at"] = datetime.now(timezone.utc).isoformat()
+            update_data["processed_at"] = datetime.now(UTC).isoformat()
         elif canonical_status == "processing":
             update_data["processed_at"] = None
 
