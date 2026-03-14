@@ -3,11 +3,11 @@
 import asyncio
 import json
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 
 from ...auth.middleware import AuthContext, get_auth_context
-from ...auth.models import Tenant
+from ...auth.models import Tenant, User
 from ..store import incident_store
 from .common import (
     _map_status,
@@ -91,8 +91,7 @@ async def auth_callback(request: Request):
     The code exchange must happen client-side where the PKCE code verifier
     is stored (in the browser's storage from the initial OAuth request).
     """
-    return HTMLResponse(
-        content="""
+    return HTMLResponse(content="""
 <!DOCTYPE html>
 <html>
 <head>
@@ -189,8 +188,7 @@ async def auth_callback(request: Request):
     </script>
 </body>
 </html>
-"""
-    )
+""")
 
 
 @landing_router.get("/login", response_class=HTMLResponse)
@@ -276,15 +274,42 @@ async def sse_events(request: Request):
 @router.get("/api/incidents")
 async def api_incidents_dashboard_scope(
     request: Request,
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    status: list[str] | None = Query(None),
+    severity: list[str] | None = Query(None),
+    service: list[str] | None = Query(None),
+    team: list[str] | None = Query(None),
+    assignee: str | None = Query(None),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+    search: str | None = Query(None),
     auth_data: dict[str, str] = Depends(require_dashboard_auth),
 ):
     """Backward-compatible tenant-scoped incidents endpoint under /dashboard."""
     from ...api.incidents import list_incidents
 
     tenant_id = auth_data["tenant_id"]
+    user_id = auth_data["user_id"]
     return await list_incidents(
         request=request,
+        page=page,
+        limit=limit,
+        status=status,
+        severity=severity,
+        service=service,
+        team=team,
+        assignee=assignee,
+        date_from=date_from,
+        date_to=date_to,
+        search=search,
         auth=AuthContext(
+            user=User(
+                id=user_id,
+                email=f"{user_id}@dashboard.local",
+                name=user_id,
+                tenant_id=tenant_id,
+            ),
             tenant=Tenant(id=tenant_id, name=tenant_id, slug=tenant_id),
         ),
     )
