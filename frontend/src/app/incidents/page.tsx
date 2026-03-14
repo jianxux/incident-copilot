@@ -88,6 +88,12 @@ export default function IncidentsPage() {
               {syncStatus.last_success ? ` ${formatDistanceToNow(new Date(syncStatus.last_success), { addSuffix: true })}` : ''}
             </p>
           )}
+          {syncStatus?.status === 'stale' && (
+            <p className="text-gray-700 truncate">
+              <span className="text-amber-500">●</span> Synced (stale)
+              {syncStatus.last_success ? ` ${formatDistanceToNow(new Date(syncStatus.last_success), { addSuffix: true })}` : ''}
+            </p>
+          )}
           {syncStatus?.status === 'syncing' && (
             <p className="text-amber-600 truncate"><span className="inline-block animate-spin mr-1">↻</span>Syncing...</p>
           )}
