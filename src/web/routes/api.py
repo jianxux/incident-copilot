@@ -33,7 +33,9 @@ async def health_check():
     """Health check endpoint."""
     return {"status": "ok", "service": "incident-copilot"}
 
+
 # Canonical incidents API routes live in src/api/incidents.py.
+
 
 @landing_router.get("/api/dashboard/stats")
 async def api_dashboard_stats(
@@ -89,7 +91,8 @@ async def auth_callback(request: Request):
     The code exchange must happen client-side where the PKCE code verifier
     is stored (in the browser's storage from the initial OAuth request).
     """
-    return HTMLResponse(content="""
+    return HTMLResponse(
+        content="""
 <!DOCTYPE html>
 <html>
 <head>
@@ -186,7 +189,8 @@ async def auth_callback(request: Request):
     </script>
 </body>
 </html>
-""")
+"""
+    )
 
 
 @landing_router.get("/login", response_class=HTMLResponse)
