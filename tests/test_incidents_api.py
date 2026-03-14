@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 os.environ["SUPABASE_DB_ENABLED"] = "false"
 os.environ.pop("SUPABASE_URL", None)
+
+from src.api.incidents import _derive_pd_sync_state
 
 
 class TestIncidentFormatting:
@@ -95,6 +97,7 @@ class TestIncidentFormatting:
         assert result["updated_at"] == "2026-02-18T10:00:00Z"
         assert result["duration_seconds"] is None  # not resolved
         assert result["verdict_summary"] is None
+
 
     def test_resolved_incident_with_duration(self):
         row = {
@@ -202,6 +205,53 @@ class TestIncidentFormatting:
         }
         result = self._format(row)
         assert result["duration_seconds"] == 0
+
+
+class TestPagerDutySyncState:
+    def test_returns_syncing_when_sync_in_progress(self):
+        assert _derive_pd_sync_state({"in_progress": True}) == "syncing"
+
+    def test_returns_never_without_attempt(self):
+        assert _derive_pd_sync_state({}) == "never"
+
+    def test_returns_error_when_last_attempt_failed(self):
+        now = datetime.now(UTC)
+        assert (
+            _derive_pd_sync_state(
+                {
+                    "last_attempt": now.isoformat(),
+                    "last_success": (now - timedelta(days=1)).isoformat(),
+                    "last_error": "boom",
+                }
+            )
+            == "error"
+        )
+
+    def test_returns_stale_when_last_success_is_old(self):
+        now = datetime.now(UTC)
+        assert (
+            _derive_pd_sync_state(
+                {
+                    "last_attempt": now.isoformat(),
+                    "last_success": (now - timedelta(seconds=601)).isoformat(),
+                    "last_error": None,
+                }
+            )
+            == "stale"
+        )
+
+    def test_returns_synced_when_last_success_is_recent(self):
+        now = datetime.now(UTC)
+        assert (
+            _derive_pd_sync_state(
+                {
+                    "last_attempt": now.isoformat(),
+                    "last_success": (now - timedelta(seconds=60)).isoformat(),
+                    "last_error": None,
+                }
+            )
+            == "synced"
+        )
 
 
 class TestIncidentStatusUpdate:
