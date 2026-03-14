@@ -754,6 +754,19 @@ async def list_incidents(
             or datetime.min.replace(tzinfo=UTC),
             reverse=True,
         )
+        logger.info(
+            "list_incidents_merged_results",
+            tenant_id=tenant_id,
+            supabase_count=len(supabase_rows),
+            memory_count=len(memory_rows),
+            merged_count=len(merged_rows),
+            statuses=statuses,
+            severities=severities,
+            services=services,
+            teams=teams,
+            assignee=assignee,
+            search=search,
+        )
 
         page_rows, total = _list_inmemory_incidents(
             merged_rows,

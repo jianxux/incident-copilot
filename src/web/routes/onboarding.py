@@ -889,6 +889,10 @@ async def get_test_incident_status(
     Checks both the Supabase DB directly and the in-memory incident store
     to handle cases where one persistence layer succeeded but the other didn't.
     """
+    tenant_id = auth.tenant_id
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="auth_required")
+
     resolved_status = "processing"
     resolved_title = None
     resolved_verdict = None
@@ -898,13 +902,14 @@ async def get_test_incident_status(
         from ...db.supabase_db import get_db
 
         db = get_db(use_admin=True)
-        rows = (
+        query = (
             db.client.table("incidents")
             .select("id,status,title,verdict")
             .eq("id", incident_id)
+            .eq("tenant_id", tenant_id)
             .limit(1)
-            .execute()
         )
+        rows = query.execute()
 
         if rows.data:
             incident = rows.data[0]
@@ -923,7 +928,7 @@ async def get_test_incident_status(
         try:
             from ...web.store import incident_store
 
-            stored = await incident_store.get_incident(incident_id)
+            stored = await incident_store.get_incident(incident_id, tenant_id=tenant_id)
             if stored:
                 resolved_title = resolved_title or stored.title
                 if stored.status == "completed":

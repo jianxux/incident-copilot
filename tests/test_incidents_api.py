@@ -376,6 +376,60 @@ def test_list_incidents_merges_supabase_and_memory_with_supabase_wins(monkeypatc
     assert incidents["inc-1"]["title"] == "Supabase title"
 
 
+def test_list_incidents_includes_processing_test_incident_from_memory(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from src.auth.middleware import AuthContext, get_auth_context
+    from src.main import create_app
+    from src.models import Severity
+    from src.web.store import StoredIncident
+
+    now = datetime(2026, 2, 22, 12, 0, tzinfo=UTC)
+
+    async def fake_supabase_list(**_kwargs):
+        return ([], 0)
+
+    test_incident = StoredIncident(
+        incident_id="test-inc-1",
+        title="[TEST] Incident Copilot onboarding test for payments-api",
+        service_name="payments-api",
+        severity=Severity.HIGH,
+        status="processing",
+        triggered_at=now,
+        description="Synthetic test incident created by onboarding flow.",
+    )
+
+    monkeypatch.setattr("src.api.incidents.is_supabase_db_enabled", lambda: True)
+    monkeypatch.setattr("src.api.incidents._list_supabase_incidents", fake_supabase_list)
+    monkeypatch.setattr(
+        "src.api.incidents.incident_store.get_all_incidents",
+        AsyncMock(return_value=[test_incident]),
+    )
+
+    app = create_app()
+
+    mock_tenant = MagicMock()
+    mock_tenant.id = "tenant-1"
+    mock_tenant.slug = "tenant-1"
+    mock_tenant.integrations = {}
+
+    async def override_auth():
+        return AuthContext(user=MagicMock(id="u1"), tenant=mock_tenant)
+
+    app.dependency_overrides[get_auth_context] = override_auth
+
+    with TestClient(app) as client:
+        response = client.get("/api/incidents")
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert payload["incidents"][0]["id"] == "test-inc-1"
+    assert payload["incidents"][0]["status"] == "processing"
+
+
 def test_timeline_inmemory_includes_github_event_types(monkeypatch):
     from fastapi.testclient import TestClient
 

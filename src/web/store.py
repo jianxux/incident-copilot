@@ -681,29 +681,38 @@ class HybridIncidentStore(_BaseIncidentStore):
             tenant_id=tenant_id,
             description=description,
         )
-        try:
-            await self._supabase.add_incident(
-                incident_id=incident_id,
-                title=title,
-                service_name=service_name,
-                severity=severity,
-                triggered_at=triggered_at,
-                source=source,
-                source_url=source_url,
-                source_id=source_id,
-                metadata=metadata,
-                tenant_id=tenant_id,
-                description=description,
-            )
-        except Exception as e:
-            logger.warning(
-                "hybrid_store_supabase_add_failed",
-                incident_id=incident_id,
-                tenant_id=tenant_id,
-                title=title,
-                error=str(e),
-                error_type=type(e).__name__,
-            )
+        for attempt in (1, 2):
+            try:
+                await self._supabase.add_incident(
+                    incident_id=incident_id,
+                    title=title,
+                    service_name=service_name,
+                    severity=severity,
+                    triggered_at=triggered_at,
+                    source=source,
+                    source_url=source_url,
+                    source_id=source_id,
+                    metadata=metadata,
+                    tenant_id=tenant_id,
+                    description=description,
+                )
+                break
+            except Exception:
+                logger.exception(
+                    "hybrid_store_supabase_add_failed",
+                    incident_id=incident_id,
+                    tenant_id=tenant_id,
+                    title=title,
+                    attempt=attempt,
+                )
+                if attempt == 1:
+                    await asyncio.sleep(0.5)
+                    continue
+
+                incident.metadata = {
+                    **(incident.metadata if isinstance(incident.metadata, dict) else {}),
+                    "persistence_failed": True,
+                }
         return incident
 
     async def complete_incident(
