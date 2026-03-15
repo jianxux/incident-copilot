@@ -26,7 +26,7 @@ try:
     from enum import StrEnum as _StrEnum
 except ImportError:
 
-    class _StrEnum(str, enum.Enum):  # type: ignore[no-redef]
+    class _StrEnum(str, enum.Enum):  # type: ignore[no-redef]  # noqa: UP042
         pass
 
 
