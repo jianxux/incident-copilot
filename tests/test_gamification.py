@@ -12,7 +12,6 @@ from src.gamification.models import (
     Badge,
     LeaderboardEntry,
     LeaderboardMetric,
-    LeaderboardPeriod,
     UserPoints,
 )
 from src.gamification.service import GamificationService

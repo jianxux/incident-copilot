@@ -275,8 +275,6 @@ class GitHubAdapter:
         self, client: httpx.AsyncClient, repo: str, since_hours: int
     ) -> list[GitHubPullRequest]:
         """Fetch recently merged pull requests."""
-        since = (datetime.now(UTC) - timedelta(hours=since_hours)).isoformat() + "Z"
-
         url = f"{self.BASE_URL}/repos/{repo}/pulls"
         params = {
             "state": "closed",

@@ -9,7 +9,7 @@ from __future__ import annotations
 import enum
 import json
 from datetime import UTC, datetime, timedelta
-from typing import Any, List, Optional
+from typing import Any
 
 import structlog
 from pydantic import BaseModel
@@ -39,7 +39,7 @@ class MessageRole(_StrEnum):
 class ChatMessage(BaseModel):
     role: MessageRole = MessageRole.USER
     content: str = ""
-    timestamp: Optional[str] = None
+    timestamp: str | None = None
 
 
 class IncidentSession(BaseModel):
@@ -48,7 +48,7 @@ class IncidentSession(BaseModel):
     context_card: dict | None = None
     created_at: str | None = None
     updated_at: str | None = None
-    messages: List[ChatMessage] = []  # noqa: RUF012
+    messages: list[ChatMessage] = []  # noqa: RUF012
 
 
 class CompressedLogs(BaseModel):
@@ -59,12 +59,12 @@ class CompressedLogs(BaseModel):
 
 class Verdict(BaseModel):
     most_likely_cause: str
-    confidence: "ConfidenceLevel"
+    confidence: ConfidenceLevel
     evidence: str
     recommended_action: str
-    secondary_action: Optional[str] = None
+    secondary_action: str | None = None
     deploy_correlated: bool = False
-    suspect_deploy: Optional[str] = None
+    suspect_deploy: str | None = None
 
 
 class ConfidenceLevel(_StrEnum):
@@ -110,11 +110,11 @@ class VerdictEngine:
         service_name: str,
         severity: str,
         triggered_at: datetime | str,
-        recent_deploys: Optional[list[dict]] = None,
-        log_summary: Optional[dict | str] = None,
-        metrics: Optional[dict] = None,
-        topology: Optional[dict] = None,
-        similar_incidents: Optional[list[Any]] = None,
+        recent_deploys: list[dict] | None = None,
+        log_summary: dict | str | None = None,
+        metrics: dict | None = None,
+        topology: dict | None = None,
+        similar_incidents: list[Any] | None = None,
         **kwargs,
     ) -> Verdict:
         # Backward compat with adapter-style call sites.
@@ -290,11 +290,11 @@ class VerdictEngine:
 
     def _build_context_sections(
         self,
-        recent_deploys: Optional[list[dict]] = None,
-        log_summary: Optional[dict | str] = None,
-        metrics: Optional[dict] = None,
-        topology: Optional[dict] = None,
-        similar_incidents: Optional[list[Any]] = None,
+        recent_deploys: list[dict] | None = None,
+        log_summary: dict | str | None = None,
+        metrics: dict | None = None,
+        topology: dict | None = None,
+        similar_incidents: list[Any] | None = None,
     ) -> str:
         sections: list[str] = []
 
@@ -382,7 +382,7 @@ class VerdictEngine:
         return "\n\n".join(sections)
 
     def _normalize_similar_incidents(
-        self, similar_incidents: Optional[list[Any]]
+        self, similar_incidents: list[Any] | None
     ) -> list[dict[str, Any]]:
         if not similar_incidents:
             return []
@@ -441,8 +441,8 @@ class VerdictEngine:
         self,
         title: str,
         service_name: str,
-        recent_deploys: Optional[list[dict]] = None,
-        log_summary: Optional[dict | str] = None,
+        recent_deploys: list[dict] | None = None,
+        log_summary: dict | str | None = None,
     ) -> Verdict:
         if recent_deploys:
             latest = recent_deploys[0]

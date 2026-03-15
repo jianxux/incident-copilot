@@ -2,8 +2,6 @@
 
 from datetime import UTC, datetime
 
-import pytest
-
 from src.performance.models import (
     BurnoutRisk,
     EngineerMetrics,

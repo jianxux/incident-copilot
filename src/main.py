@@ -29,7 +29,6 @@ from .api import (
     pagerduty_sync_router,
     plugins_router,
     postmortem_router,
-    predictive_insights_router,
     runbooks_router,
     webhooks_router,
 )

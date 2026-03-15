@@ -11,7 +11,7 @@ os.environ["SUPABASE_DB_ENABLED"] = "false"
 os.environ.pop("SUPABASE_URL", None)
 
 from src.models import ContextCard, Severity
-from src.web.store import DatabaseIncidentStore, InMemoryIncidentStore
+from src.web.store import InMemoryIncidentStore
 
 # ---------------------------------------------------------------------------
 # InMemoryIncidentStore tests
@@ -149,7 +149,7 @@ async def test_nonexistent_incident(memory_store):
 
 def test_incident_row_model():
     """Verify the SQLAlchemy model can be imported and has expected columns."""
-    from src.web.models import Base, IncidentRow
+    from src.web.models import IncidentRow
 
     assert "incidents" == IncidentRow.__tablename__
     col_names = {c.name for c in IncidentRow.__table__.columns}

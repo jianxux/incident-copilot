@@ -1,6 +1,6 @@
 """Tests for deployment risk scoring."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -16,7 +16,7 @@ def scorer():
 
 @pytest.fixture
 def now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 @pytest.fixture
@@ -85,7 +85,7 @@ class TestTiming:
             deployment_id="d-4",
             service_name="svc",
             deploy_time=datetime(
-                2026, 2, 25, 10, 0, tzinfo=timezone.utc
+                2026, 2, 25, 10, 0, tzinfo=UTC
             ),  # Wednesday 10am
         )
         score = await scorer.score_deployment(deploy, [])
@@ -97,7 +97,7 @@ class TestTiming:
         deploy = DeploymentInfo(
             deployment_id="d-5",
             service_name="svc",
-            deploy_time=datetime(2026, 2, 27, 16, 0, tzinfo=timezone.utc),  # Friday 4pm
+            deploy_time=datetime(2026, 2, 27, 16, 0, tzinfo=UTC),  # Friday 4pm
         )
         score = await scorer.score_deployment(deploy, [])
         timing = next(f for f in score.factors if f.name == "timing")
@@ -109,7 +109,7 @@ class TestTiming:
             deployment_id="d-6",
             service_name="svc",
             deploy_time=datetime(
-                2026, 2, 25, 3, 0, tzinfo=timezone.utc
+                2026, 2, 25, 3, 0, tzinfo=UTC
             ),  # Wednesday 3am
         )
         score = await scorer.score_deployment(deploy, [])
@@ -195,7 +195,7 @@ class TestOverallRisk:
             service_name="payments-api",
             services_touched=["payments-api", "auth", "orders", "billing"],
             deploy_time=datetime(
-                2026, 2, 27, 23, 0, tzinfo=timezone.utc
+                2026, 2, 27, 23, 0, tzinfo=UTC
             ),  # Friday 11pm
             files_changed=25,
             lines_added=1500,

@@ -1,7 +1,6 @@
 """Predictive alerting engine for proactive incident prevention."""
 
 import hashlib
-import math
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
@@ -53,7 +52,6 @@ class PredictiveEngine:
         sum_y = sum(ys)
         sum_xy = sum(x * y for x, y in zip(xs, ys))
         sum_x2 = sum(x * x for x in xs)
-        sum_y2 = sum(y * y for y in ys)
 
         denom = n * sum_x2 - sum_x * sum_x
         if denom == 0:

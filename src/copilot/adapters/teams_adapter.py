@@ -1,5 +1,6 @@
 """Microsoft Teams Bot Framework adapter for AI Copilot conversations."""
 
+import asyncio
 import hashlib
 import hmac
 import time
@@ -49,8 +50,6 @@ _rate_limiter = IncidentRateLimiter(limit=10, window_seconds=60)
 # ---------------------------------------------------------------------------
 # Thread registry (conversation_id → incident_id)
 # ---------------------------------------------------------------------------
-
-import asyncio
 
 
 class TeamsThreadRegistry:

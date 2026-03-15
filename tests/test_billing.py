@@ -1,15 +1,12 @@
 """Comprehensive tests for billing module with mocked Stripe SDK."""
 
-import json
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
 
 from src.auth.models import PlanTier, Tenant, User, UserRole
 from src.billing.entitlements import (
-    PLAN_ENTITLEMENTS,
     get_plan_limit,
     has_entitlement,
     require_entitlement,
