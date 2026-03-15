@@ -93,7 +93,9 @@ class InsightsStore:
             return
         try:
             db = await self._get_db()
-            await db._to_thread(lambda: db.client.table("insights").upsert(row).execute())
+            await db._to_thread(
+                lambda: db.client.table("insights").upsert(row).execute()
+            )
         except Exception as exc:
             logger.warning("insights_supabase_upsert_failed", error=str(exc))
 
@@ -125,11 +127,16 @@ class InsightsStore:
             "affected_incident_ids": affected_incident_ids,
             "is_active": True,
             "updated_at": now_iso,
-            "created_at": data.get("created_at") or data.get("detected_at") or data.get("generated_at") or now_iso,
+            "created_at": data.get("created_at")
+            or data.get("detected_at")
+            or data.get("generated_at")
+            or now_iso,
         }
         await self._upsert_row(row)
 
-    async def _fetch_rows(self, insight_type: str | None = None, limit: int = 5000) -> list[dict[str, Any]]:
+    async def _fetch_rows(
+        self, insight_type: str | None = None, limit: int = 5000
+    ) -> list[dict[str, Any]]:
         if not is_supabase_db_enabled():
             return []
         tenant_id = await self._ensure_tenant_id()
@@ -139,7 +146,9 @@ class InsightsStore:
             db = await self._get_db()
 
             def _query():
-                query = db.client.table("insights").select("*").eq("tenant_id", tenant_id)
+                query = (
+                    db.client.table("insights").select("*").eq("tenant_id", tenant_id)
+                )
                 if insight_type:
                     query = query.eq("insight_type", insight_type)
                 return query.order("created_at", desc=True).limit(limit).execute()
@@ -180,9 +189,8 @@ class InsightsStore:
                     "title": row.get("title") or "",
                     "description": row.get("description") or "",
                     "affected_incident_ids": row.get("affected_incident_ids") or [],
-                    "affected_services": payload.get("affected_services") or (
-                        [row.get("service_name")] if row.get("service_name") else []
-                    ),
+                    "affected_services": payload.get("affected_services")
+                    or ([row.get("service_name")] if row.get("service_name") else []),
                     "created_at": row.get("created_at"),
                 }
                 try:
@@ -313,7 +321,9 @@ class InsightsStore:
             severity=insight.severity.value,
             title=insight.title,
             description=insight.description,
-            service_name=(insight.affected_services[0] if insight.affected_services else None),
+            service_name=(
+                insight.affected_services[0] if insight.affected_services else None
+            ),
             affected_incident_ids=insight.affected_incident_ids,
             data=self._to_json_dict(insight),
         )
@@ -461,7 +471,9 @@ class InsightsStore:
             severity=anomaly.severity.value,
             title=f"Anomaly: {anomaly.anomaly_type.value}",
             description=anomaly.description,
-            service_name=(anomaly.affected_services[0] if anomaly.affected_services else None),
+            service_name=(
+                anomaly.affected_services[0] if anomaly.affected_services else None
+            ),
             affected_incident_ids=anomaly.affected_incident_ids,
             data=self._to_json_dict(anomaly),
         )
@@ -502,7 +514,9 @@ class InsightsStore:
             severity=Severity.HIGH.value,
             title="Incident spike detected",
             description=f"{spike.incident_count} incidents in {spike.window_hours}h window",
-            service_name=(spike.affected_services[0] if spike.affected_services else None),
+            service_name=(
+                spike.affected_services[0] if spike.affected_services else None
+            ),
             affected_incident_ids=spike.affected_incident_ids,
             data=self._to_json_dict(spike),
         )

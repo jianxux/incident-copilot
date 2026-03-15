@@ -159,9 +159,20 @@ class TestServiceCatalogStoreWithMock:
         result.data = response_data
 
         # Chain methods return self for fluent API
-        for method in ["select", "insert", "upsert", "update", "delete",
-                       "eq", "or_", "limit", "order"]:
-            getattr(table, method, None) or setattr(table, method, MagicMock(return_value=table))
+        for method in [
+            "select",
+            "insert",
+            "upsert",
+            "update",
+            "delete",
+            "eq",
+            "or_",
+            "limit",
+            "order",
+        ]:
+            getattr(table, method, None) or setattr(
+                table, method, MagicMock(return_value=table)
+            )
             getattr(table, method).return_value = table
 
         table.execute.return_value = result
@@ -184,30 +195,33 @@ class TestServiceCatalogStoreWithMock:
         # Mock service upsert
         svc_table = MagicMock()
         svc_result = MagicMock()
-        svc_result.data = [{
-            "id": "svc-uuid",
-            "service_key": "payments-api",
-            "name": "payments-api",
-            "tenant_id": "tenant-uuid-123",
-            "description": "Pay stuff",
-            "team": None,
-            "owner_email": None,
-            "criticality": "critical",
-            "health": "unknown",
-            "tags": [],
-            "critical_user_journey": False,
-            "repo_url": None,
-            "dashboard_url": None,
-            "runbook_url": None,
-            "metadata": {},
-            "created_at": "2026-02-18T00:00:00Z",
-            "updated_at": "2026-02-18T00:00:00Z",
-        }]
+        svc_result.data = [
+            {
+                "id": "svc-uuid",
+                "service_key": "payments-api",
+                "name": "payments-api",
+                "tenant_id": "tenant-uuid-123",
+                "description": "Pay stuff",
+                "team": None,
+                "owner_email": None,
+                "criticality": "critical",
+                "health": "unknown",
+                "tags": [],
+                "critical_user_journey": False,
+                "repo_url": None,
+                "dashboard_url": None,
+                "runbook_url": None,
+                "metadata": {},
+                "created_at": "2026-02-18T00:00:00Z",
+                "updated_at": "2026-02-18T00:00:00Z",
+            }
+        ]
         for m in ["select", "eq", "limit", "upsert"]:
             getattr(svc_table, m).return_value = svc_table
         svc_table.execute.return_value = svc_result
 
         call_count = {"n": 0}
+
         def table_router(name):
             call_count["n"] += 1
             if name == "tenants":
@@ -217,7 +231,11 @@ class TestServiceCatalogStoreWithMock:
         client.table = table_router
 
         with patch.object(store, "_client", return_value=client):
-            req = ServiceCreate(name="payments-api", description="Pay stuff", criticality=ServiceCriticality.CRITICAL)
+            req = ServiceCreate(
+                name="payments-api",
+                description="Pay stuff",
+                criticality=ServiceCriticality.CRITICAL,
+            )
             result = await store.create_service(req, tenant_slug="default")
 
         assert result.name == "payments-api"
@@ -240,10 +258,26 @@ class TestServiceCatalogStoreWithMock:
         svc_table = MagicMock()
         svc_result = MagicMock()
         svc_result.data = [
-            {"service_key": "svc-a", "name": "Service A", "tenant_id": "t1", "criticality": "high",
-             "health": "healthy", "tags": ["core"], "critical_user_journey": True, "metadata": {}},
-            {"service_key": "svc-b", "name": "Service B", "tenant_id": "t1", "criticality": "low",
-             "health": "unknown", "tags": [], "critical_user_journey": False, "metadata": {}},
+            {
+                "service_key": "svc-a",
+                "name": "Service A",
+                "tenant_id": "t1",
+                "criticality": "high",
+                "health": "healthy",
+                "tags": ["core"],
+                "critical_user_journey": True,
+                "metadata": {},
+            },
+            {
+                "service_key": "svc-b",
+                "name": "Service B",
+                "tenant_id": "t1",
+                "criticality": "low",
+                "health": "unknown",
+                "tags": [],
+                "critical_user_journey": False,
+                "metadata": {},
+            },
         ]
         for m in ["select", "eq", "order"]:
             getattr(svc_table, m).return_value = svc_table

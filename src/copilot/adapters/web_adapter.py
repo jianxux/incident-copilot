@@ -45,7 +45,11 @@ async def _ensure_session(incident_id: str, copilot: AICopilot) -> None:
     context_card = incident.context_card if incident else None
     context = None
     if context_card is not None:
-        context = context_card.model_dump() if hasattr(context_card, "model_dump") else context_card
+        context = (
+            context_card.model_dump()
+            if hasattr(context_card, "model_dump")
+            else context_card
+        )
     session = await copilot.get_or_create_session(
         incident_id=incident_id,
         context=context,

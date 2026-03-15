@@ -88,7 +88,9 @@ async def resolve_github_creds(tenant_id: str | None) -> tuple[str, str]:
         token = decrypted.get("token", "")
         org = decrypted.get("org", "")
         if not token:
-            logger.warning("github_creds_empty_token_after_decrypt", tenant_id=tenant_id)
+            logger.warning(
+                "github_creds_empty_token_after_decrypt", tenant_id=tenant_id
+            )
         else:
             logger.info("github_creds_resolved_from_db", tenant_id=tenant_id, org=org)
         return token, org
@@ -108,7 +110,9 @@ async def resolve_github_credentials(
 ) -> tuple[str, str]:
     """Backward-compatible wrapper for older call sites."""
     if settings.github_token:
-        logger.debug("github_credentials_resolved_from_settings", org=settings.github_org)
+        logger.debug(
+            "github_credentials_resolved_from_settings", org=settings.github_org
+        )
         return settings.github_token, settings.github_org
     return await resolve_github_creds(tenant_id)
 
@@ -118,14 +122,18 @@ class GitHubAdapter:
 
     BASE_URL = "https://api.github.com"
 
-    def __init__(self, settings: Settings, *, token: str | None = None, org: str | None = None):
+    def __init__(
+        self, settings: Settings, *, token: str | None = None, org: str | None = None
+    ):
         self.settings = settings
         self.token = token if token is not None else settings.github_token
         self.org = org if org is not None else settings.github_org
         self.service_repo_map = settings.service_repo_map
 
     @classmethod
-    def from_credentials(cls, token: str, org: str, settings: Settings) -> "GitHubAdapter":
+    def from_credentials(
+        cls, token: str, org: str, settings: Settings
+    ) -> "GitHubAdapter":
         return cls(settings, token=token, org=org)
 
     def _get_headers(self) -> dict:
@@ -270,7 +278,12 @@ class GitHubAdapter:
         since = (datetime.now(UTC) - timedelta(hours=since_hours)).isoformat() + "Z"
 
         url = f"{self.BASE_URL}/repos/{repo}/pulls"
-        params = {"state": "closed", "sort": "updated", "direction": "desc", "per_page": 10}
+        params = {
+            "state": "closed",
+            "sort": "updated",
+            "direction": "desc",
+            "per_page": 10,
+        }
 
         try:
             resp = await client.get(url, headers=self._get_headers(), params=params)
@@ -284,7 +297,9 @@ class GitHubAdapter:
                 if not merged_at_str:
                     continue
                 try:
-                    merged_at = datetime.fromisoformat(merged_at_str.replace("Z", "+00:00"))
+                    merged_at = datetime.fromisoformat(
+                        merged_at_str.replace("Z", "+00:00")
+                    )
                 except (ValueError, AttributeError):
                     continue
 
@@ -317,14 +332,18 @@ class GitHubAdapter:
         try:
             resp = await client.get(url, headers=self._get_headers(), params=params)
             if resp.status_code != 200:
-                logger.warning("github_deployments_failed", repo=repo, status=resp.status_code)
+                logger.warning(
+                    "github_deployments_failed", repo=repo, status=resp.status_code
+                )
                 return []
 
             deployments = []
             for dep in resp.json()[:5]:
                 created_str = dep.get("created_at", "")
                 try:
-                    created_at = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
+                    created_at = datetime.fromisoformat(
+                        created_str.replace("Z", "+00:00")
+                    )
                 except (ValueError, AttributeError):
                     created_at = datetime.now(UTC)
 
@@ -334,7 +353,9 @@ class GitHubAdapter:
                 dep_status = "unknown"
                 if statuses_url:
                     try:
-                        status_resp = await client.get(statuses_url, headers=self._get_headers())
+                        status_resp = await client.get(
+                            statuses_url, headers=self._get_headers()
+                        )
                         if status_resp.status_code == 200:
                             statuses = status_resp.json()
                             if statuses:

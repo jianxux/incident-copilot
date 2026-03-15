@@ -22,6 +22,7 @@ router = APIRouter(prefix="/api/teams", tags=["teams-copilot"])
 # Rate limiter (mirrors Slack adapter)
 # ---------------------------------------------------------------------------
 
+
 class IncidentRateLimiter:
     """Simple in-memory per-incident rate limiter."""
 
@@ -109,9 +110,7 @@ def verify_teams_signature(
     scheme, token = parts
 
     if scheme.upper() == "HMAC":
-        expected = hmac.new(
-            app_password.encode(), body, hashlib.sha256
-        ).hexdigest()
+        expected = hmac.new(app_password.encode(), body, hashlib.sha256).hexdigest()
         return hmac.compare_digest(expected, token)
 
     # For Bearer tokens we do a lightweight app-id check in dev.
@@ -166,7 +165,9 @@ def build_verdict_card(incident_id: str, verdict: str, confidence: str = "") -> 
         {"type": "TextBlock", "wrap": True, "text": verdict},
     ]
     if confidence:
-        body.append({"type": "TextBlock", "wrap": True, "text": f"Confidence: {confidence}"})
+        body.append(
+            {"type": "TextBlock", "wrap": True, "text": f"Confidence: {confidence}"}
+        )
 
     return {
         "type": "AdaptiveCard",
@@ -179,15 +180,19 @@ def build_verdict_card(incident_id: str, verdict: str, confidence: str = "") -> 
 def build_suggestions_card(suggestions: list[str]) -> dict:
     """Build an Adaptive Card for suggested next steps."""
     items = [
-        {"type": "TextBlock", "text": f"• {s}", "wrap": True}
-        for s in suggestions[:5]
+        {"type": "TextBlock", "text": f"• {s}", "wrap": True} for s in suggestions[:5]
     ]
     return {
         "type": "AdaptiveCard",
         "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
         "version": "1.4",
         "body": [
-            {"type": "TextBlock", "size": "Medium", "weight": "Bolder", "text": "Suggested Next Steps"},
+            {
+                "type": "TextBlock",
+                "size": "Medium",
+                "weight": "Bolder",
+                "text": "Suggested Next Steps",
+            },
             *items,
         ],
     }
@@ -243,7 +248,9 @@ async def send_activity(service_url: str, conversation_id: str, activity: dict) 
         resp.raise_for_status()
 
 
-async def send_text_reply(service_url: str, conversation_id: str, text: str, reply_to_id: str | None = None) -> None:
+async def send_text_reply(
+    service_url: str, conversation_id: str, text: str, reply_to_id: str | None = None
+) -> None:
     """Send a text reply to a Teams conversation."""
     activity: dict = {
         "type": "message",
@@ -268,7 +275,9 @@ async def send_card(service_url: str, conversation_id: str, card: dict) -> None:
     await send_activity(service_url, conversation_id, activity)
 
 
-async def notify_channel(service_url: str, conversation_id: str, incident_id: str, message: str) -> None:
+async def notify_channel(
+    service_url: str, conversation_id: str, incident_id: str, message: str
+) -> None:
     """Send an incident update notification to a Teams channel."""
     card = {
         "type": "AdaptiveCard",
@@ -324,12 +333,16 @@ async def _handle_teams_message(activity: dict) -> None:
 
     # Check for slash-style commands in message text
     if text.startswith("/copilot ") or text.startswith("/incident "):
-        await _handle_command_in_message(text, conversation_id, service_url, activity_id)
+        await _handle_command_in_message(
+            text, conversation_id, service_url, activity_id
+        )
         return
 
     incident_id = await thread_registry.get_incident_id(conversation_id)
     if not incident_id:
-        logger.debug("teams_event_ignored_unmapped_conversation", conversation_id=conversation_id)
+        logger.debug(
+            "teams_event_ignored_unmapped_conversation", conversation_id=conversation_id
+        )
         return
 
     if not _rate_limiter.allow(incident_id):
@@ -339,7 +352,9 @@ async def _handle_teams_message(activity: dict) -> None:
     copilot = get_copilot()
     response = await copilot.chat(incident_id=incident_id, user_message=text)
 
-    await send_text_reply(service_url, conversation_id, response, reply_to_id=activity_id)
+    await send_text_reply(
+        service_url, conversation_id, response, reply_to_id=activity_id
+    )
 
     logger.info(
         "teams_thread_response_sent",
@@ -398,7 +413,12 @@ async def _handle_command_in_message(
             card = build_context_card(summary)
             await send_card(service_url, conversation_id, card)
         else:
-            await send_text_reply(service_url, conversation_id, "Unable to generate summary.", reply_to_id=reply_to_id)
+            await send_text_reply(
+                service_url,
+                conversation_id,
+                "Unable to generate summary.",
+                reply_to_id=reply_to_id,
+            )
         return
 
     # suggest
@@ -407,7 +427,12 @@ async def _handle_command_in_message(
         card = build_suggestions_card(suggestions)
         await send_card(service_url, conversation_id, card)
     else:
-        await send_text_reply(service_url, conversation_id, "No suggestions available yet.", reply_to_id=reply_to_id)
+        await send_text_reply(
+            service_url,
+            conversation_id,
+            "No suggestions available yet.",
+            reply_to_id=reply_to_id,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -478,12 +503,16 @@ async def handle_teams_commands(
         )
 
     if not incident_id:
-        return TeamsCommandResponse(text="No incident context found. Provide an incident ID.")
+        return TeamsCommandResponse(
+            text="No incident context found. Provide an incident ID."
+        )
 
     copilot = get_copilot()
     session = copilot.get_session(incident_id)
     if not session:
-        return TeamsCommandResponse(text=f"No active copilot session for `{incident_id}`.")
+        return TeamsCommandResponse(
+            text=f"No active copilot session for `{incident_id}`."
+        )
 
     if action in {"summary", "catchup"}:
         summary = await copilot.generate_summary(incident_id)

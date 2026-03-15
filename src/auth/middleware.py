@@ -116,7 +116,13 @@ async def _try_supabase_auth(token: str) -> AuthContext | None:
         if not is_supabase_db_enabled():
             # Minimal context without DB
             return AuthContext(
-                user=User(id=str(su.id), email=email, name=email, tenant_id="default", role=UserRole.OWNER),
+                user=User(
+                    id=str(su.id),
+                    email=email,
+                    name=email,
+                    tenant_id="default",
+                    role=UserRole.OWNER,
+                ),
                 tenant=Tenant(id="default", name="default", slug="default"),
             )
 
@@ -157,7 +163,9 @@ async def _try_supabase_auth(token: str) -> AuthContext | None:
             ),
         )
     except Exception as e:
-        logger.warning("supabase_auth_fallback_failed", error=str(e), error_type=type(e).__name__)
+        logger.warning(
+            "supabase_auth_fallback_failed", error=str(e), error_type=type(e).__name__
+        )
         return None
 
 

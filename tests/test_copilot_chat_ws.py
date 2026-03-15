@@ -61,7 +61,9 @@ def test_copilot_chat_checks_ws_readystate():
 def test_copilot_chat_page_renders():
     _clear_incident_store()
     incident_id = "inc-chat-ws-render"
-    _add_processing_incident(incident_id=incident_id, title="Chat page render test incident")
+    _add_processing_incident(
+        incident_id=incident_id, title="Chat page render test incident"
+    )
 
     app = create_app()
     with TestClient(app) as client:

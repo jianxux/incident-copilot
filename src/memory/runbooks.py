@@ -180,8 +180,9 @@ class AutoRunbookGenerator:
             ] or steps
 
         confidence = min(1.0, round(len(source_ids) / (len(source_ids) + 2), 4))
-        runbook_id = sha1(
-            (f"{category}|{','.join(services)}|{','.join(sorted(source_ids))}").encode()
+        runbook_id = sha1(  # nosec B324
+            (f"{category}|{','.join(services)}|{','.join(sorted(source_ids))}").encode(),
+            usedforsecurity=False,
         ).hexdigest()[:16]
 
         return GeneratedRunbook(
@@ -225,20 +226,20 @@ class AutoRunbookGenerator:
                     f"TRUNCATE TABLE {self.config.runbooks_table_name}"  # nosec B608
                 )
                 if runbooks:
+                    insert_sql = f"""INSERT INTO {self.config.runbooks_table_name} (  # nosec B608
+                        id,
+                        title,
+                        trigger_conditions,
+                        steps,
+                        source_incident_ids,
+                        confidence,
+                        root_cause_category,
+                        services_affected,
+                        last_updated
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    """
                     await conn.executemany(
-                        f"""  # nosec B608
-                        INSERT INTO {self.config.runbooks_table_name} (
-                            id,
-                            title,
-                            trigger_conditions,
-                            steps,
-                            source_incident_ids,
-                            confidence,
-                            root_cause_category,
-                            services_affected,
-                            last_updated
-                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                        """,
+                        insert_sql,
                         [
                             (
                                 runbook.id,

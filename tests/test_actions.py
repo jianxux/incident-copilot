@@ -103,9 +103,7 @@ class TestActionEngine:
     def test_feature_flag_suggestion(self):
         verdict = {"recommended_actions": ["Toggle feature flag for new checkout"]}
         actions = self.engine.generate_actions(verdict, {"incident_id": "INC-1"})
-        flags = [
-            a for a in actions if a.action_type == ActionType.TOGGLE_FEATURE_FLAG
-        ]
+        flags = [a for a in actions if a.action_type == ActionType.TOGGLE_FEATURE_FLAG]
         assert len(flags) == 1
 
     def test_runbook_suggestion(self):

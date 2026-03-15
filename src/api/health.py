@@ -558,14 +558,23 @@ async def auth_debug(request: Request):
     cookie = request.cookies.get("ic_access_token", "")
     token = bearer.replace("Bearer ", "") if bearer.startswith("Bearer ") else cookie
 
-    result = {"has_bearer": bool(bearer), "has_cookie": bool(cookie), "token_len": len(token)}
+    result = {
+        "has_bearer": bool(bearer),
+        "has_cookie": bool(cookie),
+        "token_len": len(token),
+    }
 
     if token:
         try:
             from ..supabase_client import get_supabase_admin_client
+
             admin = get_supabase_admin_client()
             user_response = admin.auth.get_user(token)
-            result["supabase_user"] = str(user_response.user.email) if user_response and user_response.user else None
+            result["supabase_user"] = (
+                str(user_response.user.email)
+                if user_response and user_response.user
+                else None
+            )
         except Exception as e:
             result["supabase_error"] = f"{type(e).__name__}: {str(e)}"
 

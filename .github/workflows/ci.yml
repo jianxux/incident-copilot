@@ -24,7 +24,7 @@ jobs:
           pip install ruff black isort
           
       - name: Check formatting with Black
-        run: black --check src tests
+        run: black --check --target-version py311 --fast src tests
         
       - name: Check import order with isort
         run: isort --check-only --profile black src tests

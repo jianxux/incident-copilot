@@ -140,7 +140,9 @@ class ContextOrchestrator:
             return "none"
 
     async def process_incident(
-        self, incident: PagerDutyIncident, slack_channel: str | None = None,
+        self,
+        incident: PagerDutyIncident,
+        slack_channel: str | None = None,
         tenant_id: str | None = None,
     ) -> ContextCard:
         """
@@ -346,7 +348,9 @@ class ContextOrchestrator:
             if isinstance(ai_summary_raw, str):
                 log_summary_data = ai_summary_raw
             else:
-                log_summary_data = ai_summary_raw.model_dump() if ai_summary_raw else None
+                log_summary_data = (
+                    ai_summary_raw.model_dump() if ai_summary_raw else None
+                )
             metrics_data = (
                 datadog_ctx.metrics.model_dump()
                 if datadog_ctx and datadog_ctx.metrics
@@ -460,7 +464,9 @@ class ContextOrchestrator:
             # Post notification card to shared incidents channel (no auto-channel)
             ai_summary_text: str | None = None
             if ai_summary:
-                ai_summary_text = getattr(ai_summary, "explanation", None) or getattr(ai_summary, "likely_cause", None)
+                ai_summary_text = getattr(ai_summary, "explanation", None) or getattr(
+                    ai_summary, "likely_cause", None
+                )
             if not ai_summary_text and verdict:
                 ai_summary_text = getattr(verdict, "summary", None)
 
@@ -469,6 +475,7 @@ class ContextOrchestrator:
             if tenant_id:
                 try:
                     from .db.supabase_db import get_db
+
                     db = get_db(use_admin=True)
                     rows = (
                         db.client.table("integration_configs")
@@ -479,8 +486,10 @@ class ContextOrchestrator:
                         .execute()
                     )
                     if rows.data:
-                        incidents_channel = rows.data[0].get("config", {}).get(
-                            "incidents_channel", incidents_channel
+                        incidents_channel = (
+                            rows.data[0]
+                            .get("config", {})
+                            .get("incidents_channel", incidents_channel)
                         )
                 except Exception:
                     pass
@@ -525,7 +534,10 @@ class ContextOrchestrator:
                     verdict_data = {"summary": str(verdict)}
                 suggested = action_engine.generate_actions(
                     verdict_data,
-                    {"incident_id": incident.incident_id, "service": incident.service_name},
+                    {
+                        "incident_id": incident.incident_id,
+                        "service": incident.service_name,
+                    },
                 )
                 if suggested:
                     await slack_lifecycle.post_suggested_actions(
@@ -563,9 +575,7 @@ class ContextOrchestrator:
 
         try:
             logs_summary = {
-                "top_issues": (
-                    card.ai_summary.top_issues if card.ai_summary else []
-                ),
+                "top_issues": (card.ai_summary.top_issues if card.ai_summary else []),
                 "explanation": (
                     card.ai_summary.explanation if card.ai_summary else None
                 ),

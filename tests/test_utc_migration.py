@@ -37,7 +37,9 @@ from src.ratelimit.models import RateLimitConfig, RateLimitOverride, RateLimitSc
         ),
     ],
 )
-def test_to_utc_aware_naive_datetime_gets_utc_tzinfo(value: datetime, expected: datetime):
+def test_to_utc_aware_naive_datetime_gets_utc_tzinfo(
+    value: datetime, expected: datetime
+):
     assert _to_utc_aware(value) == expected
 
 
@@ -88,7 +90,9 @@ async def test_analytics_store_get_metrics_for_period_handles_mixed_naive_and_aw
 
 
 @pytest.mark.asyncio
-async def test_tracker_get_stats_for_days_uses_datetime_now_with_utc(monkeypatch: pytest.MonkeyPatch):
+async def test_tracker_get_stats_for_days_uses_datetime_now_with_utc(
+    monkeypatch: pytest.MonkeyPatch,
+):
     fixed_now = datetime(2026, 2, 25, 12, 0, 0, tzinfo=UTC)
 
     class DateTimeSpy:
@@ -117,7 +121,9 @@ async def test_tracker_get_stats_for_days_uses_datetime_now_with_utc(monkeypatch
 
 
 @pytest.mark.asyncio
-async def test_tracker_compare_to_previous_uses_datetime_now_with_utc(monkeypatch: pytest.MonkeyPatch):
+async def test_tracker_compare_to_previous_uses_datetime_now_with_utc(
+    monkeypatch: pytest.MonkeyPatch,
+):
     fixed_now = datetime(2026, 2, 25, 13, 0, 0, tzinfo=UTC)
 
     class DateTimeSpy:

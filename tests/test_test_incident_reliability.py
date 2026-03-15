@@ -49,7 +49,10 @@ class TestProcessReliability:
         mock_orchestrator.process_incident = AsyncMock(return_value=card)
 
         with (
-            patch("src.onboarding.test_incident.ContextOrchestrator", return_value=mock_orchestrator),
+            patch(
+                "src.onboarding.test_incident.ContextOrchestrator",
+                return_value=mock_orchestrator,
+            ),
             patch("src.onboarding.test_incident.incident_store") as mock_store,
         ):
             mock_store.complete_incident = AsyncMock()
@@ -63,10 +66,15 @@ class TestProcessReliability:
         incident = _make_incident()
 
         mock_orchestrator = MagicMock()
-        mock_orchestrator.process_incident = AsyncMock(side_effect=Exception("API error"))
+        mock_orchestrator.process_incident = AsyncMock(
+            side_effect=Exception("API error")
+        )
 
         with (
-            patch("src.onboarding.test_incident.ContextOrchestrator", return_value=mock_orchestrator),
+            patch(
+                "src.onboarding.test_incident.ContextOrchestrator",
+                return_value=mock_orchestrator,
+            ),
             patch("src.onboarding.test_incident.incident_store") as mock_store,
         ):
             mock_store.complete_incident = AsyncMock()
@@ -75,7 +83,9 @@ class TestProcessReliability:
             # Should have called complete_incident with a fallback card
             mock_store.complete_incident.assert_awaited_once()
             call_kwargs = mock_store.complete_incident.call_args
-            metadata = call_kwargs.kwargs.get("metadata") or call_kwargs[1].get("metadata", {})
+            metadata = call_kwargs.kwargs.get("metadata") or call_kwargs[1].get(
+                "metadata", {}
+            )
             assert metadata.get("fallback") is True
 
     @pytest.mark.asyncio
@@ -84,13 +94,20 @@ class TestProcessReliability:
         incident = _make_incident()
 
         mock_orchestrator = MagicMock()
-        mock_orchestrator.process_incident = AsyncMock(side_effect=Exception("API error"))
+        mock_orchestrator.process_incident = AsyncMock(
+            side_effect=Exception("API error")
+        )
 
         with (
-            patch("src.onboarding.test_incident.ContextOrchestrator", return_value=mock_orchestrator),
+            patch(
+                "src.onboarding.test_incident.ContextOrchestrator",
+                return_value=mock_orchestrator,
+            ),
             patch("src.onboarding.test_incident.incident_store") as mock_store,
         ):
-            mock_store.complete_incident = AsyncMock(side_effect=Exception("DB write failed"))
+            mock_store.complete_incident = AsyncMock(
+                side_effect=Exception("DB write failed")
+            )
             mock_store.fail_incident = AsyncMock()
             await _process(incident, None, "tenant-1")
 
@@ -109,7 +126,10 @@ class TestProcessReliability:
         mock_orchestrator.process_incident = slow_process
 
         with (
-            patch("src.onboarding.test_incident.ContextOrchestrator", return_value=mock_orchestrator),
+            patch(
+                "src.onboarding.test_incident.ContextOrchestrator",
+                return_value=mock_orchestrator,
+            ),
             patch("src.onboarding.test_incident.incident_store") as mock_store,
             patch("src.onboarding.test_incident._PROCESS_TIMEOUT_SECONDS", 0.1),
         ):

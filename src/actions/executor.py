@@ -32,9 +32,7 @@ class ActionExecutor:
                 raise ValueError(f"Action {action.id} is pending approval")
 
         if action.requires_approval and action.status != ActionStatus.APPROVED:
-            raise ValueError(
-                f"Action {action.id} requires approval before execution"
-            )
+            raise ValueError(f"Action {action.id} requires approval before execution")
 
         action.status = ActionStatus.EXECUTING
         action.dry_run = dry_run
@@ -108,9 +106,7 @@ class ActionExecutor:
             "message": f"Deployment rollback initiated for {action.target_service}",
         }
 
-    def _execute_scale(
-        self, action: SuggestedAction, dry_run: bool
-    ) -> dict[str, Any]:
+    def _execute_scale(self, action: SuggestedAction, dry_run: bool) -> dict[str, Any]:
         replicas = action.parameters.get("replicas", 3)
         if dry_run:
             return {
@@ -167,9 +163,7 @@ class ActionExecutor:
             "duration_minutes": duration,
         }
 
-    def _execute_page(
-        self, action: SuggestedAction, dry_run: bool
-    ) -> dict[str, Any]:
+    def _execute_page(self, action: SuggestedAction, dry_run: bool) -> dict[str, Any]:
         if dry_run:
             return {"dry_run": True, "would_page": action.target_service}
         return {
@@ -178,9 +172,7 @@ class ActionExecutor:
             "message": f"On-call paged for {action.target_service}",
         }
 
-    def _execute_jira(
-        self, action: SuggestedAction, dry_run: bool
-    ) -> dict[str, Any]:
+    def _execute_jira(self, action: SuggestedAction, dry_run: bool) -> dict[str, Any]:
         summary = action.parameters.get("summary", "Incident")
         if dry_run:
             return {"dry_run": True, "would_create": summary}

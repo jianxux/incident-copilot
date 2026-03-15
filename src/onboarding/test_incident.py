@@ -41,7 +41,9 @@ async def start_test_incident(
     title = title or f"[TEST] Incident Copilot onboarding test for {service_name}"
     settings = get_settings()
     supabase_enabled = bool(
-        settings.supabase_db_enabled and settings.supabase_url and settings.supabase_anon_key
+        settings.supabase_db_enabled
+        and settings.supabase_url
+        and settings.supabase_anon_key
     )
 
     if supabase_enabled and not tenant_id:

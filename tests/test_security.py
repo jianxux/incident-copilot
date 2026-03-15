@@ -40,6 +40,7 @@ class TestSecurityHeaders:
     def test_middleware_instantiation(self):
         # Should accept an app parameter
         from unittest.mock import MagicMock
+
         app = MagicMock()
         middleware = SecurityHeadersMiddleware(app)
         assert middleware is not None

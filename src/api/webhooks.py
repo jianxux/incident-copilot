@@ -44,7 +44,9 @@ async def pagerduty_webhook(
                 logger.warning("pagerduty_invalid_signature")
                 raise HTTPException(status_code=401, detail="Invalid signature")
         else:
-            logger.warning("pagerduty_webhook_secret_not_configured_signature_not_verified")
+            logger.warning(
+                "pagerduty_webhook_secret_not_configured_signature_not_verified"
+            )
         try:
             payload = await request.json()
         except Exception as e:
@@ -103,7 +105,9 @@ async def opsgenie_webhook(
                 logger.warning("opsgenie_invalid_signature")
                 raise HTTPException(status_code=401, detail="Invalid signature")
         else:
-            logger.warning("opsgenie_webhook_secret_not_configured_signature_not_verified")
+            logger.warning(
+                "opsgenie_webhook_secret_not_configured_signature_not_verified"
+            )
         try:
             payload = await request.json()
         except Exception as e:

@@ -134,7 +134,9 @@ class VerdictEngine:
             topology = kwargs.get("topology")
         if similar_incidents is None and kwargs.get("similar_incidents") is not None:
             similar_incidents = kwargs.get("similar_incidents")
-        normalized_similar_incidents = self._normalize_similar_incidents(similar_incidents)
+        normalized_similar_incidents = self._normalize_similar_incidents(
+            similar_incidents
+        )
 
         sections = self._build_context_sections(
             recent_deploys=recent_deploys,
@@ -148,7 +150,9 @@ class VerdictEngine:
         if self.client is not None:
             try:
                 response = await self.client.messages.create(
-                    model=getattr(self._settings, "ai_model", "claude-3-haiku-20240307"),
+                    model=getattr(
+                        self._settings, "ai_model", "claude-3-haiku-20240307"
+                    ),
                     max_tokens=800,
                     temperature=0.1,
                     messages=[
@@ -232,7 +236,11 @@ class VerdictEngine:
             or data.get("verdict")
             or f"Potential issue in {service_name}"
         )
-        evidence = data.get("evidence") or data.get("verdict") or "No direct evidence provided."
+        evidence = (
+            data.get("evidence")
+            or data.get("verdict")
+            or "No direct evidence provided."
+        )
 
         recommended_action = data.get("recommended_action")
         if not recommended_action:
@@ -240,7 +248,9 @@ class VerdictEngine:
             if isinstance(suggested_actions, list) and suggested_actions:
                 recommended_action = str(suggested_actions[0])
             else:
-                recommended_action = "Investigate recent changes and service dependencies."
+                recommended_action = (
+                    "Investigate recent changes and service dependencies."
+                )
 
         secondary_action = data.get("secondary_action")
         if secondary_action is None:
@@ -253,7 +263,9 @@ class VerdictEngine:
             confidence=self._parse_confidence(data.get("confidence")),
             evidence=str(evidence),
             recommended_action=str(recommended_action),
-            secondary_action=str(secondary_action) if secondary_action is not None else None,
+            secondary_action=(
+                str(secondary_action) if secondary_action is not None else None
+            ),
             deploy_correlated=bool(data.get("deploy_correlated", False)),
             suspect_deploy=(
                 str(data.get("suspect_deploy"))
@@ -336,7 +348,9 @@ class VerdictEngine:
                 lines.append(f"{key}: {value}")
             sections.append("\n".join(lines))
 
-        normalized_similar_incidents = self._normalize_similar_incidents(similar_incidents)
+        normalized_similar_incidents = self._normalize_similar_incidents(
+            similar_incidents
+        )
         if normalized_similar_incidents:
             lines = [
                 "SIMILAR PAST INCIDENTS:",
@@ -432,7 +446,9 @@ class VerdictEngine:
     ) -> Verdict:
         if recent_deploys:
             latest = recent_deploys[0]
-            suspect_deploy = latest.get("short_sha") or latest.get("sha") or "recent deploy"
+            suspect_deploy = (
+                latest.get("short_sha") or latest.get("sha") or "recent deploy"
+            )
             return Verdict(
                 most_likely_cause=f"Recent deploy {suspect_deploy} may be correlated with {service_name} incident.",
                 confidence=ConfidenceLevel.MEDIUM,
@@ -484,7 +500,9 @@ class LogCompressor:
         return CompressedLogs(**result)
 
     def compress_sync(self, logs, **kwargs):
-        return CompressedLogs(compressed=logs[:50], total=len(logs), kept=min(len(logs), 50))
+        return CompressedLogs(
+            compressed=logs[:50], total=len(logs), kept=min(len(logs), 50)
+        )
 
 
 class AICopilot:
@@ -509,7 +527,9 @@ class AICopilot:
     def get_session(self, incident_id: str) -> IncidentSession | None:
         return self._sessions.get(incident_id)
 
-    async def get_or_create_session(self, incident_id: str, context=None) -> IncidentSession:
+    async def get_or_create_session(
+        self, incident_id: str, context=None
+    ) -> IncidentSession:
         if incident_id not in self._sessions:
             now = datetime.now(UTC).isoformat()
             self._sessions[incident_id] = IncidentSession(
@@ -535,7 +555,11 @@ class AICopilot:
         context_card = kwargs.get("context_card")
         if context is None and context_card is not None:
             # Allow passing a pydantic model or dict.
-            context = context_card.model_dump() if hasattr(context_card, "model_dump") else context_card
+            context = (
+                context_card.model_dump()
+                if hasattr(context_card, "model_dump")
+                else context_card
+            )
 
         session = await self.get_or_create_session(incident_id)
         session.updated_at = datetime.now(UTC).isoformat()

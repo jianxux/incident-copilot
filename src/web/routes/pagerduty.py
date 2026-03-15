@@ -42,7 +42,9 @@ async def sync_pagerduty_incidents(
 
                 if rows.data:
                     config = rows.data[0].get("config", {})
-                    encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
+                    encrypted = (
+                        config.get("encrypted", "") if isinstance(config, dict) else ""
+                    )
                     if encrypted:
                         decrypted = decrypt_json(encrypted)
                         oauth = decrypted.get("oauth", {})
@@ -99,7 +101,11 @@ async def sync_pagerduty_incidents(
             db = get_db(use_admin=True)
 
             def _batch_upsert():
-                return db.client.table("incidents").upsert(rows, on_conflict="id").execute()
+                return (
+                    db.client.table("incidents")
+                    .upsert(rows, on_conflict="id")
+                    .execute()
+                )
 
             await db._to_thread(_batch_upsert)
 
@@ -151,7 +157,9 @@ async def pagerduty_sync_status(
 
             if rows.data:
                 config = rows.data[0].get("config", {})
-                encrypted = config.get("encrypted", "") if isinstance(config, dict) else ""
+                encrypted = (
+                    config.get("encrypted", "") if isinstance(config, dict) else ""
+                )
                 if encrypted:
                     decrypted = decrypt_json(encrypted)
                     oauth = decrypted.get("oauth", {})

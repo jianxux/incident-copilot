@@ -16,7 +16,9 @@ class ServiceCatalogImporter:
     def __init__(self, store: ServiceCatalogStore):
         self._store = store
 
-    async def import_json(self, payload: str, tenant_slug: str = "default") -> dict[str, int]:
+    async def import_json(
+        self, payload: str, tenant_slug: str = "default"
+    ) -> dict[str, int]:
         """Import list of services from JSON payload."""
         data = json.loads(payload)
         if isinstance(data, dict):
@@ -28,7 +30,10 @@ class ServiceCatalogImporter:
         failed = 0
         for item in services:
             try:
-                envs = [ServiceEnvironment(service_id=item.get("id") or item["name"], **e) for e in item.get("environments", [])]
+                envs = [
+                    ServiceEnvironment(service_id=item.get("id") or item["name"], **e)
+                    for e in item.get("environments", [])
+                ]
                 request = ServiceCreate(
                     id=item.get("id"),
                     name=item["name"],
@@ -52,7 +57,9 @@ class ServiceCatalogImporter:
 
         return {"created": created, "failed": failed, "total": len(services)}
 
-    async def import_csv(self, payload: str, tenant_slug: str = "default") -> dict[str, int]:
+    async def import_csv(
+        self, payload: str, tenant_slug: str = "default"
+    ) -> dict[str, int]:
         """Import services from CSV payload."""
         reader = csv.DictReader(io.StringIO(payload))
         created = 0
@@ -62,7 +69,9 @@ class ServiceCatalogImporter:
         for row in reader:
             total += 1
             try:
-                tags = [t.strip() for t in (row.get("tags") or "").split(",") if t.strip()]
+                tags = [
+                    t.strip() for t in (row.get("tags") or "").split(",") if t.strip()
+                ]
                 environments: list[ServiceEnvironment] = []
                 if row.get("environment"):
                     environments.append(
@@ -86,7 +95,9 @@ class ServiceCatalogImporter:
                     criticality=(row.get("criticality") or "medium"),
                     health=(row.get("health") or "unknown"),
                     tags=tags,
-                    critical_user_journey=(row.get("critical_user_journey") or "false").lower()
+                    critical_user_journey=(
+                        row.get("critical_user_journey") or "false"
+                    ).lower()
                     in {"1", "true", "yes"},
                     repo_url=row.get("repo_url") or None,
                     dashboard_url=row.get("dashboard_url") or None,

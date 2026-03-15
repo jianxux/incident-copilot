@@ -34,7 +34,12 @@ class TestOpsgenieMapper:
         assert OpsgenieMapper.map_alert_status("weird") == "triggered"
 
     def test_map_service(self):
-        og = {"id": "svc-1", "name": "payments", "description": "Pay svc", "tags": ["prod"]}
+        og = {
+            "id": "svc-1",
+            "name": "payments",
+            "description": "Pay svc",
+            "tags": ["prod"],
+        }
         svc = OpsgenieMapper.map_service(og)
         assert svc.name == "payments"
         assert svc.description == "Pay svc"
@@ -42,37 +47,62 @@ class TestOpsgenieMapper:
         assert svc.metadata["source"] == "opsgenie"
 
     def test_map_team(self):
-        og = {"id": "t1", "name": "Platform", "description": "Infra team", "members": [
-            {"user": {"id": "u1"}, "role": "admin"}
-        ]}
+        og = {
+            "id": "t1",
+            "name": "Platform",
+            "description": "Infra team",
+            "members": [{"user": {"id": "u1"}, "role": "admin"}],
+        }
         team = OpsgenieMapper.map_team(og)
         assert team["name"] == "Platform"
         assert len(team["members"]) == 1
 
     def test_map_user(self):
-        og = {"id": "u1", "fullName": "Alice", "username": "alice@co.com", "role": {"name": "admin"}}
+        og = {
+            "id": "u1",
+            "fullName": "Alice",
+            "username": "alice@co.com",
+            "role": {"name": "admin"},
+        }
         user = OpsgenieMapper.map_user(og)
         assert user["name"] == "Alice"
         assert user["email"] == "alice@co.com"
 
     def test_map_schedule(self):
-        og = {"id": "s1", "name": "Primary", "timezone": "US/Pacific", "ownerTeam": {"name": "Platform"}}
+        og = {
+            "id": "s1",
+            "name": "Primary",
+            "timezone": "US/Pacific",
+            "ownerTeam": {"name": "Platform"},
+        }
         sched = OpsgenieMapper.map_schedule(og)
         assert sched["name"] == "Primary"
         assert sched["timezone"] == "US/Pacific"
 
     def test_map_escalation(self):
-        og = {"id": "e1", "name": "Default", "rules": [
-            {"delay": {"timeAmount": 5}, "recipient": {"type": "team"}, "condition": "if-not-acked"}
-        ]}
+        og = {
+            "id": "e1",
+            "name": "Default",
+            "rules": [
+                {
+                    "delay": {"timeAmount": 5},
+                    "recipient": {"type": "team"},
+                    "condition": "if-not-acked",
+                }
+            ],
+        }
         esc = OpsgenieMapper.map_escalation(og)
         assert esc["name"] == "Default"
         assert esc["rules"][0]["delay_minutes"] == 5
 
     def test_map_alert_to_incident(self):
         og = {
-            "id": "a1", "message": "High CPU", "description": "CPU > 90%",
-            "priority": "P1", "status": "closed", "tags": ["infra"],
+            "id": "a1",
+            "message": "High CPU",
+            "description": "CPU > 90%",
+            "priority": "P1",
+            "status": "closed",
+            "tags": ["infra"],
             "createdAt": "2024-01-01T00:00:00Z",
         }
         inc = OpsgenieMapper.map_alert_to_incident(og)
@@ -153,12 +183,15 @@ class TestOpsgenieImporter:
     async def test_run_success(self):
         mock_client = AsyncMock(spec=OpsgenieClient)
         mock_client.get_services.return_value = [
-            {"id": "s1", "name": "svc1"}, {"id": "s2", "name": "svc2"}
+            {"id": "s1", "name": "svc1"},
+            {"id": "s2", "name": "svc2"},
         ]
         mock_client.get_teams.return_value = [{"id": "t1", "name": "Team A"}]
 
         importer = OpsgenieImporter(mock_client, api_key="test-key-12345678")
-        job = await importer.run([MigrationEntityType.SERVICES, MigrationEntityType.TEAMS])
+        job = await importer.run(
+            [MigrationEntityType.SERVICES, MigrationEntityType.TEAMS]
+        )
 
         assert job.status == MigrationStatus.COMPLETED
         assert job.progress_pct == 100.0
@@ -185,12 +218,15 @@ class TestMigrationRoutes:
         from httpx import ASGITransport, AsyncClient
 
         from src.migrations.routes import router, _jobs
+
         _jobs.clear()
 
         app = FastAPI()
         app.include_router(router)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
             resp = await ac.get("/api/migrations/history")
             assert resp.status_code == 200
             assert resp.json() == []
@@ -200,11 +236,14 @@ class TestMigrationRoutes:
         from httpx import ASGITransport, AsyncClient
 
         from src.migrations.routes import router, _jobs
+
         _jobs.clear()
 
         app = FastAPI()
         app.include_router(router)
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
             resp = await ac.get("/api/migrations/nonexistent/status")
             assert resp.status_code == 404

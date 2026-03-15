@@ -70,6 +70,7 @@ try:
         start_oauth_refresh_worker,
         stop_oauth_refresh_worker,
     )
+
     _oauth_refresh_available = True
 except ImportError:
     pass
@@ -111,7 +112,9 @@ def create_app() -> FastAPI:
             slack_configured=bool(settings.slack_bot_token),
             github_configured=bool(settings.github_token),
             gitlab_configured=bool(settings.gitlab_token),
-            datadog_configured=bool(settings.datadog_api_key and settings.datadog_app_key),
+            datadog_configured=bool(
+                settings.datadog_api_key and settings.datadog_app_key
+            ),
             aws_cloudwatch_configured=bool(settings.aws_region),
             loki_configured=bool(settings.loki_url),
             redis_configured=bool(settings.redis_url),
@@ -248,9 +251,15 @@ def create_app() -> FastAPI:
     app.include_router(ai_feedback_router)
     app.include_router(memory_stats_router)
     app.include_router(auth_router)
-    app.include_router(oauth_integrations_router)  # generic OAuth (handles all providers including PD/Slack)
-    app.include_router(pagerduty_oauth_router)  # legacy PD OAuth (start route only; callback handled by generic)
-    app.include_router(slack_oauth_router)  # legacy Slack OAuth (start route only; callback handled by generic)
+    app.include_router(
+        oauth_integrations_router
+    )  # generic OAuth (handles all providers including PD/Slack)
+    app.include_router(
+        pagerduty_oauth_router
+    )  # legacy PD OAuth (start route only; callback handled by generic)
+    app.include_router(
+        slack_oauth_router
+    )  # legacy Slack OAuth (start route only; callback handled by generic)
     app.include_router(sso_router)
     app.include_router(supabase_auth_router)
     app.include_router(billing_router)

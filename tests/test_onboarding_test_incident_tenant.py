@@ -35,9 +35,7 @@ async def test_start_test_incident_uses_explicit_tenant(monkeypatch):
         return AsyncMock()
 
     monkeypatch.setattr(test_incident_module.asyncio, "create_task", _fake_create_task)
-    monkeypatch.setattr(
-        test_incident_module, "incident_store", SupabaseIncidentStore()
-    )
+    monkeypatch.setattr(test_incident_module, "incident_store", SupabaseIncidentStore())
 
     try:
         await start_test_incident(service_name="payments-api", tenant_id="tenant-123")
@@ -68,7 +66,9 @@ async def test_process_uses_fallback_context_and_never_fails_incident(monkeypatc
     fail_mock = AsyncMock()
 
     monkeypatch.setattr(test_incident_module, "ContextOrchestrator", _FakeOrchestrator)
-    monkeypatch.setattr(test_incident_module.incident_store, "complete_incident", complete_mock)
+    monkeypatch.setattr(
+        test_incident_module.incident_store, "complete_incident", complete_mock
+    )
     monkeypatch.setattr(test_incident_module.incident_store, "fail_incident", fail_mock)
 
     incident = PagerDutyIncident(
@@ -120,8 +120,12 @@ async def test_process_passes_tenant_id_to_orchestrator(monkeypatch):
                 assembly_time_ms=0,
             )
 
-    monkeypatch.setattr(test_incident_module, "ContextOrchestrator", _CapturingOrchestrator)
-    monkeypatch.setattr(test_incident_module.incident_store, "complete_incident", AsyncMock())
+    monkeypatch.setattr(
+        test_incident_module, "ContextOrchestrator", _CapturingOrchestrator
+    )
+    monkeypatch.setattr(
+        test_incident_module.incident_store, "complete_incident", AsyncMock()
+    )
 
     incident = PagerDutyIncident(
         incident_id="inc-tenant-test",

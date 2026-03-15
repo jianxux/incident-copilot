@@ -258,7 +258,9 @@ class InMemoryIncidentStore(_BaseIncidentStore):
         self,
         tenant_id: str | None = None,
     ) -> list[StoredIncident]:
-        incidents = [self._incidents[iid] for iid in self._order if iid in self._incidents]
+        incidents = [
+            self._incidents[iid] for iid in self._order if iid in self._incidents
+        ]
         if tenant_id is None:
             return incidents
         return [
@@ -771,9 +773,13 @@ class HybridIncidentStore(_BaseIncidentStore):
         incident_id: str,
         tenant_id: str | None = None,
     ) -> StoredIncident | None:
-        memory_incident = await self._memory.get_incident(incident_id, tenant_id=tenant_id)
+        memory_incident = await self._memory.get_incident(
+            incident_id, tenant_id=tenant_id
+        )
         try:
-            supabase_incident = await self._supabase.get_incident(incident_id, tenant_id=tenant_id)
+            supabase_incident = await self._supabase.get_incident(
+                incident_id, tenant_id=tenant_id
+            )
             return supabase_incident or memory_incident
         except Exception as e:
             logger.warning(
@@ -794,7 +800,9 @@ class HybridIncidentStore(_BaseIncidentStore):
         }
 
         try:
-            supabase_incidents = await self._supabase.get_all_incidents(tenant_id=tenant_id)
+            supabase_incidents = await self._supabase.get_all_incidents(
+                tenant_id=tenant_id
+            )
             for incident in supabase_incidents:
                 merged_by_id[incident.incident_id] = incident
         except Exception as e:
@@ -825,7 +833,6 @@ class HybridIncidentStore(_BaseIncidentStore):
             )
 
         return {"total": total, "by_status": by_status, "by_severity": by_severity}
-
 
 
 class DatabaseIncidentStore(_BaseIncidentStore):
@@ -1047,7 +1054,9 @@ class DatabaseIncidentStore(_BaseIncidentStore):
 
         async with self._session_factory() as session:
             result = await session.execute(
-                select(IncidentRow).order_by(IncidentRow.triggered_at.desc()).limit(self._max_incidents)
+                select(IncidentRow)
+                .order_by(IncidentRow.triggered_at.desc())
+                .limit(self._max_incidents)
             )
             rows = result.scalars().all()
 

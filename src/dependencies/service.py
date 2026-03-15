@@ -132,7 +132,9 @@ class DependencyService:
     async def get_service(self, service_id: str) -> Service | None:
         """Get a service by ID."""
         if self._store.enabled:
-            svc = await self._store.get_service(service_id, tenant_slug=self._tenant_slug)
+            svc = await self._store.get_service(
+                service_id, tenant_slug=self._tenant_slug
+            )
             if not svc:
                 return None
             return Service(

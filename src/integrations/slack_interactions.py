@@ -12,7 +12,11 @@ import structlog
 
 from ..actions.approval import ApprovalWorkflow
 from ..actions.executor import ActionExecutor
-from .slack_lifecycle import create_warroom_from_notification, get_slack_client, post_status_update
+from .slack_lifecycle import (
+    create_warroom_from_notification,
+    get_slack_client,
+    post_status_update,
+)
 
 logger = structlog.get_logger()
 
@@ -50,11 +54,15 @@ async def handle_interaction(payload: dict) -> dict | None:
 
     # Action approval
     if action_id.startswith("action_approve:"):
-        return await _handle_action_approval(action, user_name, channel_id, approved=True)
+        return await _handle_action_approval(
+            action, user_name, channel_id, approved=True
+        )
 
     # Action rejection
     if action_id.startswith("action_reject:"):
-        return await _handle_action_approval(action, user_name, channel_id, approved=False)
+        return await _handle_action_approval(
+            action, user_name, channel_id, approved=False
+        )
 
     # Generate postmortem
     if action_id == "generate_postmortem":
@@ -107,7 +115,9 @@ async def _handle_start_warroom(payload: dict) -> dict:
             "text": f"🏠 War room <#{result['channel_id']}|{warroom_name}> created by {user_name} for `{incident_id}`",
         }
     except Exception as e:
-        logger.error("slack_warroom_creation_error", error=str(e), incident_id=incident_id)
+        logger.error(
+            "slack_warroom_creation_error", error=str(e), incident_id=incident_id
+        )
         return {
             "response_type": "ephemeral",
             "text": f"❌ Error creating war room: {e}",
@@ -193,13 +203,21 @@ async def _handle_generate_postmortem(
                 postmortem = await generator.generate(incident_id)
                 client = await get_slack_client(None)
                 if client and channel_id:
-                    summary = postmortem.get("summary", "Postmortem generated.") if isinstance(postmortem, dict) else str(postmortem)[:2000]
+                    summary = (
+                        postmortem.get("summary", "Postmortem generated.")
+                        if isinstance(postmortem, dict)
+                        else str(postmortem)[:2000]
+                    )
                     await client.chat_postMessage(
                         channel=channel_id,
                         text=f"📋 *Postmortem for {incident_id}*\n{summary}",
                     )
             except Exception as e:
-                logger.error("postmortem_generation_failed", incident_id=incident_id, error=str(e))
+                logger.error(
+                    "postmortem_generation_failed",
+                    incident_id=incident_id,
+                    error=str(e),
+                )
                 client = await get_slack_client(None)
                 if client and channel_id:
                     await client.chat_postMessage(

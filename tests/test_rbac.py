@@ -20,6 +20,7 @@ class TestRBACModels:
 
     def test_role_assignment(self):
         import uuid
+
         uid, rid = uuid.uuid4(), uuid.uuid4()
         assignment = RoleAssignment(user_id=uid, role_id=rid)
         assert assignment.user_id == uid

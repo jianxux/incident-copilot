@@ -165,7 +165,9 @@ class OAuthTokenStore:
         provider = normalize_provider(provider)
         if is_supabase_db_enabled():
             db = get_db(use_admin=True)
-            return await db.delete_integration_token(tenant_id=tenant_id, provider=provider)
+            return await db.delete_integration_token(
+                tenant_id=tenant_id, provider=provider
+            )
 
         self._tokens.pop((tenant_id, provider), None)
         return True
@@ -244,7 +246,6 @@ class OAuthTokenStore:
         stale = [k for k, v in self._states.items() if v.created_at < cutoff]
         for key in stale:
             self._states.pop(key, None)
-
 
 
 def _parse_dt(value: Any) -> datetime | None:
