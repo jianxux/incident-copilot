@@ -3,12 +3,12 @@
 import pytest
 
 from src.rbac.models import (
+    SYSTEM_ROLES,
     Action,
     Permission,
+    ResourceType,
     Role,
     RoleAssignment,
-    ResourceType,
-    SYSTEM_ROLES,
 )
 from src.rbac.service import RBACService
 

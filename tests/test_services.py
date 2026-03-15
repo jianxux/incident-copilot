@@ -4,10 +4,10 @@ import pytest
 
 from src.services.models import (
     Service,
-    ServiceDependency,
-    ServiceCriticality,
-    ServiceEnvironment,
     ServiceCreate,
+    ServiceCriticality,
+    ServiceDependency,
+    ServiceEnvironment,
 )
 from src.services.store import ServiceCatalogStore
 

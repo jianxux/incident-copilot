@@ -3,15 +3,15 @@
 import pytest
 
 from src.statuspage.models import (
+    SEVERITY_TO_IMPACT,
     Component,
     ComponentStatus,
-    StatusPageIncident,
     IncidentImpact,
     IncidentStatus,
     StatusPageConfig,
-    StatusPageProvider,
     StatusPageCredentials,
-    SEVERITY_TO_IMPACT,
+    StatusPageIncident,
+    StatusPageProvider,
 )
 from src.statuspage.service import StatusPageService
 

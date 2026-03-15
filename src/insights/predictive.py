@@ -12,8 +12,8 @@ from .models import (
     EarlyWarning,
     MetricDataPoint,
     MetricTrend,
-    Severity,
     ServiceHealthScore,
+    Severity,
 )
 
 logger = structlog.get_logger()

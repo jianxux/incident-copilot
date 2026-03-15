@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import enum
 import json
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Any, List, Optional
 
 import structlog

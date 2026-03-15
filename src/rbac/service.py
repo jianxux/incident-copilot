@@ -6,7 +6,7 @@ Core service for role-based access control.
 Handles permission checks, role assignments, and access decisions.
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from uuid import UUID
 
 from .models import (

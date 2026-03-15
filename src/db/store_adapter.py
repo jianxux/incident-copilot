@@ -5,7 +5,7 @@ The adapter preserves the SSE subscriber mechanism from the in-memory store whil
 persisting data to Supabase PostgreSQL.
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 import structlog
 

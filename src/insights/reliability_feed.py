@@ -8,12 +8,12 @@ import structlog
 
 from ..analytics.models import IncidentMetrics
 from .models import (
+    EarlyWarning,
     ReliabilityDigest,
     ReliabilityLesson,
     ServiceHealthScore,
-    ShiftLeftReport,
     Severity,
-    EarlyWarning,
+    ShiftLeftReport,
 )
 
 logger = structlog.get_logger()

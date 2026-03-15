@@ -3,7 +3,7 @@
 import asyncio
 import re
 import uuid
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 import structlog
 

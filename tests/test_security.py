@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.security.crypto import encrypt_str, decrypt_str, encrypt_json, decrypt_json
+from src.security.crypto import decrypt_json, decrypt_str, encrypt_json, encrypt_str
 from src.security.headers import SecurityHeadersMiddleware
 
 

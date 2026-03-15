@@ -1,15 +1,16 @@
 """Tests for performance module."""
 
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, UTC
 
 from src.performance.models import (
-    TeamMetrics,
-    PerformanceTier,
-    EngineerMetrics,
     BurnoutRisk,
+    EngineerMetrics,
     LeaderboardEntry,
     PerformancePeriod,
+    PerformanceTier,
+    TeamMetrics,
 )
 
 

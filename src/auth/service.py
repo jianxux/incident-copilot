@@ -1,7 +1,7 @@
 """Authentication service for user and session management."""
 
 import hashlib
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 import structlog
 

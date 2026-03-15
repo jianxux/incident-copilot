@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
-from src.models import ContextCard
-
 import pytest
+
+from src.models import ContextCard
 
 
 @pytest.mark.anyio

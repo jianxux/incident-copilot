@@ -3,20 +3,12 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
-from ..services.models import (
-    ServiceCreate as CatalogServiceCreate,
-)
-from ..services.models import (
-    ServiceDependencyCreate as CatalogDependencyCreate,
-)
-from ..services.models import (
-    ServiceDependencyUpdate as CatalogDependencyUpdate,
-)
-from ..services.models import (
-    ServiceUpdate as CatalogServiceUpdate,
-)
+from ..services.models import ServiceCreate as CatalogServiceCreate
+from ..services.models import ServiceDependencyCreate as CatalogDependencyCreate
+from ..services.models import ServiceDependencyUpdate as CatalogDependencyUpdate
+from ..services.models import ServiceUpdate as CatalogServiceUpdate
 from ..services.store import ServiceCatalogStore, get_service_catalog_store
 from .graph import DependencyGraphAnalyzer
 from .models import (

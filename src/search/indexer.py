@@ -1,7 +1,7 @@
 """Indexing service for incidents, runbooks, and postmortems."""
 
 import asyncio
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any, Callable, Protocol
 
 from .engine import SearchEngine

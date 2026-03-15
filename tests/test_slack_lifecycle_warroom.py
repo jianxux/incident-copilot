@@ -8,13 +8,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from slack_sdk.errors import SlackApiError
 
+from src.integrations.slack_interactions import _handle_start_warroom
 from src.integrations.slack_lifecycle import (
     build_incident_notification_blocks,
     create_warroom_from_notification,
     post_incident_notification,
     post_update_to_incident,
 )
-from src.integrations.slack_interactions import _handle_start_warroom
 
 
 class TestBuildIncidentNotificationBlocks:

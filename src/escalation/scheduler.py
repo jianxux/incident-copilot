@@ -5,7 +5,7 @@ Escalation Scheduler - Background tasks for scheduled escalation checks.
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 from .engine import PolicyEngine, get_policy_engine
 from .models import EscalationState, TeamRotation

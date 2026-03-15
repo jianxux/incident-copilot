@@ -119,6 +119,7 @@ class TestManifestEndpoints:
         """Test GET /dashboard/integrations/slack/manifest returns manifest JSON."""
         try:
             import httpx
+
             from src.web.app import create_app
         except ImportError:
             pytest.skip("httpx or app not available")
@@ -140,6 +141,7 @@ class TestManifestEndpoints:
         """Test GET /dashboard/integrations/slack/install redirects."""
         try:
             import httpx
+
             from src.web.app import create_app
         except ImportError:
             pytest.skip("httpx or app not available")

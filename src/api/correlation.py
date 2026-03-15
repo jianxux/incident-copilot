@@ -1,7 +1,7 @@
 """API endpoints for alert correlation management."""
 
 import uuid
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query

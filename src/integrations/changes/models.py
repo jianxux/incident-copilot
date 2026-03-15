@@ -2,7 +2,7 @@
 Change Tracking Models - Track deployments, config changes, and feature flags.
 """
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, Field

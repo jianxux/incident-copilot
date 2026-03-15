@@ -1,6 +1,6 @@
 """SSO service layer for managing identity providers and user provisioning."""
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog

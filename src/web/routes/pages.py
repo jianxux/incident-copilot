@@ -375,8 +375,8 @@ async def billing_page(
     auth_data: dict[str, str] = Depends(require_dashboard_auth),
 ):
     """Billing and pricing page."""
-    from ...billing.routes import PLANS
     from ...auth.models import PlanTier
+    from ...billing.routes import PLANS
 
     # Current plan — default to free
     current_plan_id = "free"

@@ -172,10 +172,7 @@ async def process_pagerduty_incident_background(incident, settings):
             context_card=context_card,
         )
     except Exception as e:
-        await incident_store.fail_incident(
-            incident_id=incident.incident_id,
-            error_message=str(e),
-        )
+        await incident_store.fail_incident(incident.incident_id, str(e))
         logger.error(
             "pagerduty_background_processing_failed",
             incident_id=incident.incident_id,
@@ -229,10 +226,7 @@ async def process_opsgenie_alert_background(alert, settings):
             context_card=context_card,
         )
     except Exception as e:
-        await incident_store.fail_incident(
-            incident_id=incident_id,
-            error_message=str(e),
-        )
+        await incident_store.fail_incident(incident_id, str(e))
         logger.error(
             "opsgenie_background_processing_failed",
             alert_id=alert.alert_id,

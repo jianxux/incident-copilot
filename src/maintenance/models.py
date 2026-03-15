@@ -1,6 +1,6 @@
 """Maintenance Windows - Pydantic Models"""
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from uuid import UUID, uuid4
 
