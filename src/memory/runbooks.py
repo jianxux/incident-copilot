@@ -181,7 +181,9 @@ class AutoRunbookGenerator:
 
         confidence = min(1.0, round(len(source_ids) / (len(source_ids) + 2), 4))
         runbook_id = sha1(  # nosec B324
-            (f"{category}|{','.join(services)}|{','.join(sorted(source_ids))}").encode(),
+            (
+                f"{category}|{','.join(services)}|{','.join(sorted(source_ids))}"
+            ).encode(),
             usedforsecurity=False,
         ).hexdigest()[:16]
 
