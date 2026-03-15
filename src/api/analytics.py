@@ -52,9 +52,7 @@ def _parse_dt(value: Any) -> datetime | None:
         return _to_utc(value)
     if isinstance(value, str):
         try:
-            return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(
-                UTC
-            )
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC)
         except ValueError:
             return None
     return None

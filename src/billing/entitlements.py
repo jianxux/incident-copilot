@@ -1,6 +1,5 @@
 """Entitlement middleware that gates features based on tenant plan."""
 
-
 import structlog
 from fastapi import Depends, HTTPException, status
 

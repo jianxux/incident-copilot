@@ -1,6 +1,5 @@
 """FastAPI routes for predictive insights, deployment risk, and reliability feed."""
 
-
 import structlog
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
