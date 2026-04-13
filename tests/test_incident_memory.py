@@ -1,6 +1,6 @@
 """Unit tests for Incident Memory Phase 1 core functionality."""
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -273,3 +273,55 @@ async def test_recall_low_severity_skips_rerank(memory_config):
     await recall.recall(query)
 
     anthropic_client.messages.create.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_recall_applies_temporal_decay_for_timezone_aware_created_at(
+    memory_config,
+):
+    settings = Settings(openai_api_key="")
+    now = datetime.now(UTC)
+
+    store = MagicMock()
+    store.recall = AsyncMock(
+        return_value=[
+            IncidentRecallResult(
+                record=IncidentRecord(
+                    id="inc-old",
+                    title="Older incident",
+                    created_at=now - timedelta(days=120),
+                    embedding=[0.0, 0.0, 0.0, 0.0],
+                ),
+                score=0.8,
+                vector_similarity=0.8,
+                temporal_decay=1.0,
+            ),
+            IncidentRecallResult(
+                record=IncidentRecord(
+                    id="inc-new",
+                    title="Newer incident",
+                    created_at=now - timedelta(days=5),
+                    embedding=[0.0, 0.0, 0.0, 0.0],
+                ),
+                score=0.8,
+                vector_similarity=0.8,
+                temporal_decay=1.0,
+            ),
+        ]
+    )
+
+    feedback_store = MagicMock()
+    feedback_store.get_feedback_summary = AsyncMock(return_value=None)
+
+    recall = IncidentRecall(
+        settings=settings,
+        store=store,
+        config=memory_config,
+        feedback_store=feedback_store,
+    )
+    recall._embed_text = AsyncMock(return_value=[0.0, 0.0, 0.0, 0.0])
+
+    results = await recall.recall(RecallQuery(narrative="Auth latency spike"))
+
+    assert [item.record.id for item in results] == ["inc-new", "inc-old"]
+    assert results[0].score > results[1].score

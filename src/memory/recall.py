@@ -120,7 +120,12 @@ class IncidentRecall:
             created_at = item.record.created_at
             days_ago = 0
             try:
-                delta = now - created_at.replace(tzinfo=None)
+                created_at_utc = (
+                    created_at.astimezone(UTC)
+                    if created_at.tzinfo is not None
+                    else created_at.replace(tzinfo=UTC)
+                )
+                delta = now - created_at_utc
                 days_ago = max(int(delta.total_seconds() // 86400), 0)
             except Exception:
                 days_ago = 0
