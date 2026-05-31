@@ -100,6 +100,7 @@ async def config_page(
     auth_status = "Google OAuth" if settings.supabase_auth_enabled else "Demo mode"
 
     return templates.TemplateResponse(
+        request,
         "config.html",
         {
             "request": request,

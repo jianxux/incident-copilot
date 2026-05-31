@@ -31,6 +31,7 @@ async def dashboard_home(request: Request):
     }
 
     return templates.TemplateResponse(
+        request,
         "dashboard.html",
         {
             "request": request,
@@ -45,6 +46,7 @@ async def dashboard_home(request: Request):
 async def incidents_list_page(request: Request):
     """Dedicated incidents list page with search, filters, and sorting."""
     return templates.TemplateResponse(
+        request,
         "incidents.html",
         {
             "request": request,
@@ -66,6 +68,7 @@ async def onboarding_wizard_page(request: Request):
     webhook_url = f"{settings.app_url}/webhooks/pagerduty"
 
     return templates.TemplateResponse(
+        request,
         "onboarding_wizard.html",
         {
             "request": request,
@@ -82,6 +85,7 @@ async def onboarding_success_page(
 ):
     """Onboarding completion page after first successful test incident."""
     return templates.TemplateResponse(
+        request,
         "onboarding_success.html",
         {
             "request": request,
@@ -95,6 +99,7 @@ async def onboarding_success_page(
 async def service_catalog_page(request: Request):
     """Service catalog dashboard page."""
     return templates.TemplateResponse(
+        request,
         "services.html",
         {
             "request": request,
@@ -107,6 +112,7 @@ async def service_catalog_page(request: Request):
 async def migration_page(request: Request):
     """Opsgenie migration wizard page."""
     return templates.TemplateResponse(
+        request,
         "migration.html",
         {
             "request": request,
@@ -119,6 +125,7 @@ async def migration_page(request: Request):
 async def handoff_page(request: Request):
     """On-call handoff dashboard page."""
     return templates.TemplateResponse(
+        request,
         "handoff.html",
         {
             "request": request,
@@ -139,6 +146,7 @@ async def incident_detail(
 
     if not incident:
         return templates.TemplateResponse(
+            request,
             "error.html",
             {
                 "request": request,
@@ -149,6 +157,7 @@ async def incident_detail(
         )
 
     return templates.TemplateResponse(
+        request,
         "incident_detail.html",
         {
             "request": request,
@@ -171,6 +180,7 @@ async def incident_chat(
 
     if not incident:
         return templates.TemplateResponse(
+            request,
             "error.html",
             {
                 "request": request,
@@ -181,6 +191,7 @@ async def incident_chat(
         )
 
     return templates.TemplateResponse(
+        request,
         "copilot_chat.html",
         {
             "request": request,
@@ -205,6 +216,7 @@ async def incident_timeline(
 
     if not incident:
         return templates.TemplateResponse(
+            request,
             "error.html",
             {
                 "request": request,
@@ -307,6 +319,7 @@ async def incident_timeline(
     }
 
     return templates.TemplateResponse(
+        request,
         "timeline.html",
         {
             "request": request,
@@ -349,6 +362,7 @@ async def get_incident_timeline_api(incident_id: str):
 async def insights_page(request: Request):
     """AI Insights and Pattern Detection dashboard."""
     return templates.TemplateResponse(
+        request,
         "insights.html",
         {
             "request": request,
@@ -361,6 +375,7 @@ async def insights_page(request: Request):
 async def analytics_page(request: Request):
     """Analytics dashboard showing MTTR and incident metrics."""
     return templates.TemplateResponse(
+        request,
         "analytics.html",
         {
             "request": request,
@@ -396,6 +411,7 @@ async def billing_page(
     ]
 
     return templates.TemplateResponse(
+        request,
         "billing.html",
         {
             "request": request,
