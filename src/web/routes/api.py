@@ -24,6 +24,7 @@ from .common import (
 async def landing_page(request: Request):
     """Marketing landing page for Incident Copilot."""
     return templates.TemplateResponse(
+        request,
         "landing.html",
         {"request": request},
     )
@@ -434,6 +435,7 @@ async def login_page(request: Request, error: str | None = None):
     }
 
     return templates.TemplateResponse(
+        request,
         "login.html",
         {
             "request": request,
@@ -451,6 +453,7 @@ async def signup_page(request: Request):
     from ...supabase_client import is_supabase_auth_enabled
 
     return templates.TemplateResponse(
+        request,
         "signup.html",
         {
             "request": request,

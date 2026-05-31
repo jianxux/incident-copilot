@@ -199,6 +199,7 @@ async def demo_page(request: Request):
     scenarios = list_scenarios()
 
     return templates.TemplateResponse(
+        request,
         "demo.html",
         {
             "request": request,
