@@ -589,8 +589,8 @@ Create a custom policy with these permissions:
 ```bash
 LOG_PROVIDER=cloudwatch
 AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
-AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+AWS_ACCESS_KEY_ID=<your-aws-access-key-id>
+AWS_SECRET_ACCESS_KEY=<your-aws-secret-access-key>
 ```
 
 **Or use IAM roles** (recommended for EC2/ECS):
@@ -892,7 +892,7 @@ Loki queries can timeout on large time ranges. Try:
 ### Step 4: Configure Environment
 
 ```bash
-SLACK_BOT_TOKEN=xoxb-1234567890-1234567890123-abcdefghijklmnop
+SLACK_BOT_TOKEN=xoxb-<your-slack-bot-token>
 SLACK_DEFAULT_CHANNEL=#incidents
 ```
 

@@ -311,8 +311,8 @@ Create an IAM policy with these permissions:
 ```bash
 LOG_PROVIDER=cloudwatch
 AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
-AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+AWS_ACCESS_KEY_ID=<your-aws-access-key-id>
+AWS_SECRET_ACCESS_KEY=<your-aws-secret-access-key>
 ```
 
 **Option B**: IAM Role (for EC2/ECS/Lambda)
@@ -448,7 +448,7 @@ Slack is the most common notification channel.
 
 Add to your `.env`:
 ```bash
-SLACK_BOT_TOKEN=xoxb-1234567890-1234567890123-abcdefghijklmnop
+SLACK_BOT_TOKEN=xoxb-<your-slack-bot-token>
 SLACK_DEFAULT_CHANNEL=#incidents
 NOTIFICATION_PROVIDER=slack
 ```

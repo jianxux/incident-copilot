@@ -40,4 +40,4 @@ Go to **Getting started → Quickstart**:
 
 ## License
 
-This project is licensed under **Business Source License 1.1 (BSL 1.1)**.
+This project is licensed under the **Apache License 2.0**.

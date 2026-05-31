@@ -117,7 +117,7 @@ GITHUB_ORG=your-organization
 
 Or inline the private key:
 ```bash
-GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+GITHUB_APP_PRIVATE_KEY="<paste-github-app-private-key>"
 ```
 
 ---

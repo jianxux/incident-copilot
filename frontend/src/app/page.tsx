@@ -10,7 +10,7 @@ const features = [
 
 export default function LandingPage() {
   return (
-    <div className="md:ml-[-16rem]">
+    <div>
       {/* Hero */}
       <section className="relative overflow-hidden bg-sidebar text-white">
         <div className="max-w-5xl mx-auto px-6 py-24 md:py-32 text-center">

@@ -627,9 +627,12 @@
                 if (!refresh) return;
 
                 try {
-                    var r = await fetch((SUPABASE_URL || 'https://hrhrqygwvswplrqpjzzv.supabase.co') + '/auth/v1/token?grant_type=refresh_token', {
+                    var supabaseAnonKey = '{{ supabase_anon_key | default("") }}';
+                    if (!SUPABASE_URL || !supabaseAnonKey) return;
+
+                    var r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'apikey': '{{ supabase_anon_key | default("") }}' || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyaHJxeWd3dnN3cGxycXBqenp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1MDI5ODksImV4cCI6MjA4NjA3ODk4OX0.Kndk9cURJ7PijYKwfjXME_KHOWDLfoTwghYdH0gwXc4' },
+                        headers: { 'Content-Type': 'application/json', 'apikey': supabaseAnonKey },
                         body: JSON.stringify({ refresh_token: refresh })
                     });
                     if (!r.ok) return;

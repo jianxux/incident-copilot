@@ -204,7 +204,7 @@ DATADOG_SITE=datadoghq.com
 # OR CloudWatch
 LOG_PROVIDER=cloudwatch
 AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_ACCESS_KEY_ID=<your-aws-access-key-id>
 AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/xxxxx
 CLOUDWATCH_LOG_GROUP_MAP='{"payments": "/aws/lambda/payments"}'
 
@@ -245,7 +245,7 @@ LOKI_PASSWORD=glc_xxxxxxxx
 ```bash
 # Slack only
 NOTIFICATION_PROVIDER=slack
-SLACK_BOT_TOKEN=xoxb-1234567890-1234567890123-abcdefghijklmnop
+SLACK_BOT_TOKEN=xoxb-<your-slack-bot-token>
 SLACK_DEFAULT_CHANNEL=#incidents
 
 # Teams only

@@ -172,7 +172,7 @@ Because Atlassian’s current Opsgenie pricing page is now a migration notice, t
 - After 2026-03-24, OSS users lose **Cloud Connection** support including **mobile push notifications** and **SMS/phone** if relying on Grafana Cloud connection — [Grafana docs](https://grafana.com/docs/oncall/latest/set-up/open-source/)
 
 ### Gaps we can exploit
-- **OSS is effectively end-of-innovation**; a new open source (BSL) alternative can capture teams that want self-hosting without a dead-end roadmap — [Grafana docs](https://grafana.com/docs/oncall/latest/set-up/open-source/)
+- **OSS is effectively end-of-innovation**; a new Apache-2.0 open-source alternative can capture teams that want self-hosting without a dead-end roadmap — [Grafana docs](https://grafana.com/docs/oncall/latest/set-up/open-source/)
 - **Active-user pricing + platform fee** can be confusing; opportunity for simple pricing and self-hosted option — [Grafana OnCall product page](https://grafana.com/products/cloud/oncall/)
 
 ---
@@ -212,10 +212,10 @@ Most competitors’ AI is packaged as:
 
 **Incident Copilot differentiation:** focus on **automatic, cross-tool context assembly** (deploy diffs, alerts, logs, traces, tickets, ownership, recent changes) with human-in-the-loop outputs.
 
-## 2) Open source (BSL) vs closed SaaS
+## 2) Open source (Apache-2.0) vs closed SaaS
 - Grafana OnCall OSS has entered maintenance mode and is scheduled for archival — [Grafana OSS maintenance notice](https://grafana.com/docs/oncall/latest/set-up/open-source/)
 
-**Incident Copilot differentiation:** “open core” (BSL) gives teams a credible self-host story and an escape hatch.
+**Incident Copilot differentiation:** Apache-2.0 licensing gives teams a credible self-host story and an escape hatch, with permissive commercial use subject to the license terms.
 
 ## 3) No vendor lock-in
 - Market discussions explicitly raise workflow/tool lock-in concerns in incident response platforms — [HN incident.io thread](https://news.ycombinator.com/item?id=39727079)

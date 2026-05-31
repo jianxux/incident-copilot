@@ -10,8 +10,8 @@ Please **do not** open a public GitHub issue for security vulnerabilities.
 
 Instead, report security issues privately:
 
-- Email: **security@your-company.example** (replace with your real address)
-- Or: create a **private** GitHub Security Advisory (preferred if enabled for this repo)
+- Create a **private GitHub Security Advisory** for this repository (preferred)
+- If advisory reporting is unavailable, contact the maintainer privately before publishing details
 
 Include as much of the following as possible:
 

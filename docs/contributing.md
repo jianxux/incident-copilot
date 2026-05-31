@@ -60,4 +60,4 @@ pytest
 
 ## License
 
-By contributing, you agree that your contributions are licensed under the project’s **BSL 1.1** terms.
+By contributing, you agree that your contributions are licensed under the project’s **Apache License 2.0** terms.
