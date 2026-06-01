@@ -1,9 +1,9 @@
 <div align="center">
 
-# Incident Copilot
+# Incident Copilot AI
 
-**Open-source incident context assembly for on-call teams.**
-Incident Copilot turns alerts into structured “what changed / what’s broken / where to look” context cards so responders can start fixing instead of spelunking.
+**AI-powered incident response copilot for on-call teams.**
+Incident Copilot AI turns alerts into structured “what changed / what’s broken / where to look” context cards so responders can start fixing instead of spelunking.
 
 [Live demo](https://incident-copilot-preview.vercel.app) · [Docs](./docs/index.md) · [Quickstart](./docs/getting-started/quickstart.md) · [Roadmap](./ROADMAP.md) · [Contributing](./CONTRIBUTING.md) · [Security](./SECURITY.md)
 
