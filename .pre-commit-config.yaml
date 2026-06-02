@@ -26,6 +26,15 @@ repos:
         args: [--ignore-missing-imports]
         exclude: ^tests/
 
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args:
+          - --baseline
+          - .secrets.baseline
+        exclude: ^(docs/|research/|helm/|supabase/config\.toml$)
+
   - repo: local
     hooks:
       - id: pytest-check

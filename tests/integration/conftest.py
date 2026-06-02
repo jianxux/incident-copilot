@@ -12,7 +12,7 @@ from supabase import create_client
 # Local Supabase defaults (from `supabase start`)
 LOCAL_SUPABASE_URL = os.environ.get("SUPABASE_URL", "http://127.0.0.1:54321")
 LOCAL_SUPABASE_KEY = os.environ.get(
-    "SUPABASE_SERVICE_KEY", "sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz"
+    "SUPABASE_SERVICE_KEY", "sb_secret_local_dev_placeholder_do_not_use_in_prod"
 )
 
 
